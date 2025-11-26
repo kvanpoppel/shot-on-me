@@ -1,18 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "shot-on-me/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "distDir": ".next"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/shot-on-me/$1"
-    }
-  ]
+  "buildCommand": "cd shot-on-me && npm run build",
+  "outputDirectory": "shot-on-me/.next",
+  "installCommand": "cd shot-on-me && npm install",
+  "framework": "nextjs"
 }
