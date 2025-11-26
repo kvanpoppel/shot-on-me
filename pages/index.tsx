@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAuth } from './contexts/AuthContext'
-import LoginScreen from './components/LoginScreen'
-import Dashboard from './components/Dashboard'
-import BottomNav from './components/BottomNav'
-import FeedTab from './components/FeedTab'
-import WalletTab from './components/WalletTab'
-import MapTab from './components/MapTab'
-import ProfileTab from './components/ProfileTab'
-import HomeTab from './components/HomeTab'
-import FriendProfile from './components/FriendProfile'
-import ProximityNotifications from './components/ProximityNotifications'
-import PermissionsManager from './components/PermissionsManager'
+import { useAuth } from '../app/contexts/AuthContext'
+import LoginScreen from '../app/components/LoginScreen'
+import Dashboard from '../app/components/Dashboard'
+import BottomNav from '../app/components/BottomNav'
+import FeedTab from '../app/components/FeedTab'
+import WalletTab from '../app/components/WalletTab'
+import MapTab from '../app/components/MapTab'
+import ProfileTab from '../app/components/ProfileTab'
+import HomeTab from '../app/components/HomeTab'
+import FriendProfile from '../app/components/FriendProfile'
+import ProximityNotifications from '../app/components/ProximityNotifications'
+import PermissionsManager from '../app/components/PermissionsManager'
 
 type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile'
 
@@ -21,14 +21,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
 
-  // Debug: Log tab changes
   useEffect(() => {
     console.log('Active tab changed to:', activeTab)
   }, [activeTab])
 
-  // Listen for hash changes to navigate to profile tab
   useEffect(() => {
-    if (!user || loading) return // Don't set up hash listener if not logged in
+    if (!user || loading) return
     
     const handleHashChange = () => {
       if (window.location.hash === '#profile') {
@@ -37,7 +35,7 @@ export default function Home() {
     }
     
     window.addEventListener('hashchange', handleHashChange)
-    handleHashChange() // Check on mount
+    handleHashChange()
     
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setActiveTab, user, loading])
@@ -56,20 +54,14 @@ export default function Home() {
 
   return (
     <>
-      {/* Permissions Manager - Shows on first launch */}
       <PermissionsManager />
-      
       <Dashboard 
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
         viewingProfile={viewingProfile}
         setViewingProfile={setViewingProfile}
       />
-      
-      {/* Proximity Notifications */}
       <ProximityNotifications />
-      
-      {/* Tab Content */}
       <main className="pt-16 min-h-screen bg-black pb-16">
         {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
         {activeTab === 'wallet' && <WalletTab />}
@@ -77,10 +69,7 @@ export default function Home() {
         {activeTab === 'map' && <MapTab setActiveTab={setActiveTab} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} />}
       </main>
-      
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Friend Profile Modal */}
       {viewingProfile && (
         <FriendProfile
           userId={viewingProfile}
@@ -88,11 +77,9 @@ export default function Home() {
           onSendShot={(userId) => {
             setViewingProfile(null)
             setActiveTab('wallet')
-            // Could pass userId to WalletTab to pre-fill recipient
           }}
         />
       )}
     </>
   )
 }
-
