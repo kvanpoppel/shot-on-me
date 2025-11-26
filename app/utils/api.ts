@@ -7,6 +7,7 @@
 export const getApiUrl = (): string => {
   // If environment variable is set, use it
   if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('Using env API URL:', process.env.NEXT_PUBLIC_API_URL)
     return process.env.NEXT_PUBLIC_API_URL
   }
   
@@ -15,11 +16,14 @@ export const getApiUrl = (): string => {
     const hostname = window.location.hostname
     // If accessing via IP address (mobile), use that IP for backend
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `http://${hostname}:5000/api`
+      const url = `https://shot-on-me.onrender.com/api`
+      console.log('Using Render API URL:', url)
+      return url
     }
   }
   
   // Default to localhost for server-side rendering
+  console.log('Using localhost API URL')
   return 'http://localhost:5000/api'
 }
 
