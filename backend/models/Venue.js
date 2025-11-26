@@ -55,4 +55,13 @@ const venueSchema = new mongoose.Schema({
     saturday: { open: String, close: String, closed: { type: Boolean, default: false } },
     sunday: { open: String, close: String, closed: { type: Boolean, default: false } }
   }
-}, {\n  timestamps: true\n});\n\n// Index for geospatial queries\nvenueSchema.index({ location: '2dsphere' });\nvenueSchema.index({ owner: 1 });\nvenueSchema.index({ isActive: 1 });\n\nmodule.exports = mongoose.model('Venue', venueSchema);
+}, {
+  timestamps: true
+});
+
+// Index for geospatial queries
+venueSchema.index({ location: '2dsphere' });
+venueSchema.index({ owner: 1 });
+venueSchema.index({ isActive: 1 });
+
+module.exports = mongoose.model('Venue', venueSchema);
