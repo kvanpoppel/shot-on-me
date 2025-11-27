@@ -23,8 +23,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     contacts: 'prompt',
     notifications: 'prompt'
   })
-  const [currentStep, setCurrentStep] = useState(0)
-  const [requesting, setRequesting] = useState(false)
+  const [requesting, setRequesting] = useState<string | null>(null)
 
   useEffect(() => {
     if (showOnMount) {
@@ -98,7 +97,6 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
   }
 
   const requestLocation = async () => {
-    setRequesting(true)
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
@@ -122,13 +120,10 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         setPermissions(prev => ({ ...prev, location: 'prompt' }))
       }
       return false
-    } finally {
-      setRequesting(false)
     }
   }
 
   const requestCamera = async () => {
-    setRequesting(true)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       stream.getTracks().forEach(track => track.stop())
@@ -137,13 +132,10 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     } catch (error: any) {
       setPermissions(prev => ({ ...prev, camera: 'denied' }))
       return false
-    } finally {
-      setRequesting(false)
     }
   }
 
   const requestContacts = async () => {
-    setRequesting(true)
     try {
       if ('contacts' in navigator && 'ContactsManager' in window) {
         const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
@@ -168,13 +160,10 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
       }
       return false
-    } finally {
-      setRequesting(false)
     }
   }
 
   const requestNotifications = async () => {
-    setRequesting(true)
     try {
       if ('Notification' in window) {
         const permission = await Notification.requestPermission()
@@ -185,27 +174,29 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     } catch (error) {
       setPermissions(prev => ({ ...prev, notifications: 'denied' }))
       return false
-    } finally {
-      setRequesting(false)
     }
   }
 
   const handleRequestPermission = async (type: keyof PermissionStatus) => {
-    switch (type) {
-      case 'location':
-        await requestLocation()
-        break
-      case 'camera':
-        await requestCamera()
-        break
-      case 'contacts':
-        await requestContacts()
-        break
-      case 'notifications':
-        await requestNotifications()
-        break
+    setRequesting(type)
+    try {
+      switch (type) {
+        case 'location':
+          await requestLocation()
+          break
+        case 'camera':
+          await requestCamera()
+          break
+        case 'contacts':
+          await requestContacts()
+          break
+        case 'notifications':
+          await requestNotifications()
+          break
+      }
+    } finally {
+      setRequesting(null)
     }
-    setCurrentStep(prev => Math.min(prev + 1, 3))
   }
 
   const handleSkip = () => {
@@ -215,13 +206,9 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
   }
 
   const handleContinue = () => {
-    if (currentStep < 3) {
-      setCurrentStep(prev => prev + 1)
-    } else {
-      localStorage.setItem('permissions-shown', 'true')
-      setShowModal(false)
-      if (onComplete) onComplete()
-    }
+    localStorage.setItem('permissions-shown', 'true')
+    setShowModal(false)
+    if (onComplete) onComplete()
   }
 
   const permissionSteps = [
@@ -255,128 +242,99 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
   ]
 
-  const currentPermission = permissionSteps[currentStep]
-  const currentStatus = permissions[currentPermission.permission]
-  const Icon = currentPermission.icon
-
   if (!showModal) return null
 
   return (
     <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
-      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-md w-full backdrop-blur-md">
-        {/* Progress Indicator */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex space-x-2">
-            {permissionSteps.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1 flex-1 rounded-full ${
-                  idx <= currentStep
-                    ? 'bg-primary-500'
-                    : 'bg-primary-500/20'
-                }`}
-              />
-            ))}
-          </div>
-          {currentStep > 0 && (
-            <button
-              onClick={() => setCurrentStep(prev => prev - 1)}
-              className="ml-4 text-primary-400 hover:text-primary-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Permission Icon */}
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 border-2 border-primary-500 rounded-full flex items-center justify-center bg-primary-500/10">
-            <Icon className="w-10 h-10 text-primary-500" />
-          </div>
-        </div>
-
-        {/* Title and Description */}
-        <h2 className="text-2xl font-bold text-primary-500 text-center mb-2 tracking-tight">
-          {currentPermission.title}
-        </h2>
-        <p className="text-primary-400 text-center mb-6 font-light">
-          {currentPermission.description}
-        </p>
-
-        {/* Why We Need This */}
-        <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 mb-6 backdrop-blur-sm">
-          <p className="text-primary-400/80 text-sm font-light">
-            <span className="text-primary-500 font-medium">Why we need this:</span>{' '}
-            {currentPermission.why}
+      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-md w-full backdrop-blur-md max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-primary-500 mb-2 tracking-tight">
+            Enable Permissions
+          </h2>
+          <p className="text-primary-400 text-sm font-light">
+            Grant permissions to unlock the full Shot On Me experience
           </p>
         </div>
 
-        {/* Status Indicator */}
-        {currentStatus !== 'prompt' && (
-          <div className={`flex items-center justify-center space-x-2 mb-6 p-3 rounded-lg ${
-            currentStatus === 'granted'
-              ? 'bg-emerald-500/10 border border-emerald-500/20'
-              : currentStatus === 'unavailable'
-              ? 'bg-primary-500/10 border border-primary-500/20'
-              : 'bg-red-500/10 border border-red-500/20'
-          }`}>
-            {currentStatus === 'granted' ? (
-              <>
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Permission granted</span>
-              </>
-            ) : currentStatus === 'unavailable' ? (
-              <>
-                <AlertCircle className="w-5 h-5 text-primary-400" />
-                <span className="text-primary-400 font-medium">Not available on this device</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <span className="text-red-400 font-medium">Permission denied</span>
-              </>
-            )}
-          </div>
-        )}
+        {/* All Permissions List */}
+        <div className="space-y-3 mb-6">
+          {permissionSteps.map((step) => {
+            const status = permissions[step.permission]
+            const Icon = step.icon
+            const isRequesting = requesting === step.permission
+            const isUnavailable = status === 'unavailable'
+            const isGranted = status === 'granted'
+            const isDenied = status === 'denied'
+            const canRequest = status === 'prompt' && !isUnavailable
+
+            return (
+              <div
+                key={step.permission}
+                className="bg-black/40 border border-primary-500/20 rounded-lg p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3 flex-1">
+                    <div className="w-10 h-10 border border-primary-500/30 rounded-full flex items-center justify-center bg-primary-500/10 flex-shrink-0">
+                      <Icon className="w-5 h-5 text-primary-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-primary-500 font-semibold mb-1">{step.title}</h3>
+                      <p className="text-primary-400 text-xs font-light mb-2">{step.description}</p>
+                      {status !== 'prompt' && (
+                        <div className="flex items-center space-x-2 mt-2">
+                          {isGranted && (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span className="text-emerald-400 text-xs">Granted</span>
+                            </>
+                          )}
+                          {isDenied && (
+                            <>
+                              <AlertCircle className="w-4 h-4 text-red-400" />
+                              <span className="text-red-400 text-xs">Denied</span>
+                            </>
+                          )}
+                          {isUnavailable && (
+                            <>
+                              <AlertCircle className="w-4 h-4 text-primary-400" />
+                              <span className="text-primary-400 text-xs">Not available</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {canRequest && (
+                    <button
+                      onClick={() => handleRequestPermission(step.permission)}
+                      disabled={isRequesting || requesting !== null}
+                      className="ml-3 bg-primary-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      {isRequesting ? '...' : 'Allow'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex space-x-3">
-          {currentStatus === 'prompt' ? (
-            <>
-              <button
-                onClick={() => handleRequestPermission(currentPermission.permission)}
-                disabled={requesting}
-                className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {requesting ? 'Requesting...' : 'Allow'}
-              </button>
-              <button
-                onClick={handleContinue}
-                disabled={requesting}
-                className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-3 rounded-lg font-medium hover:bg-primary-500/10 transition-all backdrop-blur-sm disabled:opacity-50"
-              >
-                Skip
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleContinue}
-              className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all"
-            >
-              {currentStep < 3 ? 'Continue' : 'Get Started'}
-            </button>
-          )}
-        </div>
-
-        {/* Skip All */}
-        {currentStep === 0 && (
           <button
             onClick={handleSkip}
-            className="w-full mt-3 text-primary-400 hover:text-primary-500 text-sm font-light"
+            className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-3 rounded-lg font-medium hover:bg-primary-500/10 transition-all backdrop-blur-sm"
           >
-            Skip all permissions
+            Skip All
           </button>
-        )}
+          <button
+            onClick={handleContinue}
+            className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   )
