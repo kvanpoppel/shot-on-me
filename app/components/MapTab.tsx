@@ -46,7 +46,16 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           })
         },
         (error) => {
-          console.error('Geolocation error:', error)
+          // Only log non-timeout errors (timeouts are expected on desktop)
+          if (error.code !== error.TIMEOUT) {
+            console.error('Geolocation error:', error)
+          }
+          // Silently handle timeout - it's expected on desktop browsers
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 30000,
+          maximumAge: 60000
         }
       )
     }
