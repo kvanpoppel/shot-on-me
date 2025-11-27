@@ -44,8 +44,6 @@ const mongoOptions = {
   maxPoolSize: 10,
   minPoolSize: 5,
   heartbeatFrequencyMS: 10000,
-  bufferCommands: true,
-  bufferMaxEntries: -1,
 };
 
 const connectDB = async () => {
