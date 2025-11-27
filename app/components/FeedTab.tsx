@@ -269,21 +269,37 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         formData.append('venueId', selectedVenue._id || selectedVenue.id)
       }
       
-      // Add media files
-      selectedMedia.forEach((file) => {
-        formData.append('media', file)
+      // Add media files - use 'media[]' for array or just 'media' for multiple
+      selectedMedia.forEach((file, index) => {
+        formData.append('media', file) // Backend expects 'media' as array field name
       })
       
-      await axios.post(
+      console.log('Uploading post with:', {
+        content: newPostContent,
+        mediaCount: selectedMedia.length,
+        venue: selectedVenue?.name
+      })
+      
+      const response = await axios.post(
         `${API_URL}/feed`,
         formData,
         { 
           headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          } 
+            Authorization: `Bearer ${token}`
+            // Don't set Content-Type - let browser set it with boundary for FormData
+          },
+          timeout: 60000, // 60 second timeout for large files
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              console.log(`Upload progress: ${percentCompleted}%`)
+            }
+          }
         }
       )
+      
+      console.log('Post created successfully:', response.data)
+      
       setNewPostContent('')
       setSelectedVenue(null)
       setSelectedMedia([])
@@ -291,9 +307,16 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       setShowPostForm(false)
       fetchFeed()
       fetchFriendActivity()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create post:', error)
-      alert('Failed to create post. Please try again.')
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create post. Please try again.'
+      alert(errorMessage)
     } finally {
       setPosting(false)
     }
