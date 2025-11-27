@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/router'
 import { Wallet, MapPin, Users } from 'lucide-react'
 
 export default function LoginScreen() {
@@ -47,7 +47,7 @@ export default function LoginScreen() {
         // Also save remember me for registration
         localStorage.setItem('rememberMe', rememberMe.toString())
       }
-      router.push('/home')
+      router.push('/')
     } catch (err: any) {
       setError(err.message || 'Authentication failed')
     } finally {
