@@ -622,137 +622,67 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
           <div className="flex space-x-2">
             <button 
               type="button"
-              onClick={async () => {
-                // Request camera permission first
-                try {
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                    stream.getTracks().forEach(track => track.stop())
-                  }
-                  
-                  // Permission granted, open file picker
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = 'image/*'
-                  input.capture = 'environment' // Use back camera on mobile
-                  input.onchange = (e: any) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                        alert('Image size must be less than 10MB')
-                        return
-                      }
-                      setSelectedMedia([...selectedMedia, file])
-                      const reader = new FileReader()
-                      reader.onload = (event) => {
-                        if (event.target?.result) {
-                          setMediaPreviews([...mediaPreviews, event.target.result as string])
-                        }
-                      }
-                      reader.readAsDataURL(file)
+              onClick={() => {
+                // Open file picker for photos from gallery/desktop
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = 'image/*'
+                input.multiple = true // Allow multiple photos
+                input.onchange = (e: any) => {
+                  const files = Array.from(e.target.files || []) as File[]
+                  files.forEach((file) => {
+                    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                      alert(`Image ${file.name} is too large. Maximum size is 10MB.`)
+                      return
                     }
-                  }
-                  input.click()
-                } catch (error: any) {
-                  if (error.name === 'NotAllowedError') {
-                    alert('Camera permission denied. Please enable camera access in Settings → App Permissions.')
-                  } else {
-                    // Fallback to file picker without camera
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = 'image/*'
-                    input.onchange = (e: any) => {
-                      const file = e.target.files[0]
-                      if (file) {
-                        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                          alert('Image size must be less than 10MB')
-                          return
-                        }
-                        setSelectedMedia([...selectedMedia, file])
-                        const reader = new FileReader()
-                        reader.onload = (event) => {
-                          if (event.target?.result) {
-                            setMediaPreviews([...mediaPreviews, event.target.result as string])
-                          }
-                        }
-                        reader.readAsDataURL(file)
+                    setSelectedMedia(prev => [...prev, file])
+                    const reader = new FileReader()
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        setMediaPreviews(prev => [...prev, event.target.result as string])
                       }
                     }
-                    input.click()
-                  }
+                    reader.readAsDataURL(file)
+                  })
                 }
+                input.click()
               }}
               className="flex-1 bg-primary-500/20 border border-primary-500 text-primary-500 py-2 rounded-lg font-semibold hover:bg-primary-500/30 flex items-center justify-center"
             >
               <Camera className="w-4 h-4 mr-2" />
-              Photo
+              Add Photos
             </button>
             <button 
               type="button"
-              onClick={async () => {
-                // Request camera permission first
-                try {
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                    stream.getTracks().forEach(track => track.stop())
-                  }
-                  
-                  // Permission granted, open file picker
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = 'video/*'
-                  input.capture = 'environment'
-                  input.onchange = (e: any) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                        alert('Video size must be less than 50MB')
-                        return
-                      }
-                      setSelectedMedia([...selectedMedia, file])
-                      const reader = new FileReader()
-                      reader.onload = (event) => {
-                        if (event.target?.result) {
-                          setMediaPreviews([...mediaPreviews, event.target.result as string])
-                        }
-                      }
-                      reader.readAsDataURL(file)
+              onClick={() => {
+                // Open file picker for videos from gallery/desktop
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = 'video/*'
+                input.multiple = true // Allow multiple videos
+                input.onchange = (e: any) => {
+                  const files = Array.from(e.target.files || []) as File[]
+                  files.forEach((file) => {
+                    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                      alert(`Video ${file.name} is too large. Maximum size is 50MB.`)
+                      return
                     }
-                  }
-                  input.click()
-                } catch (error: any) {
-                  if (error.name === 'NotAllowedError') {
-                    alert('Camera permission denied. Please enable camera access in Settings → App Permissions.')
-                  } else {
-                    // Fallback to file picker
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = 'video/*'
-                    input.onchange = (e: any) => {
-                      const file = e.target.files[0]
-                      if (file) {
-                        if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                          alert('Video size must be less than 50MB')
-                          return
-                        }
-                        setSelectedMedia([...selectedMedia, file])
-                        const reader = new FileReader()
-                        reader.onload = (event) => {
-                          if (event.target?.result) {
-                            setMediaPreviews([...mediaPreviews, event.target.result as string])
-                          }
-                        }
-                        reader.readAsDataURL(file)
+                    setSelectedMedia(prev => [...prev, file])
+                    const reader = new FileReader()
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        setMediaPreviews(prev => [...prev, event.target.result as string])
                       }
                     }
-                    input.click()
-                  }
+                    reader.readAsDataURL(file)
+                  })
                 }
+                input.click()
               }}
               className="flex-1 bg-primary-500/20 border border-primary-500 text-primary-500 py-2 rounded-lg font-semibold hover:bg-primary-500/30 flex items-center justify-center"
             >
               <Video className="w-4 h-4 mr-2" />
-              Video
+              Add Video
             </button>
             <button 
               type="submit"
