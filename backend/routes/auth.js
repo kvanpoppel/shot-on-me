@@ -48,8 +48,8 @@ router.post('/login', async (req, res) => {
 
     // Split name into firstName and lastName for frontend compatibility
     const nameParts = (user.name || '').split(' ')
-    const firstName = nameParts[0] || ''
-    const lastName = nameParts.slice(1).join(' ') || ''
+    const userFirstName = nameParts[0] || ''
+    const userLastName = nameParts.slice(1).join(' ') || ''
 
     // Return user data and token
     res.json({
@@ -59,8 +59,8 @@ router.post('/login', async (req, res) => {
         _id: user._id,
         email: user.email,
         name: user.name,
-        firstName: firstName,
-        lastName: lastName,
+        firstName: userFirstName,
+        lastName: userLastName,
         phoneNumber: user.phoneNumber,
         userType: user.userType || 'user',
         wallet: user.wallet || { balance: 0, pendingBalance: 0 },
@@ -135,8 +135,8 @@ router.post('/register', async (req, res) => {
 
     // Split name into firstName and lastName for frontend compatibility
     const nameParts = newUser.name.split(' ')
-    const firstName = nameParts[0] || ''
-    const lastName = nameParts.slice(1).join(' ') || ''
+    const userFirstName = nameParts[0] || ''
+    const userLastName = nameParts.slice(1).join(' ') || ''
 
     // Return user data and token
     res.status(201).json({
@@ -146,8 +146,8 @@ router.post('/register', async (req, res) => {
         _id: newUser._id,
         email: newUser.email,
         name: newUser.name,
-        firstName: firstName,
-        lastName: lastName,
+        firstName: userFirstName,
+        lastName: userLastName,
         phoneNumber: newUser.phoneNumber,
         userType: newUser.userType,
         wallet: newUser.wallet,
