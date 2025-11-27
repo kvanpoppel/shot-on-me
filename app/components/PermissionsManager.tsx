@@ -101,12 +101,26 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     setRequesting(true)
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+        navigator.geolocation.getCurrentPosition(
+          resolve, 
+          reject, 
+          { 
+            timeout: 30000, // 30 seconds
+            enableHighAccuracy: false, // Faster on desktop
+            maximumAge: 60000 // Accept cached location
+          }
+        )
       })
       setPermissions(prev => ({ ...prev, location: 'granted' }))
       return true
-    } catch (error) {
-      setPermissions(prev => ({ ...prev, location: 'denied' }))
+    } catch (error: any) {
+      // Only set denied for actual permission errors, not timeouts
+      if (error.code === error.PERMISSION_DENIED) {
+        setPermissions(prev => ({ ...prev, location: 'denied' }))
+      } else {
+        // Timeout or other errors - keep as prompt so user can try again
+        setPermissions(prev => ({ ...prev, location: 'prompt' }))
+      }
       return false
     } finally {
       setRequesting(false)

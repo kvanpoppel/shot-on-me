@@ -66,15 +66,19 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
           updateLocation(loc.lat, loc.lng)
         },
         (error) => {
-          console.error('Geolocation error:', error)
-          if (error.code === error.PERMISSION_DENIED) {
-            alert('Location permission denied. Please enable location access in Settings → App Permissions to see friends on the map.')
+          // Only log non-timeout errors (timeouts are expected on desktop)
+          if (error.code !== error.TIMEOUT) {
+            console.error('Geolocation error:', error)
+            if (error.code === error.PERMISSION_DENIED) {
+              alert('Location permission denied. Please enable location access in Settings → App Permissions to see friends on the map.')
+            }
           }
+          // Silently handle timeout - it's expected on desktop browsers
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          enableHighAccuracy: false, // Use less accurate but faster location on desktop
+          timeout: 30000, // 30 seconds timeout
+          maximumAge: 60000 // Accept cached location up to 1 minute old
         }
       )
     } else {
