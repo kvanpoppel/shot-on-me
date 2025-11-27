@@ -46,6 +46,11 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Split name into firstName and lastName for frontend compatibility
+    const nameParts = (user.name || '').split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
     // Return user data and token
     res.json({
       token,
@@ -54,6 +59,9 @@ router.post('/login', async (req, res) => {
         _id: user._id,
         email: user.email,
         name: user.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: user.phoneNumber,
         userType: user.userType || 'user',
         wallet: user.wallet || { balance: 0, pendingBalance: 0 },
         friends: user.friends || [],
@@ -81,10 +89,13 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const { email, password, name, userType } = req.body;
+    const { email, password, name, firstName, lastName, phoneNumber, userType } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: 'Email, password, and name are required' });
+    // Support both name (single field) and firstName/lastName (separate fields)
+    const fullName = name || (firstName && lastName ? `${firstName} ${lastName}`.trim() : null);
+
+    if (!email || !password || !fullName) {
+      return res.status(400).json({ message: 'Email, password, and name (or firstName + lastName) are required' });
     }
 
     // Check if user already exists
@@ -101,7 +112,8 @@ router.post('/register', async (req, res) => {
     const newUser = new User({
       email: email.toLowerCase(),
       password: hashedPassword,
-      name,
+      name: fullName,
+      phoneNumber: phoneNumber || undefined,
       userType: userType || 'user',
       wallet: { balance: 0, pendingBalance: 0 },
       friends: [],
@@ -121,6 +133,11 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Split name into firstName and lastName for frontend compatibility
+    const nameParts = newUser.name.split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
     // Return user data and token
     res.status(201).json({
       token,
@@ -129,6 +146,9 @@ router.post('/register', async (req, res) => {
         _id: newUser._id,
         email: newUser.email,
         name: newUser.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: newUser.phoneNumber,
         userType: newUser.userType,
         wallet: newUser.wallet,
         friends: newUser.friends,

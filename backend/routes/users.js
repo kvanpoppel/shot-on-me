@@ -4,6 +4,42 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// Get current user (me)
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Split name into firstName and lastName for frontend compatibility
+    const nameParts = (user.name || '').split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+    
+    // Return user with firstName and lastName
+    res.json({
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: user.phoneNumber,
+        userType: user.userType || 'user',
+        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+        friends: user.friends || [],
+        location: user.location || { isVisible: true },
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get user profile
 router.get('/profile', auth, async (req, res) => {
   try {
@@ -14,6 +50,42 @@ router.get('/profile', auth, async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user by ID
+router.get('/:userId', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Split name into firstName and lastName for frontend compatibility
+    const nameParts = (user.name || '').split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+    
+    res.json({
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: user.phoneNumber,
+        userType: user.userType || 'user',
+        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+        friends: user.friends || [],
+        location: user.location || { isVisible: true },
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
