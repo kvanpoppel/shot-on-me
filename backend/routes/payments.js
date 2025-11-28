@@ -4,9 +4,6 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Payment history model (simplified - in production use a proper Payment model)
-const Payment = require('../models/Payment') || null;
-
 // Send payment
 router.post('/send', auth, async (req, res) => {
   try {
