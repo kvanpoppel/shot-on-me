@@ -427,18 +427,33 @@ router.post('/friends/:userId', auth, async (req, res) => {
     const { userId } = req.params;
     const currentUserId = req.user.userId;
 
+    console.log('📝 Add friend request:', { userId, currentUserId });
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
     if (userId === currentUserId) {
       return res.status(400).json({ message: 'Cannot add yourself as a friend' });
     }
 
     const user = await User.findById(currentUserId);
-    const friend = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Current user not found' });
+    }
 
+    const friend = await User.findById(userId);
     if (!friend) {
+      console.error('❌ Friend not found:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (user.friends.includes(userId)) {
+    // Convert to string for comparison
+    const userIdStr = userId.toString();
+    const currentUserIdStr = currentUserId.toString();
+    const friendIds = user.friends.map(f => f.toString());
+
+    if (friendIds.includes(userIdStr)) {
       return res.status(400).json({ message: 'User is already a friend' });
     }
 
@@ -448,10 +463,15 @@ router.post('/friends/:userId', auth, async (req, res) => {
     await user.save();
     await friend.save();
 
+    console.log('✅ Friend added successfully:', { userId, currentUserId });
     res.json({ message: 'Friend added successfully' });
   } catch (error) {
-    console.error('Error adding friend:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Error adding friend:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 });
 
