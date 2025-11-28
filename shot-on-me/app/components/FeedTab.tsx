@@ -195,16 +195,29 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
 
   const handleAddFriend = async (friendId: string) => {
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/users/friends/${friendId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       )
+      
+      // Remove from suggestions immediately for better UX
+      setFriendSuggestions(prev => prev.filter(s => (s._id || s.id) !== friendId))
+      
+      // Refresh data
       fetchFriendSuggestions()
       fetchFeed()
-      alert('Friend added!')
+      
+      // Show success feedback
+      const addedUser = friendSuggestions.find(s => (s._id || s.id) === friendId)
+      if (addedUser) {
+        // Brief visual feedback - could be enhanced with toast notification
+        console.log(`✅ Added ${addedUser.firstName} as a friend!`)
+      }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add friend')
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add friend'
+      alert(errorMessage)
+      console.error('Error adding friend:', error)
     }
   }
 
@@ -257,19 +270,49 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
 
   const handleComment = async (postId: string, e: React.FormEvent) => {
     e.preventDefault()
-    if (!commentText.trim()) return
+    if (!commentText.trim()) {
+      alert('Please enter a comment')
+      return
+    }
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/feed/${postId}/comment`,
-        { content: commentText },
+        { content: commentText.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       )
+      
+      // Optimistically update UI
+      setPosts(prev => prev.map(post => {
+        if (post._id === postId) {
+          return {
+            ...post,
+            comments: [
+              ...post.comments,
+              {
+                user: {
+                  firstName: user?.firstName || '',
+                  lastName: user?.lastName || '',
+                  profilePicture: user?.profilePicture
+                },
+                content: commentText.trim(),
+                createdAt: new Date().toISOString()
+              }
+            ]
+          }
+        }
+        return post
+      }))
+      
       setCommentText('')
-      setSelectedPostId(null)
+      // Keep comment section open to see the new comment
       fetchFeed()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to comment:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to post comment. Please try again.'
+      alert(errorMessage)
+      // Refresh to get correct state
+      fetchFeed()
     }
   }
 
@@ -319,18 +362,50 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const handleShare = async (postId: string) => {
     try {
       const post = posts.find(p => p._id === postId)
-      if (post && navigator.share) {
-        await navigator.share({
-          title: `${post.author.firstName} on Shot On Me`,
-          text: post.content || 'Check this out!',
-          url: `${window.location.origin}/feed/${postId}`,
-        })
+      if (!post) return
+      
+      const shareUrl = `${window.location.origin}/feed/${postId}`
+      const shareText = post.content ? `${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}` : 'Check this out on Shot On Me!'
+      
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `${post.author.firstName} ${post.author.lastName} on Shot On Me`,
+            text: shareText,
+            url: shareUrl,
+          })
+        } catch (shareError: any) {
+          // User cancelled share, fallback to copy
+          if (shareError.name !== 'AbortError') {
+            throw shareError
+          }
+        }
       } else {
-        navigator.clipboard.writeText(`${window.location.origin}/feed/${postId}`)
-        alert('Link copied! Share it with your friends!')
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Link copied to clipboard! Share it with your friends!')
       }
-    } catch (error) {
-      console.error('Failed to share:', error)
+    } catch (error: any) {
+      // If clipboard API fails, try fallback
+      if (error.name === 'AbortError') {
+        return // User cancelled, do nothing
+      }
+      
+      try {
+        const post = posts.find(p => p._id === postId)
+        const shareUrl = `${window.location.origin}/feed/${postId}`
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        alert('Link copied! Share it with your friends!')
+      } catch (fallbackError) {
+        console.error('Failed to share:', error)
+        alert('Unable to share. Please copy the link manually.')
+      }
     }
   }
 
