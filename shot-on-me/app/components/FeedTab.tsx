@@ -257,14 +257,63 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
 
   const handleReaction = async (postId: string, emoji: string) => {
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/feed/${postId}/reaction`,
         { emoji },
         { headers: { Authorization: `Bearer ${token}` } }
       )
+      
+      // Optimistically update UI for better UX
+      setPosts(prev => prev.map(post => {
+        if (post._id === postId) {
+          const wasReacted = post.userReaction === emoji
+          const newReactionCounts = { ...(post.reactionCounts || {}) }
+          
+          if (wasReacted) {
+            // Remove reaction
+            if (newReactionCounts[emoji]) {
+              newReactionCounts[emoji] = {
+                ...newReactionCounts[emoji],
+                count: Math.max(0, newReactionCounts[emoji].count - 1)
+              }
+              if (newReactionCounts[emoji].count === 0) {
+                delete newReactionCounts[emoji]
+              }
+            }
+            return { ...post, userReaction: null, reactionCounts: newReactionCounts }
+          } else {
+            // Add reaction - remove old reaction first
+            Object.keys(newReactionCounts).forEach(e => {
+              if (newReactionCounts[e] && newReactionCounts[e].count > 0) {
+                newReactionCounts[e] = {
+                  ...newReactionCounts[e],
+                  count: Math.max(0, newReactionCounts[e].count - 1)
+                }
+              }
+            })
+            
+            if (!newReactionCounts[emoji]) {
+              newReactionCounts[emoji] = { count: 0, users: [] }
+            }
+            newReactionCounts[emoji] = {
+              ...newReactionCounts[emoji],
+              count: (newReactionCounts[emoji].count || 0) + 1
+            }
+            
+            return { ...post, userReaction: emoji, reactionCounts: newReactionCounts }
+          }
+        }
+        return post
+      }))
+      
+      // Refresh to get accurate data
       fetchFeed()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to react to post:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to react. Please try again.'
+      alert(errorMessage)
+      // Refresh feed to get correct state
+      fetchFeed()
     }
   }
 
@@ -318,7 +367,10 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newPostContent.trim() && !selectedVenue && selectedMedia.length === 0) return
+    if (!newPostContent.trim() && !selectedVenue && selectedMedia.length === 0) {
+      alert('Please add some content, media, or select a venue to post')
+      return
+    }
     setPosting(true)
 
     try {
