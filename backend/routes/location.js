@@ -45,6 +45,54 @@ router.put('/update', auth, async (req, res) => {
   }
 });
 
+// Check proximity to venues
+router.get('/check-proximity', auth, async (req, res) => {
+  try {
+    const { latitude, longitude, radius = 2 } = req.query;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ message: 'Latitude and longitude are required' });
+    }
+
+    const userLat = parseFloat(latitude);
+    const userLon = parseFloat(longitude);
+    const radiusMiles = parseFloat(radius);
+
+    // Get all active venues
+    const Venue = require('../models/Venue');
+    const venues = await Venue.find({ isActive: true });
+
+    // Check which venues are within radius
+    const nearbyVenues = venues.filter(venue => {
+      if (!venue.location || !venue.location.latitude || !venue.location.longitude) {
+        return false;
+      }
+      
+      const distance = calculateDistance(
+        userLat,
+        userLon,
+        venue.location.latitude,
+        venue.location.longitude
+      );
+      
+      return distance <= radiusMiles;
+    });
+
+    res.json({
+      isNearVenue: nearbyVenues.length > 0,
+      nearbyVenues: nearbyVenues.map(v => ({
+        _id: v._id,
+        name: v.name,
+        location: v.location
+      })),
+      radius: radiusMiles
+    });
+  } catch (error) {
+    console.error('Error checking proximity:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get nearby friends
 router.get('/friends', auth, async (req, res) => {
   try {
