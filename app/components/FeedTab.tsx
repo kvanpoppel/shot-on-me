@@ -190,17 +190,78 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   }
 
   const handleAddFriend = async (friendId: string) => {
+    if (!token) {
+      alert('Please log in to add friends')
+      return
+    }
+
+    if (!friendId) {
+      console.error('Invalid friendId:', friendId)
+      alert('Invalid user ID. Please try again.')
+      return
+    }
+
+    console.log('Adding friend:', friendId)
+    console.log('API URL:', API_URL)
+
+    // Optimistically remove from suggestions for instant feedback
+    const previousSuggestions = [...friendSuggestions]
+    const addedUser = friendSuggestions.find(s => (s._id || s.id) === friendId)
+    
+    if (!addedUser) {
+      console.error('User not found in suggestions:', friendId, friendSuggestions)
+      alert('User not found. Please refresh and try again.')
+      return
+    }
+
+    setFriendSuggestions(prev => prev.filter(s => (s._id || s.id) !== friendId))
+
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/users/friends/${friendId}`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        }
       )
-      fetchFriendSuggestions()
-      fetchFeed()
-      alert('Friend added!')
+      
+      console.log('Friend added successfully:', response.data)
+      
+      // Success - refresh data
+      await Promise.all([
+        fetchFriendSuggestions(),
+        fetchFeed()
+      ])
+      
+      // Show success feedback
+      console.log(`✅ Added ${addedUser.firstName} as a friend!`)
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add friend')
+      console.error('Error adding friend:', error)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      
+      // Revert optimistic update on error
+      setFriendSuggestions(previousSuggestions)
+      
+      let errorMessage = 'Failed to add friend'
+      if (error.response?.data) {
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      // Don't show alert for "already a friend" - just refresh
+      if (error.response?.status === 400 && (errorMessage.includes('already') || errorMessage.includes('Already'))) {
+        await Promise.all([
+          fetchFriendSuggestions(),
+          fetchFeed()
+        ])
+        return
+      }
+      
+      // Show user-friendly error message
+      alert(errorMessage || 'Failed to add friend. Please check your connection and try again.')
     }
   }
 
@@ -504,8 +565,18 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                       {suggestion.firstName}
                     </p>
                     <button
-                      onClick={() => handleAddFriend(suggestion._id || suggestion.id)}
-                      className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const friendId = suggestion._id || suggestion.id
+                        if (friendId) {
+                          handleAddFriend(friendId)
+                        } else {
+                          console.error('No friend ID found for suggestion:', suggestion)
+                          alert('Unable to add friend - missing user ID')
+                        }
+                      }}
+                      className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full flex items-center justify-center"
                     >
                       <UserPlus className="w-3 h-3 inline mr-1" />
                       Add
