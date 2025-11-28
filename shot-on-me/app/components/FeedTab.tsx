@@ -194,30 +194,60 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   }
 
   const handleAddFriend = async (friendId: string) => {
+    if (!token) {
+      alert('Please log in to add friends')
+      return
+    }
+
+    if (!friendId) {
+      alert('Invalid user ID')
+      return
+    }
+
+    // Optimistically remove from suggestions for instant feedback
+    const previousSuggestions = [...friendSuggestions]
+    const addedUser = friendSuggestions.find(s => (s._id || s.id) === friendId)
+    setFriendSuggestions(prev => prev.filter(s => (s._id || s.id) !== friendId))
+
     try {
       const response = await axios.post(
         `${API_URL}/users/friends/${friendId}`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        }
       )
       
-      // Remove from suggestions immediately for better UX
-      setFriendSuggestions(prev => prev.filter(s => (s._id || s.id) !== friendId))
-      
-      // Refresh data
+      // Success - refresh data
       fetchFriendSuggestions()
       fetchFeed()
       
       // Show success feedback
-      const addedUser = friendSuggestions.find(s => (s._id || s.id) === friendId)
       if (addedUser) {
-        // Brief visual feedback - could be enhanced with toast notification
         console.log(`✅ Added ${addedUser.firstName} as a friend!`)
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add friend'
-      alert(errorMessage)
       console.error('Error adding friend:', error)
+      
+      // Revert optimistic update on error
+      setFriendSuggestions(previousSuggestions)
+      
+      let errorMessage = 'Failed to add friend'
+      if (error.response) {
+        errorMessage = error.response.data?.message || error.response.data?.error || errorMessage
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      // Don't show alert for "already a friend" - just refresh
+      if (error.response?.status === 400 && errorMessage.includes('already')) {
+        fetchFriendSuggestions()
+        fetchFeed()
+        return
+      }
+      
+      alert(errorMessage)
     }
   }
 
@@ -256,6 +286,55 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   }
 
   const handleReaction = async (postId: string, emoji: string) => {
+    if (!token) {
+      alert('Please log in to react to posts')
+      return
+    }
+
+    // Optimistically update UI immediately for instant feedback
+    const previousPosts = [...posts]
+    setPosts(prev => prev.map(post => {
+      if (post._id === postId) {
+        const wasReacted = post.userReaction === emoji
+        const newReactionCounts = { ...(post.reactionCounts || {}) }
+        
+        if (wasReacted) {
+          // Remove reaction
+          if (newReactionCounts[emoji]) {
+            newReactionCounts[emoji] = {
+              ...newReactionCounts[emoji],
+              count: Math.max(0, newReactionCounts[emoji].count - 1)
+            }
+            if (newReactionCounts[emoji].count === 0) {
+              delete newReactionCounts[emoji]
+            }
+          }
+          return { ...post, userReaction: null, reactionCounts: newReactionCounts }
+        } else {
+          // Add reaction - remove old reaction first
+          Object.keys(newReactionCounts).forEach(e => {
+            if (newReactionCounts[e] && newReactionCounts[e].count > 0) {
+              newReactionCounts[e] = {
+                ...newReactionCounts[e],
+                count: Math.max(0, newReactionCounts[e].count - 1)
+              }
+            }
+          })
+          
+          if (!newReactionCounts[emoji]) {
+            newReactionCounts[emoji] = { count: 0, users: [] }
+          }
+          newReactionCounts[emoji] = {
+            ...newReactionCounts[emoji],
+            count: (newReactionCounts[emoji].count || 0) + 1
+          }
+          
+          return { ...post, userReaction: emoji, reactionCounts: newReactionCounts }
+        }
+      }
+      return post
+    }))
+
     try {
       const response = await axios.post(
         `${API_URL}/feed/${postId}/reaction`,
@@ -263,55 +342,18 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       
-      // Optimistically update UI for better UX
-      setPosts(prev => prev.map(post => {
-        if (post._id === postId) {
-          const wasReacted = post.userReaction === emoji
-          const newReactionCounts = { ...(post.reactionCounts || {}) }
-          
-          if (wasReacted) {
-            // Remove reaction
-            if (newReactionCounts[emoji]) {
-              newReactionCounts[emoji] = {
-                ...newReactionCounts[emoji],
-                count: Math.max(0, newReactionCounts[emoji].count - 1)
-              }
-              if (newReactionCounts[emoji].count === 0) {
-                delete newReactionCounts[emoji]
-              }
-            }
-            return { ...post, userReaction: null, reactionCounts: newReactionCounts }
-          } else {
-            // Add reaction - remove old reaction first
-            Object.keys(newReactionCounts).forEach(e => {
-              if (newReactionCounts[e] && newReactionCounts[e].count > 0) {
-                newReactionCounts[e] = {
-                  ...newReactionCounts[e],
-                  count: Math.max(0, newReactionCounts[e].count - 1)
-                }
-              }
-            })
-            
-            if (!newReactionCounts[emoji]) {
-              newReactionCounts[emoji] = { count: 0, users: [] }
-            }
-            newReactionCounts[emoji] = {
-              ...newReactionCounts[emoji],
-              count: (newReactionCounts[emoji].count || 0) + 1
-            }
-            
-            return { ...post, userReaction: emoji, reactionCounts: newReactionCounts }
-          }
-        }
-        return post
-      }))
-      
-      // Refresh to get accurate data
+      // Refresh to get accurate data from server
       fetchFeed()
     } catch (error: any) {
       console.error('Failed to react to post:', error)
-      const errorMessage = error.response?.data?.message || 'Failed to react. Please try again.'
-      alert(errorMessage)
+      
+      // Revert optimistic update on error
+      setPosts(previousPosts)
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to react. Please try again.'
+      if (error.response?.status !== 401) { // Don't alert on auth errors
+        alert(errorMessage)
+      }
       // Refresh feed to get correct state
       fetchFeed()
     }
@@ -841,63 +883,48 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
             <button 
               type="button"
               onClick={async () => {
-                // Request camera permission first
                 try {
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                    stream.getTracks().forEach(track => track.stop())
-                  }
-                  
-                  // Permission granted, open file picker
+                  // Open file picker directly - no need to request camera permission first
                   const input = document.createElement('input')
                   input.type = 'file'
-                  input.accept = 'video/*'
-                  input.capture = 'environment'
+                  input.accept = 'video/*,video/mp4,video/quicktime,video/x-msvideo'
+                  input.multiple = false
                   input.onchange = (e: any) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                        alert('Video size must be less than 50MB')
-                        return
-                      }
-                      setSelectedMedia([...selectedMedia, file])
-                      const reader = new FileReader()
-                      reader.onload = (event) => {
-                        if (event.target?.result) {
-                          setMediaPreviews([...mediaPreviews, event.target.result as string])
-                        }
-                      }
-                      reader.readAsDataURL(file)
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    
+                    // Validate file type
+                    if (!file.type.startsWith('video/')) {
+                      alert('Please select a valid video file')
+                      return
                     }
+                    
+                    // Check file size (50MB limit)
+                    const maxSize = 50 * 1024 * 1024
+                    if (file.size > maxSize) {
+                      alert(`Video size must be less than 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+                      return
+                    }
+                    
+                    // Add to selected media
+                    setSelectedMedia(prev => [...prev, file])
+                    
+                    // Create preview
+                    const reader = new FileReader()
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        setMediaPreviews(prev => [...prev, event.target.result as string])
+                      }
+                    }
+                    reader.onerror = () => {
+                      alert('Failed to load video preview')
+                    }
+                    reader.readAsDataURL(file)
                   }
                   input.click()
                 } catch (error: any) {
-                  if (error.name === 'NotAllowedError') {
-                    alert('Camera permission denied. Please enable camera access in Settings → App Permissions.')
-                  } else {
-                    // Fallback to file picker
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = 'video/*'
-                    input.onchange = (e: any) => {
-                      const file = e.target.files[0]
-                      if (file) {
-                        if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                          alert('Video size must be less than 50MB')
-                          return
-                        }
-                        setSelectedMedia([...selectedMedia, file])
-                        const reader = new FileReader()
-                        reader.onload = (event) => {
-                          if (event.target?.result) {
-                            setMediaPreviews([...mediaPreviews, event.target.result as string])
-                          }
-                        }
-                        reader.readAsDataURL(file)
-                      }
-                    }
-                    input.click()
-                  }
+                  console.error('Error selecting video:', error)
+                  alert('Failed to select video. Please try again.')
                 }
               }}
               className="flex-1 bg-primary-500/20 border border-primary-500 text-primary-500 py-2 rounded-lg font-semibold hover:bg-primary-500/30 flex items-center justify-center"
