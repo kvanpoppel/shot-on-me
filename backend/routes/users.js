@@ -126,12 +126,12 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
       return res.status(400).json({ message: 'No profile picture provided. Send either a file via multipart/form-data or base64 string in JSON body.' });
     }
 
-    // Update user's profile picture
-    user.profilePicture = profilePictureUrl;
-    await user.save();
-
-    // Refresh user from database to ensure we have the latest data
-    const updatedUser = await User.findById(req.user.userId).select('-password');
+    // Update user's profile picture using findByIdAndUpdate to avoid validation issues
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: { profilePicture: profilePictureUrl } },
+      { new: true, runValidators: false } // Don't run validators, just update the field
+    ).select('-password');
     
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found after update' });
@@ -181,23 +181,33 @@ router.put('/me', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Build update object
+    const updateData = {};
+    
     // Update name if firstName or lastName provided
     if (firstName !== undefined || lastName !== undefined) {
       const currentNameParts = (user.name || '').split(' ');
       const newFirstName = firstName !== undefined ? firstName : (currentNameParts[0] || '');
       const newLastName = lastName !== undefined ? lastName : (currentNameParts.slice(1).join(' ') || '');
-      user.name = `${newFirstName} ${newLastName}`.trim();
+      updateData.name = `${newFirstName} ${newLastName}`.trim();
+      
+      // Ensure name is not empty (required field)
+      if (!updateData.name || updateData.name.trim() === '') {
+        updateData.name = user.name || `${newFirstName} ${newLastName}`.trim() || 'User';
+      }
     }
 
     // Update phone number if provided
     if (phoneNumber !== undefined) {
-      user.phoneNumber = phoneNumber;
+      updateData.phoneNumber = phoneNumber;
     }
 
-    await user.save();
-
-    // Refresh user from database
-    const updatedUser = await User.findById(req.user.userId).select('-password');
+    // Use findByIdAndUpdate to avoid validation issues
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: updateData },
+      { new: true, runValidators: true } // Run validators but ensure name exists
+    ).select('-password');
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found after update' });
     }
