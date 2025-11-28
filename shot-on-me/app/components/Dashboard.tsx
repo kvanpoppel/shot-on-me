@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { Menu, X, User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users } from 'lucide-react'
+import axios from 'axios'
+import { useApiUrl } from '../utils/api'
 import LocationFinder from './LocationFinder'
 import SettingsMenu from './SettingsMenu'
 import FindFriends from './FindFriends'
+import ActivityFeed from './ActivityFeed'
 
 type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
 
@@ -24,10 +27,34 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const [showLocationFinder, setShowLocationFinder] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showFindFriends, setShowFindFriends] = useState(false)
+  const [showActivityFeed, setShowActivityFeed] = useState(false)
+  const [notificationCount, setNotificationCount] = useState(0)
+  const { token } = useAuth()
+  const API_URL = useApiUrl()
+
+  useEffect(() => {
+    if (token) {
+      fetchNotificationCount()
+      const interval = setInterval(fetchNotificationCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [token])
+
+  const fetchNotificationCount = async () => {
+    if (!token) return
+    try {
+      const response = await axios.get(`${API_URL}/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setNotificationCount(response.data.unreadCount || 0)
+    } catch (error) {
+      console.error('Failed to fetch notification count:', error)
+    }
+  }
 
   const menuItems = [
     { icon: Settings, label: 'Settings', action: () => { setShowMenu(false); setShowSettings(true); } },
-    { icon: Bell, label: 'Notifications', action: () => { setShowMenu(false); alert('Notifications feature coming soon!'); } },
+    { icon: Bell, label: 'Notifications', action: () => { setShowMenu(false); setShowActivityFeed(true); } },
     { icon: Users, label: 'Find Friends', action: () => { setShowMenu(false); setShowFindFriends(true); } },
     { icon: MapPin, label: 'Friend Locations', action: () => { setShowMenu(false); setShowLocationFinder(true); } },
     { icon: LogOut, label: 'Log Out', action: handleLogout },
@@ -60,7 +87,23 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
 
           <h1 className="text-xl logo-script text-primary-500 tracking-tight">Shot On Me</h1>
 
-          <div className="w-9 h-9 border border-primary-500/30 rounded-full flex items-center justify-center overflow-hidden">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowActivityFeed(true)
+                fetchNotificationCount()
+              }}
+              className="relative p-2 text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </button>
+            <div className="w-9 h-9 border border-primary-500/30 rounded-full flex items-center justify-center overflow-hidden">
             {user?.profilePicture ? (
               <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
             ) : (
@@ -68,6 +111,7 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </span>
             )}
+            </div>
           </div>
         </div>
       </header>
@@ -172,6 +216,13 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
       
       {/* Settings Menu */}
       <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      
+      {/* Activity Feed */}
+      <ActivityFeed 
+        isOpen={showActivityFeed} 
+        onClose={() => setShowActivityFeed(false)}
+        onViewProfile={setViewingProfile}
+      />
     </>
   )
 }

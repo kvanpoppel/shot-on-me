@@ -95,6 +95,7 @@ messagesRouter.setIO(io); // Pass Socket.io instance to messages router
 app.use('/api/messages', messagesRouter);
 app.use('/api/feed', require('./routes/feed'));
 app.use('/api/stories', require('./routes/stories'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));
 
