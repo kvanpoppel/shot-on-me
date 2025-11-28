@@ -3,6 +3,7 @@ const FeedPost = require('../models/FeedPost');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+const notificationsRouter = require('./notifications');
 
 const router = express.Router();
 
@@ -287,6 +288,21 @@ router.post('/:postId/reaction', auth, async (req, res) => {
 
     await post.save();
     await post.populate('reactions.user', 'name firstName lastName profilePicture');
+    await post.populate('author', 'name firstName lastName');
+    
+    // Create notification if reaction was added (not removed) and user is not the post author
+    if (!existingReaction && post.author._id.toString() !== req.user.userId.toString()) {
+      const actor = await require('../models/User').findById(req.user.userId);
+      if (actor) {
+        await notificationsRouter.createNotification({
+          recipient: post.author._id,
+          actor: req.user.userId,
+          type: 'reaction',
+          content: `${actor.firstName || actor.name} reacted ${emoji} to your post`,
+          relatedPost: post._id
+        });
+      }
+    }
     
     // Group reactions by emoji
     const reactionCounts = {};
@@ -336,6 +352,20 @@ router.post('/:postId/comment', auth, async (req, res) => {
     await post.save();
     await post.populate('author', 'name firstName lastName profilePicture');
     await post.populate('comments.user', 'name firstName lastName profilePicture');
+    
+    // Create notification if user is not the post author
+    if (post.author._id.toString() !== req.user.userId.toString()) {
+      const actor = await require('../models/User').findById(req.user.userId);
+      if (actor) {
+        await notificationsRouter.createNotification({
+          recipient: post.author._id,
+          actor: req.user.userId,
+          type: 'comment',
+          content: `${actor.firstName || actor.name} commented on your post: "${content.trim().substring(0, 50)}${content.trim().length > 50 ? '...' : ''}"`,
+          relatedPost: post._id
+        });
+      }
+    }
     
     // Get the last comment (the one we just added)
     const newComment = post.comments[post.comments.length - 1];
