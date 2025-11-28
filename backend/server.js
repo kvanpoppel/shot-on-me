@@ -96,6 +96,7 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/feed', require('./routes/feed'));
 app.use('/api/stories', require('./routes/stories'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/groups', require('./routes/groups'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));
 
