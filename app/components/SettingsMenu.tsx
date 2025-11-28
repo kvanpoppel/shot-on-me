@@ -39,32 +39,43 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     input.accept = 'image/*'
     input.onchange = async (e: any) => {
       const file = e.target.files[0]
-      if (file) {
-        try {
-          const reader = new FileReader()
-          reader.onloadend = async () => {
-            try {
-              const base64String = reader.result as string
-              const response = await axios.put(
-                `${API_URL}/users/me/profile-picture`,
-                { profilePicture: base64String },
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  }
-                }
-              )
-              await updateUser({ profilePicture: response.data.profilePicture })
-              alert('Profile picture updated!')
-            } catch (error: any) {
-              alert(error.response?.data?.error || 'Failed to update profile picture')
-            }
+      if (!file) return
+
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image size must be less than 10MB')
+        return
+      }
+
+      try {
+        // Use FormData for efficient file upload
+        const formData = new FormData()
+        formData.append('profilePicture', file)
+
+        const response = await axios.put(
+          `${API_URL}/users/me/profile-picture`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+              // Don't set Content-Type - browser sets it with boundary for FormData
+            },
+            timeout: 60000 // 60 second timeout for large files
           }
-          reader.readAsDataURL(file)
-        } catch (error: any) {
-          alert(error.response?.data?.error || 'Failed to update profile picture')
+        )
+
+        // Update user data with new profile picture
+        if (response.data.user) {
+          await updateUser({ profilePicture: response.data.user.profilePicture })
+        } else {
+          await updateUser({ profilePicture: response.data.profilePicture })
         }
+        
+        alert('Profile picture updated successfully!')
+      } catch (error: any) {
+        console.error('Profile picture upload error:', error)
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update profile picture'
+        alert(errorMessage)
       }
     }
     input.click()

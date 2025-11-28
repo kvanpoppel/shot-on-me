@@ -1,8 +1,25 @@
 const express = require('express');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 
 const router = express.Router();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for profile pictures
+  }
+});
 
 // Get current user (me)
 router.get('/me', auth, async (req, res) => {
@@ -51,6 +68,117 @@ router.get('/profile', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update profile picture (supports both file upload and base64)
+router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let profilePictureUrl = '';
+
+    // Check if file was uploaded via multer
+    if (req.file) {
+      console.log('📤 Uploading profile picture file to Cloudinary...');
+      
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'image',
+            folder: 'shot-on-me/profiles',
+            transformation: [
+              { width: 400, height: 400, crop: 'fill', gravity: 'face' }
+            ]
+          },
+          (error, result) => {
+            if (error) {
+              console.error('❌ Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              console.log('✅ Profile picture uploaded to Cloudinary');
+              resolve(result);
+            }
+          }
+        ).end(req.file.buffer);
+      });
+
+      profilePictureUrl = uploadResult.secure_url;
+    } 
+    // Check if base64 string was sent in body
+    else if (req.body.profilePicture) {
+      console.log('📤 Uploading profile picture (base64) to Cloudinary...');
+      
+      // Handle base64 data URL
+      let base64Data = req.body.profilePicture;
+      if (base64Data.startsWith('data:')) {
+        base64Data = base64Data.split(',')[1]; // Remove data URL prefix
+      }
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload(
+          `data:image/jpeg;base64,${base64Data}`,
+          {
+            folder: 'shot-on-me/profiles',
+            transformation: [
+              { width: 400, height: 400, crop: 'fill', gravity: 'face' }
+            ]
+          },
+          (error, result) => {
+            if (error) {
+              console.error('❌ Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              console.log('✅ Profile picture uploaded to Cloudinary');
+              resolve(result);
+            }
+          }
+        );
+      });
+
+      profilePictureUrl = uploadResult.secure_url;
+    } else {
+      return res.status(400).json({ message: 'No profile picture provided' });
+    }
+
+    // Update user's profile picture
+    user.profilePicture = profilePictureUrl;
+    await user.save();
+
+    // Split name for response
+    const nameParts = (user.name || '').split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    console.log('✅ Profile picture updated successfully');
+
+    res.json({
+      message: 'Profile picture updated successfully',
+      profilePicture: profilePictureUrl,
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: user.phoneNumber,
+        userType: user.userType || 'user',
+        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+        friends: user.friends || [],
+        location: user.location || { isVisible: true },
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error updating profile picture:', error);
+    res.status(500).json({ 
+      message: 'Failed to update profile picture',
+      error: error.message 
+    });
   }
 });
 
