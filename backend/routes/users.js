@@ -171,7 +171,71 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
   }
 });
 
-// Get current user (me) - must come after /me/profile-picture
+// Update current user profile (firstName, lastName, etc.) - must come after /me/profile-picture
+router.put('/me', auth, async (req, res) => {
+  try {
+    const { firstName, lastName, phoneNumber } = req.body;
+    
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update name if firstName or lastName provided
+    if (firstName !== undefined || lastName !== undefined) {
+      const currentNameParts = (user.name || '').split(' ');
+      const newFirstName = firstName !== undefined ? firstName : (currentNameParts[0] || '');
+      const newLastName = lastName !== undefined ? lastName : (currentNameParts.slice(1).join(' ') || '');
+      user.name = `${newFirstName} ${newLastName}`.trim();
+    }
+
+    // Update phone number if provided
+    if (phoneNumber !== undefined) {
+      user.phoneNumber = phoneNumber;
+    }
+
+    await user.save();
+
+    // Refresh user from database
+    const updatedUser = await User.findById(req.user.userId).select('-password');
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found after update' });
+    }
+
+    // Split name for response
+    const nameParts = (updatedUser.name || '').split(' ');
+    const responseFirstName = nameParts[0] || '';
+    const responseLastName = nameParts.slice(1).join(' ') || '';
+
+    console.log('✅ User profile updated successfully');
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser._id,
+        _id: updatedUser._id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        firstName: responseFirstName,
+        lastName: responseLastName,
+        phoneNumber: updatedUser.phoneNumber,
+        userType: updatedUser.userType || 'user',
+        wallet: updatedUser.wallet || { balance: 0, pendingBalance: 0 },
+        friends: updatedUser.friends || [],
+        location: updatedUser.location || { isVisible: true },
+        profilePicture: updatedUser.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error updating user profile:', error);
+    res.status(500).json({ 
+      message: 'Failed to update profile',
+      error: error.message 
+    });
+  }
+});
+
+// Get current user (me) - must come after /me/profile-picture and PUT /me
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
