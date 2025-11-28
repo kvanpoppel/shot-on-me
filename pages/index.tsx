@@ -11,11 +11,12 @@ import MapTab from '../app/components/MapTab'
 import ProfileTab from '../app/components/ProfileTab'
 import HomeTab from '../app/components/HomeTab'
 import MessagesTab from '../app/components/MessagesTab'
+import StoriesTab from '../app/components/StoriesTab'
 import FriendProfile from '../app/components/FriendProfile'
 import ProximityNotifications from '../app/components/ProximityNotifications'
 import PermissionsManager from '../app/components/PermissionsManager'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -67,6 +68,7 @@ export default function Home() {
         {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
         {activeTab === 'wallet' && <WalletTab />}
         {activeTab === 'feed' && <FeedTab onViewProfile={setViewingProfile} />}
+        {activeTab === 'stories' && <StoriesTab onViewProfile={setViewingProfile} />}
         {activeTab === 'map' && <MapTab setActiveTab={setActiveTab} />}
         {activeTab === 'messages' && <MessagesTab onViewProfile={setViewingProfile} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} />}

@@ -1,12 +1,12 @@
 'use client'
 
-import { Home, MapPin, Wallet, User, MessageSquare, Bell } from 'lucide-react'
+import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
 
 interface BottomNavProps {
   activeTab: Tab
@@ -42,6 +42,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
   const tabs = [
     { id: 'home' as Tab, icon: Home, label: 'Home' },
     { id: 'feed' as Tab, icon: MessageSquare, label: 'Feed' },
+    { id: 'stories' as Tab, icon: Camera, label: 'Stories' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages', badge: unreadCount },
     { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },

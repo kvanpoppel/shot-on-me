@@ -8,7 +8,7 @@ import LocationFinder from './LocationFinder'
 import SettingsMenu from './SettingsMenu'
 import FindFriends from './FindFriends'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
 
 interface DashboardProps {
   activeTab: Tab
