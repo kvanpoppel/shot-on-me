@@ -12,11 +12,12 @@ import ProfileTab from '../app/components/ProfileTab'
 import HomeTab from '../app/components/HomeTab'
 import MessagesTab from '../app/components/MessagesTab'
 import StoriesTab from '../app/components/StoriesTab'
+import GroupChatsTab from '../app/components/GroupChatsTab'
 import FriendProfile from '../app/components/FriendProfile'
 import ProximityNotifications from '../app/components/ProximityNotifications'
 import PermissionsManager from '../app/components/PermissionsManager'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'groups'
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -70,7 +71,8 @@ export default function Home() {
         {activeTab === 'feed' && <FeedTab onViewProfile={setViewingProfile} />}
         {activeTab === 'stories' && <StoriesTab onViewProfile={setViewingProfile} />}
         {activeTab === 'map' && <MapTab setActiveTab={setActiveTab} />}
-        {activeTab === 'messages' && <MessagesTab onViewProfile={setViewingProfile} />}
+        {activeTab === 'messages' && <MessagesTab onViewProfile={setViewingProfile} setActiveTab={setActiveTab} />}
+        {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />

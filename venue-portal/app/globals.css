@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
+  --background-rgb: 0, 0, 0; /* Black background */
+  --primary-gold: #B8945A; /* Soft, mature gold */
+  --primary-gold-light: #C9A875; /* Lighter gold for accents */
+  --primary-gold-dark: #9A7A4A; /* Darker gold for hover states */
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure all form elements use the soft gold */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #B8945A;
+}
+
+/* Override any browser default yellow colors */
+* {
+  --tw-accent-color: #B8945A;
+}
+
+/* Script font for logo only - keep it elegant */
+.logo-script {
+  font-family: 'Dancing Script', cursive;
+  font-weight: 600;
+  color: #B8945A !important;
+  letter-spacing: 0.5px;
+}
+
+/* Force all gold/primary colors to use soft, mature gold */
+button.bg-primary-500,
+.bg-primary-500 {
+  background-color: #B8945A !important;
+}
+
+button.bg-primary-500:hover,
+.bg-primary-500:hover {
+  background-color: #9A7A4A !important;
+}
+
+.text-primary-500,
+.logo-script,
+button.text-primary-500 {
+  color: #B8945A !important;
+}
+
+.text-primary-400 {
+  color: #C9A875 !important;
+}
+
+.text-primary-300 {
+  color: #D9C49F !important;
+}
+
+.border-primary-500 {
+  border-color: #B8945A !important;
+}
+
+.border-primary-500\/30,
+.border-primary-500\/20,
+.border-primary-500\/50 {
+  border-color: rgba(184, 148, 90, 0.3) !important;
+}
+
+/* Ensure all primary-500 variations are consistent */
+* {
+  --color-primary-500: #B8945A;
+  --color-primary-400: #C9A875;
+  --color-primary-300: #D9C49F;
+  --color-primary-600: #9A7A4A;
+}
+
+/* Professional typography - consistent font usage */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Mature, elegant button styles */
+button {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all 0.2s ease;
+}
+
+/* Refined input styles */
+input, textarea, select {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+

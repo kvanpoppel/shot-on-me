@@ -48,3 +48,4 @@ If you're having trouble accessing the app on mobile, make sure:
 
 **The app works perfectly on mobile browsers - no app store needed!** 🚀
 
+

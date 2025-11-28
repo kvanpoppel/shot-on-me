@@ -1,0 +1,31 @@
+# Render Blueprint Configuration
+# This file can be used to deploy multiple services at once
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: shot-on-me-backend
+    env: node
+    plan: starter  # Free tier, upgrade to standard for better performance
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      # Add these in Render dashboard instead of here for security:
+      # - MONGODB_URI
+      # - JWT_SECRET
+      # - FRONTEND_URL
+      # - TWILIO_ACCOUNT_SID
+      # - TWILIO_AUTH_TOKEN
+      # - TWILIO_PHONE_NUMBER
+      # - CLOUDINARY_CLOUD_NAME
+      # - CLOUDINARY_API_KEY
+      # - CLOUDINARY_API_SECRET
+      # - STRIPE_SECRET_KEY
+      # - STRIPE_PUBLISHABLE_KEY
+

@@ -65,7 +65,29 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: Date.now
-  }
+  },
+  points: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  checkInStreak: {
+    current: {
+      type: Number,
+      default: 0
+    },
+    longest: {
+      type: Number,
+      default: 0
+    },
+    lastCheckInDate: {
+      type: Date
+    }
+  },
+  favoriteVenues: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Venue'
+  }]
 }, {
   timestamps: true
 });

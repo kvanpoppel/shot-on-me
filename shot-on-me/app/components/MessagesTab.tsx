@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Send, Image as ImageIcon, X, ArrowLeft, User } from 'lucide-react'
+import { Send, Image as ImageIcon, X, ArrowLeft, User, Users } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
 
 interface Message {
@@ -49,6 +49,7 @@ interface Conversation {
 
 interface MessagesTabProps {
   onViewProfile?: (userId: string) => void
+  setActiveTab?: (tab: string) => void
 }
 
 export default function MessagesTab({ onViewProfile }: MessagesTabProps) {
@@ -344,7 +345,18 @@ export default function MessagesTab({ onViewProfile }: MessagesTabProps) {
   return (
     <div className="min-h-screen bg-black pb-20">
       <div className="p-4">
-        <h2 className="text-2xl font-bold text-primary-500 mb-4">Messages</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-primary-500">Messages</h2>
+          {setActiveTab && (
+            <button
+              onClick={() => setActiveTab('groups')}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-lg hover:bg-primary-500/20 transition-colors text-sm font-medium"
+            >
+              <Users size={18} />
+              Groups
+            </button>
+          )}
+        </div>
         
         {loading ? (
           <div className="text-center py-12 text-primary-400">Loading conversations...</div>
@@ -402,4 +414,5 @@ export default function MessagesTab({ onViewProfile }: MessagesTabProps) {
     </div>
   )
 }
+
 
