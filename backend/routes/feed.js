@@ -44,7 +44,7 @@ router.get('/', auth, async (req, res) => {
       
       // Transform comments
       if (postObj.comments) {
-        postObj.comments = postObj.comments.map((comment: any) => {
+        postObj.comments = postObj.comments.map((comment) => {
           if (comment.user && comment.user.name && !comment.user.firstName) {
             const nameParts = comment.user.name.split(' ');
             comment.user.firstName = nameParts[0] || '';
