@@ -29,8 +29,7 @@ const storySchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    required: true,
-    index: { expireAfterSeconds: 0 } // MongoDB TTL index for auto-deletion
+    required: true
   },
   views: [{
     user: {
@@ -66,7 +65,7 @@ const storySchema = new mongoose.Schema({
 
 // Index for efficient querying
 storySchema.index({ author: 1, expiresAt: -1 });
-storySchema.index({ expiresAt: 1 }); // For cleanup queries
+storySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for auto-deletion
 storySchema.index({ 'views.user': 1 });
 
 // Method to check if story is expired

@@ -4,14 +4,12 @@ const checkInSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   venue: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue',
-    required: true,
-    index: true
+    required: true
   },
   points: {
     type: Number,
@@ -38,14 +36,6 @@ const checkInSchema = new mongoose.Schema({
 checkInSchema.index({ user: 1, createdAt: -1 });
 checkInSchema.index({ venue: 1, createdAt: -1 });
 checkInSchema.index({ user: 1, venue: 1, createdAt: -1 });
-
-// Prevent duplicate check-ins within 1 hour
-checkInSchema.index({ user: 1, venue: 1, createdAt: -1 }, {
-  unique: false,
-  partialFilterExpression: {
-    createdAt: { $gte: new Date(Date.now() - 3600000) } // 1 hour
-  }
-});
 
 module.exports = mongoose.model('CheckIn', checkInSchema);
 
