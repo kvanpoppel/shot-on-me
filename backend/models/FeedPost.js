@@ -21,6 +21,22 @@ const feedPostSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number
   },
+  reactions: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    emoji: {
+      type: String,
+      default: '❤️',
+      enum: ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉']
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  // Keep likes for backward compatibility (will be migrated to reactions)
   likes: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

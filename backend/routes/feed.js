@@ -32,6 +32,7 @@ router.get('/', auth, async (req, res) => {
       .populate('author', 'name firstName lastName profilePicture')
       .populate('comments.user', 'name firstName lastName profilePicture')
       .populate('likes.user', 'name firstName lastName profilePicture')
+      .populate('reactions.user', 'name firstName lastName profilePicture')
       .sort({ createdAt: -1 })
       .limit(50);
     
@@ -58,7 +59,44 @@ router.get('/', auth, async (req, res) => {
         });
       }
       
-      return { ...postObj, author };
+      // Calculate reaction counts by emoji
+      const reactionCounts = {};
+      let userReaction = null;
+      if (postObj.reactions) {
+        postObj.reactions.forEach((reaction) => {
+          if (!reactionCounts[reaction.emoji]) {
+            reactionCounts[reaction.emoji] = { count: 0, users: [] };
+          }
+          reactionCounts[reaction.emoji].count++;
+          reactionCounts[reaction.emoji].users.push(reaction.user);
+          
+          // Check if current user reacted
+          if (reaction.user && (reaction.user._id?.toString() === req.user.userId || reaction.user.toString() === req.user.userId)) {
+            userReaction = reaction.emoji;
+          }
+        });
+      }
+      
+      // Backward compatibility: migrate likes to reactions if no reactions exist
+      if ((!postObj.reactions || postObj.reactions.length === 0) && postObj.likes && postObj.likes.length > 0) {
+        postObj.likes.forEach((like) => {
+          if (!reactionCounts['❤️']) {
+            reactionCounts['❤️'] = { count: 0, users: [] };
+          }
+          reactionCounts['❤️'].count++;
+          if (like.user && (like.user._id?.toString() === req.user.userId || like.user.toString() === req.user.userId)) {
+            userReaction = '❤️';
+          }
+        });
+      }
+      
+      return { 
+        ...postObj, 
+        author,
+        reactionCounts,
+        userReaction,
+        totalReactions: Object.values(reactionCounts).reduce((sum, r) => sum + r.count, 0)
+      };
     });
     
     res.json({ posts: transformedPosts });
@@ -160,7 +198,7 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
   }
 });
 
-// Like a post
+// Like a post (backward compatibility - converts to ❤️ reaction)
 router.post('/:postId/like', auth, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -170,33 +208,104 @@ router.post('/:postId/like', auth, async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    // Check if user already liked
-    const existingLike = post.likes.find(
-      like => like.user.toString() === req.user.userId
+    // Check if user already reacted with ❤️
+    const existingReaction = post.reactions.find(
+      r => r.user.toString() === req.user.userId && r.emoji === '❤️'
     );
 
-    if (existingLike) {
-      // Unlike - remove like
-      post.likes = post.likes.filter(
-        like => like.user.toString() !== req.user.userId
+    if (existingReaction) {
+      // Remove reaction
+      post.reactions = post.reactions.filter(
+        r => !(r.user.toString() === req.user.userId && r.emoji === '❤️')
       );
     } else {
-      // Like - add like
-      post.likes.push({
+      // Add ❤️ reaction
+      // Remove any existing reaction from this user first
+      post.reactions = post.reactions.filter(
+        r => r.user.toString() !== req.user.userId
+      );
+      post.reactions.push({
         user: req.user.userId,
+        emoji: '❤️',
         createdAt: new Date()
       });
     }
 
     await post.save();
     await post.populate('author', 'name firstName lastName profilePicture');
+    await post.populate('reactions.user', 'name firstName lastName profilePicture');
     
     res.json({ 
-      message: existingLike ? 'Post unliked' : 'Post liked',
+      message: existingReaction ? 'Post unliked' : 'Post liked',
       post 
     });
   } catch (error) {
     console.error('Error liking post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add/remove emoji reaction to a post
+router.post('/:postId/reaction', auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { emoji = '❤️' } = req.body;
+    
+    const validEmojis = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'];
+    if (!validEmojis.includes(emoji)) {
+      return res.status(400).json({ message: 'Invalid emoji reaction' });
+    }
+
+    const post = await FeedPost.findById(postId);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if user already reacted with this emoji
+    const existingReaction = post.reactions.find(
+      r => r.user.toString() === req.user.userId && r.emoji === emoji
+    );
+
+    if (existingReaction) {
+      // Remove reaction (toggle off)
+      post.reactions = post.reactions.filter(
+        r => !(r.user.toString() === req.user.userId && r.emoji === emoji)
+      );
+    } else {
+      // Remove any existing reaction from this user (one reaction per user)
+      post.reactions = post.reactions.filter(
+        r => r.user.toString() !== req.user.userId
+      );
+      // Add new reaction
+      post.reactions.push({
+        user: req.user.userId,
+        emoji: emoji,
+        createdAt: new Date()
+      });
+    }
+
+    await post.save();
+    await post.populate('reactions.user', 'name firstName lastName profilePicture');
+    
+    // Group reactions by emoji
+    const reactionCounts = {};
+    post.reactions.forEach(r => {
+      if (!reactionCounts[r.emoji]) {
+        reactionCounts[r.emoji] = { count: 0, users: [] };
+      }
+      reactionCounts[r.emoji].count++;
+      reactionCounts[r.emoji].users.push(r.user);
+    });
+
+    res.json({ 
+      message: existingReaction ? 'Reaction removed' : 'Reaction added',
+      reactionCounts,
+      userReaction: existingReaction ? null : emoji,
+      post 
+    });
+  } catch (error) {
+    console.error('Error adding reaction:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
