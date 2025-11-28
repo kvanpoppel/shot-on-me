@@ -21,57 +21,7 @@ const upload = multer({
   }
 });
 
-// Get current user (me)
-router.get('/me', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Split name into firstName and lastName for frontend compatibility
-    const nameParts = (user.name || '').split(' ')
-    const firstName = nameParts[0] || ''
-    const lastName = nameParts.slice(1).join(' ') || ''
-    
-    // Return user with firstName and lastName
-    res.json({
-      user: {
-        id: user._id,
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        firstName: firstName,
-        lastName: lastName,
-        phoneNumber: user.phoneNumber,
-        userType: user.userType || 'user',
-        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
-        friends: user.friends || [],
-        location: user.location || { isVisible: true },
-        profilePicture: user.profilePicture
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get user profile
-router.get('/profile', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json(user);
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Update profile picture (supports both file upload and base64)
+// Update profile picture (MUST come before /me to avoid route conflicts)
 router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -179,6 +129,56 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
       message: 'Failed to update profile picture',
       error: error.message 
     });
+  }
+});
+
+// Get current user (me) - must come after /me/profile-picture
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Split name into firstName and lastName for frontend compatibility
+    const nameParts = (user.name || '').split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+    
+    // Return user with firstName and lastName
+    res.json({
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: user.phoneNumber,
+        userType: user.userType || 'user',
+        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+        friends: user.friends || [],
+        location: user.location || { isVisible: true },
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user profile
+router.get('/profile', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
