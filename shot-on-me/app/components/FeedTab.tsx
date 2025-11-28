@@ -396,16 +396,23 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
           } 
         }
       )
+      // Reset form
       setNewPostContent('')
       setSelectedVenue(null)
       setSelectedMedia([])
       setMediaPreviews([])
       setShowPostForm(false)
+      
+      // Refresh feed to show new post
       fetchFeed()
       fetchFriendActivity()
-    } catch (error) {
+      
+      // Scroll to top to see new post
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (error: any) {
       console.error('Failed to create post:', error)
-      alert('Failed to create post. Please try again.')
+      const errorMessage = error.response?.data?.message || 'Failed to create post. Please try again.'
+      alert(errorMessage)
     } finally {
       setPosting(false)
     }
