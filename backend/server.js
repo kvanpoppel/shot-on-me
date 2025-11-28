@@ -90,6 +90,9 @@ app.use('/api/users', require('./routes/users'));
 const venuesRouter = require('./routes/venues');
 venuesRouter.setIO(io); // Pass Socket.io instance to venues router
 app.use('/api/venues', venuesRouter);
+const messagesRouter = require('./routes/messages');
+messagesRouter.setIO(io); // Pass Socket.io instance to messages router
+app.use('/api/messages', messagesRouter);
 app.use('/api/feed', require('./routes/feed'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));
