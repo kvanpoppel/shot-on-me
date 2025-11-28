@@ -42,7 +42,6 @@ const groupSchema = new mongoose.Schema({
   },
   inviteCode: {
     type: String,
-    unique: true,
     sparse: true
   }
 }, {
@@ -52,7 +51,7 @@ const groupSchema = new mongoose.Schema({
 // Index for efficient querying
 groupSchema.index({ creator: 1 });
 groupSchema.index({ 'members.user': 1 });
-groupSchema.index({ inviteCode: 1 });
+groupSchema.index({ inviteCode: 1 }, { unique: true, sparse: true });
 
 // Generate unique invite code
 groupSchema.methods.generateInviteCode = function() {
