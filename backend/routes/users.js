@@ -26,10 +26,12 @@ const upload = multer({
 });
 
 // Update profile picture (MUST come before /me to avoid route conflicts)
+// Note: upload.single() only processes multipart/form-data. For JSON base64, we handle it in the body.
 router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (req, res) => {
   try {
     // Check if Cloudinary is configured
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('❌ Cloudinary not configured');
       return res.status(500).json({ 
         message: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.' 
       });
@@ -42,7 +44,7 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 
     let profilePictureUrl = '';
 
-    // Check if file was uploaded via multer
+    // Check if file was uploaded via multer (multipart/form-data)
     if (req.file) {
       console.log('📤 Uploading profile picture file to Cloudinary...');
       
@@ -69,69 +71,95 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 
       profilePictureUrl = uploadResult.secure_url;
     } 
-    // Check if base64 string was sent in body
+    // Check if base64 string was sent in body (application/json)
     else if (req.body.profilePicture) {
       console.log('📤 Uploading profile picture (base64) to Cloudinary...');
       
       // Handle base64 data URL
       let base64Data = req.body.profilePicture;
+      let mimeType = 'image/jpeg'; // Default
+      
       if (base64Data.startsWith('data:')) {
+        // Extract MIME type from data URL
+        const matches = base64Data.match(/^data:([^;]+);base64,/);
+        if (matches) {
+          mimeType = matches[1];
+        }
         base64Data = base64Data.split(',')[1]; // Remove data URL prefix
       }
 
-      const uploadResult = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload(
-          `data:image/jpeg;base64,${base64Data}`,
-          {
-            folder: 'shot-on-me/profiles',
-            transformation: [
-              { width: 400, height: 400, crop: 'fill', gravity: 'face' }
-            ]
-          },
-          (error, result) => {
-            if (error) {
-              console.error('❌ Cloudinary upload error:', error);
-              reject(error);
-            } else {
-              console.log('✅ Profile picture uploaded to Cloudinary');
-              resolve(result);
-            }
-          }
-        );
-      });
+      if (!base64Data || base64Data.length === 0) {
+        return res.status(400).json({ message: 'Invalid base64 image data' });
+      }
 
-      profilePictureUrl = uploadResult.secure_url;
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(
+            `data:${mimeType};base64,${base64Data}`,
+            {
+              folder: 'shot-on-me/profiles',
+              transformation: [
+                { width: 400, height: 400, crop: 'fill', gravity: 'face' }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                console.error('❌ Cloudinary upload error:', error);
+                reject(error);
+              } else {
+                console.log('✅ Profile picture uploaded to Cloudinary:', result.secure_url);
+                resolve(result);
+              }
+            }
+          );
+        });
+
+        profilePictureUrl = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error('❌ Failed to upload to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          message: 'Failed to upload profile picture to Cloudinary',
+          error: uploadError.message 
+        });
+      }
     } else {
-      return res.status(400).json({ message: 'No profile picture provided' });
+      return res.status(400).json({ message: 'No profile picture provided. Send either a file via multipart/form-data or base64 string in JSON body.' });
     }
 
     // Update user's profile picture
     user.profilePicture = profilePictureUrl;
     await user.save();
 
+    // Refresh user from database to ensure we have the latest data
+    const updatedUser = await User.findById(req.user.userId).select('-password');
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found after update' });
+    }
+
     // Split name for response
-    const nameParts = (user.name || '').split(' ');
+    const nameParts = (updatedUser.name || '').split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
-    console.log('✅ Profile picture updated successfully');
+    console.log('✅ Profile picture updated successfully:', profilePictureUrl);
 
     res.json({
       message: 'Profile picture updated successfully',
       profilePicture: profilePictureUrl,
       user: {
-        id: user._id,
-        _id: user._id,
-        email: user.email,
-        name: user.name,
+        id: updatedUser._id,
+        _id: updatedUser._id,
+        email: updatedUser.email,
+        name: updatedUser.name,
         firstName: firstName,
         lastName: lastName,
-        phoneNumber: user.phoneNumber,
-        userType: user.userType || 'user',
-        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
-        friends: user.friends || [],
-        location: user.location || { isVisible: true },
-        profilePicture: user.profilePicture
+        phoneNumber: updatedUser.phoneNumber,
+        userType: updatedUser.userType || 'user',
+        wallet: updatedUser.wallet || { balance: 0, pendingBalance: 0 },
+        friends: updatedUser.friends || [],
+        location: updatedUser.location || { isVisible: true },
+        profilePicture: updatedUser.profilePicture
       }
     });
   } catch (error) {
