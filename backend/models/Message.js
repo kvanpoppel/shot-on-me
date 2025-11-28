@@ -50,3 +50,4 @@ messageSchema.statics.getConversationId = function(userId1, userId2) {
 
 module.exports = mongoose.model('Message', messageSchema);
 
+

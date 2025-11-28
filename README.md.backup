@@ -1,0 +1,100 @@
+# Shot On Me & Venue Portal
+
+An innovative social payment platform connecting friends and venues.
+
+## 🚀 Quick Start
+
+### Option 1: Automated Setup (Windows)
+```powershell
+.\setup.ps1
+```
+
+### Option 2: Manual Setup
+
+1. **Backend:**
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+2. **Venue Portal:**
+```bash
+cd venue-portal
+npm install
+npm run dev
+```
+
+3. **Shot On Me App:**
+```bash
+cd shot-on-me
+npm install
+npm run dev
+```
+
+## 📋 What's Already Configured
+
+✅ **Google Maps API Key** - Already set in `shot-on-me/.env.local`
+✅ **JWT Secret** - Auto-generated secure key in `backend/.env`
+✅ **Environment Files** - All `.env` files created with defaults
+
+## ⚙️ What You Still Need
+
+1. **MongoDB** (Required)
+   - Install locally OR use MongoDB Atlas (free)
+   - Update `backend/.env` → `MONGODB_URI`
+
+2. **Twilio** (Required for SMS)
+   - Sign up: https://www.twilio.com/
+   - Update `backend/.env` → Twilio section
+
+3. **Cloudinary** (Required for media)
+   - Sign up: https://cloudinary.com/
+   - Update `backend/.env` → Cloudinary section
+
+## 📚 Documentation
+
+### Development
+- `QUICK_START.md` - Step-by-step setup guide
+- `API_KEYS_GUIDE.md` - Complete API keys guide
+- `SETUP.md` - Detailed setup instructions
+- `NETWORK_ACCESS.md` - Access from other devices on your network
+
+### Deployment (Ready to Go Live!)
+- `QUICK_DEPLOY.md` - **START HERE** - Quick deployment guide (30-45 min)
+- `DEPLOY_TO_RENDER.md` - Detailed backend deployment to Render
+- `DEPLOY_TO_VERCEL.md` - Detailed frontend deployment to Vercel
+- `DEPLOYMENT_CHECKLIST.md` - Complete deployment checklist
+- `PRODUCTION_DEPLOYMENT.md` - Full production deployment guide
+
+## 🎯 Features
+
+### Venue Portal
+- Promotions management
+- Schedule management
+- Customer notifications
+- Analytics dashboard
+
+### Shot On Me App
+- Send money to friends
+- Social feed
+- Location tracking
+- Wallet system
+- Venue discovery
+
+## 🔗 URLs
+
+### Development (Local)
+- Backend API: http://localhost:5000
+- Venue Portal: http://localhost:3000
+- Shot On Me: http://localhost:3001
+
+### Production
+- **Domain:** www.shotonme.com (GoDaddy)
+- See `PRODUCTION_DEPLOYMENT.md` for deployment guide
+
+**Note:** For local network access, see `NETWORK_ACCESS.md`
+
+## 💡 Need Help?
+
+Check the documentation files or see `QUICK_START.md` for detailed instructions.
