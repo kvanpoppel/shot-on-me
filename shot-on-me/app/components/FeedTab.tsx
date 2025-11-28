@@ -423,19 +423,30 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         formData.append('venueId', selectedVenue._id || selectedVenue.id)
       }
       
-      // Add media files
-      selectedMedia.forEach((file) => {
+      // Add media files with validation
+      selectedMedia.forEach((file, index) => {
+        // Validate file size before upload
+        if (file.size > 50 * 1024 * 1024) {
+          throw new Error(`File "${file.name || `File ${index + 1}`}" is too large. Maximum size is 50MB.`)
+        }
         formData.append('media', file)
       })
       
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/feed`,
         formData,
         { 
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
-          } 
+          },
+          timeout: 120000, // 2 minute timeout for large video uploads
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              console.log(`Upload progress: ${percentCompleted}%`)
+            }
+          }
         }
       )
       // Reset form
