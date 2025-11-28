@@ -217,12 +217,17 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     setFriendSuggestions(prev => prev.filter(s => (s._id || s.id) !== friendId))
 
     try {
+      console.log('Making API call to:', `${API_URL}/users/friends/${friendId}`)
+      
       const response = await axios.post(
         `${API_URL}/users/friends/${friendId}`,
         {},
         { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000 // 10 second timeout
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000 // 15 second timeout
         }
       )
       
@@ -237,18 +242,28 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       // Show success feedback
       console.log(`✅ Added ${addedUser.firstName} as a friend!`)
     } catch (error: any) {
-      console.error('Error adding friend:', error)
+      console.error('❌ Error adding friend:', error)
       console.error('Error response:', error.response?.data)
       console.error('Error status:', error.response?.status)
+      console.error('Error config:', error.config)
       
       // Revert optimistic update on error
       setFriendSuggestions(previousSuggestions)
       
       let errorMessage = 'Failed to add friend'
-      if (error.response?.data) {
-        errorMessage = error.response.data.message || error.response.data.error || errorMessage
-      } else if (error.message) {
-        errorMessage = error.message
+      
+      if (error.response) {
+        // Server responded with error
+        errorMessage = error.response.data?.message || error.response.data?.error || errorMessage
+        console.error('Server error:', errorMessage)
+      } else if (error.request) {
+        // Request made but no response
+        errorMessage = 'No response from server. Please check your internet connection.'
+        console.error('No response received:', error.request)
+      } else {
+        // Error in request setup
+        errorMessage = error.message || 'Failed to add friend'
+        console.error('Request setup error:', error.message)
       }
       
       // Don't show alert for "already a friend" - just refresh
@@ -261,7 +276,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       }
       
       // Show user-friendly error message
-      alert(errorMessage || 'Failed to add friend. Please check your connection and try again.')
+      alert(errorMessage)
     }
   }
 
