@@ -1,8 +1,0 @@
-{
-  "buildCommand": "cd shot-on-me && npm install && npm run build",
-  "outputDirectory": "shot-on-me/.next",
-  "installCommand": "cd shot-on-me && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "shot-on-me"
-}
-
