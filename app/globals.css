@@ -30,14 +30,12 @@ input[type="radio"] {
   --tw-accent-color: #B8945A;
 }
 
-/* Bold, modern font for logo - professional and eye-catching */
+/* Script font for logo only - keep it elegant */
 .logo-script {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-weight: 800;
-  font-size: 1.5em;
+  font-family: 'Dancing Script', cursive;
+  font-weight: 600;
   color: #B8945A !important;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Force all gold/primary colors to use soft, mature gold */
