@@ -457,11 +457,18 @@ router.post('/friends/:userId', auth, async (req, res) => {
       return res.status(400).json({ message: 'User is already a friend' });
     }
 
-    user.friends.push(userId);
-    friend.friends.push(currentUserId);
+    // Use findByIdAndUpdate to avoid full document validation
+    await User.findByIdAndUpdate(
+      currentUserId,
+      { $addToSet: { friends: userId } },
+      { new: true, runValidators: false }
+    );
 
-    await user.save();
-    await friend.save();
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { friends: currentUserId } },
+      { new: true, runValidators: false }
+    );
 
     console.log('✅ Friend added successfully:', { userId, currentUserId });
     res.json({ message: 'Friend added successfully' });
