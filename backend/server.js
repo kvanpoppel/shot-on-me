@@ -87,7 +87,9 @@ connectDB();
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/venues', require('./routes/venues'));
+const venuesRouter = require('./routes/venues');
+venuesRouter.setIO(io); // Pass Socket.io instance to venues router
+app.use('/api/venues', venuesRouter);
 app.use('/api/feed', require('./routes/feed'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));

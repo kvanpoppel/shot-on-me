@@ -44,7 +44,15 @@ const venueSchema = new mongoose.Schema({
     description: String,
     discount: Number,
     validUntil: Date,
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    type: { type: String, enum: ['happy-hour', 'special', 'event', 'other'], default: 'other' },
+    startTime: Date,
+    endTime: Date,
+    schedule: [{
+      days: String,
+      start: String,
+      end: String
+    }]
   }],
   schedule: {
     monday: { open: String, close: String, closed: { type: Boolean, default: false } },
