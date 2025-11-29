@@ -48,9 +48,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         console.log('Connected to Socket.io')
         setConnected(true)
         
-        // Join user-specific room
-        if (user.id) {
-          newSocket.emit('join-room', `user-${user.id}`)
+        // Join user-specific room for notifications
+        if (user.id || user._id) {
+          const userId = user.id || user._id
+          newSocket.emit('join-user-room', userId)
+          console.log('Joined notification room for user:', userId)
         }
       })
 
