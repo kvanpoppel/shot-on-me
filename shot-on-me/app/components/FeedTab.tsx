@@ -69,7 +69,14 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(true)
+  // Load showSuggestions preference from localStorage
+  const [showSuggestions, setShowSuggestions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('showFriendSuggestions')
+      return saved !== null ? saved === 'true' : true
+    }
+    return true
+  })
   const [selectedMedia, setSelectedMedia] = useState<File[]>([])
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
 
@@ -676,6 +683,22 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         </div>
       </div>
 
+      {/* Show "Show Suggestions" button if hidden */}
+      {!showSuggestions && friendSuggestions.length > 0 && (
+        <div className="p-4 border-b border-primary-500/10">
+          <button
+            onClick={() => {
+              setShowSuggestions(true)
+              localStorage.setItem('showFriendSuggestions', 'true')
+            }}
+            className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 px-4 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center justify-center"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Show Friend Suggestions
+          </button>
+        </div>
+      )}
+
       {/* Friend Suggestions */}
       {showSuggestions && friendSuggestions.length > 0 && (
         <div className="p-4 border-b border-primary-500/10 bg-gradient-to-r from-primary-500/5 to-transparent">
@@ -685,7 +708,10 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
               <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
             </div>
             <button
-              onClick={() => setShowSuggestions(false)}
+              onClick={() => {
+                setShowSuggestions(false)
+                localStorage.setItem('showFriendSuggestions', 'false')
+              }}
               className="text-primary-400 hover:text-primary-500 text-xs"
             >
               Hide
