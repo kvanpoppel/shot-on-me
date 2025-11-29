@@ -134,6 +134,22 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('👤 User connected:', socket.id);
   
+  // Join user's personal room for notifications
+  socket.on('join-user-room', (userId) => {
+    if (userId) {
+      socket.join(userId.toString());
+      console.log(`✅ User ${userId} joined their notification room`);
+    }
+  });
+  
+  // Leave user room
+  socket.on('leave-user-room', (userId) => {
+    if (userId) {
+      socket.leave(userId.toString());
+      console.log(`👋 User ${userId} left their notification room`);
+    }
+  });
+  
   socket.on('disconnect', () => {
     console.log('👋 User disconnected:', socket.id);
   });

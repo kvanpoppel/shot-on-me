@@ -276,6 +276,33 @@ router.post('/:storyId/reaction', auth, async (req, res) => {
 
     await story.save();
     await story.populate('reactions.user', 'name firstName lastName profilePicture');
+    await story.populate('author', 'name firstName lastName profilePicture');
+    
+    // Create notification if reacting to someone else's story
+    if (story.author._id.toString() !== req.user.userId.toString()) {
+      const Notification = require('../models/Notification');
+      const actor = await User.findById(req.user.userId);
+      if (actor) {
+        const notification = new Notification({
+          recipient: story.author._id,
+          actor: req.user.userId,
+          type: 'story_reaction',
+          content: `${actor.firstName || actor.name} reacted ❤️ to your story`,
+          relatedStory: story._id
+        });
+        await notification.save();
+        
+        // Emit real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(story.author._id.toString()).emit('new-notification', {
+            type: 'story_reaction',
+            message: notification.content,
+            storyId: story._id
+          });
+        }
+      }
+    }
 
     res.json({ 
       message: 'Reaction added',

@@ -16,16 +16,29 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'reaction',      // Someone reacted to your post
-      'comment',       // Someone commented on your post
-      'follow',        // Someone followed you
-      'mention',       // Someone mentioned you
-      'message',      // New message received
-      'friend_request', // Friend request
-      'check_in',     // Friend checked in at venue
-      'story_view',   // Someone viewed your story
-      'payment',      // Payment received
-      'venue_update'  // Venue you follow has new promotion
+      'reaction',           // Someone reacted to your post
+      'comment',            // Someone commented on your post
+      'comment_reply',      // Someone replied to your comment
+      'follow',             // Someone followed you
+      'friend_request',       // Friend request sent
+      'friend_accepted',     // Friend request accepted
+      'friend_post',         // Friend posted something new
+      'mention',             // Someone mentioned you
+      'message',             // New direct message received
+      'group_message',       // New group message
+      'group_invite',        // Invited to group
+      'check_in',            // Friend checked in at venue
+      'story_reaction',      // Someone reacted to your story
+      'story_view',          // Someone viewed your story
+      'story_mention',       // Mentioned in a story
+      'payment_received',    // Payment received
+      'payment_sent',        // Payment sent confirmation
+      'venue_update',        // Venue you follow has new promotion
+      'venue_follow',        // Someone followed a venue you follow
+      'post_share',          // Someone shared your post
+      'achievement',         // Achievement unlocked
+      'birthday',            // Friend's birthday
+      'milestone'            // Milestone reached (e.g., 100 followers)
     ]
   },
   content: {

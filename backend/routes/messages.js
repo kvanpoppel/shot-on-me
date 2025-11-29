@@ -209,15 +209,31 @@ router.post('/send', auth, upload.array('media', 5), async (req, res) => {
     await message.populate('sender', 'name firstName lastName profilePicture');
     await message.populate('recipient', 'name firstName lastName profilePicture');
     
+    // Create notification for new message
+    const Notification = require('../models/Notification');
+    const sender = await User.findById(senderId);
+    if (sender) {
+      const messagePreview = content ? (content.length > 50 ? content.substring(0, 50) + '...' : content) : 'sent you a photo';
+      const notification = new Notification({
+        recipient: recipientId,
+        actor: senderId,
+        type: 'message',
+        content: `${sender.firstName || sender.name} sent you a message: ${messagePreview}`,
+        relatedMessage: message._id
+      });
+      await notification.save();
+    }
+    
     // Emit Socket.io event for real-time delivery
     if (io) {
       io.to(recipientId).emit('new-message', {
         message,
         conversationId
       });
-      io.emit('message-sent', {
-        message,
-        conversationId
+      io.to(recipientId).emit('new-notification', {
+        type: 'message',
+        message: `${sender.firstName || sender.name} sent you a message`,
+        messageId: message._id
       });
     }
     

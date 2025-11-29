@@ -174,6 +174,45 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
     await newPost.save();
     await newPost.populate('author', 'name firstName lastName profilePicture');
     
+    // Notify all friends when user posts
+    const author = await require('../models/User').findById(req.user.userId);
+    if (author && author.friends && author.friends.length > 0) {
+      const Notification = require('../models/Notification');
+      const io = req.app.get('io');
+      
+      const postPreview = content ? (content.length > 50 ? content.substring(0, 50) + '...' : content) : 'a new post';
+      
+      // Create notifications for all friends
+      const notificationPromises = author.friends.map(async (friendId) => {
+        const notification = new Notification({
+          recipient: friendId,
+          actor: req.user.userId,
+          type: 'friend_post',
+          content: `${author.firstName || author.name} posted: ${postPreview}`,
+          relatedPost: newPost._id
+        });
+        await notification.save();
+        
+        // Emit real-time notification
+        if (io) {
+          io.to(friendId.toString()).emit('new-notification', {
+            type: 'friend_post',
+            message: notification.content,
+            postId: newPost._id
+          });
+        }
+      });
+      
+      await Promise.all(notificationPromises);
+      console.log(`📬 Notified ${author.friends.length} friends about new post`);
+    }
+    
+    // Emit new post to all connected clients
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new-post', { post: newPost });
+    }
+    
     console.log('✅ Post created successfully:', newPost._id);
     
     res.status(201).json({
@@ -292,15 +331,27 @@ router.post('/:postId/reaction', auth, async (req, res) => {
     
     // Create notification if reaction was added (not removed) and user is not the post author
     if (!existingReaction && post.author._id.toString() !== req.user.userId.toString()) {
+      const Notification = require('../models/Notification');
       const actor = await require('../models/User').findById(req.user.userId);
       if (actor) {
-        await notificationsRouter.createNotification({
+        const notification = new Notification({
           recipient: post.author._id,
           actor: req.user.userId,
           type: 'reaction',
           content: `${actor.firstName || actor.name} reacted ${emoji} to your post`,
           relatedPost: post._id
         });
+        await notification.save();
+        
+        // Emit real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(post.author._id.toString()).emit('new-notification', {
+            type: 'reaction',
+            message: notification.content,
+            postId: post._id
+          });
+        }
       }
     }
     
@@ -353,22 +404,72 @@ router.post('/:postId/comment', auth, async (req, res) => {
     await post.populate('author', 'name firstName lastName profilePicture');
     await post.populate('comments.user', 'name firstName lastName profilePicture');
     
-    // Create notification if user is not the post author
+    // Get the last comment (the one we just added)
+    const newComment = post.comments[post.comments.length - 1];
+    
+    // Create notification if commenting on someone else's post
     if (post.author._id.toString() !== req.user.userId.toString()) {
+      const Notification = require('../models/Notification');
       const actor = await require('../models/User').findById(req.user.userId);
       if (actor) {
-        await notificationsRouter.createNotification({
+        const commentPreview = content.trim().length > 50 ? content.trim().substring(0, 50) + '...' : content.trim();
+        const notification = new Notification({
           recipient: post.author._id,
           actor: req.user.userId,
           type: 'comment',
-          content: `${actor.firstName || actor.name} commented on your post: "${content.trim().substring(0, 50)}${content.trim().length > 50 ? '...' : ''}"`,
+          content: `${actor.firstName || actor.name} commented: "${commentPreview}"`,
           relatedPost: post._id
         });
+        await notification.save();
+        
+        // Emit real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(post.author._id.toString()).emit('new-notification', {
+            type: 'comment',
+            message: notification.content,
+            postId: post._id
+          });
+        }
       }
     }
     
-    // Get the last comment (the one we just added)
-    const newComment = post.comments[post.comments.length - 1];
+    // Notify other commenters on the same post (if they're not the author or current commenter)
+    const Notification = require('../models/Notification');
+    const commenterIds = new Set();
+    post.comments.forEach(comment => {
+      const commenterId = comment.user._id?.toString() || comment.user.toString();
+      if (commenterId !== req.user.userId.toString() && 
+          commenterId !== post.author._id.toString()) {
+        commenterIds.add(commenterId);
+      }
+    });
+    
+    if (commenterIds.size > 0) {
+      const actor = await require('../models/User').findById(req.user.userId);
+      const io = req.app.get('io');
+      
+      const notificationPromises = Array.from(commenterIds).map(async (commenterId) => {
+        const notification = new Notification({
+          recipient: commenterId,
+          actor: req.user.userId,
+          type: 'comment_reply',
+          content: `${actor.firstName || actor.name} also commented on ${post.author.firstName || post.author.name}'s post`,
+          relatedPost: post._id
+        });
+        await notification.save();
+        
+        if (io) {
+          io.to(commenterId).emit('new-notification', {
+            type: 'comment_reply',
+            message: notification.content,
+            postId: post._id
+          });
+        }
+      });
+      
+      await Promise.all(notificationPromises);
+    }
     
     res.json({ 
       message: 'Comment added',

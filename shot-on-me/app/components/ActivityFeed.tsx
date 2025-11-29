@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Bell, X, Heart, MessageCircle, UserPlus, MapPin, DollarSign, Camera, CheckCircle } from 'lucide-react'
+import { Bell, X, Heart, MessageCircle, UserPlus, MapPin, DollarSign, Camera, CheckCircle, Share2, Trophy, Gift, Users } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
 
 interface Notification {
@@ -14,7 +15,7 @@ interface Notification {
     lastName: string
     profilePicture?: string
   }
-  type: 'reaction' | 'comment' | 'follow' | 'mention' | 'message' | 'friend_request' | 'check_in' | 'story_view' | 'payment' | 'venue_update'
+  type: 'reaction' | 'comment' | 'comment_reply' | 'follow' | 'friend_request' | 'friend_accepted' | 'friend_post' | 'mention' | 'message' | 'group_message' | 'group_invite' | 'check_in' | 'story_reaction' | 'story_view' | 'story_mention' | 'payment_received' | 'payment_sent' | 'venue_update' | 'venue_follow' | 'post_share' | 'achievement' | 'birthday' | 'milestone'
   content: string
   relatedPost?: {
     _id: string
@@ -41,7 +42,8 @@ interface ActivityFeedProps {
 }
 
 export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfile }: ActivityFeedProps) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const { socket } = useSocket()
   const API_URL = useApiUrl()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,6 +61,24 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
       return () => clearInterval(interval)
     }
   }, [isOpen, token])
+
+  // Listen for real-time notifications via Socket.io
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNewNotification = (data: any) => {
+      console.log('📬 New notification received:', data)
+      // Refresh notifications
+      fetchNotifications()
+      fetchUnreadCount()
+    }
+
+    socket.on('new-notification', handleNewNotification)
+
+    return () => {
+      socket.off('new-notification', handleNewNotification)
+    }
+  }, [socket])
 
   const fetchNotifications = async () => {
     try {
@@ -117,18 +137,38 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
       case 'reaction':
         return <Heart className="w-5 h-5 text-red-500" />
       case 'comment':
+      case 'comment_reply':
         return <MessageCircle className="w-5 h-5 text-blue-500" />
       case 'follow':
       case 'friend_request':
+      case 'friend_accepted':
         return <UserPlus className="w-5 h-5 text-green-500" />
+      case 'friend_post':
+        return <Camera className="w-5 h-5 text-primary-500" />
+      case 'message':
+      case 'group_message':
+        return <MessageCircle className="w-5 h-5 text-cyan-500" />
+      case 'group_invite':
+        return <Users className="w-5 h-5 text-indigo-500" />
       case 'check_in':
         return <MapPin className="w-5 h-5 text-purple-500" />
-      case 'payment':
-        return <DollarSign className="w-5 h-5 text-yellow-500" />
+      case 'story_reaction':
       case 'story_view':
+      case 'story_mention':
         return <Camera className="w-5 h-5 text-pink-500" />
+      case 'payment_received':
+      case 'payment_sent':
+        return <DollarSign className="w-5 h-5 text-yellow-500" />
       case 'venue_update':
+      case 'venue_follow':
         return <Bell className="w-5 h-5 text-orange-500" />
+      case 'post_share':
+        return <Share2 className="w-5 h-5 text-teal-500" />
+      case 'achievement':
+      case 'milestone':
+        return <Trophy className="w-5 h-5 text-amber-500" />
+      case 'birthday':
+        return <Gift className="w-5 h-5 text-pink-500" />
       default:
         return <Bell className="w-5 h-5 text-primary-500" />
     }

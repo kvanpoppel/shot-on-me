@@ -98,6 +98,35 @@ router.post('/', auth, async (req, res) => {
       user.favoriteVenues.push(venueId);
       await user.save();
     }
+    
+    // Notify friends about check-in
+    if (user.friends && user.friends.length > 0) {
+      const Notification = require('../models/Notification');
+      const io = req.app.get('io');
+      
+      const notificationPromises = user.friends.map(async (friendId) => {
+        const notification = new Notification({
+          recipient: friendId,
+          actor: req.user.userId,
+          type: 'check_in',
+          content: `${user.firstName || user.name} checked in at ${venue.name}`,
+          relatedVenue: venueId
+        });
+        await notification.save();
+        
+        // Emit real-time notification
+        if (io) {
+          io.to(friendId.toString()).emit('new-notification', {
+            type: 'check_in',
+            message: notification.content,
+            venueId: venueId
+          });
+        }
+      });
+      
+      await Promise.all(notificationPromises);
+      console.log(`📬 Notified ${user.friends.length} friends about check-in`);
+    }
 
     res.status(201).json({
       message: 'Checked in successfully!',

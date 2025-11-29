@@ -470,6 +470,40 @@ router.post('/friends/:userId', auth, async (req, res) => {
       { new: true, runValidators: false }
     );
 
+    // Create notifications for both users
+    const Notification = require('../models/Notification');
+    const io = req.app.get('io');
+    
+    // Notify the friend that they were added
+    const friendNotification = new Notification({
+      recipient: userId,
+      actor: currentUserId,
+      type: 'friend_accepted',
+      content: `${user.firstName || user.name} added you as a friend`
+    });
+    await friendNotification.save();
+    
+    // Notify the current user that friend was added
+    const userNotification = new Notification({
+      recipient: currentUserId,
+      actor: userId,
+      type: 'friend_accepted',
+      content: `${friend.firstName || friend.name} is now your friend`
+    });
+    await userNotification.save();
+    
+    // Emit real-time notifications
+    if (io) {
+      io.to(userId.toString()).emit('new-notification', {
+        type: 'friend_accepted',
+        message: friendNotification.content
+      });
+      io.to(currentUserId.toString()).emit('new-notification', {
+        type: 'friend_accepted',
+        message: userNotification.content
+      });
+    }
+
     console.log('✅ Friend added successfully:', { userId, currentUserId });
     res.json({ message: 'Friend added successfully' });
   } catch (error) {
