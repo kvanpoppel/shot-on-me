@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/router'
 import { Wallet, MapPin, Users } from 'lucide-react'
 
 export default function LoginScreen() {
