@@ -47,7 +47,7 @@ export default function LoginScreen() {
         // Also save remember me for registration
         localStorage.setItem('rememberMe', rememberMe.toString())
       }
-      router.push('/home')
+      router.push('/')
     } catch (err: any) {
       setError(err.message || 'Authentication failed')
     } finally {
