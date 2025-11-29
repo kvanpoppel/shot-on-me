@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, MapPin, Wallet, User, MessageSquare } from 'lucide-react'
+import { Home, MapPin, Wallet, User, MessageSquare, Send } from 'lucide-react'
 
 type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile'
 
@@ -14,8 +14,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
     { id: 'home' as Tab, icon: Home, label: 'Home' },
     { id: 'feed' as Tab, icon: MessageSquare, label: 'Feed' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
-    { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },
-    { id: 'profile' as Tab, icon: User, label: 'Profile' },
+    { id: 'wallet' as Tab, icon: Send, label: 'Send Shot', action: 'send-shot' },
   ]
 
   return (
@@ -32,11 +31,17 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                   e.preventDefault()
                   e.stopPropagation()
                   console.log('Tab clicked:', tab.id)
-                  setActiveTab(tab.id)
+                  
+                  // If it's the Send Shot button, go to wallet tab
+                  if (tab.action === 'send-shot') {
+                    setActiveTab('wallet')
+                  } else {
+                    setActiveTab(tab.id)
+                  }
                 }}
                 type="button"
                 className={`flex items-center justify-center px-2.5 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 ${
-                  isActive 
+                  (isActive || (tab.action === 'send-shot' && activeTab === 'wallet'))
                     ? 'bg-primary-500 text-black' 
                     : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
                 }`}
