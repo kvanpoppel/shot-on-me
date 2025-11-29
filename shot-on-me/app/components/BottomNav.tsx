@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera } from 'lucide-react'
+import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -45,8 +45,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
     { id: 'stories' as Tab, icon: Camera, label: 'Stories' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages', badge: unreadCount },
-    { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },
-    { id: 'profile' as Tab, icon: User, label: 'Profile' },
+    { id: 'wallet' as Tab, icon: Send, label: 'Send Shot', action: 'send-shot' },
   ]
 
   return (
@@ -63,7 +62,14 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                   e.preventDefault()
                   e.stopPropagation()
                   console.log('Tab clicked:', tab.id)
-                  setActiveTab(tab.id)
+                  
+                  // If it's the Send Shot button, go to wallet tab
+                  if (tab.action === 'send-shot') {
+                    setActiveTab('wallet')
+                  } else {
+                    setActiveTab(tab.id)
+                  }
+                  
                   // Clear badge when opening messages
                   if (tab.id === 'messages' && unreadCount > 0) {
                     fetchUnreadCount()
@@ -71,7 +77,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                 }}
                 type="button"
                 className={`relative flex items-center justify-center px-2.5 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 ${
-                  isActive 
+                  (isActive || (tab.action === 'send-shot' && activeTab === 'wallet'))
                     ? 'bg-primary-500 text-black' 
                     : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
                 }`}
