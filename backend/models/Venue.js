@@ -62,6 +62,11 @@ const venueSchema = new mongoose.Schema({
     friday: { open: String, close: String, closed: { type: Boolean, default: false } },
     saturday: { open: String, close: String, closed: { type: Boolean, default: false } },
     sunday: { open: String, close: String, closed: { type: Boolean, default: false } }
+  },
+  stripeAccountId: {
+    type: String,
+    default: null,
+    sparse: true // Allows null values, but unique for non-null
   }
 }, {
   timestamps: true
@@ -71,5 +76,6 @@ const venueSchema = new mongoose.Schema({
 venueSchema.index({ location: '2dsphere' });
 venueSchema.index({ owner: 1 });
 venueSchema.index({ isActive: 1 });
+venueSchema.index({ stripeAccountId: 1 }, { unique: true, sparse: true }); // Unique Stripe account IDs
 
 module.exports = mongoose.model('Venue', venueSchema);

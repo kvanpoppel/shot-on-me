@@ -1,6 +1,8 @@
 const express = require('express');
 const Venue = require('../models/Venue');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const stripeUtils = require('../utils/stripe');
 
 const router = express.Router();
 
