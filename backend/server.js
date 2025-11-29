@@ -26,6 +26,11 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Stripe webhook route must be BEFORE express.json() middleware
+// because Stripe requires raw body for signature verification
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), require('./routes/payments').webhook);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
