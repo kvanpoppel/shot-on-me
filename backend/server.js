@@ -101,6 +101,7 @@ app.use('/api/checkins', require('./routes/checkins'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));
 app.use('/api/favorites', require('./routes/favorites'));
+app.use('/api/venue-activity', require('./routes/venue-activity'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
