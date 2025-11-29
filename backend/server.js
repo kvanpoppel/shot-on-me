@@ -100,6 +100,7 @@ app.use('/api/groups', require('./routes/groups'));
 app.use('/api/checkins', require('./routes/checkins'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/location', require('./routes/location'));
+app.use('/api/favorites', require('./routes/favorites'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

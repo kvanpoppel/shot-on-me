@@ -7,10 +7,10 @@ const router = express.Router();
 // Update user location
 router.put('/update', auth, async (req, res) => {
   try {
-    const { latitude, longitude, isVisible } = req.body;
+    const { latitude, longitude, isVisible, venueId } = req.body;
     
     // First check if user exists and get current location
-    const user = await User.findById(req.user.userId).select('location');
+    const user = await User.findById(req.user.userId).select('location locationHistory');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -31,12 +31,96 @@ router.put('/update', auth, async (req, res) => {
       locationUpdate.isVisible = true; // Default
     }
 
-    // Update only the location field using findByIdAndUpdate to avoid validation issues
+    // Add to location history (keep last 100 entries)
+    const locationHistoryEntry = {
+      latitude,
+      longitude,
+      timestamp: new Date(),
+      venueId: venueId || null
+    };
+
+    // Update location and history
+    const updateData = {
+      $set: { location: locationUpdate },
+      $push: {
+        locationHistory: {
+          $each: [locationHistoryEntry],
+          $slice: -100 // Keep only last 100 entries
+        }
+      }
+    };
+
     await User.findByIdAndUpdate(
       req.user.userId,
-      { $set: { location: locationUpdate } },
+      updateData,
       { runValidators: false } // Skip validation to avoid name field issues
     );
+
+    // Check for nearby friends and promotions
+    const io = req.app.get('io');
+    if (io) {
+      // Check for nearby friends (within 0.5 miles)
+      const friends = await User.find({
+        _id: { $in: user.friends || [] },
+        'location.latitude': { $exists: true },
+        'location.longitude': { $exists: true },
+        'location.isVisible': true
+      }).select('name firstName lastName profilePicture location');
+
+      friends.forEach(friend => {
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          friend.location.latitude,
+          friend.location.longitude
+        );
+
+        // Notify if friend is within 0.5 miles
+        if (distance <= 0.5) {
+          io.to(req.user.userId.toString()).emit('friend-nearby', {
+            friend: {
+              _id: friend._id,
+              firstName: friend.firstName || friend.name?.split(' ')[0] || '',
+              lastName: friend.lastName || friend.name?.split(' ').slice(1).join(' ') || '',
+              profilePicture: friend.profilePicture,
+              distance: distance.toFixed(2)
+            }
+          });
+        }
+      });
+
+      // Check for nearby venues with promotions
+      const Venue = require('../models/Venue');
+      const venues = await Venue.find({ isActive: true });
+      const now = new Date();
+
+      venues.forEach(venue => {
+        if (venue.location && venue.location.coordinates) {
+          const [venueLon, venueLat] = venue.location.coordinates;
+          const distance = calculateDistance(latitude, longitude, venueLat, venueLon);
+
+          // Check if venue has active promotions
+          const activePromos = venue.promotions?.filter(promo => {
+            const startTime = new Date(promo.startTime);
+            const endTime = new Date(promo.endTime);
+            return promo.isActive && now >= startTime && now <= endTime;
+          }) || [];
+
+          // Notify if venue with promotion is within 1 mile
+          if (activePromos.length > 0 && distance <= 1) {
+            io.to(req.user.userId.toString()).emit('promotion-nearby', {
+              venue: {
+                _id: venue._id,
+                name: venue.name,
+                address: venue.address
+              },
+              promotion: activePromos[0],
+              distance: distance.toFixed(2)
+            });
+          }
+        }
+      });
+    }
 
     res.json({ message: 'Location updated successfully' });
   } catch (error) {

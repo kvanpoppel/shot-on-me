@@ -75,10 +75,42 @@ export default function ProximityNotifications() {
       }
     }
 
+    const handleFriendNearby = (data: { friend: any }) => {
+      if (data.friend) {
+        // Show friend nearby notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`👋 ${data.friend.firstName} is nearby!`, {
+            body: `${data.friend.firstName} ${data.friend.lastName} is ${data.friend.distance} miles away`,
+            icon: data.friend.profilePicture || '/icon-192x192.png',
+            tag: `friend-${data.friend._id}`,
+            requireInteraction: false
+          })
+        }
+      }
+    }
+
+    const handlePromotionNearby = (data: { venue: any; promotion: any; distance: string }) => {
+      if (data.venue && data.promotion) {
+        // Show promotion nearby notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`🎉 ${data.promotion.title} at ${data.venue.name}!`, {
+            body: `${data.venue.name} - ${data.distance} miles away`,
+            icon: '/icon-192x192.png',
+            tag: `promo-${data.venue._id}`,
+            requireInteraction: false
+          })
+        }
+      }
+    }
+
     socket.on('proximity-notification', handleProximityNotification)
+    socket.on('friend-nearby', handleFriendNearby)
+    socket.on('promotion-nearby', handlePromotionNearby)
 
     return () => {
       socket.off('proximity-notification', handleProximityNotification)
+      socket.off('friend-nearby', handleFriendNearby)
+      socket.off('promotion-nearby', handlePromotionNearby)
     }
   }, [socket, token])
 

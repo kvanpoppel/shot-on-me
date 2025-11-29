@@ -87,6 +87,22 @@ const userSchema = new mongoose.Schema({
   favoriteVenues: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue'
+  }],
+  favoritePosts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FeedPost'
+  }],
+  locationHistory: [{
+    latitude: Number,
+    longitude: Number,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    venueId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Venue'
+    }
   }]
 }, {
   timestamps: true
