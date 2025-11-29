@@ -7,6 +7,8 @@ import axios from 'axios'
 import { Send, Search, User, Users, MapPin, Clock, DollarSign, QrCode, History, TrendingUp, Sparkles, X } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import { useApiUrl } from '../utils/api'
+import { QRCodeSVG } from 'qrcode.react'
+import RedeemQRCode from './RedeemQRCode'
 
 interface RecentRecipient {
   _id: string
@@ -37,14 +39,14 @@ export default function SendShotTab() {
   const [recipientId, setRecipientId] = useState('')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
-  const [redemptionCode, setRedemptionCode] = useState('')
   const [sending, setSending] = useState(false)
-  const [redeeming, setRedeeming] = useState(false)
   const [payments, setPayments] = useState<any[]>([])
   const [recentRecipients, setRecentRecipients] = useState<RecentRecipient[]>([])
   const [favoriteVenues, setFavoriteVenues] = useState<FavoriteVenue[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
+  const [showQRCode, setShowQRCode] = useState(false)
+  const [lastRedemptionCode, setLastRedemptionCode] = useState<string | null>(null)
 
   // Quick amount buttons
   const quickAmounts = [5, 10, 20, 50, 100]
@@ -206,6 +208,13 @@ export default function SendShotTab() {
         }
       )
 
+      const redemptionCode = response.data.payment?.redemptionCode
+      
+      if (redemptionCode) {
+        setLastRedemptionCode(redemptionCode)
+        setShowQRCode(true)
+      }
+      
       alert(`✅ Shot sent! ${response.data.message || 'Recipient will receive a notification.'}`)
       
       // Reset form
@@ -229,34 +238,6 @@ export default function SendShotTab() {
     }
   }
 
-  const handleRedeem = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setRedeeming(true)
-
-    try {
-      const response = await axios.post(
-        `${API_URL}/payments/redeem`,
-        { code: redemptionCode },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
-
-      alert(`✅ ${response.data.message || 'Payment redeemed successfully!'}`)
-      setRedemptionCode('')
-      setShowRedeemForm(false)
-      
-      fetchPayments()
-      if (updateUser) {
-        updateUser({})
-      }
-    } catch (error: any) {
-      console.error('Failed to redeem:', error)
-      alert(error.response?.data?.message || 'Invalid redemption code. Please try again.')
-    } finally {
-      setRedeeming(false)
-    }
-  }
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
@@ -508,51 +489,68 @@ export default function SendShotTab() {
             </form>
           )}
 
+          {/* QR Code Modal */}
+          {showQRCode && lastRedemptionCode && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black border-2 border-primary-500 rounded-lg max-w-sm w-full p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-primary-500">Redemption Code</h3>
+                  <button
+                    onClick={() => {
+                      setShowQRCode(false)
+                      setLastRedemptionCode(null)
+                    }}
+                    className="text-primary-400 hover:text-primary-500 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="bg-white p-4 rounded-lg">
+                    <QRCodeSVG value={lastRedemptionCode} size={200} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-primary-400 text-sm mb-2">Share this code:</p>
+                    <p className="text-2xl font-mono font-bold text-primary-500 tracking-wider">
+                      {lastRedemptionCode}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(lastRedemptionCode)
+                      alert('Code copied to clipboard!')
+                    }}
+                    className="w-full bg-primary-500/10 border border-primary-500/30 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
+                  >
+                    Copy Code
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Redeem Code */}
           <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center space-x-2 mb-3">
               <QrCode className="w-5 h-5 text-primary-500" />
               <h3 className="text-sm font-semibold text-primary-500">Redeem Code</h3>
             </div>
-            {!showRedeemForm ? (
-              <button
-                onClick={() => setShowRedeemForm(true)}
-                className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
-              >
-                Enter Redemption Code
-              </button>
-            ) : (
-              <form onSubmit={handleRedeem} className="space-y-3">
-                <input
-                  type="text"
-                  value={redemptionCode}
-                  onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
-                  placeholder="Enter code"
-                  className="w-full px-4 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
-                  required
-                />
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowRedeemForm(false)
-                      setRedemptionCode('')
-                    }}
-                    className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-black/60 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={redeeming || !redemptionCode}
-                    className="flex-1 bg-primary-500 text-black py-2 rounded-lg font-medium hover:bg-primary-600 transition-all disabled:opacity-50"
-                  >
-                    {redeeming ? 'Redeeming...' : 'Redeem'}
-                  </button>
-                </div>
-              </form>
-            )}
+            <button
+              onClick={() => setShowRedeemForm(true)}
+              className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
+            >
+              Scan or Enter Redemption Code
+            </button>
           </div>
+
+          {/* Redeem QR Code Modal */}
+          <RedeemQRCode
+            isOpen={showRedeemForm}
+            onClose={() => {
+              setShowRedeemForm(false)
+              setRedemptionCode('')
+            }}
+          />
         </div>
       ) : (
         /* Payment History */

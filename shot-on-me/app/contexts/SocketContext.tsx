@@ -65,6 +65,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         console.error('Socket.io error:', error)
       })
 
+      // Listen for wallet updates
+      newSocket.on('wallet-updated', (data: { userId: string; balance: number }) => {
+        console.log('Wallet updated via Socket.io:', data)
+        // Emit custom event that components can listen to
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wallet-updated', { detail: data }))
+        }
+      })
+
       setSocket(newSocket)
 
       return () => {

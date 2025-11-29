@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/router'
 import axios from 'axios'
-import { Send, QrCode, History } from 'lucide-react'
+import { Send, QrCode, History, Plus } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
+import AddFundsModal from './AddFundsModal'
 
 import { useApiUrl } from '../utils/api'
 
@@ -24,12 +25,33 @@ export default function WalletTab() {
   const [sending, setSending] = useState(false)
   const [redeeming, setRedeeming] = useState(false)
   const [payments, setPayments] = useState<any[]>([])
+  const [showAddFunds, setShowAddFunds] = useState(false)
 
   useEffect(() => {
     if (token) {
       fetchPayments()
     }
   }, [token])
+
+  // Listen for wallet updates from Socket.io
+  useEffect(() => {
+    const handleWalletUpdate = (event: CustomEvent) => {
+      const data = event.detail
+      console.log('Wallet updated:', data)
+      // Refresh user data to update wallet balance
+      if (updateUser) {
+        updateUser({})
+      }
+      fetchPayments()
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('wallet-updated', handleWalletUpdate as EventListener)
+      return () => {
+        window.removeEventListener('wallet-updated', handleWalletUpdate as EventListener)
+      }
+    }
+  }, [updateUser])
 
   // Listen for real-time payment updates
   useEffect(() => {
@@ -187,6 +209,14 @@ export default function WalletTab() {
 
       {/* Actions */}
       <div className="px-4 space-y-3">
+        <button
+          onClick={() => setShowAddFunds(true)}
+          className="w-full bg-primary-500 text-black py-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-primary-600 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Add Funds</span>
+        </button>
+
         {showSendForm && (
           <form onSubmit={handleSend} className="bg-black border-2 border-primary-500 rounded-lg p-4 space-y-4 mb-3">
             <div>
@@ -321,6 +351,18 @@ export default function WalletTab() {
           )}
         </div>
       </div>
+
+      {/* Add Funds Modal */}
+      <AddFundsModal
+        isOpen={showAddFunds}
+        onClose={() => setShowAddFunds(false)}
+        onSuccess={() => {
+          if (updateUser) {
+            updateUser({})
+          }
+          fetchPayments()
+        }}
+      />
     </div>
   )
 }

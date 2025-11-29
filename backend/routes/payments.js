@@ -7,6 +7,23 @@ const stripeUtils = require('../utils/stripe');
 
 const router = express.Router();
 
+// Get Stripe publishable key (for frontend)
+router.get('/stripe-key', (req, res) => {
+  try {
+    const publishableKey = stripeUtils.getPublishableKey();
+    if (!publishableKey) {
+      return res.status(503).json({ 
+        error: 'Stripe is not configured',
+        message: 'Payment processing is currently unavailable'
+      });
+    }
+    res.json({ publishableKey });
+  } catch (error) {
+    console.error('Error getting Stripe key:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Send payment
 router.post('/send', auth, async (req, res) => {
   try {
