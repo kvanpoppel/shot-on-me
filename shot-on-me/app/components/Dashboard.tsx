@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/router'
 import { Menu, X, User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users } from 'lucide-react'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
