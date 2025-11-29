@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js'
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
@@ -13,19 +12,6 @@ interface AddFundsModalProps {
   onClose: () => void
   onSuccess: () => void
   amount?: number
-}
-
-// Initialize Stripe
-let stripePromise: Promise<any> | null = null
-
-const getStripePublishableKey = async (apiUrl: string): Promise<string | null> => {
-  try {
-    const response = await axios.get(`${apiUrl}/payments/stripe-key`)
-    return response.data.publishableKey || null
-  } catch (error) {
-    console.error('Failed to get Stripe key:', error)
-    return null
-  }
 }
 
 function CheckoutForm({ amount, onSuccess, onClose }: { amount: number; onSuccess: () => void; onClose: () => void }) {
@@ -108,46 +94,13 @@ function CheckoutForm({ amount, onSuccess, onClose }: { amount: number; onSucces
 }
 
 export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 }: AddFundsModalProps) {
-  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [selectedAmount, setSelectedAmount] = useState(amount)
-  const API_URL = useApiUrl()
+  const stripe = useStripe()
+  const elements = useElements()
 
   const quickAmounts = [10, 25, 50, 100, 200]
 
-  useEffect(() => {
-    if (isOpen) {
-      getStripePublishableKey(API_URL).then((key) => {
-        if (key) {
-          if (!stripePromise) {
-            stripePromise = loadStripe(key)
-          }
-          setStripePublishableKey(key)
-        }
-        setLoading(false)
-      })
-    }
-  }, [isOpen, API_URL])
-
   if (!isOpen) return null
-
-  const options: StripeElementsOptions = {
-    mode: 'payment',
-    amount: Math.round(selectedAmount * 100), // Convert to cents
-    currency: 'usd',
-    appearance: {
-      theme: 'night',
-      variables: {
-        colorPrimary: '#FFD700',
-        colorBackground: '#000000',
-        colorText: '#FFD700',
-        colorDanger: '#ef4444',
-        fontFamily: 'system-ui, sans-serif',
-        spacingUnit: '4px',
-        borderRadius: '8px',
-      },
-    },
-  }
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -162,14 +115,11 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
           </button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader className="w-8 h-8 text-primary-500 animate-spin" />
-          </div>
-        ) : !stripePublishableKey ? (
+        {!stripe || !elements ? (
           <div className="text-center py-12">
-            <p className="text-primary-400 mb-4">Stripe is not configured</p>
-            <p className="text-primary-400/70 text-sm">Payment processing is currently unavailable</p>
+            <Loader className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-4" />
+            <p className="text-primary-400 mb-4">Loading payment form...</p>
+            <p className="text-primary-400/70 text-sm">If this persists, Stripe may not be configured</p>
           </div>
         ) : (
           <>
@@ -206,12 +156,8 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
               </div>
             </div>
 
-            {/* Stripe Elements */}
-            {stripePromise && (
-              <Elements stripe={stripePromise} options={options}>
-                <CheckoutForm amount={selectedAmount} onSuccess={onSuccess} onClose={onClose} />
-              </Elements>
-            )}
+            {/* Stripe Payment Element - now uses global Elements context */}
+            <CheckoutForm amount={selectedAmount} onSuccess={onSuccess} onClose={onClose} />
           </>
         )}
       </div>
