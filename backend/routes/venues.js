@@ -208,6 +208,177 @@ router.delete('/:venueId/promotions/:promotionId', auth, async (req, res) => {
   }
 });
 
+// Stripe Connect: Start onboarding process
+router.post('/connect/onboard', auth, async (req, res) => {
+  try {
+    // Only venue owners can onboard
+    if (req.user.userType !== 'venue') {
+      return res.status(403).json({ message: 'Only venue owners can connect Stripe accounts' });
+    }
+
+    // Check if Stripe is configured
+    if (!stripeUtils.isStripeConfigured()) {
+      return res.status(503).json({ 
+        error: 'Stripe is not configured. Please contact support.',
+        message: 'Payment processing is currently unavailable'
+      });
+    }
+
+    // Get user's venue
+    const venue = await Venue.findOne({ owner: req.user.userId });
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found. Please create a venue first.' });
+    }
+
+    // Get user details
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If venue already has a Stripe account, check if it needs re-onboarding
+    if (venue.stripeAccountId) {
+      const status = await stripeUtils.getConnectAccountStatus(venue.stripeAccountId);
+      if (status.connected && status.chargesEnabled && status.payoutsEnabled) {
+        return res.status(400).json({ 
+          message: 'Stripe account already connected',
+          accountId: venue.stripeAccountId,
+          status: status
+        });
+      }
+    }
+
+    // Create onboarding link
+    const onboardingResult = await stripeUtils.createConnectOnboardingLink(
+      venue._id.toString(),
+      venue.name,
+      user.email
+    );
+
+    // Save Stripe account ID to venue
+    if (onboardingResult.accountId) {
+      venue.stripeAccountId = onboardingResult.accountId;
+      await venue.save();
+    }
+
+    res.json({
+      message: 'Onboarding link created successfully',
+      url: onboardingResult.url,
+      accountId: onboardingResult.accountId
+    });
+  } catch (error) {
+    console.error('Error creating Stripe Connect onboarding link:', error);
+    res.status(500).json({ 
+      message: 'Failed to create onboarding link',
+      error: error.message 
+    });
+  }
+});
+
+// Stripe Connect: Get account status (for current user's venue)
+router.get('/connect/status', auth, async (req, res) => {
+  try {
+    // Only venue owners can check status
+    if (req.user.userType !== 'venue') {
+      return res.status(403).json({ message: 'Only venue owners can check Stripe status' });
+    }
+
+    // Check if Stripe is configured
+    if (!stripeUtils.isStripeConfigured()) {
+      return res.json({
+        connected: false,
+        error: 'Stripe is not configured',
+        message: 'Payment processing is currently unavailable'
+      });
+    }
+
+    // Get user's venue
+    const venue = await Venue.findOne({ owner: req.user.userId });
+    if (!venue) {
+      return res.json({
+        connected: false,
+        error: 'Venue not found',
+        message: 'Please create a venue first'
+      });
+    }
+
+    // Check if venue has Stripe account
+    if (!venue.stripeAccountId) {
+      return res.json({
+        connected: false,
+        error: 'No Stripe account linked',
+        message: 'Please complete Stripe Connect onboarding'
+      });
+    }
+
+    // Get account status from Stripe
+    const status = await stripeUtils.getConnectAccountStatus(venue.stripeAccountId);
+
+    res.json({
+      ...status,
+      venueId: venue._id,
+      venueName: venue.name
+    });
+  } catch (error) {
+    console.error('Error checking Stripe Connect status:', error);
+    res.status(500).json({ 
+      message: 'Failed to check Stripe status',
+      error: error.message 
+    });
+  }
+});
+
+// Stripe Connect: Get status for specific venue (by venueId) - for admin/debugging
+router.get('/connect/status/:venueId', auth, async (req, res) => {
+  try {
+    const { venueId } = req.params;
+
+    // Check if Stripe is configured
+    if (!stripeUtils.isStripeConfigured()) {
+      return res.json({
+        connected: false,
+        error: 'Stripe is not configured'
+      });
+    }
+
+    // Get venue
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    // Check authorization: user must own the venue or be admin
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.userType !== 'venue') {
+      return res.status(403).json({ message: 'Not authorized to view this venue\'s Stripe status' });
+    }
+
+    // Check if venue has Stripe account
+    if (!venue.stripeAccountId) {
+      return res.json({
+        connected: false,
+        error: 'No Stripe account linked',
+        venueId: venue._id,
+        venueName: venue.name
+      });
+    }
+
+    // Get account status from Stripe
+    const status = await stripeUtils.getConnectAccountStatus(venue.stripeAccountId);
+
+    res.json({
+      ...status,
+      venueId: venue._id,
+      venueName: venue.name
+    });
+  } catch (error) {
+    console.error('Error checking Stripe Connect status:', error);
+    res.status(500).json({ 
+      message: 'Failed to check Stripe status',
+      error: error.message 
+    });
+  }
+});
+
 // Debug endpoint: list all venues (including inactive) – useful for checking Kate's Pub
 router.get('/debug/all', auth, async (req, res) => {
   try {
