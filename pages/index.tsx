@@ -7,6 +7,7 @@ import Dashboard from '../app/components/Dashboard'
 import BottomNav from '../app/components/BottomNav'
 import FeedTab from '../app/components/FeedTab'
 import WalletTab from '../app/components/WalletTab'
+import SendShotTab from '../app/components/SendShotTab'
 import MapTab from '../app/components/MapTab'
 import ProfileTab from '../app/components/ProfileTab'
 import HomeTab from '../app/components/HomeTab'
@@ -17,7 +18,7 @@ import FriendProfile from '../app/components/FriendProfile'
 import ProximityNotifications from '../app/components/ProximityNotifications'
 import PermissionsManager from '../app/components/PermissionsManager'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'groups'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'groups' | 'send-shot'
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -67,6 +68,7 @@ export default function Home() {
       <ProximityNotifications />
       <main className="pt-16 min-h-screen bg-black pb-16">
         {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
+        {activeTab === 'send-shot' && <SendShotTab />}
         {activeTab === 'wallet' && <WalletTab />}
         {activeTab === 'feed' && <FeedTab onViewProfile={setViewingProfile} />}
         {activeTab === 'stories' && <StoriesTab onViewProfile={setViewingProfile} />}
@@ -82,7 +84,7 @@ export default function Home() {
           onClose={() => setViewingProfile(null)}
           onSendShot={(userId) => {
             setViewingProfile(null)
-            setActiveTab('wallet')
+            setActiveTab('send-shot')
           }}
         />
       )}

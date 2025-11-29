@@ -51,6 +51,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
   const [walletBalance, setWalletBalance] = useState(0)
   const [quickDeals, setQuickDeals] = useState<QuickDeal[]>([])
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
+  const [trendingVenuesActivity, setTrendingVenuesActivity] = useState<any[]>([])
   const [nearbyFriends, setNearbyFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -131,12 +132,24 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
       )
       setQuickDeals(deals.slice(0, 5))
 
-      // Get trending venues (by follower count)
+      // Get trending venues (by follower count) - fallback
       const trending = venues
         .filter((v: any) => v.followerCount > 0)
         .sort((a: any, b: any) => (b.followerCount || 0) - (a.followerCount || 0))
         .slice(0, 3)
       setTrendingVenues(trending)
+
+      // Fetch trending venues by activity
+      try {
+        const activityResponse = await axios.get(`${API_URL}/venue-activity/trending/list?limit=5&period=24h`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setTrendingVenuesActivity(activityResponse.data.venues || [])
+      } catch (error) {
+        console.error('Failed to fetch trending venues by activity:', error)
+        // Fallback to regular trending venues
+        setTrendingVenuesActivity(trending)
+      }
 
       // Get nearby friends
       try {
@@ -330,15 +343,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
           </div>
         )}
 
-        {/* Trending Venues */}
-        {trendingVenues.length > 0 && (
+        {/* Trending Venues by Activity */}
+        {(trendingVenuesActivity.length > 0 || trendingVenues.length > 0) && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2.5">
                 <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
                   <TrendingUp className="w-4 h-4 text-primary-500" />
                 </div>
-                <h2 className="text-lg font-semibold text-primary-500 tracking-tight">Trending Venues</h2>
+                <h2 className="text-lg font-semibold text-primary-500 tracking-tight">🔥 Trending Now</h2>
               </div>
               <button
                 onClick={() => setActiveTab?.('map')}
@@ -349,23 +362,41 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
               </button>
             </div>
             <div className="grid grid-cols-1 gap-3">
-              {trendingVenues.map((venue) => (
+              {(trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues).slice(0, 5).map((venue: any) => (
                 <div
                   key={venue._id}
                   onClick={() => setActiveTab?.('map')}
                   className="bg-black/40 border border-primary-500/20 rounded-lg p-3 cursor-pointer hover:border-primary-500/30 hover:bg-black/50 transition-all backdrop-blur-sm"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="w-4 h-4 text-primary-500" />
-                      <div>
-                        <p className="font-semibold text-primary-500">{venue.name}</p>
-                        <p className="text-xs text-primary-400">
-                          {venue.followerCount || 0} followers
-                        </p>
+                    <div className="flex items-center space-x-3 flex-1">
+                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-primary-500 truncate">{venue.name}</p>
+                        {venue.activity ? (
+                          <div className="flex items-center space-x-3 mt-1">
+                            <p className="text-xs text-primary-400">
+                              <span className="text-primary-500 font-semibold">{venue.activity.totalActivity || 0}</span> activity
+                            </p>
+                            {venue.activity.checkIns > 0 && (
+                              <p className="text-xs text-primary-400/70">
+                                {venue.activity.checkIns} check-in{venue.activity.checkIns !== 1 ? 's' : ''}
+                              </p>
+                            )}
+                            {venue.activity.posts > 0 && (
+                              <p className="text-xs text-primary-400/70">
+                                {venue.activity.posts} post{venue.activity.posts !== 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-primary-400">
+                            {venue.followerCount || 0} followers
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-primary-400" />
+                    <ArrowRight className="w-4 h-4 text-primary-400 flex-shrink-0 ml-2" />
                   </div>
                 </div>
               ))}

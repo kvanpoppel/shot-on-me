@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories'
+type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'send-shot'
 
 interface BottomNavProps {
   activeTab: Tab
@@ -45,7 +45,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
     { id: 'stories' as Tab, icon: Camera, label: 'Stories' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages', badge: unreadCount },
-    { id: 'wallet' as Tab, icon: Send, label: 'Send Shot', action: 'send-shot' },
+    { id: 'send-shot' as Tab, icon: Send, label: 'Send Shot' },
   ]
 
   return (
@@ -63,12 +63,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                   e.stopPropagation()
                   console.log('Tab clicked:', tab.id)
                   
-                  // If it's the Send Shot button, go to wallet tab
-                  if (tab.action === 'send-shot') {
-                    setActiveTab('wallet')
-                  } else {
-                    setActiveTab(tab.id)
-                  }
+                  setActiveTab(tab.id)
                   
                   // Clear badge when opening messages
                   if (tab.id === 'messages' && unreadCount > 0) {
@@ -77,7 +72,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                 }}
                 type="button"
                 className={`relative flex items-center justify-center px-2.5 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 ${
-                  (isActive || (tab.action === 'send-shot' && activeTab === 'wallet'))
+                  isActive
                     ? 'bg-primary-500 text-black' 
                     : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
                 }`}
