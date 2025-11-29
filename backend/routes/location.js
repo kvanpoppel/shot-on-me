@@ -75,8 +75,8 @@ router.put('/update', auth, async (req, res) => {
           friend.location.longitude
         );
 
-        // Notify if friend is within 0.5 miles
-        if (distance <= 0.5) {
+        // Notify if friend is within 3 miles
+        if (distance <= 3) {
           io.to(req.user.userId.toString()).emit('friend-nearby', {
             friend: {
               _id: friend._id,
@@ -106,8 +106,8 @@ router.put('/update', auth, async (req, res) => {
             return promo.isActive && now >= startTime && now <= endTime;
           }) || [];
 
-          // Notify if venue with promotion is within 1 mile
-          if (activePromos.length > 0 && distance <= 1) {
+          // Notify if venue with promotion is within 5 miles
+          if (activePromos.length > 0 && distance <= 5) {
             io.to(req.user.userId.toString()).emit('promotion-nearby', {
               venue: {
                 _id: venue._id,
