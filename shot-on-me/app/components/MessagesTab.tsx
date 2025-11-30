@@ -52,7 +52,7 @@ interface MessagesTabProps {
   setActiveTab?: (tab: string) => void
 }
 
-export default function MessagesTab({ onViewProfile }: MessagesTabProps) {
+export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()

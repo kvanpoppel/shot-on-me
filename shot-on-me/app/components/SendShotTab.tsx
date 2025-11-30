@@ -166,7 +166,7 @@ export default function SendShotTab() {
         await fetchRecentRecipients()
         await fetchPaymentHistory()
         if (updateUser) {
-          await updateUser()
+          await updateUser({})
         }
       }
     } catch (error: any) {
@@ -200,7 +200,7 @@ export default function SendShotTab() {
         setShowRedeemForm(false)
         await fetchPaymentHistory()
         if (updateUser) {
-          await updateUser()
+          await updateUser({})
         }
         alert('Payment redeemed successfully!')
       }
