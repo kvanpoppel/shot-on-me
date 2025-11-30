@@ -407,9 +407,9 @@ router.post('/transfer', auth, async (req, res) => {
   }
 });
 
-// Stripe Webhook endpoint (must be before other routes to avoid conflicts)
+// Stripe Webhook handler function (exported separately for server.js)
 // This endpoint does NOT use auth middleware - Stripe verifies via signature
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+async function webhookHandler(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -502,8 +502,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     console.error('❌ Error processing webhook:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
-};
+}
 
-// Export webhook handler separately for mounting before express.json()
 module.exports = router;
 module.exports.webhook = webhookHandler;
