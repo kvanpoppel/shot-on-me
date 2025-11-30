@@ -102,7 +102,7 @@ export default function GroupChatsTab({ onViewProfile }: GroupChatsTabProps) {
   useEffect(() => {
     if (socket) {
       socket.on('group-message', (message: GroupMessage) => {
-        if (selectedGroup && message.group === selectedGroup._id) {
+        if (selectedGroup && (message.groupId === selectedGroup._id || (message as any).group === selectedGroup._id)) {
           setMessages(prev => [...prev, message])
           scrollToBottom()
         }
