@@ -992,8 +992,9 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                     // Create preview
                     const reader = new FileReader()
                     reader.onload = (event) => {
-                      if (event.target?.result) {
-                        setMediaPreviews(prev => [...prev, event.target.result as string])
+                      const result = event.target?.result
+                      if (result) {
+                        setMediaPreviews(prev => [...prev, result as string])
                       }
                     }
                     reader.onerror = () => {
