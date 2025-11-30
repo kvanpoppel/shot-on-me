@@ -918,7 +918,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                       setSelectedMedia([...selectedMedia, file])
                       const reader = new FileReader()
                       reader.onload = (event) => {
-                        if (event.target?.result) {
+                        if (event.target && event.target.result) {
                           setMediaPreviews([...mediaPreviews, event.target.result as string])
                         }
                       }
@@ -992,9 +992,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                     // Create preview
                     const reader = new FileReader()
                     reader.onload = (event) => {
-                      const result = event.target?.result
-                      if (result) {
-                        setMediaPreviews(prev => [...prev, result as string])
+                      if (event.target && event.target.result) {
+                        setMediaPreviews(prev => [...prev, event.target.result as string])
                       }
                     }
                     reader.onerror = () => {
