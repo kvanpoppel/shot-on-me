@@ -945,8 +945,9 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                         setSelectedMedia([...selectedMedia, file])
                         const reader = new FileReader()
                         reader.onload = (event) => {
-                          if (event.target?.result) {
-                            setMediaPreviews([...mediaPreviews, event.target.result as string])
+                          const result = event?.target?.result
+                          if (result) {
+                            setMediaPreviews([...mediaPreviews, result as string])
                           }
                         }
                         reader.readAsDataURL(file)
