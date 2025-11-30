@@ -50,8 +50,7 @@ interface GroupMessage {
   content: string
   media?: Array<{ url: string; type: string }>
   createdAt: string
-  group?: string
-  groupId?: string
+  group: string
 }
 
 interface GroupChatsTabProps {
@@ -104,7 +103,7 @@ export default function GroupChatsTab({ onViewProfile }: GroupChatsTabProps) {
   useEffect(() => {
     if (socket) {
       socket.on('group-message', (message: GroupMessage) => {
-        if (selectedGroup && (message.groupId === selectedGroup._id || (message as any).group === selectedGroup._id)) {
+        if (selectedGroup && message.group === selectedGroup._id) {
           setMessages(prev => [...prev, message])
           scrollToBottom()
         }
