@@ -1,10 +1,10 @@
 import { AppProps } from 'next/app'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { AuthProvider } from '../app/contexts/AuthContext'
-import { GoogleMapsProvider } from '../app/contexts/GoogleMapsContext'
-import { SocketProvider } from '../app/contexts/SocketContext'
-import '../app/globals.css'
+import { AuthProvider } from '@/app/contexts/AuthContext'
+import { GoogleMapsProvider } from '@/app/contexts/GoogleMapsContext'
+import { SocketProvider } from '@/app/contexts/SocketContext'
+import '@/app/globals.css'
 
 // Initialize Stripe with publishable key from environment variable
 // Falls back to placeholder if not set (for development)
