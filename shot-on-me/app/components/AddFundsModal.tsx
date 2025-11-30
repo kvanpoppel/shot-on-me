@@ -95,9 +95,6 @@ function CheckoutForm({ amount, onSuccess, onClose }: { amount: number; onSucces
 
 export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 }: AddFundsModalProps) {
   const [selectedAmount, setSelectedAmount] = useState(amount)
-  const stripe = useStripe()
-  const elements = useElements()
-
   const quickAmounts = [10, 25, 50, 100, 200]
 
   if (!isOpen) return null
@@ -115,51 +112,41 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
           </button>
         </div>
 
-        {!stripe || !elements ? (
-          <div className="text-center py-12">
-            <Loader className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-4" />
-            <p className="text-primary-400 mb-4">Loading payment form...</p>
-            <p className="text-primary-400/70 text-sm">If this persists, Stripe may not be configured</p>
+        {/* Quick Amount Buttons */}
+        <div className="mb-6">
+          <label className="block text-primary-500 text-sm font-medium mb-3">Select Amount</label>
+          <div className="grid grid-cols-5 gap-2">
+            {quickAmounts.map((quickAmount) => (
+              <button
+                key={quickAmount}
+                type="button"
+                onClick={() => setSelectedAmount(quickAmount)}
+                className={`py-2 px-3 rounded-lg border-2 transition-all ${
+                  selectedAmount === quickAmount
+                    ? 'border-primary-500 bg-primary-500/20 text-primary-500'
+                    : 'border-primary-500/30 text-primary-400 hover:border-primary-500/50'
+                }`}
+              >
+                ${quickAmount}
+              </button>
+            ))}
           </div>
-        ) : (
-          <>
-            {/* Quick Amount Buttons */}
-            <div className="mb-6">
-              <label className="block text-primary-500 text-sm font-medium mb-3">Select Amount</label>
-              <div className="grid grid-cols-5 gap-2">
-                {quickAmounts.map((quickAmount) => (
-                  <button
-                    key={quickAmount}
-                    type="button"
-                    onClick={() => setSelectedAmount(quickAmount)}
-                    className={`py-2 px-3 rounded-lg border-2 transition-all ${
-                      selectedAmount === quickAmount
-                        ? 'border-primary-500 bg-primary-500/20 text-primary-500'
-                        : 'border-primary-500/30 text-primary-400 hover:border-primary-500/50'
-                    }`}
-                  >
-                    ${quickAmount}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3">
-                <label className="block text-primary-500 text-sm font-medium mb-2">Custom Amount</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={selectedAmount}
-                  onChange={(e) => setSelectedAmount(parseFloat(e.target.value) || 0)}
-                  placeholder="Enter amount"
-                  className="w-full px-4 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
+          <div className="mt-3">
+            <label className="block text-primary-500 text-sm font-medium mb-2">Custom Amount</label>
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={selectedAmount}
+              onChange={(e) => setSelectedAmount(parseFloat(e.target.value) || 0)}
+              placeholder="Enter amount"
+              className="w-full px-4 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+        </div>
 
-            {/* Stripe Payment Element - now uses global Elements context */}
-            <CheckoutForm amount={selectedAmount} onSuccess={onSuccess} onClose={onClose} />
-          </>
-        )}
+        {/* Stripe Payment Element - now uses global Elements context */}
+        <CheckoutForm amount={selectedAmount} onSuccess={onSuccess} onClose={onClose} />
       </div>
     </div>
   )
