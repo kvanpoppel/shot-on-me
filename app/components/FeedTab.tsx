@@ -747,8 +747,9 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                     setSelectedMedia(prev => [...prev, file])
                     const reader = new FileReader()
                     reader.onload = (event) => {
-                      if (event.target?.result) {
-                        setMediaPreviews(prev => [...prev, event.target.result as string])
+                      const result = event?.target?.result
+                      if (result) {
+                        setMediaPreviews(prev => [...prev, result as string])
                       }
                     }
                     reader.readAsDataURL(file)
@@ -779,8 +780,9 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                     setSelectedMedia(prev => [...prev, file])
                     const reader = new FileReader()
                     reader.onload = (event) => {
-                      if (event.target?.result) {
-                        setMediaPreviews(prev => [...prev, event.target.result as string])
+                      const result = event?.target?.result
+                      if (result) {
+                        setMediaPreviews(prev => [...prev, result as string])
                       }
                     }
                     reader.readAsDataURL(file)
