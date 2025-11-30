@@ -5,8 +5,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
-
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'send-shot'
+import { Tab } from '../types'
 
 interface BottomNavProps {
   activeTab: Tab
