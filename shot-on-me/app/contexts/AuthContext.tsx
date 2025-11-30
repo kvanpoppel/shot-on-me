@@ -192,12 +192,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) throw new Error('Not authenticated')
     try {
       // If data contains a full user object (from profile picture upload), use it directly
-      if (data.id || data._id) {
+      if (data.id || (data as any)._id) {
         // This is a full user object, update state directly
         const updatedUser = { ...user, ...data } as User
         // Ensure id field exists
-        if (updatedUser._id && !updatedUser.id) {
-          updatedUser.id = updatedUser._id.toString()
+        if ((updatedUser as any)._id && !updatedUser.id) {
+          updatedUser.id = (updatedUser as any)._id.toString()
         }
         setUser(updatedUser)
         return
