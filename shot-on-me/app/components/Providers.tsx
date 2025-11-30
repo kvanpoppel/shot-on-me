@@ -2,46 +2,24 @@
 
 import { ReactNode } from 'react'
 import { Elements } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 import { AuthProvider } from '../contexts/AuthContext'
 import { SocketProvider } from '../contexts/SocketContext'
 import { GoogleMapsProvider } from '../contexts/GoogleMapsContext'
-import { StripeProvider, useStripeContext } from '../contexts/StripeContext'
 
-// Inner component that uses Stripe context
-function ProvidersWithStripe({ children }: { children: ReactNode }) {
-  const { stripe, loading } = useStripeContext()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {stripe ? (
-        <Elements stripe={stripe}>
-          {children}
-        </Elements>
-      ) : (
-        children
-      )}
-    </>
-  )
-}
+// Initialize Stripe with publishable key from environment variable
+// Falls back to placeholder if not set (for development)
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
+const stripePromise = loadStripe(stripePublishableKey)
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <SocketProvider>
         <GoogleMapsProvider>
-          <StripeProvider>
-            <ProvidersWithStripe>
-              {children}
-            </ProvidersWithStripe>
-          </StripeProvider>
+          <Elements stripe={stripePromise}>
+            {children}
+          </Elements>
         </GoogleMapsProvider>
       </SocketProvider>
     </AuthProvider>

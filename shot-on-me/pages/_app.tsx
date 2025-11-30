@@ -1,44 +1,24 @@
 import { AppProps } from 'next/app'
 import { Elements } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 import { AuthProvider } from '../app/contexts/AuthContext'
 import { GoogleMapsProvider } from '../app/contexts/GoogleMapsContext'
 import { SocketProvider } from '../app/contexts/SocketContext'
-import { StripeProvider, useStripeContext } from '../app/contexts/StripeContext'
 import '../app/globals.css'
 
-// Inner component that uses Stripe context
-function AppWithStripe({ Component, pageProps }: AppProps) {
-  const { stripe, loading } = useStripeContext()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {stripe ? (
-        <Elements stripe={stripe}>
-          <Component {...pageProps} />
-        </Elements>
-      ) : (
-        <Component {...pageProps} />
-      )}
-    </>
-  )
-}
+// Initialize Stripe with publishable key from environment variable
+// Falls back to placeholder if not set (for development)
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
+const stripePromise = loadStripe(stripePublishableKey)
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
       <GoogleMapsProvider>
         <SocketProvider>
-          <StripeProvider>
-            <AppWithStripe Component={Component} pageProps={pageProps} />
-          </StripeProvider>
+          <Elements stripe={stripePromise}>
+            <Component {...pageProps} />
+          </Elements>
         </SocketProvider>
       </GoogleMapsProvider>
     </AuthProvider>
