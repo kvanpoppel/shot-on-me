@@ -46,7 +46,10 @@ export default function RedemptionsPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const venues = venuesResponse.data.venues || []
-      const myVenue = venues.find((v: any) => v.owner?._id === user.id || v.owner === user.id)
+      const myVenue = venues.find((v: any) => {
+        if (!user) return false
+        return v.owner?._id === user.id || v.owner === user.id
+      })
       
       if (myVenue) {
         const venueRedemptions = redeemedPayments.filter((p: any) => 

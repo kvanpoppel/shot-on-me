@@ -9,8 +9,7 @@ import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 
 import { useApiUrl } from '../utils/api'
-
-type Tab = 'feed' | 'map' | 'wallet' | 'profile'
+import { Tab } from '../types'
 
 interface MapTabProps {
   setActiveTab?: (tab: Tab) => void

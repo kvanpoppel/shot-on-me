@@ -13,8 +13,7 @@ import HomeTab from '../components/HomeTab'
 import FriendProfile from '../components/FriendProfile'
 import ProximityNotifications from '../components/ProximityNotifications'
 import PermissionsManager from '../components/PermissionsManager'
-
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile'
+import { Tab } from '../types'
 
 export default function HomePage() {
   const { user, loading } = useAuth()

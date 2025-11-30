@@ -555,7 +555,10 @@ export default function VenueManager() {
             <h3 className="text-lg font-semibold text-primary-500">Venue Location</h3>
           </div>
           <VenueMap
-            location={venue.location}
+            location={venue.location?.latitude && venue.location?.longitude ? {
+              latitude: venue.location.latitude,
+              longitude: venue.location.longitude
+            } : undefined}
             address={`${formData.street} ${formData.city}, ${formData.state}`}
             venueName={venue.name}
             height="300px"

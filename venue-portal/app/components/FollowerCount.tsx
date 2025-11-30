@@ -53,7 +53,7 @@ export default function FollowerCount() {
       } else {
         myVenue = venues.find((v: any) => {
           const venueOwnerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-          const userId = user.id?.toString() || user._id?.toString()
+          const userId = user.id?.toString() || (user as any)._id?.toString()
           return venueOwnerId === userId
         })
       }

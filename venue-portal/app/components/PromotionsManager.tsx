@@ -96,7 +96,7 @@ export default function PromotionsManager() {
         myVenue = venues.find((v: any) => {
           // Normalize IDs for comparison
           const venueOwnerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-          const userId = user.id?.toString() || user._id?.toString()
+          const userId = user.id?.toString() || (user as any)._id?.toString()
           
           const isOwner = venueOwnerId === userId
           

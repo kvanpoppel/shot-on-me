@@ -20,8 +20,7 @@ import {
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
-
-type Tab = 'feed' | 'map' | 'wallet' | 'profile'
+import { Tab } from '../types'
 
 interface HomeTabProps {
   setActiveTab?: (tab: Tab) => void

@@ -17,8 +17,7 @@ import GroupChatsTab from './components/GroupChatsTab'
 import FriendProfile from './components/FriendProfile'
 import ProximityNotifications from './components/ProximityNotifications'
 import PermissionsManager from './components/PermissionsManager'
-
-type Tab = 'home' | 'feed' | 'map' | 'wallet' | 'profile' | 'messages' | 'stories' | 'groups' | 'send-shot'
+import { Tab } from './types'
 
 export default function Home() {
   const { user, loading } = useAuth()

@@ -6,6 +6,7 @@ import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { Send, Image as ImageIcon, X, ArrowLeft, User, Users } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
+import { Tab } from '../types'
 
 interface Message {
   _id: string
@@ -49,7 +50,7 @@ interface Conversation {
 
 interface MessagesTabProps {
   onViewProfile?: (userId: string) => void
-  setActiveTab?: (tab: string) => void
+  setActiveTab?: (tab: Tab) => void
 }
 
 export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTabProps) {
