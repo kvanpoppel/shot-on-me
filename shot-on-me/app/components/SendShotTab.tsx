@@ -34,94 +34,43 @@ export default function SendShotTab() {
   const router = useRouter()
   const [showSendForm, setShowSendForm] = useState(false)
   const [showRedeemForm, setShowRedeemForm] = useState(false)
-  const [activeView, setActiveView] = useState<'send' | 'history'>('send')
   const [recipientPhone, setRecipientPhone] = useState('')
-  const [recipientId, setRecipientId] = useState('')
+  const [recipientName, setRecipientName] = useState('')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
-  const [sending, setSending] = useState(false)
-  const [payments, setPayments] = useState<any[]>([])
+  const [redemptionCode, setRedemptionCode] = useState('')
   const [recentRecipients, setRecentRecipients] = useState<RecentRecipient[]>([])
   const [favoriteVenues, setFavoriteVenues] = useState<FavoriteVenue[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<RecentRecipient[]>([])
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([])
   const [showQRCode, setShowQRCode] = useState(false)
-  const [lastRedemptionCode, setLastRedemptionCode] = useState<string | null>(null)
-
-  // Quick amount buttons
-  const quickAmounts = [5, 10, 20, 50, 100]
+  const [qrCodeData, setQrCodeData] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (token) {
       fetchRecentRecipients()
       fetchFavoriteVenues()
-      fetchPayments()
+      fetchPaymentHistory()
     }
   }, [token])
 
-  // Listen for real-time payment updates
-  useEffect(() => {
-    if (!socket) return
-
-    const handlePaymentRedeemed = (data: any) => {
-      fetchPayments()
-      if (updateUser) {
-        updateUser({})
-      }
-    }
-
-    socket.on('payment-redeemed', handlePaymentRedeemed)
-
-    return () => {
-      socket.off('payment-redeemed', handlePaymentRedeemed)
-    }
-  }, [socket, updateUser])
-
   const fetchRecentRecipients = async () => {
+    if (!token) return
     try {
-      const response = await axios.get(`${API_URL}/payments/history`, {
+      const response = await axios.get(`${API_URL}/payments/recent-recipients`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const payments = response.data.payments || []
-      
-      // Extract unique recipients from payment history
-      const recipientMap = new Map<string, RecentRecipient>()
-      
-      payments.forEach((payment: any) => {
-        if (payment.recipient && payment.recipient._id) {
-          const recipientId = payment.recipient._id
-          if (!recipientMap.has(recipientId)) {
-            recipientMap.set(recipientId, {
-              _id: recipientId,
-              firstName: payment.recipient.firstName || payment.recipient.name?.split(' ')[0] || '',
-              lastName: payment.recipient.lastName || payment.recipient.name?.split(' ').slice(1).join(' ') || '',
-              profilePicture: payment.recipient.profilePicture,
-              phoneNumber: payment.recipient.phoneNumber,
-              lastSent: payment.createdAt,
-              totalSent: 1
-            })
-          } else {
-            const existing = recipientMap.get(recipientId)!
-            existing.totalSent = (existing.totalSent || 0) + 1
-            if (new Date(payment.createdAt) > new Date(existing.lastSent || 0)) {
-              existing.lastSent = payment.createdAt
-            }
-          }
-        }
-      })
-      
-      // Sort by most recent
-      const recipients = Array.from(recipientMap.values())
-        .sort((a, b) => new Date(b.lastSent || 0).getTime() - new Date(a.lastSent || 0).getTime())
-        .slice(0, 10)
-      
-      setRecentRecipients(recipients)
+      setRecentRecipients(response.data.recipients || [])
     } catch (error) {
       console.error('Failed to fetch recent recipients:', error)
     }
   }
 
   const fetchFavoriteVenues = async () => {
+    if (!token) return
     try {
       const response = await axios.get(`${API_URL}/favorites/venues`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -132,23 +81,23 @@ export default function SendShotTab() {
     }
   }
 
-  const fetchPayments = async () => {
+  const fetchPaymentHistory = async () => {
+    if (!token) return
     try {
       const response = await axios.get(`${API_URL}/payments/history`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setPayments(response.data.payments || [])
+      setPaymentHistory(response.data.payments || [])
     } catch (error) {
-      console.error('Failed to fetch payments:', error)
+      console.error('Failed to fetch payment history:', error)
     }
   }
 
   const searchUsers = async (query: string) => {
-    if (!query.trim() || query.length < 2) {
+    if (!query.trim() || !token) {
       setSearchResults([])
       return
     }
-
     try {
       const response = await axios.get(`${API_URL}/users/search/${encodeURIComponent(query)}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -161,301 +110,252 @@ export default function SendShotTab() {
   }
 
   useEffect(() => {
-    if (searchQuery) {
-      const debounce = setTimeout(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery) {
         searchUsers(searchQuery)
-      }, 300)
-      return () => clearTimeout(debounce)
-    } else {
-      setSearchResults([])
-    }
+      } else {
+        setSearchResults([])
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
   }, [searchQuery])
 
-  const handleQuickAmount = (quickAmount: number) => {
-    setAmount(quickAmount.toString())
-    if (!showSendForm) {
-      setShowSendForm(true)
-    }
-  }
-
-  const handleSelectRecipient = (recipient: RecentRecipient | any) => {
-    if (recipient.phoneNumber) {
-      setRecipientPhone(recipient.phoneNumber)
-    }
-    if (recipient._id) {
-      setRecipientId(recipient._id)
-    }
-    setSearchQuery('')
-    setSearchResults([])
+  const handleQuickAmount = (value: string) => {
+    setAmount(value)
     setShowSendForm(true)
   }
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSending(true)
+  const handleSelectRecipient = (recipient: RecentRecipient) => {
+    setRecipientPhone(recipient.phoneNumber || '')
+    setRecipientName(`${recipient.firstName} ${recipient.lastName}`)
+    setShowSendForm(true)
+  }
+
+  const handleSendPayment = async () => {
+    if (!recipientPhone || !amount || !token) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    setError('')
 
     try {
       const response = await axios.post(
         `${API_URL}/payments/send`,
         {
-          recipientPhone: recipientPhone || undefined,
-          recipientId: recipientId || undefined,
+          recipientPhone,
           amount: parseFloat(amount),
-          message: message || 'Here\'s a shot on me! 🍻'
+          message: message || undefined
         },
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       )
 
-      const redemptionCode = response.data.payment?.redemptionCode
-      
-      if (redemptionCode) {
-        setLastRedemptionCode(redemptionCode)
+      if (response.data.success) {
+        const code = response.data.redemptionCode
+        setQrCodeData(code)
         setShowQRCode(true)
-      }
-      
-      alert(`✅ Shot sent! ${response.data.message || 'Recipient will receive a notification.'}`)
-      
-      // Reset form
-      setRecipientPhone('')
-      setRecipientId('')
-      setAmount('')
-      setMessage('')
-      setShowSendForm(false)
-      
-      // Refresh data
-      fetchRecentRecipients()
-      fetchPayments()
-      if (updateUser) {
-        updateUser({})
+        setShowSendForm(false)
+        setRecipientPhone('')
+        setRecipientName('')
+        setAmount('')
+        setMessage('')
+        await fetchRecentRecipients()
+        await fetchPaymentHistory()
+        if (updateUser) {
+          await updateUser()
+        }
       }
     } catch (error: any) {
-      console.error('Failed to send shot:', error)
-      alert(error.response?.data?.message || 'Failed to send shot. Please try again.')
+      console.error('Failed to send payment:', error)
+      setError(error.response?.data?.message || 'Failed to send payment. Please try again.')
     } finally {
-      setSending(false)
+      setLoading(false)
     }
   }
 
+  const handleRedeemCode = async () => {
+    if (!redemptionCode || !token) {
+      setError('Please enter a redemption code')
+      return
+    }
 
-  const formatTimeAgo = (dateString: string) => {
-    const now = new Date()
-    const date = new Date(dateString)
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    setLoading(true)
+    setError('')
 
-    if (diffInSeconds < 60) return 'just now'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-    return `${Math.floor(diffInSeconds / 86400)}d ago`
+    try {
+      const response = await axios.post(
+        `${API_URL}/payments/redeem`,
+        { code: redemptionCode },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+
+      if (response.data.success) {
+        setRedemptionCode('')
+        setShowRedeemForm(false)
+        await fetchPaymentHistory()
+        if (updateUser) {
+          await updateUser()
+        }
+        alert('Payment redeemed successfully!')
+      }
+    } catch (error: any) {
+      console.error('Failed to redeem code:', error)
+      setError(error.response?.data?.message || 'Invalid redemption code. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto">
+    <div className="min-h-screen bg-black text-white p-4 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-b from-primary-500/10 via-transparent to-transparent border-b border-primary-500/10 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-primary-500 mb-1 tracking-tight">Send Shot</h1>
-            <p className="text-primary-400/80 text-sm font-light">Buy someone a drink instantly</p>
-          </div>
-          <div className="text-right">
-            <p className="text-primary-400/70 text-xs uppercase tracking-wider font-medium mb-0.5">Balance</p>
-            <p className="text-xl font-semibold text-primary-500">${(user?.wallet?.balance || 0).toFixed(2)}</p>
-          </div>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Send Shot</h1>
+        <p className="text-gray-400 text-sm">Send money to friends instantly</p>
+      </div>
 
-        {/* View Toggle */}
-        <div className="flex space-x-2 bg-black/40 border border-primary-500/20 rounded-lg p-1 backdrop-blur-sm">
-          <button
-            onClick={() => setActiveView('send')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeView === 'send'
-                ? 'bg-primary-500 text-black'
-                : 'text-primary-400 hover:text-primary-500'
-            }`}
-          >
-            <Send className="w-4 h-4 inline mr-2" />
-            Send
-          </button>
-          <button
-            onClick={() => setActiveView('history')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeView === 'history'
-                ? 'bg-primary-500 text-black'
-                : 'text-primary-400 hover:text-primary-500'
-            }`}
-          >
-            <History className="w-4 h-4 inline mr-2" />
-            History
-          </button>
+      {/* Quick Amount Buttons */}
+      <div className="mb-6">
+        <p className="text-sm text-gray-400 mb-3">Quick Amount</p>
+        <div className="grid grid-cols-4 gap-2">
+          {['5', '10', '20', '50'].map((value) => (
+            <button
+              key={value}
+              onClick={() => handleQuickAmount(value)}
+              className="bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 rounded-lg py-3 px-4 text-center transition-colors"
+            >
+              <span className="text-lg font-semibold">${value}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {activeView === 'send' ? (
-        <div className="p-4 space-y-6">
-          {/* Quick Amount Buttons */}
-          <div>
-            <h2 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">Quick Send</h2>
-            <div className="grid grid-cols-5 gap-2">
-              {quickAmounts.map((quickAmount) => (
-                <button
-                  key={quickAmount}
-                  onClick={() => handleQuickAmount(quickAmount)}
-                  className="bg-black/40 border border-primary-500/20 rounded-lg p-3 hover:border-primary-500/50 hover:bg-black/60 transition-all backdrop-blur-sm"
-                >
-                  <DollarSign className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-                  <p className="text-xs font-semibold text-primary-500">${quickAmount}</p>
-                </button>
-              ))}
-            </div>
+      {/* Recent Recipients */}
+      {recentRecipients.length > 0 && (
+        <div className="mb-6">
+          <p className="text-sm text-gray-400 mb-3">Recent</p>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            {recentRecipients.map((recipient) => (
+              <button
+                key={recipient._id}
+                onClick={() => handleSelectRecipient(recipient)}
+                className="flex-shrink-0 flex flex-col items-center gap-2 bg-gray-900/50 hover:bg-gray-800/50 rounded-lg p-3 min-w-[80px] transition-colors"
+              >
+                {recipient.profilePicture ? (
+                  <img
+                    src={recipient.profilePicture}
+                    alt={`${recipient.firstName} ${recipient.lastName}`}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary-500" />
+                  </div>
+                )}
+                <span className="text-xs text-center truncate w-full">
+                  {recipient.firstName} {recipient.lastName}
+                </span>
+              </button>
+            ))}
           </div>
+        </div>
+      )}
 
-          {/* Recent Recipients */}
-          {recentRecipients.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">Recent</h2>
-              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
-                {recentRecipients.map((recipient) => (
-                  <button
-                    key={recipient._id}
-                    onClick={() => handleSelectRecipient(recipient)}
-                    className="flex flex-col items-center space-y-2 bg-black/40 border border-primary-500/15 rounded-lg p-3 flex-shrink-0 min-w-[80px] backdrop-blur-sm hover:border-primary-500/50 transition-all"
-                  >
-                    <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden">
-                      {recipient.profilePicture ? (
-                        <img
-                          src={recipient.profilePicture}
-                          alt={recipient.firstName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                          <span className="text-primary-500 font-medium text-sm">
-                            {recipient.firstName[0]}{recipient.lastName[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs font-semibold text-primary-500 text-center">
-                      {recipient.firstName}
-                    </p>
-                    {recipient.totalSent && recipient.totalSent > 1 && (
-                      <p className="text-xs text-primary-400/70">{recipient.totalSent}x</p>
-                    )}
-                  </button>
-                ))}
-              </div>
+      {/* Search Users */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+          />
+        </div>
+
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <div className="mt-2 bg-gray-900/80 border border-gray-700 rounded-lg overflow-hidden">
+            {searchResults.map((user) => (
+              <button
+                key={user._id}
+                onClick={() => {
+                  setRecipientPhone(user.phoneNumber || '')
+                  setRecipientName(`${user.firstName} ${user.lastName}`)
+                  setSearchQuery('')
+                  setSearchResults([])
+                  setShowSendForm(true)
+                }}
+                className="w-full flex items-center gap-3 p-3 hover:bg-gray-800/50 transition-colors text-left"
+              >
+                {user.profilePicture ? (
+                  <img
+                    src={user.profilePicture}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary-500" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="text-sm font-medium">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  {user.phoneNumber && (
+                    <p className="text-xs text-gray-400">{user.phoneNumber}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Send Payment Form Modal */}
+      {showSendForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Send Payment</h2>
+              <button
+                onClick={() => {
+                  setShowSendForm(false)
+                  setError('')
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
-          )}
 
-          {/* Search Recipients */}
-          <div>
-            <h2 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">Search</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name or phone..."
-                className="w-full pl-10 pr-4 py-3 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:outline-none focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30 backdrop-blur-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setSearchResults([])
-                  }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary-400 hover:text-primary-500"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Search Results */}
-            {searchResults.length > 0 && (
-              <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
-                {searchResults.map((result) => (
-                  <button
-                    key={result._id || result.id}
-                    onClick={() => handleSelectRecipient(result)}
-                    className="w-full flex items-center space-x-3 bg-black/40 border border-primary-500/15 rounded-lg p-3 hover:border-primary-500/50 transition-all backdrop-blur-sm"
-                  >
-                    <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                      {result.profilePicture ? (
-                        <img
-                          src={result.profilePicture}
-                          alt={result.firstName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                          <span className="text-primary-500 font-medium text-xs">
-                            {result.firstName?.[0]}{result.lastName?.[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-semibold text-primary-500 text-sm">
-                        {result.firstName} {result.lastName}
-                      </p>
-                      {result.phoneNumber && (
-                        <p className="text-xs text-primary-400/70">{result.phoneNumber}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                {error}
               </div>
             )}
-          </div>
 
-          {/* Send Form */}
-          {showSendForm && (
-            <form onSubmit={handleSend} className="bg-black/40 border border-primary-500/20 rounded-lg p-4 backdrop-blur-sm space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-primary-500">Send Shot</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSendForm(false)
-                    setRecipientPhone('')
-                    setRecipientId('')
-                    setAmount('')
-                    setMessage('')
-                  }}
-                  className="text-primary-400 hover:text-primary-500"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
+            <div className="space-y-4">
               <div>
-                <label className="block text-primary-500 text-sm font-medium mb-2">
-                  Recipient Phone or ID
-                </label>
+                <label className="block text-sm text-gray-400 mb-2">Recipient</label>
                 <input
                   type="text"
-                  value={recipientPhone || recipientId}
-                  onChange={(e) => {
-                    if (e.target.value.match(/^\d/)) {
-                      setRecipientPhone(e.target.value)
-                      setRecipientId('')
-                    } else {
-                      setRecipientId(e.target.value)
-                      setRecipientPhone('')
-                    }
-                  }}
-                  placeholder="Phone number or user ID"
-                  className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
-                  required
+                  value={recipientName || recipientPhone}
+                  readOnly
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-primary-500 text-sm font-medium mb-2">Amount ($)</label>
+                <label className="block text-sm text-gray-400 mb-2">Amount ($)</label>
                 <input
                   type="number"
                   value={amount}
@@ -463,146 +363,163 @@ export default function SendShotTab() {
                   placeholder="0.00"
                   min="0.01"
                   step="0.01"
-                  className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
-                  required
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500"
                 />
               </div>
 
               <div>
-                <label className="block text-primary-500 text-sm font-medium mb-2">Message (Optional)</label>
+                <label className="block text-sm text-gray-400 mb-2">Message (Optional)</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Add a personal message..."
+                  placeholder="Add a message..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 resize-none"
                 />
               </div>
 
               <button
-                type="submit"
-                disabled={sending || !amount || (!recipientPhone && !recipientId)}
-                className="w-full bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSendPayment}
+                disabled={loading || !amount || !recipientPhone}
+                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
               >
-                {sending ? 'Sending...' : `Send $${amount || '0.00'}`}
+                {loading ? 'Sending...' : `Send $${amount || '0.00'}`}
               </button>
-            </form>
-          )}
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* QR Code Modal */}
-          {showQRCode && lastRedemptionCode && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-black border-2 border-primary-500 rounded-lg max-w-sm w-full p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-primary-500">Redemption Code</h3>
-                  <button
-                    onClick={() => {
-                      setShowQRCode(false)
-                      setLastRedemptionCode(null)
-                    }}
-                    className="text-primary-400 hover:text-primary-500 transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="bg-white p-4 rounded-lg">
-                    <QRCodeSVG value={lastRedemptionCode} size={200} />
+      {/* QR Code Modal */}
+      {showQRCode && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Redemption Code</h2>
+              <button
+                onClick={() => setShowQRCode(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-lg">
+                <QRCodeSVG value={qrCodeData} size={200} />
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-400 mb-2">Share this code with the recipient</p>
+                <p className="text-2xl font-mono font-bold text-primary-500">{qrCodeData}</p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(qrCodeData)
+                  alert('Code copied to clipboard!')
+                }}
+                className="w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              >
+                Copy Code
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Redeem Code Section */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowRedeemForm(!showRedeemForm)}
+          className="w-full bg-gray-900/50 hover:bg-gray-800/50 border border-gray-700 rounded-lg py-3 px-4 flex items-center justify-between transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <QrCode className="w-5 h-5 text-primary-500" />
+            <span>Redeem Code</span>
+          </div>
+          <Sparkles className="w-5 h-5 text-primary-500" />
+        </button>
+
+        {showRedeemForm && (
+          <div className="mt-4 bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Redemption Code</label>
+                <input
+                  type="text"
+                  value={redemptionCode}
+                  onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
+                  placeholder="Enter code..."
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 font-mono"
+                />
+              </div>
+              <button
+                onClick={handleRedeemCode}
+                disabled={loading || !redemptionCode}
+                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              >
+                {loading ? 'Redeeming...' : 'Redeem'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Payment History */}
+      {paymentHistory.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <History className="w-5 h-5 text-primary-500" />
+              Recent Activity
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {paymentHistory.slice(0, 5).map((payment: any) => (
+              <div
+                key={payment._id}
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                    {payment.type === 'shot_sent' ? (
+                      <Send className="w-5 h-5 text-primary-500" />
+                    ) : (
+                      <DollarSign className="w-5 h-5 text-green-500" />
+                    )}
                   </div>
-                  <div className="text-center">
-                    <p className="text-primary-400 text-sm mb-2">Share this code:</p>
-                    <p className="text-2xl font-mono font-bold text-primary-500 tracking-wider">
-                      {lastRedemptionCode}
+                  <div>
+                    <p className="text-sm font-medium">
+                      {payment.type === 'shot_sent'
+                        ? `Sent to ${payment.recipientId?.firstName || 'User'}`
+                        : 'Received'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(payment.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(lastRedemptionCode)
-                      alert('Code copied to clipboard!')
-                    }}
-                    className="w-full bg-primary-500/10 border border-primary-500/30 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
-                  >
-                    Copy Code
-                  </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Redeem Code */}
-          <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 backdrop-blur-sm">
-            <div className="flex items-center space-x-2 mb-3">
-              <QrCode className="w-5 h-5 text-primary-500" />
-              <h3 className="text-sm font-semibold text-primary-500">Redeem Code</h3>
-            </div>
-            <button
-              onClick={() => setShowRedeemForm(true)}
-              className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
-            >
-              Scan or Enter Redemption Code
-            </button>
-          </div>
-
-          {/* Redeem QR Code Modal */}
-          <RedeemQRCode
-            isOpen={showRedeemForm}
-            onClose={() => {
-              setShowRedeemForm(false)
-              setRedemptionCode('')
-            }}
-          />
-        </div>
-      ) : (
-        /* Payment History */
-        <div className="p-4">
-          {payments.length === 0 ? (
-            <div className="text-center py-12">
-              <History className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-              <p className="text-primary-400/80 font-light">No payment history yet</p>
-              <p className="text-primary-400/60 text-sm mt-1 font-light">Send your first shot to get started!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {payments.map((payment) => (
-                <div
-                  key={payment._id}
-                  className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-2">
-                        <Send className="w-4 h-4 text-primary-500" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-primary-500">
-                          {payment.recipient?.firstName || 'Unknown'} {payment.recipient?.lastName || ''}
-                        </p>
-                        <p className="text-xs text-primary-400/70 font-light">
-                          {formatTimeAgo(payment.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary-500">${payment.amount?.toFixed(2) || '0.00'}</p>
-                      {payment.status && (
-                        <p className={`text-xs ${
-                          payment.status === 'redeemed' ? 'text-green-500' : 'text-primary-400/70'
-                        }`}>
-                          {payment.status}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {payment.message && (
-                    <p className="text-sm text-primary-400/80 mt-2 font-light">"{payment.message}"</p>
+                <div className="text-right">
+                  <p
+                    className={`text-sm font-semibold ${
+                      payment.type === 'shot_sent' ? 'text-red-400' : 'text-green-400'
+                    }`}
+                  >
+                    {payment.type === 'shot_sent' ? '-' : '+'}${payment.amount.toFixed(2)}
+                  </p>
+                  {payment.redemptionCode && (
+                    <p className="text-xs text-gray-500 font-mono">{payment.redemptionCode}</p>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
-
