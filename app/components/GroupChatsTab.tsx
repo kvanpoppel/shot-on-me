@@ -50,6 +50,7 @@ interface GroupMessage {
   content: string
   media?: Array<{ url: string; type: string }>
   createdAt: string
+  group: string
 }
 
 interface GroupChatsTabProps {
