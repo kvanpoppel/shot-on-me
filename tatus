@@ -1,0 +1,5 @@
+[33mcommit 3da61282977e560208457ab386c4d7f95b5ee3b6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Kate Van Poppel <kvanpoppel@orthoindy.com>
+Date:   Sun Nov 30 13:23:55 2025 -0500
+
+    fix: complete Stripe Add Funds flow - create PaymentIntent on modal open, fetch key dynamically, add proper error handling and Elements provider

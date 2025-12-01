@@ -1,0 +1,103 @@
+[1mdiff --git a/shot-on-me/app/components/MessagesTab.tsx b/shot-on-me/app/components/MessagesTab.tsx[m
+[1mindex f18425c..eca1ace 100644[m
+[1m--- a/shot-on-me/app/components/MessagesTab.tsx[m
+[1m+++ b/shot-on-me/app/components/MessagesTab.tsx[m
+[36m@@ -1,6 +1,6 @@[m
+ 'use client'[m
+ [m
+[31m-import { useState, useEffect, useRef } from 'react'[m
+[32m+[m[32mimport React, { useState, useEffect, useRef } from 'react'[m
+ import { useAuth } from '../contexts/AuthContext'[m
+ import { useSocket } from '../contexts/SocketContext'[m
+ import axios from 'axios'[m
+[36m@@ -51,9 +51,10 @@[m [minterface Conversation {[m
+ interface MessagesTabProps {[m
+   onViewProfile?: (userId: string) => void[m
+   setActiveTab?: (tab: Tab) => void[m
+[32m+[m[32m  activeTab?: Tab | null[m
+ }[m
+ [m
+[31m-export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTabProps) {[m
+[32m+[m[32mexport default function MessagesTab({ onViewProfile, setActiveTab, activeTab: propActiveTab }: MessagesTabProps) {[m
+   const API_URL = useApiUrl()[m
+   const { token, user } = useAuth()[m
+   const { socket } = useSocket()[m
+[36m@@ -63,19 +64,27 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+   const [messageContent, setMessageContent] = useState('')[m
+   const [loading, setLoading] = useState(true)[m
+   const [sending, setSending] = useState(false)[m
+[31m-  const messagesEndRef = useRef<HTMLDivElement>(null)[m
+[31m-  const fileInputRef = useRef<HTMLInputElement>(null)[m
+[32m+[m[32m  const messagesEndRef = useRef<HTMLDivElement | null>(null)[m
+[32m+[m[32m  const fileInputRef = useRef<HTMLInputElement | null>(null)[m
+[32m+[m
+[32m+[m[32m  // AUTO-FIX: safe fallback for active tab setter[m
+[32m+[m[32m  // If parent provides setActiveTab it will be used, otherwise use local state[m
+[32m+[m[32m  const [__localActiveTab, __setLocalActiveTab] = useState<Tab | null>(propActiveTab ?? null)[m
+[32m+[m[32m  const _setActiveTab = typeof setActiveTab === 'function' ? setActiveTab : __setLocalActiveTab[m
+[32m+[m[32m  const currentActiveTab = propActiveTab ?? __localActiveTab[m
+ [m
+   useEffect(() => {[m
+     if (token) {[m
+       fetchConversations()[m
+     }[m
+[32m+[m[32m    // eslint-disable-next-line react-hooks/exhaustive-deps[m
+   }, [token])[m
+ [m
+   useEffect(() => {[m
+     if (selectedConversation && token) {[m
+       fetchMessages(selectedConversation)[m
+     }[m
+[32m+[m[32m    // eslint-disable-next-line react-hooks/exhaustive-deps[m
+   }, [selectedConversation, token])[m
+ [m
+   // Listen for new messages via Socket.io[m
+[36m@@ -98,6 +107,7 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+     return () => {[m
+       socket.off('new-message', handleNewMessage)[m
+     }[m
+[32m+[m[32m    // eslint-disable-next-line react-hooks/exhaustive-deps[m
+   }, [socket, selectedConversation])[m
+ [m
+   const fetchConversations = async () => {[m
+[36m@@ -253,7 +263,9 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+         {/* Messages */}[m
+         <div className="flex-1 overflow-y-auto p-4 space-y-4">[m
+           {messages.map((message) => {[m
+[31m-            const isOwn = message.sender._id.toString() === (user as any)?._id?.toString() || message.sender._id.toString() === user?.id[m
+[32m+[m[32m            const isOwn =[m
+[32m+[m[32m              message.sender._id.toString() === (user as any)?._id?.toString() ||[m
+[32m+[m[32m              message.sender._id.toString() === (user as any)?.id[m
+             return ([m
+               <div[m
+                 key={message._id}[m
+[36m@@ -348,9 +360,9 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+       <div className="p-4">[m
+         <div className="flex items-center justify-between mb-4">[m
+           <h2 className="text-2xl font-bold text-primary-500">Messages</h2>[m
+[31m-          {setActiveTab && ([m
+[32m+[m[32m          {_setActiveTab && ([m
+             <button[m
+[31m-              onClick={() => setActiveTab('groups')}[m
+[32m+[m[32m              onClick={() => _setActiveTab('groups' as Tab)}[m
+               className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-lg hover:bg-primary-500/20 transition-colors text-sm font-medium"[m
+             >[m
+               <Users size={18} />[m
+[36m@@ -358,7 +370,7 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+             </button>[m
+           )}[m
+         </div>[m
+[31m-        [m
+[32m+[m
+         {loading ? ([m
+           <div className="text-center py-12 text-primary-400">Loading conversations...</div>[m
+         ) : conversations.length === 0 ? ([m
+[36m@@ -414,6 +426,4 @@[m [mexport default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab[m
+       </div>[m
+     </div>[m
+   )[m
+[31m-}[m
+[31m-[m
+[31m-[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
