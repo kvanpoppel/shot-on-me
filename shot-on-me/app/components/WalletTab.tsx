@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/router'
+import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Send, QrCode, History, Plus } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
