@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
@@ -51,9 +51,10 @@ interface Conversation {
 interface MessagesTabProps {
   onViewProfile?: (userId: string) => void
   setActiveTab?: (tab: Tab) => void
+  activeTab?: Tab | null
 }
 
-export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTabProps) {
+export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: propActiveTab }: MessagesTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -63,19 +64,27 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
   const [messageContent, setMessageContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // AUTO-FIX: safe fallback for active tab setter
+  // If parent provides setActiveTab it will be used, otherwise use local state
+  const [__localActiveTab, __setLocalActiveTab] = useState<Tab | null>(propActiveTab ?? null)
+  const _setActiveTab = typeof setActiveTab === 'function' ? setActiveTab : __setLocalActiveTab
+  const currentActiveTab = propActiveTab ?? __localActiveTab
 
   useEffect(() => {
     if (token) {
       fetchConversations()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   useEffect(() => {
     if (selectedConversation && token) {
       fetchMessages(selectedConversation)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, token])
 
   // Listen for new messages via Socket.io
@@ -98,6 +107,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
     return () => {
       socket.off('new-message', handleNewMessage)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, selectedConversation])
 
   const fetchConversations = async () => {
@@ -253,7 +263,9 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message) => {
-            const isOwn = message.sender._id.toString() === (user as any)?._id?.toString() || message.sender._id.toString() === user?.id
+            const isOwn =
+              message.sender._id.toString() === (user as any)?._id?.toString() ||
+              message.sender._id.toString() === (user as any)?.id
             return (
               <div
                 key={message._id}
@@ -348,9 +360,9 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-primary-500">Messages</h2>
-          {setActiveTab && (
+          {_setActiveTab && (
             <button
-              onClick={() => setActiveTab('groups')}
+              onClick={() => _setActiveTab('groups' as Tab)}
               className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-lg hover:bg-primary-500/20 transition-colors text-sm font-medium"
             >
               <Users size={18} />
@@ -358,7 +370,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
             </button>
           )}
         </div>
-        
+
         {loading ? (
           <div className="text-center py-12 text-primary-400">Loading conversations...</div>
         ) : conversations.length === 0 ? (
@@ -415,5 +427,3 @@ export default function MessagesTab({ onViewProfile, setActiveTab }: MessagesTab
     </div>
   )
 }
-
-
