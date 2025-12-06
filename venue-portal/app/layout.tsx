@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from './contexts/AuthContext'
-import { SocketProvider } from './contexts/SocketContext'
-import { GoogleMapsProvider } from './contexts/GoogleMapsContext'
+import AppWrapper from './components/AppWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,13 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <GoogleMapsProvider>
-          <AuthProvider>
-            <SocketProvider>
-              {children}
-            </SocketProvider>
-          </AuthProvider>
-        </GoogleMapsProvider>
+        <AppWrapper>
+          {children}
+        </AppWrapper>
       </body>
     </html>
   )
