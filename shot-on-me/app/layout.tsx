@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Providers from './components/Providers'
+import AppWrapper from './components/AppWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -52,9 +52,9 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
       </head>
       <body className={inter.className}>
-        <Providers>
+        <AppWrapper>
           {children}
-        </Providers>
+        </AppWrapper>
       </body>
     </html>
   )

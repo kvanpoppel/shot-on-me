@@ -6,23 +6,38 @@ import { loadStripe } from '@stripe/stripe-js'
 import { AuthProvider } from '../contexts/AuthContext'
 import { SocketProvider } from '../contexts/SocketContext'
 import { GoogleMapsProvider } from '../contexts/GoogleMapsContext'
+import { ErrorBoundary } from './ErrorBoundary'
 
 // Initialize Stripe with publishable key from environment variable
-// Falls back to placeholder if not set (for development)
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
-const stripePromise = loadStripe(stripePublishableKey)
+// Always provide Elements wrapper (even with dummy key) so hooks work
+// Components will check if Stripe is actually configured
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePromise = stripePublishableKey && 
+  !stripePublishableKey.includes('placeholder') && 
+  !stripePublishableKey.includes('your_stripe') &&
+  stripePublishableKey.length > 20
+  ? loadStripe(stripePublishableKey)
+  : loadStripe('pk_test_0000000000000000000000000000000000000000000000000000000000000000') // Dummy key - Elements provider needs it but Stripe won't initialize
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <GoogleMapsProvider>
-          <Elements stripe={stripePromise}>
-            {children}
-          </Elements>
-        </GoogleMapsProvider>
-      </SocketProvider>
-    </AuthProvider>
+    <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Auth Error - Please refresh</div>}>
+      <AuthProvider>
+        <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Socket Error - Please refresh</div>}>
+          <SocketProvider>
+            <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Maps Error - Please refresh</div>}>
+              <GoogleMapsProvider>
+                <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Stripe Error - Please refresh</div>}>
+                  <Elements stripe={stripePromise}>
+                    {children}
+                  </Elements>
+                </ErrorBoundary>
+              </GoogleMapsProvider>
+            </ErrorBoundary>
+          </SocketProvider>
+        </ErrorBoundary>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

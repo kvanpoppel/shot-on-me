@@ -35,7 +35,19 @@ const getSocketUrlForConnection = () => {
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)
-  const { user, token } = useAuth()
+  
+  // Safely get auth context - don't crash if AuthProvider fails
+  let user = null
+  let token = null
+  try {
+    const auth = useAuth()
+    if (auth) {
+      user = auth.user || null
+      token = auth.token || null
+    }
+  } catch (error) {
+    console.warn('SocketProvider: Could not access AuthContext:', error)
+  }
 
   useEffect(() => {
     if (user && token) {
