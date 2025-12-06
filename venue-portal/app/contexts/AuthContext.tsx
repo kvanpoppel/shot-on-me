@@ -31,12 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check for stored token
-    const storedToken = localStorage.getItem('token')
-    if (storedToken) {
-      setToken(storedToken)
-      fetchUser(storedToken)
-    } else {
+    // Safety check for browser environment
+    if (typeof window === 'undefined') {
+      setLoading(false)
+      return
+    }
+    
+    try {
+      // Check for stored token
+      const storedToken = localStorage.getItem('token')
+      if (storedToken) {
+        setToken(storedToken)
+        fetchUser(storedToken)
+      } else {
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error)
       setLoading(false)
     }
     
@@ -49,11 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout)
   }, [])
 
+  const getApiUrl = () => {
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      let url = process.env.NEXT_PUBLIC_API_URL.trim()
+      if (!url.endsWith('/api')) {
+        url = url.endsWith('/') ? `${url}api` : `${url}/api`
+      }
+      return url
+    }
+    return 'http://localhost:5000/api'
+  }
+
   const fetchUser = async (authToken: string) => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/me`, {
+      const apiUrl = getApiUrl()
+      const response = await axios.get(`${apiUrl}/users/me`, {
         headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 5000 // 5 second timeout
+        timeout: 10000 // 10 second timeout
       })
       const fetchedUser = response.data.user
 
@@ -102,14 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-      console.log('Attempting login to:', `${apiUrl}/auth/login`)
+      const apiUrl = getApiUrl()
+      const loginUrl = `${apiUrl}/auth/login`
+      console.log('Attempting login to:', loginUrl)
       
-      const response = await axios.post(
-        `${apiUrl}/auth/login`,
+      const response = await axios.post(loginUrl,
         { email, password },
         { 
-          timeout: 30000, // Increased to 30 seconds
+          timeout: 15000, // 15 seconds
           headers: {
             'Content-Type': 'application/json'
           }
