@@ -8,8 +8,14 @@ interface User {
   email: string
   firstName: string
   lastName: string
+  name?: string // Computed from firstName + lastName, but may be provided by backend
   username?: string
   profilePicture?: string
+  location?: {
+    latitude?: number
+    longitude?: number
+    isVisible?: boolean
+  }
   wallet: {
     balance: number
     pendingBalance: number
@@ -36,25 +42,8 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Get API URL dynamically at runtime in browser context
-const getApiUrlForRequest = () => {
-  // If environment variable is set, use it
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-  
-  // If running in browser, use current hostname
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    // If accessing via IP address (mobile), use that IP for backend
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `http://${hostname}:5000/api`
-    }
-  }
-  
-  // Default to localhost
-  return 'http://localhost:5000/api'
-}
+// Import centralized API URL function
+import { getApiUrl, buildApiUrl } from '../utils/api'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -62,11 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    if (storedToken) {
-      setToken(storedToken)
-      fetchUser(storedToken)
-    } else {
+    // Safety check for browser environment
+    if (typeof window === 'undefined') {
+      setLoading(false)
+      return
+    }
+    
+    try {
+      const storedToken = localStorage.getItem('token')
+      if (storedToken) {
+        setToken(storedToken)
+        fetchUser(storedToken)
+      } else {
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error)
       setLoading(false)
     }
     
@@ -80,11 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const fetchUser = async (authToken: string) => {
+    if (!authToken) {
+      setLoading(false)
+      return
+    }
     try {
-      // Add timeout to prevent hanging
-      const response = await axios.get(`${getApiUrlForRequest()}/users/me`, {
+      const apiUrl = getApiUrl()
+      const response = await axios.get(`${apiUrl}/users/me`, {
         headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 5000 // 5 second timeout
+        timeout: 10000 // 10 second timeout
       })
       // Normalize user data - convert _id to id if needed
       const userData = response.data.user
@@ -105,36 +109,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
-      const apiUrl = getApiUrlForRequest()
-      console.log('Attempting login to:', `${apiUrl}/auth/login`)
+      const apiUrl = getApiUrl()
+      const loginUrl = buildApiUrl('auth/login')
       
-      const response = await axios.post(`${apiUrl}/auth/login`, { email, password }, { 
-        timeout: 30000, // Increased to 30 seconds
+      console.log('🔐 Base API URL:', apiUrl)
+      console.log('🔐 Login URL:', loginUrl)
+      console.log('🔐 Method: POST')
+      
+      // Validate URL doesn't have double /api
+      if (loginUrl.includes('/api/api')) {
+        console.error('❌ ERROR: Double /api detected in URL:', loginUrl)
+        throw new Error('Invalid API URL configuration. Please check NEXT_PUBLIC_API_URL in .env.local')
+      }
+      
+      const response = await axios.post(loginUrl, { email, password }, { 
+        timeout: 15000, // 15 seconds
         headers: {
           'Content-Type': 'application/json'
         }
       })
       const { token: authToken, user: userData } = response.data
+      
       // Normalize user data - ensure id field exists
       if (userData && userData.id) {
         // Already has id, use as is
       } else if (userData && userData._id) {
         userData.id = userData._id.toString()
       }
+      
+      // Set state immediately - don't wait for any additional calls
       setToken(authToken)
       setUser(userData)
       
       // Always save token to localStorage (it's needed for the app to work)
       // The rememberMe flag is just for UI preference
-      localStorage.setItem('token', authToken)
-      localStorage.setItem('rememberMe', rememberMe.toString())
-      
-      // Also save user email for auto-fill if remember me is checked
-      if (rememberMe) {
-        localStorage.setItem('savedEmail', email)
-      } else {
-        localStorage.removeItem('savedEmail')
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', authToken)
+          localStorage.setItem('rememberMe', rememberMe.toString())
+          
+          // Also save user email for auto-fill if remember me is checked
+          if (rememberMe) {
+            localStorage.setItem('savedEmail', email)
+          } else {
+            localStorage.removeItem('savedEmail')
+          }
+        }
+      } catch (error) {
+        console.error('Error saving to localStorage:', error)
       }
+      
+      // Don't call fetchUser - we already have the user data from login response
+      console.log('✅ Login successful, user data set directly from response')
     } catch (error: any) {
       let errorMessage = 'Login failed'
       
@@ -150,6 +176,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage = 'Connection timeout. Please check if the backend server is running on port 5000.'
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
+      } else if (error.response?.status === 405) {
+        const attemptedUrl = error.config?.url || 'unknown'
+        errorMessage = `Method Not Allowed (405). The API endpoint may not exist.
+
+Attempted URL: ${attemptedUrl}
+
+For PRODUCTION (shotonme.com):
+- Set NEXT_PUBLIC_API_URL in Vercel environment variables
+- Go to: Vercel Dashboard → Settings → Environment Variables
+- Add: NEXT_PUBLIC_API_URL = https://your-backend-url.com/api
+- Then redeploy
+
+For LOCAL development:
+- Make sure backend is running on port 5000
+- Check: http://localhost:5000/api/health`
       } else if (error.response?.status === 0 || error.message?.includes('Network Error') || error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
         errorMessage = 'Cannot connect to server. Make sure the backend is running on port 5000.'
       } else if (error.response?.data?.error) {
@@ -164,7 +205,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: RegisterData) => {
     try {
-          const response = await axios.post(`${getApiUrlForRequest()}/auth/register`, data)
+          const apiUrl = getApiUrl()
+          const response = await axios.post(`${apiUrl}/auth/register`, data)
       const { token: authToken, user: userData } = response.data
       // Normalize user data - ensure id field exists
       if (userData && userData.id) {
@@ -174,7 +216,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setToken(authToken)
       setUser(userData)
-      localStorage.setItem('token', authToken)
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', authToken)
+        }
+      } catch (storageError) {
+        console.error('Error saving token to localStorage:', storageError)
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Registration failed'
       console.error('Registration error:', errorMessage, error)
@@ -183,9 +231,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token')
+      }
+    } catch (error) {
+      console.error('Error removing token from localStorage:', error)
+    }
     setUser(null)
     setToken(null)
-    localStorage.removeItem('token')
   }
 
   const updateUser = async (data: Partial<User>) => {
@@ -204,7 +258,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Otherwise, try to update via API
-      const response = await axios.put(`${getApiUrlForRequest()}/users/me`, data, {
+      const apiUrl = getApiUrl()
+      const response = await axios.put(`${apiUrl}/users/me`, data, {
         headers: { Authorization: `Bearer ${token}` }
       })
       

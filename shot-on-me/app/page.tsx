@@ -17,6 +17,7 @@ import GroupChatsTab from './components/GroupChatsTab'
 import FriendProfile from './components/FriendProfile'
 import ProximityNotifications from './components/ProximityNotifications'
 import PermissionsManager from './components/PermissionsManager'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from './types'
 
 export default function Home() {
@@ -56,7 +57,7 @@ export default function Home() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <PermissionsManager />
       <Dashboard 
         activeTab={activeTab} 
@@ -87,7 +88,7 @@ export default function Home() {
           }}
         />
       )}
-    </>
+    </ErrorBoundary>
   )
 }
 

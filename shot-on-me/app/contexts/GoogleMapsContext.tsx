@@ -13,11 +13,21 @@ interface GoogleMapsContextType {
 const GoogleMapsContext = createContext<GoogleMapsContextType | undefined>(undefined)
 
 export function GoogleMapsProvider({ children }: { children: ReactNode }) {
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-maps-script-loader',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places']
-  })
+  // Wrap in try-catch at component level, but hooks must be called unconditionally
+  let loaderResult
+  try {
+    loaderResult = useJsApiLoader({
+      id: 'google-maps-script-loader',
+      googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+      libraries: ['places']
+    })
+  } catch (error) {
+    console.error('GoogleMapsProvider: Error initializing Google Maps API:', error)
+    // Return a safe default if hook fails
+    loaderResult = { isLoaded: false, loadError: error as Error }
+  }
+  
+  const { isLoaded, loadError } = loaderResult || { isLoaded: false, loadError: undefined }
 
   useEffect(() => {
     if (loadError) {
