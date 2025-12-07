@@ -287,6 +287,16 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     })
   }
 
+  // Fetch venues, trending venues, and location on mount and when token/API_URL changes
+  useEffect(() => {
+    if (token && API_URL) {
+      console.log('🔄 MapTab: Fetching venues, trending venues, and location...')
+      fetchVenues()
+      fetchTrendingVenues()
+      getCurrentLocation()
+    }
+  }, [token, API_URL])
+
   // Memoize venue markers for map - must be called unconditionally
   const venueMarkers = useMemo(() => {
     return getFilteredVenues()
