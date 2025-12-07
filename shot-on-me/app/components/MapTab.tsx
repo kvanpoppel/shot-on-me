@@ -274,6 +274,47 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       const trendingIds = new Set(trendingVenues.map(v => v._id?.toString()))
       return filtered.filter(venue => trendingIds.has(venue._id?.toString()))
     }
+    if (filter === 'tonight') {
+      // Show venues with active promotions happening tonight (current day, evening hours)
+      const now = new Date()
+      const currentHour = now.getHours()
+      const dayOfWeek = now.getDay()
+      
+      return filtered.filter((venue) => {
+        const promotions = venue.promotions || []
+        return promotions.some((p: any) => {
+          // Check if promotion is active tonight
+          if (p.schedule && Array.isArray(p.schedule)) {
+            const todaySchedule = p.schedule.find((s: any) => {
+              const scheduleDays = s.days?.toLowerCase() || ''
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+              const todayName = dayNames[dayOfWeek]
+              return scheduleDays.includes(todayName)
+            })
+            
+            if (todaySchedule) {
+              // Check if current time is within the schedule
+              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
+              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
+              const currentTime = currentHour * 100 + now.getMinutes()
+              
+              // Tonight is considered 5 PM (17:00) to 2 AM (02:00) next day
+              const isEvening = currentHour >= 17 || currentHour < 2
+              return isEvening && currentTime >= startTime && currentTime <= endTime
+            }
+          }
+          
+          // If no schedule, check if it's active and marked as tonight/evening
+          if (p.isActive) {
+            const title = (p.title || '').toLowerCase()
+            const description = (p.description || '').toLowerCase()
+            return title.includes('tonight') || title.includes('evening') || description.includes('tonight') || description.includes('evening')
+          }
+          
+          return false
+        })
+      })
+    }
     return filtered.filter((venue) => {
       const promotions = venue.promotions || []
       return promotions.some((p: any) => 
@@ -414,7 +455,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             
             {/* Dropdown Menu Items */}
             {showFilterDropdown && (
-              <div className="absolute top-full left-0 mt-2 bg-black border border-primary-500/20 rounded-lg shadow-xl z-20 min-w-[180px] backdrop-blur-sm">
+              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-2xl z-20 min-w-[200px] backdrop-blur-md">
                 <button
                   onClick={() => {
                     setFilter('all')
