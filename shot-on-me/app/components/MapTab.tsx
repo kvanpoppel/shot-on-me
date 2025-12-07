@@ -24,7 +24,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [venues, setVenues] = useState<any[]>([])
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending'>('all')
+  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending' | 'tonight'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
@@ -402,6 +402,12 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     Trending
                   </>
                 )}
+                {filter === 'tonight' && (
+                  <>
+                    <Moon className="w-3.5 h-3.5 inline mr-1.5" />
+                    Tonight's Specials
+                  </>
+                )}
               </span>
               <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
             </button>
@@ -463,6 +469,20 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                 >
                   <Tag className="w-4 h-4 mr-2" />
                   Specials
+                </button>
+                <button
+                  onClick={() => {
+                    setFilter('tonight')
+                    setShowFilterDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                    filter === 'tonight'
+                      ? 'bg-primary-500/20 text-primary-500'
+                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                  }`}
+                >
+                  <Moon className="w-4 h-4 mr-2" />
+                  Tonight's Specials
                 </button>
               </div>
             )}
