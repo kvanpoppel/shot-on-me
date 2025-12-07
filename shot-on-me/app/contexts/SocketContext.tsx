@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './AuthContext'
+import { getSocketUrl } from '../utils/api'
 
 interface SocketContextType {
   socket: Socket | null
@@ -14,22 +15,9 @@ const SocketContext = createContext<SocketContextType>({ socket: null, connected
 export const useSocket = () => useContext(SocketContext)
 
 // Get socket URL dynamically at runtime in browser context
+// Now uses centralized getSocketUrl() function for consistency
 const getSocketUrlForConnection = () => {
-  // If environment variable is set, use it (remove /api if present)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-  }
-  
-  // If running in browser, use current hostname
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `http://${hostname}:5000`
-    }
-  }
-  
-  // Default to localhost
-  return 'http://localhost:5000'
+  return getSocketUrl()
 }
 
 export function SocketProvider({ children }: { children: ReactNode }) {
