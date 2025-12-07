@@ -455,13 +455,13 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             
             {/* Dropdown Menu Items */}
             {showFilterDropdown && (
-              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-2xl z-20 min-w-[200px] backdrop-blur-md">
+              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-2xl z-20 min-w-[220px] backdrop-blur-md overflow-hidden">
                 <button
                   onClick={() => {
                     setFilter('all')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all ${
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all ${
                     filter === 'all'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -474,7 +474,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('trending')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
                     filter === 'trending'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -488,7 +488,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('happy-hour')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
                     filter === 'happy-hour'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -502,7 +502,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('specials')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
                     filter === 'specials'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -511,18 +511,19 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   <Tag className="w-4 h-4 mr-2" />
                   Specials
                 </button>
+                <div className="border-t border-primary-500/20 my-1"></div>
                 <button
                   onClick={() => {
                     setFilter('tonight')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
                     filter === 'tonight'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
                   }`}
                 >
-                  <Moon className="w-4 h-4 mr-2" />
+                  <Moon className="w-4 h-4 mr-2 text-primary-500" />
                   Tonight's Specials
                 </button>
               </div>
