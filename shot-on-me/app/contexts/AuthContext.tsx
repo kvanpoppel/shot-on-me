@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const apiUrl = getApiUrl()
       const response = await axios.get(`${apiUrl}/users/me`, {
         headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 10000 // 10 second timeout
+        timeout: 5000 // 5 second timeout - reduced for faster loading
       })
       // Normalize user data - convert _id to id if needed
       const userData = response.data.user
@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const response = await axios.post(loginUrl, { email, password }, { 
-        timeout: 15000, // 15 seconds
+        timeout: 8000, // 8 seconds - reduced for faster feedback
         headers: {
           'Content-Type': 'application/json'
         }
