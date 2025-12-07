@@ -600,20 +600,9 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                       </div>
                     </div>
                     {(() => {
-                      // Safely extract rating value
-                      let ratingValue: number | null = null
-                      let ratingCount: number | null = null
-                      
-                      if (typeof venue.rating === 'number') {
-                        ratingValue = venue.rating
-                      } else if (venue.rating && typeof venue.rating === 'object' && 'average' in venue.rating && typeof venue.rating.average === 'number') {
-                        ratingValue = venue.rating.average
-                        if ('count' in venue.rating && typeof venue.rating.count === 'number') {
-                          ratingCount = venue.rating.count
-                        }
-                      }
-                      
-                      const displayCount = venue.user_ratings_total || ratingCount
+                      // Rating is now always a number or null (normalized at data source)
+                      const ratingValue: number | null = typeof venue.rating === 'number' ? venue.rating : null
+                      const displayCount = venue.user_ratings_total
                       
                       if (ratingValue === null && !displayCount) return null
                       
