@@ -30,7 +30,14 @@ export default function MyVenuesTab() {
       })
       
       if (response.data && response.data.followedVenues) {
-        setFollowedVenues(response.data.followedVenues)
+        // Normalize rating objects to numbers to prevent React rendering errors
+        const normalizedVenues = response.data.followedVenues.map((venue: any) => {
+          if (venue.rating && typeof venue.rating === 'object' && 'average' in venue.rating) {
+            venue.rating = typeof venue.rating.average === 'number' ? venue.rating.average : null
+          }
+          return venue
+        })
+        setFollowedVenues(normalizedVenues)
       } else {
         console.warn('Unexpected response format:', response.data)
         setFollowedVenues([])

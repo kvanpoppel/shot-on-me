@@ -69,15 +69,24 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         timeout: 10000
       })
       
+      let venueData = null
       if (response.data && response.data.venue) {
-        setVenue(response.data.venue)
+        venueData = response.data.venue
       } else if (response.data && !response.data.venue) {
         // Sometimes the API returns venue directly
-        setVenue(response.data)
+        venueData = response.data
       } else {
         console.error('Invalid venue response:', response.data)
         setVenue(null)
+        return
       }
+      
+      // Normalize rating object to number to prevent React rendering errors
+      if (venueData.rating && typeof venueData.rating === 'object' && 'average' in venueData.rating) {
+        venueData.rating = typeof venueData.rating.average === 'number' ? venueData.rating.average : null
+      }
+      
+      setVenue(venueData)
     } catch (error: any) {
       console.error('Failed to fetch venue:', error)
       console.error('Error details:', {
