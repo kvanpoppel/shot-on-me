@@ -286,21 +286,12 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         {/* Rating & Followers */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {venue?.rating && (
+            {venue?.rating && typeof venue.rating === 'number' && (
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                 <span className="text-primary-500 font-semibold">
-                  {typeof venue.rating === 'number' 
-                    ? venue.rating.toFixed(1)
-                    : (venue.rating && typeof venue.rating === 'object' && venue.rating.average && typeof venue.rating.average === 'number')
-                    ? venue.rating.average.toFixed(1)
-                    : 'N/A'}
+                  {venue.rating.toFixed(1)}
                 </span>
-                {(typeof venue.rating === 'object' && venue.rating.count) && (
-                  <span className="text-primary-400 text-sm">
-                    ({venue.rating.count})
-                  </span>
-                )}
               </div>
             )}
             <div className="flex items-center gap-1">

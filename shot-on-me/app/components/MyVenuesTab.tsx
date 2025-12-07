@@ -153,21 +153,12 @@ export default function MyVenuesTab() {
                       </div>
                     )}
                   </div>
-                  {venue.rating && (
+                  {venue.rating && typeof venue.rating === 'number' && (
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                       <span className="text-primary-500 font-semibold text-sm">
-                        {typeof venue.rating === 'number' 
-                          ? venue.rating.toFixed(1)
-                          : (venue.rating && typeof venue.rating === 'object' && venue.rating.average && typeof venue.rating.average === 'number')
-                          ? venue.rating.average.toFixed(1)
-                          : 'N/A'}
+                        {venue.rating.toFixed(1)}
                       </span>
-                      {(typeof venue.rating === 'object' && venue.rating.count) && (
-                        <span className="text-primary-400 text-xs ml-1">
-                          ({venue.rating.count})
-                        </span>
-                      )}
                     </div>
                   )}
                 </div>
