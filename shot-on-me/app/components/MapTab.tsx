@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map, ChevronDown, TrendingUp } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -24,19 +24,28 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [venues, setVenues] = useState<any[]>([])
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials'>('all')
+  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+  const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [googlePlacesResults, setGooglePlacesResults] = useState<any[]>([])
 
-  useEffect(() => {
-    if (token && API_URL) {
-      fetchVenues()
-      getCurrentLocation()
+  const fetchTrendingVenues = async () => {
+    if (!token || !API_URL) return
+    try {
+      const response = await axios.get(`${API_URL}/venue-activity/trending/list?limit=10&period=24h`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
+      })
+      setTrendingVenues(response.data.venues || [])
+    } catch (error) {
+      console.error('Failed to fetch trending venues:', error)
+      setTrendingVenues([])
     }
-  }, [token, API_URL])
+  }
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -54,54 +63,16 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     }
   }
 
-  // Listen for real-time promotion updates
-  useEffect(() => {
-    if (!socket) return
-
-    const handlePromotionUpdate = (data: { venueId: string; promotion: any }) => {
-      setVenues((prevVenues) =>
-        prevVenues.map((venue) =>
-          venue._id === data.venueId
-            ? { ...venue, promotions: [...(venue.promotions || []), data.promotion] }
-            : venue
-        )
-      )
-      if (token) {
-        fetchVenues()
-      }
-    }
-
-    const handleVenueUpdate = (data: { venueId: string; venue: any }) => {
-      setVenues((prevVenues) =>
-        prevVenues.map((venue) =>
-          venue._id === data.venueId ? data.venue : venue
-        )
-      )
-      if (token) {
-        fetchVenues()
-      }
-    }
-
-    socket.emit('join-room', 'promotions')
-    socket.emit('join-room', 'venues')
-    socket.on('promotion-updated', handlePromotionUpdate)
-    socket.on('venue-updated', handleVenueUpdate)
-
-    return () => {
-      socket.off('promotion-updated', handlePromotionUpdate)
-      socket.off('venue-updated', handleVenueUpdate)
-    }
-  }, [socket, token])
-
   const fetchVenues = async () => {
     if (!token || !API_URL) {
       console.warn('Cannot fetch venues: missing token or API_URL', { token: !!token, API_URL })
       return
     }
     try {
+      console.log('📍 Fetching venues from:', `${API_URL}/venues`)
       const response = await axios.get(`${API_URL}/venues`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 second timeout
+        timeout: 8000 // 8 second timeout - increased for mobile networks
       })
       // Backend returns array directly, not wrapped in venues property
       const fetchedVenues = Array.isArray(response.data) ? response.data : (response.data.venues || [])
@@ -116,60 +87,34 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           .trim()
       }
       
-      const seen: Record<string, any> = {}
+      // Only filter out "Kate's Venue" specifically - keep all other venues including "Kate's Pub" and "Paige's Pub"
       const uniqueVenues = fetchedVenues.filter((venue: any) => {
-        // Filter out "Kate's Venue" - only show "Kate's Pub"
         const normalizedName = normalizeName(venue.name)
         
-        // Check for variations of "Kate's Venue" (after normalization, apostrophes are removed)
-        // So "kate's venue" becomes "kates venue", "kate venue" also matches
-        const isKatesVenue = normalizedName === "kates venue" || 
-                             normalizedName === "kate venue" ||
-                             normalizedName.includes("kate") && normalizedName.includes("venue") && !normalizedName.includes("pub")
+        // ONLY filter out "Kate's Venue" - be very specific
+        // After normalization: "kate's venue" becomes "kates venue"
+        const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
         
         if (isKatesVenue) {
-          console.log(`Filtering out venue: "${venue.name}" (normalized: "${normalizedName}") (ID: ${venue._id}) - only showing "Kate's Pub"`)
+          console.log(`Filtering out venue: "${venue.name}" (normalized: "${normalizedName}") - only showing "Kate's Pub"`)
           return false
         }
         
-        // If we've seen this venue name before, check if it's a duplicate
-        if (seen[normalizedName]) {
-          const existing = seen[normalizedName]
-          
-          // If both have locations, check if they're the same location (within 100m)
-          if (venue.location?.latitude && venue.location?.longitude && 
-              existing.location?.latitude && existing.location?.longitude) {
-            const distance = calculateDistance(
-              venue.location.latitude,
-              venue.location.longitude,
-              existing.location.latitude,
-              existing.location.longitude
-            )
-            // If same name and same location (within 100m), it's a duplicate
-            if (distance < 0.1) {
-              console.log(`Removing duplicate venue: "${venue.name}" (ID: ${venue._id}) - same as "${existing.name}" (ID: ${existing._id})`)
-              return false
-            }
-          } else {
-            // Same normalized name but no location or different location - keep the first one
-            console.log(`Removing duplicate venue: "${venue.name}" (ID: ${venue._id}) - same name as "${existing.name}" (ID: ${existing._id})`)
-            return false
-          }
-        }
-        
-        seen[normalizedName] = venue
+        // Keep all other venues - including "Kate's Pub", "Paige's Pub", etc.
         return true
       })
       
-      console.log('Unique venues after deduplication:', uniqueVenues.length)
+      console.log('✅ Unique venues after deduplication:', uniqueVenues.length)
+      console.log('📍 Venue names:', uniqueVenues.map((v: any) => v.name).join(', '))
       setVenues(uniqueVenues)
     } catch (error: any) {
-      console.error('Failed to fetch venues:', error)
+      console.error('❌ Failed to fetch venues:', error)
       console.error('Error details:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
-        url: error.config?.url
+        url: error.config?.url,
+        API_URL: API_URL
       })
       // Set empty array on error to prevent crashes
       setVenues([])
@@ -202,19 +147,18 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         .trim()
     }
     
-    // First, filter out "Kate's Venue" from the venues list
+    // Only filter out "Kate's Venue" specifically - keep all other venues
     let filtered = venues.filter((venue: any) => {
       const normalizedName = normalizeName(venue.name)
       
-      // Check for variations of "Kate's Venue" (after normalization, apostrophes are removed)
-      const isKatesVenue = normalizedName === "kates venue" || 
-                           normalizedName === "kate venue" ||
-                           (normalizedName.includes("kate") && normalizedName.includes("venue") && !normalizedName.includes("pub"))
+      // ONLY filter out "Kate's Venue" - be very specific
+      const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
       
       if (isKatesVenue) {
-        console.log(`Filtering out venue in getFilteredVenues: "${venue.name}" (normalized: "${normalizedName}") (ID: ${venue._id})`)
+        console.log(`Filtering out venue in getFilteredVenues: "${venue.name}" (normalized: "${normalizedName}")`)
         return false
       }
+      // Keep all other venues - including "Kate's Pub", "Paige's Pub", etc.
       return true
     })
 
@@ -307,6 +251,11 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
 
     // Apply promotion filter
     if (filter === 'all') return filtered
+    if (filter === 'trending') {
+      // Show trending venues (by activity)
+      const trendingIds = new Set(trendingVenues.map(v => v._id?.toString()))
+      return filtered.filter(venue => trendingIds.has(venue._id?.toString()))
+    }
     return filtered.filter((venue) => {
       const promotions = venue.promotions || []
       return promotions.some((p: any) => 
@@ -352,7 +301,21 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         label: venue.name?.[0] || 'V',
         onClick: () => setViewingVenueId(venue._id)
       }))
-  }, [venues, filter, searchQuery, googlePlace])
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.filter-dropdown-container')) {
+        setShowFilterDropdown(false)
+      }
+    }
+    if (showFilterDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilterDropdown])
 
   return (
     <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto">
@@ -378,41 +341,98 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           />
         </div>
         
-        {/* Filter Tabs and View Toggle */}
+        {/* Filter Dropdown and View Toggle */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex space-x-2">
+          <div className="relative filter-dropdown-container">
+            {/* Dropdown Menu */}
             <button
-              onClick={() => setFilter('all')}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-                filter === 'all'
-                  ? 'bg-primary-500 text-black'
-                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 backdrop-blur-sm'
-              }`}
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="flex items-center space-x-2 px-4 py-2 bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 rounded-lg backdrop-blur-sm transition-all"
             >
-              All Venues
+              <span className="text-sm font-medium">
+                {filter === 'all' && 'All Venues'}
+                {filter === 'happy-hour' && (
+                  <>
+                    <Clock className="w-3.5 h-3.5 inline mr-1.5" />
+                    Happy Hour
+                  </>
+                )}
+                {filter === 'specials' && (
+                  <>
+                    <Tag className="w-3.5 h-3.5 inline mr-1.5" />
+                    Specials
+                  </>
+                )}
+                {filter === 'trending' && (
+                  <>
+                    <TrendingUp className="w-3.5 h-3.5 inline mr-1.5" />
+                    Trending
+                  </>
+                )}
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
             </button>
-            <button
-              onClick={() => setFilter('happy-hour')}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-                filter === 'happy-hour'
-                  ? 'bg-primary-500 text-black'
-                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 backdrop-blur-sm'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5 inline mr-1.5" />
-              Happy Hour
-            </button>
-            <button
-              onClick={() => setFilter('specials')}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-                filter === 'specials'
-                  ? 'bg-primary-500 text-black'
-                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 backdrop-blur-sm'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5 inline mr-1.5" />
-              Specials
-            </button>
+            
+            {/* Dropdown Menu Items */}
+            {showFilterDropdown && (
+              <div className="absolute top-full left-0 mt-2 bg-black border border-primary-500/20 rounded-lg shadow-xl z-20 min-w-[180px] backdrop-blur-sm">
+                <button
+                  onClick={() => {
+                    setFilter('all')
+                    setShowFilterDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all ${
+                    filter === 'all'
+                      ? 'bg-primary-500/20 text-primary-500'
+                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                  }`}
+                >
+                  All Venues
+                </button>
+                <button
+                  onClick={() => {
+                    setFilter('trending')
+                    setShowFilterDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                    filter === 'trending'
+                      ? 'bg-primary-500/20 text-primary-500'
+                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Trending Now
+                </button>
+                <button
+                  onClick={() => {
+                    setFilter('happy-hour')
+                    setShowFilterDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                    filter === 'happy-hour'
+                      ? 'bg-primary-500/20 text-primary-500'
+                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                  }`}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Happy Hour
+                </button>
+                <button
+                  onClick={() => {
+                    setFilter('specials')
+                    setShowFilterDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-all flex items-center ${
+                    filter === 'specials'
+                      ? 'bg-primary-500/20 text-primary-500'
+                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                  }`}
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  Specials
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex space-x-2">
             <button

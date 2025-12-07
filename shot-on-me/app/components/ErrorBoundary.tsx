@@ -24,10 +24,21 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error)
-    console.error('Error details:', errorInfo)
+    console.error('❌ ErrorBoundary caught an error:', error)
+    console.error('Error message:', error.message)
+    console.error('Error name:', error.name)
     console.error('Error stack:', error.stack)
     console.error('Component stack:', errorInfo.componentStack)
+    
+    // Log to console with more detail for mobile debugging
+    if (typeof window !== 'undefined') {
+      console.error('Full error object:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack
+      })
+    }
   }
 
   handleReset = () => {
