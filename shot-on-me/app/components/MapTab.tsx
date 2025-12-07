@@ -511,6 +511,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   <Tag className="w-4 h-4 mr-2" />
                   Specials
                 </button>
+                {/* Separator before Tonight's Specials */}
                 <div className="border-t border-primary-500/20 my-1"></div>
                 <button
                   onClick={() => {
