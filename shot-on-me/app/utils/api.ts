@@ -27,8 +27,12 @@ export const getApiUrl = (): string => {
     const hostname = window.location.hostname
     const protocol = window.location.protocol
     
-    // For production domains (shotonme.com), use Render backend
-    if (hostname.includes('shotonme.com') || hostname.includes('shot-on-me')) {
+    // For production domains (shotonme.com) OR Vercel deployments, use Render backend
+    // Vercel preview URLs look like: shotonme-665zqvmre-kate-vanpoppels-projects.vercel.app
+    // Production domain: www.shotonme.com or shotonme.com
+    if (hostname.includes('shotonme.com') || 
+        hostname.includes('shot-on-me') || 
+        hostname.includes('vercel.app')) {
       // Backend is deployed on Render at: https://shot-on-me.onrender.com
       return 'https://shot-on-me.onrender.com/api'
     }
@@ -45,8 +49,9 @@ export const getApiUrl = (): string => {
       return `http://${hostname}:5000/api`
     }
     
-    // Fallback for any other hostname
-    return `http://${hostname}:5000/api`
+    // Fallback for any other hostname - use Render backend (safer than localhost)
+    // This handles any unexpected production-like environments
+    return 'https://shot-on-me.onrender.com/api'
   }
   
   // Default for server-side rendering
@@ -68,7 +73,10 @@ export const getSocketUrl = (): string => {
     const hostname = window.location.hostname
     const protocol = window.location.protocol
     
-    if (hostname.includes('shotonme.com') || hostname.includes('shot-on-me')) {
+    // For production domains OR Vercel deployments, use Render backend
+    if (hostname.includes('shotonme.com') || 
+        hostname.includes('shot-on-me') || 
+        hostname.includes('vercel.app')) {
       // Backend is deployed on Render at: https://shot-on-me.onrender.com
       return 'https://shot-on-me.onrender.com'
     }
@@ -77,7 +85,8 @@ export const getSocketUrl = (): string => {
       return 'http://localhost:5000'
     }
     
-    return `http://${hostname}:5000`
+    // Fallback for any other hostname - use Render backend (safer than localhost)
+    return 'https://shot-on-me.onrender.com'
   }
   
   return 'http://localhost:5000'
