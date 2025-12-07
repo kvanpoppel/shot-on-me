@@ -104,9 +104,20 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         return true
       })
       
-      console.log('✅ Unique venues after deduplication:', uniqueVenues.length)
-      console.log('📍 Venue names:', uniqueVenues.map((v: any) => v.name).join(', '))
-      setVenues(uniqueVenues)
+      // Normalize all rating objects to numbers to prevent React rendering errors
+      // Create new objects to avoid mutating the original
+      const normalizedVenues = uniqueVenues.map((venue: any) => {
+        const normalized = { ...venue }
+        if (normalized.rating && typeof normalized.rating === 'object' && 'average' in normalized.rating) {
+          // Convert rating object to number
+          normalized.rating = typeof normalized.rating.average === 'number' ? normalized.rating.average : null
+        }
+        return normalized
+      })
+      
+      console.log('✅ Unique venues after deduplication:', normalizedVenues.length)
+      console.log('📍 Venue names:', normalizedVenues.map((v: any) => v.name).join(', '))
+      setVenues(normalizedVenues)
     } catch (error: any) {
       console.error('❌ Failed to fetch venues:', error)
       console.error('Error details:', {
@@ -177,7 +188,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           latitude: googlePlace.geometry.location.lat(),
           longitude: googlePlace.geometry.location.lng()
         },
-        rating: googlePlace.rating,
+        rating: typeof googlePlace.rating === 'number' ? googlePlace.rating : (googlePlace.rating?.average || null),
         user_ratings_total: googlePlace.user_ratings_total,
         isGooglePlace: true,
         placeId: googlePlace.place_id,
