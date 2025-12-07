@@ -3,6 +3,9 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // Disable PWA in development for faster reloads
+  // Exclude backend API calls from service worker
+  publicExcludes: ['**/api/**'],
+  buildExcludes: [/middleware-manifest\.json$/],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
@@ -105,18 +108,9 @@ const withPWA = require('next-pwa')({
         }
       }
     },
-    {
-      urlPattern: /\/api\/.*$/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'apis',
-        expiration: {
-          maxEntries: 16,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        },
-        networkTimeoutSeconds: 10
-      }
-    },
+    // Don't intercept backend API calls - they go to port 5000, not the Next.js server
+    // Only intercept API calls if they're to the same origin (which they shouldn't be)
+    // Backend API calls go to http://hostname:5000/api, not http://hostname:3001/api
     {
       urlPattern: ({ request }) => request.destination === 'document',
       handler: 'NetworkFirst',
