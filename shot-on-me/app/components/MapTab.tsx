@@ -297,9 +297,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     }
   }, [token, API_URL])
 
+  // Memoize filtered venues to avoid recalculating on every render
+  const filteredVenuesList = useMemo(() => {
+    return getFilteredVenues()
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues])
+
   // Memoize venue markers for map - must be called unconditionally
   const venueMarkers = useMemo(() => {
-    return getFilteredVenues()
+    return filteredVenuesList
       .filter((venue) => venue.location?.latitude && venue.location?.longitude)
       .map((venue) => ({
         id: venue._id,
@@ -307,11 +312,11 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           lat: venue.location.latitude,
           lng: venue.location.longitude
         },
-        title: venue.name,
-        label: venue.name?.[0] || 'V',
+        title: venue.name || 'Venue',
+        label: (venue.name?.[0] || 'V').toString(),
         onClick: () => setViewingVenueId(venue._id)
       }))
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues])
+  }, [filteredVenuesList])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -505,10 +510,10 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         {/* Debug info - remove in production */}
         {process.env.NODE_ENV === 'development' && (
           <div className="text-xs text-primary-400/50 mb-2">
-            Debug: {venues.length} total venues, {getFilteredVenues().length} filtered, search: "{searchQuery}", filter: {filter}
+            Debug: {venues.length} total venues, {filteredVenuesList.length} filtered, search: "{searchQuery}", filter: {filter}
           </div>
         )}
-        {getFilteredVenues().length === 0 ? (
+        {filteredVenuesList.length === 0 ? (
           <div className="text-center py-12 text-primary-400">
             <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="text-lg">
@@ -527,7 +532,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             )}
           </div>
         ) : (
-          getFilteredVenues().map((venue: any) => {
+          filteredVenuesList.map((venue: any) => {
             try {
               if (!venue || !venue._id) {
                 console.warn('Invalid venue in list:', venue)
