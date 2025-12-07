@@ -188,7 +188,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           latitude: googlePlace.geometry.location.lat(),
           longitude: googlePlace.geometry.location.lng()
         },
-        rating: typeof googlePlace.rating === 'number' ? googlePlace.rating : (googlePlace.rating?.average || null),
+        rating: typeof googlePlace.rating === 'number' ? googlePlace.rating : ((googlePlace.rating as any)?.average || null),
         user_ratings_total: googlePlace.user_ratings_total,
         isGooglePlace: true,
         placeId: googlePlace.place_id,
