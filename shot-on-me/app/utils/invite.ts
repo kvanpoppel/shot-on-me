@@ -112,44 +112,8 @@ export async function shareInvite(
     const refCode = urlParams.get('ref') || ''
     
     // Get API URL - use centralized getApiUrl function
-    let API_URL = 'http://localhost:5000/api'
-    if (typeof window !== 'undefined') {
-      // Use the same logic as getApiUrl but inline to avoid import
-      if (process.env.NEXT_PUBLIC_API_URL) {
-        API_URL = process.env.NEXT_PUBLIC_API_URL.trim()
-        if (!API_URL.endsWith('/api')) {
-          API_URL = API_URL.endsWith('/') ? `${API_URL}api` : `${API_URL}/api`
-        }
-      } else {
-        const hostname = window.location.hostname
-        const protocol = window.location.protocol
-        // For production domains (shotonme.com) OR Vercel deployments, use production API
-        if (hostname.includes('shotonme.com') || 
-            hostname.includes('shot-on-me') || 
-            hostname.includes('vercel.app')) {
-          // Check if this is local development (http:// or port 3001)
-          const isLocalDev = protocol === 'http:' || window.location.port === '3001' || window.location.port === '3000'
-          if (isLocalDev) {
-            // Local development with domain override
-            if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-              API_URL = `http://${hostname}:5000/api`
-            } else {
-              API_URL = 'http://localhost:5000/api'
-            }
-          } else {
-            // Production - Use Render URL directly to ensure connection works
-            API_URL = 'https://shot-on-me.onrender.com/api'
-          }
-        } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          API_URL = 'http://localhost:5000/api'
-        } else if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-          API_URL = `http://${hostname}:5000/api`
-        } else {
-          // Fallback for any other hostname - use Render URL directly
-          API_URL = 'https://shot-on-me.onrender.com/api'
-        }
-      }
-    }
+    const { getApiUrl } = await import('./api')
+    const API_URL = getApiUrl()
     
     // Get auth token from localStorage
     let token = null
