@@ -8,14 +8,30 @@ const cloudinary = require('cloudinary').v2;
 const router = express.Router();
 
 // Configure Cloudinary
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
+const cloudinaryConfig = {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+};
+
+// Check for placeholder values
+const hasPlaceholders = 
+  cloudinaryConfig.api_key === 'your_api_key' ||
+  cloudinaryConfig.api_key === 'YOUR_API_KEY' ||
+  cloudinaryConfig.cloud_name === 'your_cloud_name' ||
+  cloudinaryConfig.cloud_name === 'YOUR_CLOUD_NAME' ||
+  cloudinaryConfig.api_secret === 'your_api_secret' ||
+  cloudinaryConfig.api_secret === 'YOUR_API_SECRET';
+
+if (cloudinaryConfig.cloud_name && cloudinaryConfig.api_key && cloudinaryConfig.api_secret && !hasPlaceholders) {
+  cloudinary.config(cloudinaryConfig);
+  console.log('✅ Cloudinary configured successfully');
 } else {
-  console.warn('⚠️ Cloudinary environment variables not set. Story uploads will fail.');
+  if (hasPlaceholders) {
+    console.error('❌ Cloudinary has placeholder values. Please set real API credentials in .env file.');
+  } else {
+    console.warn('⚠️ Cloudinary environment variables not set. Story uploads will fail.');
+  }
 }
 
 // Configure multer for file uploads
@@ -33,8 +49,39 @@ router.post('/', auth, upload.single('media'), async (req, res) => {
       return res.status(400).json({ message: 'Media file is required' });
     }
 
+    // Check if Cloudinary is configured
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.error('❌ Cloudinary not configured');
+      return res.status(500).json({ 
+        message: 'Image upload service is not configured. Please contact support.',
+        error: 'Cloudinary configuration missing'
+      });
+    }
+    
+    // Check for placeholder values
+    if (apiKey === 'your_api_key' || apiKey === 'YOUR_API_KEY' || 
+        cloudName === 'your_cloud_name' || cloudName === 'YOUR_CLOUD_NAME' ||
+        apiSecret === 'your_api_secret' || apiSecret === 'YOUR_API_SECRET') {
+      console.error('❌ Cloudinary has placeholder values');
+      return res.status(500).json({ 
+        message: 'Cloudinary API credentials are not set. Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file with real values from your Cloudinary account.',
+        error: 'Cloudinary placeholder values detected'
+      });
+    }
+
     const { caption, mediaType } = req.body;
     const file = req.file;
+    
+    // Validate file size (100MB limit)
+    if (file.size > 100 * 1024 * 1024) {
+      return res.status(400).json({ 
+        message: 'File is too large. Maximum size is 100MB.' 
+      });
+    }
     
     // Determine media type from file or request
     const resourceType = mediaType === 'video' || file.mimetype.startsWith('video/') ? 'video' : 'image';
@@ -95,9 +142,24 @@ router.post('/', auth, upload.single('media'), async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error creating story:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Provide more detailed error messages
+    let errorMessage = 'Failed to create story';
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.response) {
+      errorMessage = error.response.data?.message || 'Upload failed';
+    }
+    
+    // Check for Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      errorMessage = 'Cloudinary is not configured. Please contact support.';
+    }
+    
     res.status(500).json({ 
-      message: 'Failed to create story',
-      error: error.message 
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
