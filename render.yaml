@@ -7,13 +7,14 @@ services:
     name: shot-on-me-backend
     env: node
     plan: starter  # Free tier, upgrade to standard for better performance
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 5000
       - key: HOST
         value: 0.0.0.0
       # Add these in Render dashboard instead of here for security:
