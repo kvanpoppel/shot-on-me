@@ -19,6 +19,8 @@ const corsOptions = {
     'https://api.shotonme.com',
     'https://shot-on-me.onrender.com', // Render backend URL
     'https://shot-on-me-venue-portal.vercel.app', // Keep Vercel URL as fallback
+    /^https:\/\/shotonme-.*\.vercel\.app$/, // Vercel preview deployments
+    /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
     /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
     /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/
