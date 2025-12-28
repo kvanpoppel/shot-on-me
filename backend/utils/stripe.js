@@ -1,4 +1,7 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Initialize Stripe client
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 /**
  * Stripe utility functions for Shot On Me
@@ -322,8 +325,202 @@ function isStripeConfigured() {
   return !!process.env.STRIPE_SECRET_KEY;
 }
 
+/**
+ * Create a virtual card for a user using Stripe Issuing
+ * @param {string} userId - User ID
+ * @param {Object} userData - User data (name, email, etc.)
+ * @returns {Promise<Object>} Card details
+ */
+async function createVirtualCard(userId, userData) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Stripe is not configured');
+    }
+
+    // First, create or retrieve cardholder
+    let cardholder;
+    try {
+      // Check if cardholder already exists
+      const existingCardholders = await stripe.issuing.cardholders.list({
+        email: userData.email,
+        limit: 1
+      });
+
+      if (existingCardholders.data.length > 0) {
+        cardholder = existingCardholders.data[0];
+      } else {
+        // Create new cardholder
+        // Use default address if not provided (Stripe requires valid address)
+        const address = {
+          line1: userData.address?.line1 || '123 Main St',
+          city: userData.address?.city || 'New York',
+          state: userData.address?.state || 'NY',
+          postal_code: userData.address?.postalCode || '10001',
+          country: 'US',
+        };
+        
+        cardholder = await stripe.issuing.cardholders.create({
+          name: `${userData.firstName} ${userData.lastName}`.trim() || userData.name,
+          email: userData.email,
+          phone_number: userData.phoneNumber || '+15555555555', // Default if missing
+          status: 'active',
+          type: 'individual',
+          billing: {
+            address: address,
+          },
+          metadata: {
+            userId: userId.toString(),
+            app: 'shot-on-me'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error creating cardholder:', error);
+      throw new Error(`Failed to create cardholder: ${error.message}`);
+    }
+
+    // Check if user has a custom design
+    // Note: We'll pass designId from the route if available
+    const cardParams = {
+      cardholder: cardholder.id,
+      currency: 'usd',
+      type: 'virtual',
+      status: 'active',
+      metadata: {
+        userId: userId.toString(),
+        app: 'shot-on-me',
+        walletType: 'tap-and-pay'
+      }
+    };
+
+    // If customDesignId is provided in userData, use it
+    if (userData.customDesignId) {
+      cardParams.personalization = {
+        design: userData.customDesignId
+      };
+    }
+
+    // Create virtual card
+    const card = await stripe.issuing.cards.create(cardParams);
+
+    return {
+      cardId: card.id,
+      cardholderId: cardholder.id,
+      last4: card.last4,
+      brand: card.brand,
+      expirationMonth: card.exp_month,
+      expirationYear: card.exp_year,
+      status: card.status,
+      card: card // Full card object for additional details
+    };
+  } catch (error) {
+    console.error('Error creating virtual card:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update card status
+ * @param {string} cardId - Stripe card ID
+ * @param {string} status - New status ('active', 'inactive', 'canceled')
+ * @returns {Promise<Object>} Updated card
+ */
+async function updateCardStatus(cardId, status) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const card = await stripe.issuing.cards.update(cardId, {
+      status: status
+    });
+
+    return card;
+  } catch (error) {
+    console.error('Error updating card status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get card details
+ * @param {string} cardId - Stripe card ID
+ * @returns {Promise<Object>} Card details
+ */
+async function getCardDetails(cardId) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const card = await stripe.issuing.cards.retrieve(cardId);
+    return card;
+  } catch (error) {
+    console.error('Error retrieving card:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calculate commission for a transaction
+ * @param {number} amount - Transaction amount in dollars
+ * @returns {Object} Commission details
+ */
+function calculateCommission(amount) {
+  // Minimal commission structure
+  const commissionThreshold = 20.00;
+  
+  let commission;
+  let commissionType;
+  
+  if (amount < commissionThreshold) {
+    // Flat $0.25 for transactions < $20 (minimal)
+    commission = 0.25;
+    commissionType = 'flat';
+  } else {
+    // 1% for transactions >= $20 (minimal)
+    commission = amount * 0.01;
+    commissionType = 'percentage';
+  }
+  
+  return {
+    amount: commission,
+    type: commissionType,
+    originalAmount: amount,
+    venueReceives: amount - commission,
+    youReceive: commission
+  };
+}
+
+/**
+ * Check if Stripe Issuing is enabled
+ * @returns {Promise<boolean>} True if Issuing is enabled
+ */
+async function isIssuingEnabled() {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return false;
+    }
+
+    // Try to list cardholders (will fail if Issuing not enabled)
+    await stripe.issuing.cardholders.list({ limit: 1 });
+    return true;
+  } catch (error) {
+    if (error.code === 'resource_missing' || error.message?.includes('issuing')) {
+      return false;
+    }
+    // Other errors might be temporary, assume enabled
+    return true;
+  }
+}
+
 module.exports = {
-  stripe,
+  get stripe() {
+    if (!stripe) {
+      throw new Error('Stripe is not initialized. Check STRIPE_SECRET_KEY in .env');
+    }
+    return stripe;
+  },
   createConnectOnboardingLink,
   getConnectAccountStatus,
   createPaymentIntent,
@@ -333,5 +530,10 @@ module.exports = {
   handleWebhookEvent,
   getPublishableKey,
   isStripeConfigured,
+  createVirtualCard,
+  updateCardStatus,
+  getCardDetails,
+  calculateCommission,
+  isIssuingEnabled,
 };
 

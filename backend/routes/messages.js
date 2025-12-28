@@ -145,106 +145,6 @@ router.get('/conversations/:conversationId', auth, async (req, res) => {
   }
 });
 
-// Send a message
-router.post('/send', auth, upload.array('media', 5), async (req, res) => {
-  try {
-    const { recipientId, content } = req.body;
-    const senderId = req.user.userId;
-    
-    if (!recipientId) {
-      return res.status(400).json({ message: 'Recipient is required' });
-    }
-    
-    if (!content && (!req.files || req.files.length === 0)) {
-      return res.status(400).json({ message: 'Message content or media is required' });
-    }
-    
-    // Verify recipient exists
-    const recipient = await User.findById(recipientId);
-    if (!recipient) {
-      return res.status(404).json({ message: 'Recipient not found' });
-    }
-    
-    // Generate conversation ID
-    const conversationId = Message.getConversationId(senderId, recipientId);
-    
-    // Upload media if present
-    const mediaUrls = [];
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const resourceType = file.mimetype.startsWith('video/') ? 'video' : 'image';
-        
-        const uploadResult = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            {
-              resource_type: resourceType,
-              folder: 'shot-on-me/messages',
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          ).end(file.buffer);
-        });
-        
-        mediaUrls.push({
-          url: uploadResult.secure_url,
-          type: resourceType,
-          publicId: uploadResult.public_id
-        });
-      }
-    }
-    
-    // Create message
-    const message = new Message({
-      sender: senderId,
-      recipient: recipientId,
-      content: content || '',
-      media: mediaUrls,
-      conversationId,
-      read: false
-    });
-    
-    await message.save();
-    await message.populate('sender', 'name firstName lastName profilePicture');
-    await message.populate('recipient', 'name firstName lastName profilePicture');
-    
-    // Create notification for new message
-    const Notification = require('../models/Notification');
-    const sender = await User.findById(senderId);
-    if (sender) {
-      const messagePreview = content ? (content.length > 50 ? content.substring(0, 50) + '...' : content) : 'sent you a photo';
-      const notification = new Notification({
-        recipient: recipientId,
-        actor: senderId,
-        type: 'message',
-        content: `${sender.firstName || sender.name} sent you a message: ${messagePreview}`,
-        relatedMessage: message._id
-      });
-      await notification.save();
-    }
-    
-    // Emit Socket.io event for real-time delivery
-    if (io) {
-      io.to(recipientId).emit('new-message', {
-        message,
-        conversationId
-      });
-      io.to(recipientId).emit('new-notification', {
-        type: 'message',
-        message: `${sender.firstName || sender.name} sent you a message`,
-        messageId: message._id
-      });
-    }
-    
-    console.log('✅ Message sent:', message._id);
-    res.status(201).json({ message });
-  } catch (error) {
-    console.error('Error sending message:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 // Get unread message count
 router.get('/unread-count', auth, async (req, res) => {
   try {
@@ -276,6 +176,245 @@ router.put('/read/:conversationId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Like/Unlike a message
+router.post('/:messageId/like', auth, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user.userId;
+    
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    
+    // Verify user is part of conversation
+    const isParticipant = message.sender.toString() === userId || message.recipient.toString() === userId;
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    
+    // Toggle like
+    if (!message.likedBy) {
+      message.likedBy = [];
+    }
+    
+    const likedIndex = message.likedBy.findIndex(id => id.toString() === userId);
+    if (likedIndex > -1) {
+      message.likedBy.splice(likedIndex, 1);
+    } else {
+      message.likedBy.push(userId);
+    }
+    
+    await message.save();
+    
+    res.json({ liked: likedIndex === -1, message });
+  } catch (error) {
+    console.error('Error liking message:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete a message
+router.delete('/:messageId', auth, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user.userId;
+    
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    
+    // Only sender can delete
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({ message: 'Not authorized to delete this message' });
+    }
+    
+    await Message.findByIdAndDelete(messageId);
+    
+    // Emit socket event
+    if (io) {
+      io.to(message.recipient.toString()).emit('message-deleted', { messageId });
+    }
+    
+    res.json({ message: 'Message deleted' });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Send a message (supports replyTo)
+router.post('/send', auth, upload.array('media', 5), async (req, res) => {
+  try {
+    const { recipientId, content, replyTo } = req.body;
+    const senderId = req.user.userId;
+    
+    console.log('📨 Message send request:', { 
+      senderId, 
+      recipientId, 
+      hasContent: !!content, 
+      hasFiles: !!(req.files && req.files.length > 0),
+      fileCount: req.files ? req.files.length : 0
+    });
+    
+    if (!recipientId) {
+      console.error('❌ Missing recipientId');
+      return res.status(400).json({ message: 'Recipient is required' });
+    }
+    
+    // Allow empty content if no media, but at least one must be present
+    if (!content && (!req.files || req.files.length === 0)) {
+      return res.status(400).json({ message: 'Message content or media is required' });
+    }
+    
+    // If only media and no content, set empty string
+    const messageContent = content || '';
+    
+    // Verify recipient exists
+    const recipient = await User.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({ message: 'Recipient not found' });
+    }
+    
+    // Verify replyTo message exists and is in same conversation if provided
+    let replyToMessage = null;
+    if (replyTo) {
+      replyToMessage = await Message.findById(replyTo);
+      if (!replyToMessage) {
+        return res.status(404).json({ message: 'Reply message not found' });
+      }
+      // Verify reply is in same conversation
+      const conversationId = Message.getConversationId(senderId, recipientId);
+      if (replyToMessage.conversationId !== conversationId) {
+        return res.status(400).json({ message: 'Reply must be in same conversation' });
+      }
+    }
+    
+    // Generate conversation ID
+    const conversationId = Message.getConversationId(senderId, recipientId);
+    
+    // Upload media if present
+    const mediaUrls = [];
+    if (req.files && req.files.length > 0) {
+      // Check if Cloudinary is configured
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        console.error('❌ Cloudinary not configured - cannot upload media');
+        // If there's no content and Cloudinary isn't configured, we can't send the message
+        if (!messageContent.trim()) {
+          return res.status(500).json({ 
+            message: 'Media upload service not configured. Please configure Cloudinary environment variables or send a text message.',
+            error: 'Cloudinary not configured'
+          });
+        }
+        // If there's content, allow the message without media
+        console.warn('⚠️ Cloudinary not configured - sending message without media');
+      } else {
+        // Cloudinary is configured, proceed with uploads
+      for (const file of req.files) {
+          try {
+        const resourceType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+        
+        const uploadResult = await new Promise((resolve, reject) => {
+              const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              resource_type: resourceType,
+              folder: 'shot-on-me/messages',
+            },
+            (error, result) => {
+                  if (error) {
+                    console.error('❌ Cloudinary upload error:', error);
+                    reject(error);
+                  } else {
+                    console.log('✅ Media uploaded to Cloudinary:', result.secure_url);
+                    resolve(result);
+            }
+                }
+              );
+              
+              if (!file.buffer) {
+                reject(new Error('File buffer is empty'));
+                return;
+              }
+              
+              uploadStream.end(file.buffer);
+        });
+        
+        mediaUrls.push({
+          url: uploadResult.secure_url,
+          type: resourceType,
+          publicId: uploadResult.public_id
+        });
+          } catch (uploadError) {
+            console.error('❌ Error uploading file:', uploadError);
+            return res.status(500).json({ 
+              message: 'Failed to upload media file',
+              error: uploadError.message 
+            });
+          }
+        }
+      }
+    }
+    
+    // Create message - ensure content is not null/undefined
+    const message = new Message({
+      sender: senderId,
+      recipient: recipientId,
+      content: messageContent || (mediaUrls.length > 0 ? '📷' : ''),
+      media: mediaUrls,
+      conversationId,
+      read: false,
+      replyTo: replyTo || undefined
+    });
+    
+    await message.save();
+    await message.populate('sender', 'name firstName lastName profilePicture');
+    await message.populate('recipient', 'name firstName lastName profilePicture');
+    if (replyToMessage) {
+      await message.populate('replyTo', 'content sender');
+    }
+    
+    // Create notification for new message
+    const Notification = require('../models/Notification');
+    const sender = await User.findById(senderId);
+    if (sender) {
+      const messagePreview = messageContent ? (messageContent.length > 50 ? messageContent.substring(0, 50) + '...' : messageContent) : (mediaUrls.length > 0 ? 'sent you a photo' : 'sent you a message');
+      const notification = new Notification({
+        recipient: recipientId,
+        actor: senderId,
+        type: 'message',
+        content: `${sender.firstName || sender.name} sent you a message: ${messagePreview}`,
+        relatedMessage: message._id
+      });
+      await notification.save();
+    }
+    
+    // Emit Socket.io event for real-time delivery
+    if (io) {
+      io.to(recipientId).emit('new-message', {
+        message,
+        conversationId
+      });
+      io.to(recipientId).emit('new-notification', {
+        type: 'message',
+        message: `${sender.firstName || sender.name} sent you a message`,
+        messageId: message._id
+      });
+    }
+    
+    console.log('✅ Message sent:', message._id);
+    res.status(201).json({ message });
+  } catch (error) {
+    console.error('❌ Error sending message:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error while sending message',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

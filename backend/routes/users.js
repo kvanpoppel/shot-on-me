@@ -3,6 +3,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+const { getUserStatus, updateUserActivity } = require('../utils/activityTracker');
 
 const router = express.Router();
 
@@ -248,7 +249,9 @@ router.put('/me', auth, async (req, res) => {
 // Get current user (me) - must come after /me/profile-picture and PUT /me
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user.userId)
+      .select('-password');
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -539,6 +542,39 @@ router.delete('/friends/:userId', auth, async (req, res) => {
     res.json({ message: 'Friend removed successfully' });
   } catch (error) {
     console.error('Error removing friend:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user status (online/away/offline)
+router.get('/:userId/status', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const status = await getUserStatus(userId);
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting user status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get multiple users' statuses
+router.post('/status/batch', auth, async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds)) {
+      return res.status(400).json({ message: 'userIds must be an array' });
+    }
+
+    const statuses = {};
+    for (const userId of userIds) {
+      const status = await getUserStatus(userId);
+      statuses[userId] = status;
+    }
+
+    res.json({ statuses });
+  } catch (error) {
+    console.error('Error getting batch statuses:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

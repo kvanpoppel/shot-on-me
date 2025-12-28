@@ -7,6 +7,12 @@ const notificationsRouter = require('./notifications');
 
 const router = express.Router();
 
+// Get Socket.io instance (will be set by server.js)
+let io = null;
+router.setIO = (socketIO) => {
+  io = socketIO;
+};
+
 // Configure Cloudinary
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
   cloudinary.config({
@@ -26,12 +32,23 @@ const upload = multer({
   }
 });
 
-// Get feed posts
+// Get feed posts - show posts from friends and user's own posts
 router.get('/', auth, async (req, res) => {
   try {
-    const posts = await FeedPost.find()
+    const User = require('../models/User');
+    const currentUser = await User.findById(req.user.userId).select('friends');
+    
+    // Build query: show posts from friends OR user's own posts
+    // If user has no friends, show all posts (for discovery)
+    const friendIds = currentUser?.friends || [];
+    const query = friendIds.length > 0 
+      ? { author: { $in: [...friendIds, req.user.userId] } }
+      : {}; // Show all posts if no friends (for new users)
+    
+    const posts = await FeedPost.find(query)
       .populate('author', 'name firstName lastName profilePicture')
       .populate('comments.user', 'name firstName lastName profilePicture')
+      .populate('comments.reactions.user', 'name firstName lastName profilePicture')
       .populate('likes.user', 'name firstName lastName profilePicture')
       .populate('reactions.user', 'name firstName lastName profilePicture')
       .sort({ createdAt: -1 })
@@ -48,9 +65,10 @@ router.get('/', auth, async (req, res) => {
         author.lastName = nameParts.slice(1).join(' ') || '';
       }
       
-      // Transform comments
+      // Transform comments and organize replies
       if (postObj.comments) {
-        postObj.comments = postObj.comments.map((comment) => {
+        // First, transform all comments
+        const transformedComments = postObj.comments.map((comment) => {
           if (comment.user && comment.user.name && !comment.user.firstName) {
             const nameParts = comment.user.name.split(' ');
             comment.user.firstName = nameParts[0] || '';
@@ -58,11 +76,25 @@ router.get('/', auth, async (req, res) => {
           }
           return comment;
         });
+        
+        // Organize comments with replies
+        const topLevelComments = transformedComments.filter(c => !c.replyTo);
+        const commentsWithReplies = topLevelComments.map(comment => {
+          const replies = transformedComments.filter(c => 
+            c.replyTo && (c.replyTo.toString() === comment._id.toString() || c.replyTo._id?.toString() === comment._id.toString())
+          );
+          return {
+            ...comment,
+            replies: replies
+          };
+        });
+        
+        postObj.comments = commentsWithReplies;
       }
       
-      // Calculate reaction counts by emoji
+      // Calculate reaction counts by emoji and track all user reactions
       const reactionCounts = {};
-      let userReaction = null;
+      const userReactions = []; // Array to support multiple reactions per user
       if (postObj.reactions) {
         postObj.reactions.forEach((reaction) => {
           if (!reactionCounts[reaction.emoji]) {
@@ -71,9 +103,11 @@ router.get('/', auth, async (req, res) => {
           reactionCounts[reaction.emoji].count++;
           reactionCounts[reaction.emoji].users.push(reaction.user);
           
-          // Check if current user reacted
+          // Track all reactions from current user (support multiple reactions)
           if (reaction.user && (reaction.user._id?.toString() === req.user.userId || reaction.user.toString() === req.user.userId)) {
-            userReaction = reaction.emoji;
+            if (!userReactions.includes(reaction.emoji)) {
+              userReactions.push(reaction.emoji);
+            }
           }
         });
       }
@@ -85,8 +119,11 @@ router.get('/', auth, async (req, res) => {
             reactionCounts['❤️'] = { count: 0, users: [] };
           }
           reactionCounts['❤️'].count++;
+          reactionCounts['❤️'].users.push(like.user);
           if (like.user && (like.user._id?.toString() === req.user.userId || like.user.toString() === req.user.userId)) {
-            userReaction = '❤️';
+            if (!userReactions.includes('❤️')) {
+              userReactions.push('❤️');
+            }
           }
         });
       }
@@ -95,7 +132,8 @@ router.get('/', auth, async (req, res) => {
         ...postObj, 
         author,
         reactionCounts,
-        userReaction,
+        userReactions, // Array of all emojis user has reacted with
+        userReaction: userReactions.length > 0 ? userReactions[0] : null, // First reaction for backward compatibility
         totalReactions: Object.values(reactionCounts).reduce((sum, r) => sum + r.count, 0)
       };
     });
@@ -114,7 +152,7 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
     console.log('Files received:', req.files ? req.files.length : 0);
     console.log('Content:', req.body.content);
     
-    const { content, location } = req.body;
+    const { content, location, venueId, checkIn } = req.body;
     const mediaUrls = [];
 
     // Upload media files to Cloudinary if present
@@ -164,21 +202,50 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
       console.log(`✅ Successfully uploaded ${mediaUrls.length} file(s)`);
     }
 
+    // Handle check-in location
+    let postLocation = location ? (typeof location === 'string' ? JSON.parse(location) : location) : null;
+    let checkInData = null;
+    
+    if (checkIn && venueId) {
+      const Venue = require('../models/Venue');
+      const venue = await Venue.findById(venueId);
+      if (venue) {
+        checkInData = {
+          venue: venue._id,
+          checkedInAt: new Date()
+        };
+        if (!postLocation) {
+          postLocation = {
+            venue: {
+              _id: venue._id,
+              name: venue.name
+            }
+          };
+        }
+      }
+    }
+
     const newPost = new FeedPost({
       author: req.user.userId,
       content: content || '',
       media: mediaUrls,
-      location: location ? (typeof location === 'string' ? JSON.parse(location) : location) : null
+      location: postLocation,
+      checkIn: checkInData
     });
 
     await newPost.save();
     await newPost.populate('author', 'name firstName lastName profilePicture');
     
-    // Notify all friends when user posts
+    // Update user stats (async, don't wait)
+    const { updateUserStats, awardPoints } = require('../utils/gamification');
+    updateUserStats(req.user.userId, { postsCount: 1 }).catch(err => console.error('Gamification error:', err));
+    awardPoints(req.user.userId, 5, 'post_created').catch(err => console.error('Gamification error:', err));
+    
+      // Notify all friends when user posts
     const author = await require('../models/User').findById(req.user.userId);
     if (author && author.friends && author.friends.length > 0) {
       const Notification = require('../models/Notification');
-      const io = req.app.get('io');
+      const socketIO = io || req.app.get('io');
       
       const postPreview = content ? (content.length > 50 ? content.substring(0, 50) + '...' : content) : 'a new post';
       
@@ -194,8 +261,8 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
         await notification.save();
         
         // Emit real-time notification
-        if (io) {
-          io.to(friendId.toString()).emit('new-notification', {
+        if (socketIO) {
+          socketIO.to(friendId.toString()).emit('new-notification', {
             type: 'friend_post',
             message: notification.content,
             postId: newPost._id
@@ -207,10 +274,73 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
       console.log(`📬 Notified ${author.friends.length} friends about new post`);
     }
     
+    // Auto-create story for check-in posts
+    if (checkIn && venueId) {
+      try {
+        const Story = require('../models/Story');
+        const cloudinary = require('cloudinary').v2;
+        const Venue = require('../models/Venue');
+        const venue = await Venue.findById(venueId);
+        
+        if (venue && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+          cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET
+          });
+
+          // Use first media from post if available, otherwise use venue image or default
+          let storyMediaUrl = mediaUrls.length > 0 ? mediaUrls[0].url : (venue.image || venue.images?.[0]);
+          let storyPublicId = `shot-on-me/stories/checkin_${newPost._id}`;
+          let mediaType = mediaUrls.length > 0 ? mediaUrls[0].type : 'image';
+
+          // If no media, create or use default check-in image
+          if (!storyMediaUrl) {
+            // Use a simple placeholder or create default image
+            storyMediaUrl = `https://via.placeholder.com/1080x1920/1a1a2e/FFD700?text=${encodeURIComponent(venue.name + ' Check-In')}`;
+          } else if (!storyMediaUrl.includes('cloudinary.com') && !storyMediaUrl.includes('res.cloudinary.com')) {
+            // Upload to Cloudinary if not already there
+            try {
+              const uploadResult = await cloudinary.uploader.upload(storyMediaUrl, {
+                folder: 'shot-on-me/stories',
+                public_id: storyPublicId,
+                resource_type: mediaType
+              });
+              storyMediaUrl = uploadResult.secure_url;
+              storyPublicId = uploadResult.public_id;
+            } catch (uploadError) {
+              console.warn('⚠️ Could not upload story media, using original URL:', uploadError);
+            }
+          }
+
+          // Create story with 24-hour expiration
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+
+          const story = new Story({
+            author: req.user.userId,
+            media: {
+              url: storyMediaUrl,
+              type: mediaType,
+              publicId: storyPublicId
+            },
+            caption: content || `Checked in at ${venue.name} 🍻`,
+            expiresAt: expiresAt
+          });
+
+          await story.save();
+          console.log(`✅ Auto-created story for check-in at ${venue.name}`);
+        }
+      } catch (storyError) {
+        // Don't fail post creation if story creation fails
+        console.error('⚠️ Failed to auto-create story for check-in:', storyError);
+      }
+    }
+
     // Emit new post to all connected clients
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('new-post', { post: newPost });
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('new-post', { post: newPost });
     }
     
     console.log('✅ Post created successfully:', newPost._id);
@@ -275,6 +405,27 @@ router.post('/:postId/like', auth, async (req, res) => {
     await post.populate('author', 'name firstName lastName profilePicture');
     await post.populate('reactions.user', 'name firstName lastName profilePicture');
     
+    // Emit real-time update to all connected clients
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      // Group reactions by emoji for frontend
+      const reactionCounts = {};
+      post.reactions.forEach(r => {
+        if (!reactionCounts[r.emoji]) {
+          reactionCounts[r.emoji] = { count: 0, users: [] };
+        }
+        reactionCounts[r.emoji].count++;
+        reactionCounts[r.emoji].users.push(r.user);
+      });
+      
+      socketIO.emit('post-reaction-updated', {
+        postId: post._id,
+        reactionCounts,
+        userReaction: existingReaction ? null : '❤️',
+        totalReactions: post.reactions.length
+      });
+    }
+    
     res.json({ 
       message: existingReaction ? 'Post unliked' : 'Post liked',
       post 
@@ -285,7 +436,7 @@ router.post('/:postId/like', auth, async (req, res) => {
   }
 });
 
-// Add/remove emoji reaction to a post
+// Add/remove emoji reaction to a post (using atomic operation to prevent race conditions)
 router.post('/:postId/reaction', auth, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -296,36 +447,41 @@ router.post('/:postId/reaction', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid emoji reaction' });
     }
 
-    const post = await FeedPost.findById(postId);
-    
-    if (!post) {
+    // Check if post exists and get current reaction state
+    const postCheck = await FeedPost.findById(postId);
+    if (!postCheck) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    // Check if user already reacted with this emoji
-    const existingReaction = post.reactions.find(
+    // Check if user already reacted with this emoji (for toggle behavior)
+    const existingReaction = postCheck.reactions.find(
       r => r.user.toString() === req.user.userId && r.emoji === emoji
     );
 
+    // Use atomic operation to prevent race conditions
+    // Allow multiple reactions from same user - only toggle if same emoji
+    let post;
     if (existingReaction) {
-      // Remove reaction (toggle off)
-      post.reactions = post.reactions.filter(
-        r => !(r.user.toString() === req.user.userId && r.emoji === emoji)
+      // Remove this specific reaction (toggle off) - atomic operation
+      post = await FeedPost.findByIdAndUpdate(
+        postId,
+        { $pull: { reactions: { user: req.user.userId, emoji: emoji } } },
+        { new: true }
       );
     } else {
-      // Remove any existing reaction from this user (one reaction per user)
-      post.reactions = post.reactions.filter(
-        r => r.user.toString() !== req.user.userId
+      // Add new reaction - allow multiple reactions from same user - atomic operation
+      post = await FeedPost.findByIdAndUpdate(
+        postId,
+        { 
+          $push: { reactions: { user: req.user.userId, emoji: emoji, createdAt: new Date() } }
+        },
+        { new: true }
       );
-      // Add new reaction
-      post.reactions.push({
-        user: req.user.userId,
-        emoji: emoji,
-        createdAt: new Date()
-      });
     }
 
-    await post.save();
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
     await post.populate('reactions.user', 'name firstName lastName profilePicture');
     await post.populate('author', 'name firstName lastName');
     
@@ -344,9 +500,9 @@ router.post('/:postId/reaction', auth, async (req, res) => {
         await notification.save();
         
         // Emit real-time notification
-        const io = req.app.get('io');
-        if (io) {
-          io.to(post.author._id.toString()).emit('new-notification', {
+        const socketIO = io || req.app.get('io');
+        if (socketIO) {
+          socketIO.to(post.author._id.toString()).emit('new-notification', {
             type: 'reaction',
             message: notification.content,
             postId: post._id
@@ -355,20 +511,41 @@ router.post('/:postId/reaction', auth, async (req, res) => {
       }
     }
     
-    // Group reactions by emoji
+    // Group reactions by emoji and track all user reactions
     const reactionCounts = {};
+    const userReactions = [];
     post.reactions.forEach(r => {
       if (!reactionCounts[r.emoji]) {
         reactionCounts[r.emoji] = { count: 0, users: [] };
       }
       reactionCounts[r.emoji].count++;
       reactionCounts[r.emoji].users.push(r.user);
+      
+      // Track all reactions from current user
+      if (r.user && (r.user._id?.toString() === req.user.userId || r.user.toString() === req.user.userId)) {
+        if (!userReactions.includes(r.emoji)) {
+          userReactions.push(r.emoji);
+        }
+      }
     });
+
+    // Emit real-time update to all connected clients
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('post-reaction-updated', {
+        postId: post._id,
+        reactionCounts,
+        userReactions, // Array of all user reactions
+        userReaction: userReactions.length > 0 ? userReactions[0] : null, // First for backward compatibility
+        totalReactions: post.reactions.length
+      });
+    }
 
     res.json({ 
       message: existingReaction ? 'Reaction removed' : 'Reaction added',
       reactionCounts,
-      userReaction: existingReaction ? null : emoji,
+      userReactions, // Return all user reactions
+      userReaction: userReactions.length > 0 ? userReactions[0] : null, // First for backward compatibility
       post 
     });
   } catch (error) {
@@ -377,11 +554,11 @@ router.post('/:postId/reaction', auth, async (req, res) => {
   }
 });
 
-// Comment on a post
+// Comment on a post (supports nested replies)
 router.post('/:postId/comment', auth, async (req, res) => {
   try {
     const { postId } = req.params;
-    const { content } = req.body;
+    const { content, replyTo } = req.body;
     
     if (!content || !content.trim()) {
       return res.status(400).json({ message: 'Comment content is required' });
@@ -393,19 +570,39 @@ router.post('/:postId/comment', auth, async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    // Add comment
+    // Validate replyTo if provided
+    if (replyTo) {
+      const parentComment = post.comments.id(replyTo);
+      if (!parentComment) {
+        return res.status(404).json({ message: 'Parent comment not found' });
+      }
+    }
+
+    // Add comment (with optional replyTo)
     post.comments.push({
       user: req.user.userId,
       content: content.trim(),
+      replyTo: replyTo || null,
       createdAt: new Date()
     });
 
     await post.save();
     await post.populate('author', 'name firstName lastName profilePicture');
     await post.populate('comments.user', 'name firstName lastName profilePicture');
+    await post.populate('comments.reactions.user', 'name firstName lastName profilePicture');
     
     // Get the last comment (the one we just added)
     const newComment = post.comments[post.comments.length - 1];
+    
+    // Emit real-time update to all connected clients
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('post-comment-added', {
+        postId: post._id,
+        comment: newComment,
+        totalComments: post.comments.length
+      });
+    }
     
     // Create notification if commenting on someone else's post
     if (post.author._id.toString() !== req.user.userId.toString()) {
@@ -423,9 +620,9 @@ router.post('/:postId/comment', auth, async (req, res) => {
         await notification.save();
         
         // Emit real-time notification
-        const io = req.app.get('io');
-        if (io) {
-          io.to(post.author._id.toString()).emit('new-notification', {
+        const socketIO = io || req.app.get('io');
+        if (socketIO) {
+          socketIO.to(post.author._id.toString()).emit('new-notification', {
             type: 'comment',
             message: notification.content,
             postId: post._id
@@ -447,7 +644,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
     
     if (commenterIds.size > 0) {
       const actor = await require('../models/User').findById(req.user.userId);
-      const io = req.app.get('io');
+      const socketIO = io || req.app.get('io');
       
       const notificationPromises = Array.from(commenterIds).map(async (commenterId) => {
         const notification = new Notification({
@@ -459,8 +656,8 @@ router.post('/:postId/comment', auth, async (req, res) => {
         });
         await notification.save();
         
-        if (io) {
-          io.to(commenterId).emit('new-notification', {
+        if (socketIO) {
+          socketIO.to(commenterId).emit('new-notification', {
             type: 'comment_reply',
             message: notification.content,
             postId: post._id
@@ -478,6 +675,107 @@ router.post('/:postId/comment', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding comment:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// React to a comment (like/laugh) - using atomic operation to prevent race conditions
+router.post('/:postId/comment/:commentId/reaction', auth, async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const { emoji = '❤️' } = req.body;
+    
+    const validEmojis = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'];
+    if (!validEmojis.includes(emoji)) {
+      return res.status(400).json({ message: 'Invalid emoji. Allowed: ❤️ 👍 😂 😮 😢 🔥 👏 🎉' });
+    }
+
+    // Check if post and comment exist
+    const postCheck = await FeedPost.findById(postId);
+    if (!postCheck) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const comment = postCheck.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    // Check if user already reacted with this emoji
+    const existingReaction = comment.reactions.find(
+      r => r.user.toString() === req.user.userId && r.emoji === emoji
+    );
+
+    // Use atomic operation with arrayFilters for nested array updates
+    let post;
+    if (existingReaction) {
+      // Remove reaction (toggle off) - atomic operation
+      post = await FeedPost.findByIdAndUpdate(
+        postId,
+        { $pull: { 'comments.$[comment].reactions': { user: req.user.userId, emoji: emoji } } },
+        { 
+          new: true,
+          arrayFilters: [{ 'comment._id': commentId }]
+        }
+      );
+    } else {
+      // Remove any existing reaction from this user, then add new one - atomic operation
+      post = await FeedPost.findByIdAndUpdate(
+        postId,
+        { 
+          $pull: { 'comments.$[comment].reactions': { user: req.user.userId } },
+          $push: { 'comments.$[comment].reactions': { user: req.user.userId, emoji: emoji, createdAt: new Date() } }
+        },
+        { 
+          new: true,
+          arrayFilters: [{ 'comment._id': commentId }]
+        }
+      );
+    }
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    await post.populate('comments.reactions.user', 'name firstName lastName profilePicture');
+    await post.populate('comments.user', 'name firstName lastName profilePicture');
+    
+    // Get the updated comment
+    const updatedComment = post.comments.id(commentId);
+    
+    // Calculate reaction counts
+    const reactionCounts = {};
+    updatedComment.reactions.forEach(r => {
+      if (!reactionCounts[r.emoji]) {
+        reactionCounts[r.emoji] = 0;
+      }
+      reactionCounts[r.emoji]++;
+    });
+
+    // Check if current user reacted
+    const userReaction = updatedComment.reactions.find(
+      r => r.user.toString() === req.user.userId
+    )?.emoji || null;
+
+    // Emit real-time update to all connected clients
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('comment-reaction-updated', {
+        postId: post._id,
+        commentId: commentId,
+        reactionCounts,
+        userReaction,
+        comment: updatedComment
+      });
+    }
+
+    res.json({ 
+      message: existingReaction ? 'Reaction removed' : 'Reaction added',
+      reactionCounts,
+      userReaction,
+      comment: updatedComment
+    });
+  } catch (error) {
+    console.error('Error reacting to comment:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
