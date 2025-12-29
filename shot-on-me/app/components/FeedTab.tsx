@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Filter, RefreshCw, Flame, Compass, UserCheck, Eye } from 'lucide-react'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
 import StoryEditor from './StoryEditor'
+import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
 
 import { useApiUrl } from '../utils/api'
@@ -125,6 +126,17 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const storyProgressRef = useRef<NodeJS.Timeout | null>(null)
   const [storyProgress, setStoryProgress] = useState(0)
   const feedContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Feed enhancement states
+  const [feedFilter, setFeedFilter] = useState<'following' | 'trending' | 'nearby' | 'foryou' | 'discover'>('following')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [pullToRefresh, setPullToRefresh] = useState(false)
+  const [pullStartY, setPullStartY] = useState(0)
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
+  const [postViews, setPostViews] = useState<Map<string, number>>(new Map())
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
 
   // Scroll restoration - remember scroll position when switching tabs
   useEffect(() => {
@@ -145,6 +157,22 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   useEffect(() => {
     const handleScroll = () => {
       sessionStorage.setItem('feed-scroll-position', window.scrollY.toString())
+      
+      // Infinite scroll - load more when near bottom
+      if (!loadingMore && hasMore && feedContainerRef.current) {
+        const scrollHeight = document.documentElement.scrollHeight
+        const scrollTop = window.innerHeight + window.scrollY
+        const threshold = 500 // Load when 500px from bottom
+        
+        if (scrollTop >= scrollHeight - threshold) {
+          setLoadingMore(true)
+          setPage(prev => {
+            const nextPage = prev + 1
+            fetchFeed(nextPage, feedFilter)
+            return nextPage
+          })
+        }
+      }
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -155,10 +183,12 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     if (token) {
       // Fetch critical data first, then non-critical data
       // Show UI immediately - don't block on all data
-      setLoading(false)
+      setLoading(true)
+      setPage(1)
+      setHasMore(true)
       
       // Fetch feed first (most important)
-      fetchFeed().then(() => {
+      fetchFeed(1, feedFilter).then(() => {
         // After feed loads, fetch friend activity from feed data (no separate API call needed)
         fetchFriendActivity()
       })
@@ -172,7 +202,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         console.error('Error fetching feed data:', error)
       })
     }
-  }, [token])
+  }, [token, feedFilter])
 
   // Real-time updates with granular Socket.io events for optimal performance
   useEffect(() => {
@@ -306,20 +336,41 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     }
   }, [socket])
 
-  const fetchFeed = async () => {
+  const fetchFeed = async (pageNum: number = 1, filter?: string) => {
     if (!token) return
     try {
+      const currentFilter = filter || feedFilter
+      const params: any = { page: pageNum, limit: 10 }
+      
+      // Add filter parameter
+      if (currentFilter !== 'following') {
+        params.filter = currentFilter
+      }
+      
       const response = await axios.get(`${API_URL}/feed`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 second timeout
+        params,
+        timeout: 10000
       })
-      setPosts(response.data.posts || [])
+      
+      const newPosts = response.data.posts || []
+      
+      if (pageNum === 1) {
+        setPosts(newPosts)
+      } else {
+        setPosts(prev => [...prev, ...newPosts])
+      }
+      
+      setHasMore(newPosts.length === 10) // If we got 10 posts, there might be more
     } catch (error: any) {
       console.error('Failed to fetch feed:', error)
-      // Don't block UI - show empty state instead
-      setPosts([])
+      if (pageNum === 1) {
+        setPosts([])
+      }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
+      setPullToRefresh(false)
     }
   }
 
@@ -1235,18 +1286,37 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         onViewProfile={onViewProfile}
       />
 
-      {/* Simplified Header */}
-      <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm">
+      {/* Enhanced Header with Filters */}
+      <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm sticky top-16 z-30">
         <div className="p-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-3">
             <h1 className="text-xl font-semibold text-primary-500 tracking-tight">Feed</h1>
             <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  setPage(1)
+                  setHasMore(true)
+                  setLoading(true)
+                  fetchFeed(1, feedFilter)
+                }}
+                disabled={loading || pullToRefresh}
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className={`bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center ${showFilterMenu ? 'bg-primary-500/20' : ''}`}
+              >
+                <Filter className="w-4 h-4 mr-1.5" />
+                <span className="text-sm hidden sm:inline">Filter</span>
+              </button>
               <button
                 onClick={() => setShowFriendInvite(true)}
                 className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center"
               >
                 <UserPlus className="w-4 h-4 mr-1.5" />
-                <span className="text-sm">Invite</span>
+                <span className="text-sm hidden sm:inline">Invite</span>
               </button>
               <button
                 onClick={() => setShowPostForm(!showPostForm)}
@@ -1255,6 +1325,35 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                 Post
               </button>
             </div>
+          </div>
+          
+          {/* Filter Tabs */}
+          <div className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2">
+            {[
+              { id: 'following', label: 'Following', icon: UserCheck },
+              { id: 'trending', label: 'Trending', icon: Flame },
+              { id: 'nearby', label: 'Nearby', icon: Compass },
+              { id: 'foryou', label: 'For You', icon: Sparkles },
+              { id: 'discover', label: 'Discover', icon: Eye }
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setFeedFilter(id as any)
+                  setPage(1)
+                  setHasMore(true)
+                  setLoading(true)
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
+                  feedFilter === id
+                    ? 'bg-primary-500 text-black'
+                    : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -1375,7 +1474,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-black border-2 border-primary-500 rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-primary-500">Invite Friends</h2>
+              <BackButton onClick={() => setShowFriendInvite(false)} label="Back" />
+              <h2 className="text-xl font-bold text-primary-500 flex-1 text-center">Invite Friends</h2>
               <button
                 onClick={() => setShowFriendInvite(false)}
                 className="text-primary-400 hover:text-primary-500"

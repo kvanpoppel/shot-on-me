@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { MapPin, Users, Navigation, X, User } from 'lucide-react'
+import BackButton from './BackButton'
 import GoogleMapComponent from './GoogleMap'
 import StatusIndicator from './StatusIndicator'
 
@@ -309,6 +310,16 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
       {selectedFriend && (
         <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-black border-2 border-primary-500 rounded-lg p-6 max-w-sm w-full">
+            <div className="flex items-center justify-between mb-4">
+              <BackButton onClick={() => setSelectedFriend(null)} />
+              <h3 className="text-xl font-bold text-primary-500 flex-1 text-center">Friend Details</h3>
+              <button
+                onClick={() => setSelectedFriend(null)}
+                className="text-primary-400 hover:text-primary-500"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-16 h-16 border-2 border-primary-500 rounded-full overflow-hidden">
                 {selectedFriend.profilePicture ? (
