@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { UserPlus, Trash2, Shield, User, Crown, X } from 'lucide-react'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../utils/api'
 
 interface StaffMember {
   _id: string
@@ -43,31 +42,53 @@ export default function StaffManager() {
     setLoading(true)
     try {
       // Get user's venues
-      const venuesResponse = await axios.get(`${API_URL}/venues`, {
+      const apiUrl = getApiUrl()
+      const venuesResponse = await axios.get(`${apiUrl}/venues`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const venues = venuesResponse.data.venues || []
+      
+      // Handle both response formats: { venues: [...] } or direct array
+      let venues: any[] = []
+      if (Array.isArray(venuesResponse.data)) {
+        venues = venuesResponse.data
+      } else if (venuesResponse.data?.venues) {
+        venues = venuesResponse.data.venues
+      }
       
       // Find venue owned by current user or where user is staff
+      // Improved venue matching: handle both populated owner object and owner ID string
       const myVenue = venues.find((v: any) => {
-        const isOwner = v.owner?._id === user.id || v.owner === user.id
-        const isStaff = v.staff?.some((s: any) => s.user?._id === user.id || s.user === user.id)
+        const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
+        const userId = user.id?.toString()
+        const isOwner = ownerId === userId
+        
+        // Check if user is staff
+        const isStaff = v.staff?.some((s: any) => {
+          const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
+          return staffUserId === userId
+        })
+        
         return isOwner || isStaff
       })
 
       if (myVenue) {
-        setVenueId(myVenue._id)
+        setVenueId(myVenue._id?.toString() || myVenue._id)
         
         // Determine user's role
-        if (myVenue.owner?._id === user.id || myVenue.owner === user.id) {
+        const ownerId = myVenue.owner?._id?.toString() || myVenue.owner?.toString() || myVenue.owner
+        const userId = user.id?.toString()
+        if (ownerId === userId) {
           setUserRole('owner')
         } else {
-          const staffMember = myVenue.staff?.find((s: any) => s.user?._id === user.id || s.user === user.id)
+          const staffMember = myVenue.staff?.find((s: any) => {
+            const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
+            return staffUserId === userId
+          })
           setUserRole(staffMember?.role || 'staff')
         }
 
         // Fetch staff list
-        const staffResponse = await axios.get(`${API_URL}/venues/${myVenue._id}/staff`, {
+        const staffResponse = await axios.get(`${getApiUrl()}/venues/${myVenue._id}/staff`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         setStaff(staffResponse.data.staff || [])
@@ -86,7 +107,7 @@ export default function StaffManager() {
     setAdding(true)
     try {
       await axios.post(
-        `${API_URL}/venues/${venueId}/staff`,
+        `${getApiUrl()}/venues/${venueId}/staff`,
         { email, role },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -109,7 +130,7 @@ export default function StaffManager() {
 
     try {
       await axios.delete(
-        `${API_URL}/venues/${venueId}/staff/${staffId}`,
+        `${getApiUrl()}/venues/${venueId}/staff/${staffId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       fetchVenueAndStaff()
@@ -125,7 +146,7 @@ export default function StaffManager() {
 
     try {
       await axios.put(
-        `${API_URL}/venues/${venueId}/staff/${staffId}`,
+        `${getApiUrl()}/venues/${venueId}/staff/${staffId}`,
         { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       )

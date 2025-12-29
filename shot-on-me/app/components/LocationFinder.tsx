@@ -6,6 +6,7 @@ import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { MapPin, Users, Navigation, X, User } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
+import StatusIndicator from './StatusIndicator'
 
 import { useApiUrl } from '../utils/api'
 
@@ -55,7 +56,13 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
   }, [socket, isOpen])
 
   const getCurrentLocation = () => {
-    if (navigator.geolocation) {
+    // Check if geolocation is available
+    if (!('geolocation' in navigator)) {
+      console.warn('Geolocation is not available in this browser')
+      return
+    }
+
+    try {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const loc = {
@@ -66,19 +73,31 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
           updateLocation(loc.lat, loc.lng)
         },
         (error) => {
-          console.error('Geolocation error:', error)
+          // Handle errors gracefully - don't block app
+          console.warn('Geolocation error:', error.message || error)
+          
+          // Provide user-friendly error messages
           if (error.code === error.PERMISSION_DENIED) {
-            alert('Location permission denied. Please enable location access in Settings → App Permissions to see friends on the map.')
+            console.warn('Location permission denied by user')
+            // Don't show alert - just log and continue
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            console.warn('Location information unavailable')
+          } else if (error.code === error.TIMEOUT) {
+            console.warn('Location request timed out')
           }
+          
+          // Fallback: continue without location (don't block app)
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          timeout: 5000, // Reduced from 10000 to 5000ms
+          maximumAge: 60000 // Accept cached location up to 1 minute old
         }
       )
-    } else {
-      alert('Geolocation is not supported by your browser.')
+    } catch (error) {
+      // Catch any unexpected errors (e.g., tracking prevention)
+      console.warn('Geolocation request failed:', error)
+      // Continue without location - don't block app
     }
   }
 
@@ -258,9 +277,12 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-primary-500 font-semibold text-sm truncate">
-                        {friend.firstName} {friend.lastName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-primary-500 font-semibold text-sm truncate">
+                          {friend.firstName} {friend.lastName}
+                        </p>
+                        <StatusIndicator userId={friend._id} size="sm" />
+                      </div>
                       {distance && (
                         <p className="text-primary-400 text-xs">{distance} miles away</p>
                       )}

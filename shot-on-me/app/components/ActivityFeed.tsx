@@ -145,6 +145,8 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
         return <UserPlus className="w-5 h-5 text-green-500" />
       case 'friend_post':
         return <Camera className="w-5 h-5 text-primary-500" />
+      case 'check_in':
+        return <MapPin className="w-5 h-5 text-purple-500" />
       case 'message':
       case 'group_message':
         return <MessageCircle className="w-5 h-5 text-cyan-500" />

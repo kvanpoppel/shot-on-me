@@ -66,6 +66,15 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  status: {
+    type: String,
+    enum: ['online', 'away', 'offline'],
+    default: 'offline'
+  },
   points: {
     type: Number,
     default: 0,
@@ -88,6 +97,17 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue'
   }],
+  followedVenues: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Venue'
+  }],
+  notificationPreferences: {
+    pushEnabled: { type: Boolean, default: true },
+    promotionNotifications: { type: Boolean, default: true },
+    venueUpdates: { type: Boolean, default: true },
+    friendActivity: { type: Boolean, default: true },
+    paymentNotifications: { type: Boolean, default: true }
+  },
   favoritePosts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'FeedPost'
@@ -103,7 +123,80 @@ const userSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Venue'
     }
-  }]
+  }],
+  // Enhanced gamification fields
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  totalSent: {
+    type: Number,
+    default: 0
+  },
+  totalReceived: {
+    type: Number,
+    default: 0
+  },
+  totalCheckIns: {
+    type: Number,
+    default: 0
+  },
+  loginStreak: {
+    current: {
+      type: Number,
+      default: 0
+    },
+    longest: {
+      type: Number,
+      default: 0
+    },
+    lastLoginDate: {
+      type: Date
+    }
+  },
+  stats: {
+    postsCount: { type: Number, default: 0 },
+    friendsCount: { type: Number, default: 0 },
+    venuesVisited: { type: Number, default: 0 },
+    referralsCount: { type: Number, default: 0 }
+  },
+  // Stripe integration
+  stripeCustomerId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  defaultPaymentMethodId: {
+    type: String,
+    default: null
+  },
+  // User tracking for personalized promotions
+  venueInteractions: {
+    type: Map,
+    of: {
+      venueId: mongoose.Schema.Types.ObjectId,
+      firstInteraction: Date,
+      lastInteraction: Date,
+      interactions: [{
+        type: String, // 'view', 'click', 'checkin', 'redemption', 'share'
+        timestamp: Date,
+        metadata: mongoose.Schema.Types.Mixed
+      }],
+      preferences: {
+        favoritePromotionTypes: [{
+          type: String,
+          count: Number
+        }],
+        preferredTimeframes: [{
+          timeframe: String,
+          count: Number
+        }],
+        visitFrequency: { type: Number, default: 0 }
+      }
+    },
+    default: {}
+  }
 }, {
   timestamps: true
 });

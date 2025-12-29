@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../utils/api'
 
 interface StripeStatus {
   connected: boolean
@@ -36,7 +35,8 @@ export default function StripeStatusIndicator() {
     }
 
     try {
-      const response = await axios.get(`${API_URL}/venues/connect/status`, {
+      const apiUrl = getApiUrl()
+      const response = await axios.get(`${apiUrl}/venues/connect/status`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setStatus(response.data)
@@ -69,27 +69,36 @@ export default function StripeStatusIndicator() {
   // Show warning if not connected
   if (!status || !status.connected) {
     return (
-      <div className="inline-flex items-center bg-primary-500/5 border border-primary-500/20 rounded px-2.5 py-1.5 mb-2 backdrop-blur-sm">
-        <span className="text-xs mr-1.5">⚠️</span>
-        <span className="text-primary-400/80 font-medium text-xs mr-2">Stripe Not Connected</span>
-        <button
-          onClick={handleConnectClick}
-          className="bg-primary-500 text-black px-2.5 py-1 rounded text-xs font-medium hover:bg-primary-600 transition-all"
-        >
-          Connect
-        </button>
+      <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">⚠️</span>
+            <div>
+              <p className="text-xs font-medium text-primary-400/70 uppercase tracking-wider mb-0.5">Payment Setup</p>
+              <p className="text-sm text-primary-500">Not Connected</p>
+            </div>
+          </div>
+          <button
+            onClick={handleConnectClick}
+            className="bg-primary-500 text-black px-3 py-1.5 rounded text-xs font-medium hover:bg-primary-400 transition-all"
+          >
+            Connect
+          </button>
+        </div>
       </div>
     )
   }
 
   // Show success indicator if connected
   return (
-    <div className="inline-flex items-center bg-emerald-500/5 border border-emerald-500/20 rounded px-2.5 py-1.5 mb-2 backdrop-blur-sm">
-      <span className="text-xs mr-1.5">✅</span>
-      <span className="text-emerald-400/90 font-medium text-xs">Stripe Connected</span>
-      {status.chargesEnabled && status.payoutsEnabled && (
-        <span className="text-primary-400/70 text-xs ml-1.5 font-light">• Ready</span>
-      )}
+    <div className="bg-black/40 border border-emerald-500/20 rounded-lg p-4">
+      <div className="flex items-center space-x-2">
+        <span className="text-sm">✅</span>
+        <div>
+          <p className="text-xs font-medium text-primary-400/70 uppercase tracking-wider mb-0.5">Payment Setup</p>
+          <p className="text-sm text-emerald-400">Connected</p>
+        </div>
+      </div>
     </div>
   )
 }

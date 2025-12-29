@@ -77,8 +77,8 @@ function PaymentForm({ onSuccess, onError, disabled, clientSecret }: CardElement
           console.error('❌ confirmCardSetup error:', confirmError)
           onError(confirmError.message || 'Failed to save payment method')
           setProcessing(false)
-          return
-        }
+      return
+    }
 
         if (setupIntent && setupIntent.payment_method) {
           const paymentMethodId = typeof setupIntent.payment_method === 'string' 
@@ -102,12 +102,12 @@ function PaymentForm({ onSuccess, onError, disabled, clientSecret }: CardElement
       }
 
       const paymentElement = elements.getElement('payment')
-      if (!paymentElement) {
-        onError('Payment form is still loading. Please wait a moment and try again.')
+    if (!paymentElement) {
+      onError('Payment form is still loading. Please wait a moment and try again.')
         setProcessing(false)
-        return
-      }
-      
+      return
+    }
+
       // CRITICAL: Must call elements.submit() before confirmSetup()
       console.log('📝 Calling elements.submit()...')
       const submitResult = await elements.submit()
@@ -300,11 +300,11 @@ function PaymentForm({ onSuccess, onError, disabled, clientSecret }: CardElement
             />
           </div>
         ) : (
-          <PaymentElement 
-            onReady={() => {
-              console.log('✅ PaymentElement ready')
-              setPaymentElementReady(true)
-            }}
+        <PaymentElement 
+          onReady={() => {
+            console.log('✅ PaymentElement ready')
+            setPaymentElementReady(true)
+          }}
             onChange={(event) => {
               console.log('📝 PaymentElement onChange:', {
                 complete: event.complete,
@@ -324,19 +324,19 @@ function PaymentForm({ onSuccess, onError, disabled, clientSecret }: CardElement
                 setHasInput(true)
               }
             }}
-            onLoadError={(errorEvent) => {
-              console.error('❌ PaymentElement load error:', errorEvent)
+          onLoadError={(errorEvent) => {
+            console.error('❌ PaymentElement load error:', errorEvent)
               // Fallback to simple card element
               console.log('🔄 Falling back to simple CardElement...')
               setUseSimpleCard(true)
-            }}
-            options={{
+          }}
+          options={{
               layout: 'accordion',
               fields: {
                 billingDetails: 'never'
               }
-            }}
-          />
+          }}
+        />
         )}
       </div>
       {!paymentElementReady && (

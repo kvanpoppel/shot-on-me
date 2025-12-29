@@ -1,51 +1,91 @@
-# 📱 How to Access Shot On Me on Your Mobile Device
+# 📱 Mobile Device Access Guide
 
-## ✅ **Quick Steps:**
+## Quick Setup
 
-### **Option 1: Open in Mobile Browser (Easiest)**
-1. **On your phone**, open your web browser (Chrome, Safari, etc.)
-2. **Type in the address bar:** `www.shotonme.com`
-3. **Press Enter** or **Go**
-4. **Log in** with your credentials
-5. **That's it!** The app will work in your mobile browser
+Your app is already configured for mobile access! Here's how to use it:
 
-### **Option 2: Install as PWA (App-like Experience)**
-1. **Open** `www.shotonme.com` in your mobile browser
-2. **Look for the install prompt** at the top or bottom of your screen
-3. **Tap "Add to Home Screen"** or **"Install"**
-4. **The app icon** will appear on your home screen
-5. **Tap the icon** to open the app (works like a native app!)
+### 1. Find Your Computer's IP Address
 
-### **Android (Chrome):**
-- After opening the site, tap the **menu (3 dots)** → **"Add to Home screen"**
-- Or look for a banner that says **"Add Shot On Me to Home screen"**
+Run this command in PowerShell:
+```powershell
+.\get-local-ip.ps1
+```
 
-### **iPhone (Safari):**
-- After opening the site, tap the **Share button** (square with arrow)
-- Scroll down and tap **"Add to Home Screen"**
-- Tap **"Add"** in the top right
+Or manually find it:
+- Open PowerShell
+- Run: `ipconfig`
+- Look for "IPv4 Address" under your active network adapter (usually WiFi or Ethernet)
+- It will look like: `192.168.1.100` or `10.0.0.5`
 
-## 🎯 **What Works on Mobile:**
-- ✅ Full app functionality
-- ✅ Login and authentication
-- ✅ Feed posts with photos/videos
-- ✅ Venue search and maps
-- ✅ Wallet and payments
-- ✅ Friend connections
-- ✅ Location services (works better on mobile!)
-- ✅ Camera access for photos/videos
+### 2. Make Sure Servers Are Running
 
-## 🔧 **Troubleshooting:**
-- **Can't access?** Make sure you're on the same WiFi or have mobile data
-- **Not loading?** Clear your browser cache and try again
-- **Location not working?** Make sure location permissions are enabled in your browser settings
+Both servers must be running and accessible:
 
-## 📞 **Need Help?**
-If you're having trouble accessing the app on mobile, make sure:
-1. Your phone has internet connection
-2. You're typing the correct URL: `www.shotonme.com`
-3. Your browser is up to date
+**Backend (Port 5000):**
+- Should show: `🚀 Server running on 0.0.0.0:5000`
+- Must be listening on `0.0.0.0` (not just `localhost`)
 
-**The app works perfectly on mobile browsers - no app store needed!** 🚀
+**Frontend (Port 3001):**
+- Should show: `✓ Ready` and `Local: http://0.0.0.0:3001`
+- Must be listening on `0.0.0.0` (not just `localhost`)
 
+### 3. Connect Your Mobile Device
 
+1. **Connect to the same WiFi network** as your computer
+2. **Open your mobile browser** (Chrome, Safari, etc.)
+3. **Navigate to:** `http://YOUR_IP_ADDRESS:3001`
+   - Example: `http://192.168.1.100:3001`
+
+### 4. The App Will Auto-Detect
+
+The app automatically detects when you're accessing via IP address and:
+- ✅ Connects to the backend at the same IP address
+- ✅ Uses the correct Socket.io URL
+- ✅ Works exactly like on desktop
+
+## Troubleshooting
+
+### "Can't connect" or "Connection refused"
+
+**Check Windows Firewall:**
+1. Open Windows Defender Firewall
+2. Click "Allow an app or feature through Windows Firewall"
+3. Make sure Node.js is allowed for both Private and Public networks
+4. Or temporarily disable firewall to test (not recommended for production)
+
+**Check Network:**
+- Both devices must be on the **same WiFi network**
+- Make sure your computer's WiFi isn't set to "Public" (should be "Private")
+- Try pinging your computer's IP from your phone
+
+**Check Servers:**
+- Backend must show: `Server running on 0.0.0.0:5000`
+- Frontend must show: `Local: http://0.0.0.0:3001`
+- If they show `localhost` instead, they won't be accessible from mobile
+
+### "API calls failing" or "Socket.io not connecting"
+
+The app automatically detects IP addresses and adjusts API URLs. If you see errors:
+1. Check browser console on mobile (use remote debugging)
+2. Verify the IP address is correct
+3. Make sure backend CORS allows your IP address (it should automatically)
+
+### Test Connection
+
+From your phone's browser, try:
+- `http://YOUR_IP:5000/api/health` - Should return `{"status":"ok"}`
+- `http://YOUR_IP:3001` - Should load the app
+
+## Pro Tips
+
+1. **Bookmark the IP address** on your phone for easy access
+2. **Use a static IP** on your computer to avoid changing the address
+3. **Install as PWA** - The app can be installed on your phone's home screen
+4. **Use Chrome DevTools** - Connect your phone for debugging:
+   - Chrome → `chrome://inspect`
+   - Enable "Discover USB devices"
+   - Connect phone via USB
+
+## Security Note
+
+⚠️ **Development Only**: This setup is for local development. In production, use HTTPS and proper domain names.

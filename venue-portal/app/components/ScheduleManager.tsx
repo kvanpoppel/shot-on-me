@@ -40,7 +40,12 @@ export default function ScheduleManager() {
           </div>
           <h2 className="text-base font-semibold text-primary-500 tracking-tight">Venue Info</h2>
         </div>
-        <button className="text-primary-500/80 hover:text-primary-500 font-medium text-xs transition-all">Edit</button>
+        <button 
+          onClick={() => window.location.href = '/dashboard/settings'}
+          className="text-primary-500/80 hover:text-primary-500 font-medium text-xs transition-all"
+        >
+          Edit
+        </button>
       </div>
       
       <div className="space-y-1.5 mb-2">
@@ -53,7 +58,14 @@ export default function ScheduleManager() {
           <p className="text-primary-400/80 text-xs font-light">123 Main St, Austin, TX, 78701</p>
         </div>
       </div>
-      <button className="w-full bg-black/40 border border-primary-500/20 text-primary-500 py-1.5 rounded hover:bg-primary-500/10 hover:border-primary-500/30 transition-all font-medium text-xs backdrop-blur-sm">
+      <button 
+        onClick={() => {
+          // Get venue location and open in Google Maps
+          // This would need venue data - for now, just navigate to settings
+          window.location.href = '/dashboard/settings'
+        }}
+        className="w-full bg-black/40 border border-primary-500/20 text-primary-500 py-1.5 rounded hover:bg-primary-500/10 hover:border-primary-500/30 transition-all font-medium text-xs backdrop-blur-sm"
+      >
         Open in Google Maps
       </button>
     </div>

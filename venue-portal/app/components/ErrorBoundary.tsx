@@ -1,7 +1,7 @@
 'use client'
 
-import React, { Component, ReactNode } from 'react'
-import { X, RefreshCw } from 'lucide-react'
+import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -13,7 +13,7 @@ interface State {
   error: Error | null
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export default class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -23,15 +23,8 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error)
-    console.error('Error details:', errorInfo)
-    console.error('Error stack:', error.stack)
-    console.error('Component stack:', errorInfo.componentStack)
-  }
-
-  handleReset = () => {
-    this.setState({ hasError: false, error: null })
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
   }
 
   render() {
@@ -41,19 +34,28 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4">
-          <div className="bg-black border-2 border-red-500 rounded-lg p-6 max-w-md w-full text-center">
-            <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-red-500 mb-2">Something went wrong</h2>
+        <div className="min-h-screen flex items-center justify-center bg-black p-4">
+          <div className="max-w-md w-full bg-black/60 border border-red-500/30 rounded-xl p-6 text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-primary-500 mb-2">Something went wrong</h2>
             <p className="text-primary-400 text-sm mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
+              We're sorry, but something unexpected happened. Please try refreshing the page.
             </p>
+            {this.state.error && process.env.NODE_ENV === 'development' && (
+              <details className="mt-4 text-left">
+                <summary className="text-primary-500/70 text-xs cursor-pointer mb-2">
+                  Error Details (Development Only)
+                </summary>
+                <pre className="text-xs text-red-400 bg-black/40 p-3 rounded overflow-auto">
+                  {this.state.error.toString()}
+                </pre>
+              </details>
+            )}
             <button
-              onClick={this.handleReset}
-              className="bg-primary-500 text-black px-6 py-2 rounded-lg font-semibold hover:bg-primary-600 flex items-center justify-center gap-2 mx-auto"
+              onClick={() => window.location.reload()}
+              className="mt-4 bg-primary-500 text-black px-6 py-2 rounded-lg font-semibold hover:bg-primary-600 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
-              Try Again
+              Refresh Page
             </button>
           </div>
         </div>
@@ -63,4 +65,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
-

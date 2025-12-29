@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map, ChevronDown, TrendingUp, Moon } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map, ChevronDown, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
 import { ErrorBoundary } from './ErrorBoundary'
-
+import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 import { useApiUrl } from '../utils/api'
-import { Tab } from '../types'
+import { Tab } from '@/app/types'
 
 interface MapTabProps {
   setActiveTab?: (tab: Tab) => void
@@ -21,6 +21,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()
+  const { isLoaded: mapsLoaded } = useGoogleMaps()
   const [venues, setVenues] = useState<any[]>([])
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
@@ -31,9 +32,11 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
-  const [googlePlacesResults, setGooglePlacesResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const fetchTrendingVenues = async () => {
+  const fetchTrendingVenues = useCallback(async () => {
     if (!token || !API_URL) return
     try {
       const response = await axios.get(`${API_URL}/venue-activity/trending/list?limit=10&period=24h`, {
@@ -45,10 +48,15 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       console.error('Failed to fetch trending venues:', error)
       setTrendingVenues([])
     }
-  }
+  }, [token, API_URL])
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
+  const getCurrentLocation = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      console.warn('Geolocation is not available in this browser')
+      return
+    }
+
+    try {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
@@ -57,82 +65,110 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           })
         },
         (error) => {
-          console.error('Geolocation error:', error)
+          console.warn('Geolocation error:', error.message || error)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 60000
         }
       )
+    } catch (error) {
+      console.warn('Geolocation request failed:', error)
     }
-  }
+  }, [])
 
-  const fetchVenues = async () => {
+  const fetchVenues = useCallback(async () => {
     if (!token || !API_URL) {
       console.warn('Cannot fetch venues: missing token or API_URL', { token: !!token, API_URL })
       return
     }
     try {
-      console.log('📍 Fetching venues from:', `${API_URL}/venues`)
+      setError(null)
+      console.log('🔍 Fetching venues from:', `${API_URL}/venues`)
+      console.log('🔍 User info:', { userId: user?.id || user?._id, userType: user?.userType })
+      
       const response = await axios.get(`${API_URL}/venues`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 8000 // 8 second timeout - increased for mobile networks
+        timeout: 10000
       })
-      // Backend returns array directly, not wrapped in venues property
-      const fetchedVenues = Array.isArray(response.data) ? response.data : (response.data.venues || [])
-      console.log('Fetched venues:', fetchedVenues.length)
       
-      // Deduplicate venues by name and location
-      // Normalize venue names for comparison (remove apostrophes, lowercase, trim)
+      console.log('📦 API Response:', {
+        status: response.status,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        hasVenues: !!response.data.venues,
+        venuesCount: response.data.venues?.length || (Array.isArray(response.data) ? response.data.length : 0)
+      })
+      
+      const fetchedVenues = Array.isArray(response.data) ? response.data : (response.data.venues || [])
+      console.log('📋 Fetched venues count:', fetchedVenues.length)
+      
+      // Normalize venue names for comparison
       const normalizeName = (name: string) => {
         return (name || '').toLowerCase()
-          .replace(/[''""]/g, '') // Remove all apostrophe/quote variations
-          .replace(/\s+/g, ' ') // Normalize whitespace
+          .replace(/[''""]/g, '')
+          .replace(/\s+/g, ' ')
           .trim()
       }
       
-      // Only filter out "Kate's Venue" specifically - keep all other venues including "Kate's Pub" and "Paige's Pub"
+      // Filter out "Kate's Venue" specifically
       const uniqueVenues = fetchedVenues.filter((venue: any) => {
         const normalizedName = normalizeName(venue.name)
-        
-        // ONLY filter out "Kate's Venue" - be very specific
-        // After normalization: "kate's venue" becomes "kates venue"
         const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
-        
-        if (isKatesVenue) {
-          console.log(`Filtering out venue: "${venue.name}" (normalized: "${normalizedName}") - only showing "Kate's Pub"`)
-          return false
-        }
-        
-        // Keep all other venues - including "Kate's Pub", "Paige's Pub", etc.
-        return true
+        return !isKatesVenue
       })
       
-      // Normalize all rating objects to numbers to prevent React rendering errors
-      // Create new objects to avoid mutating the original
+      // Normalize rating objects to numbers and transform location format
       const normalizedVenues = uniqueVenues.map((venue: any) => {
         const normalized = { ...venue }
+        
+        // Normalize rating
         if (normalized.rating && typeof normalized.rating === 'object' && 'average' in normalized.rating) {
-          // Convert rating object to number
           normalized.rating = typeof normalized.rating.average === 'number' ? normalized.rating.average : null
         }
+        
+        // Transform location from GeoJSON format [longitude, latitude] to { latitude, longitude }
+        if (normalized.location) {
+          if (normalized.location.coordinates && Array.isArray(normalized.location.coordinates) && normalized.location.coordinates.length === 2) {
+            // GeoJSON format: [longitude, latitude]
+            const [longitude, latitude] = normalized.location.coordinates
+            normalized.location = {
+              ...normalized.location,
+              latitude: latitude,
+              longitude: longitude
+            }
+          } else if (!normalized.location.latitude || !normalized.location.longitude) {
+            // If location doesn't have latitude/longitude, try to extract from coordinates
+            console.warn(`Venue ${venue.name} has invalid location format:`, normalized.location)
+          }
+        }
+        
         return normalized
       })
       
-      console.log('✅ Unique venues after deduplication:', normalizedVenues.length)
-      console.log('📍 Venue names:', normalizedVenues.map((v: any) => v.name).join(', '))
+      console.log('✅ Normalized venues count:', normalizedVenues.length)
+      if (normalizedVenues.length > 0) {
+        console.log('📍 Venue names:', normalizedVenues.map((v: any) => v.name))
+      }
       setVenues(normalizedVenues)
     } catch (error: any) {
       console.error('❌ Failed to fetch venues:', error)
-      console.error('Error details:', {
+      console.error('❌ Error details:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
-        url: error.config?.url,
-        API_URL: API_URL
+        url: error.config?.url
       })
-      // Set empty array on error to prevent crashes
+      setError('Failed to load venues. Please try again.')
       setVenues([])
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [token, API_URL])
 
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371 // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180
     const dLng = (lng2 - lng1) * Math.PI / 180
@@ -140,42 +176,16 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLng / 2) * Math.sin(dLng / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c // Distance in km
-  }
+    return R * c
+  }, [])
 
-  const getFilteredVenues = () => {
-    // Safety check: ensure venues is an array
-    if (!Array.isArray(venues)) {
-      console.warn('Venues is not an array:', venues)
-      return []
-    }
+  const getFilteredVenues = useMemo(() => {
+    if (!Array.isArray(venues)) return []
     
-    // Helper function to normalize venue names
-    const normalizeName = (name: string) => {
-      return (name || '').toLowerCase()
-        .replace(/[''""]/g, '') // Remove all apostrophe/quote variations
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim()
-    }
-    
-    // Only filter out "Kate's Venue" specifically - keep all other venues
-    let filtered = venues.filter((venue: any) => {
-      const normalizedName = normalizeName(venue.name)
-      
-      // ONLY filter out "Kate's Venue" - be very specific
-      const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
-      
-      if (isKatesVenue) {
-        console.log(`Filtering out venue in getFilteredVenues: "${venue.name}" (normalized: "${normalizedName}")`)
-        return false
-      }
-      // Keep all other venues - including "Kate's Pub", "Paige's Pub", etc.
-      return true
-    })
+    let filtered = venues
 
-    // If Google Place is selected, prioritize showing it or matching venues
+    // Apply Google Place if selected
     if (googlePlace && googlePlace.geometry?.location) {
-      // Add the Google Place as a temporary venue result
       const googlePlaceVenue = {
         _id: `google_${googlePlace.place_id}`,
         name: googlePlace.name || searchQuery,
@@ -188,21 +198,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           latitude: googlePlace.geometry.location.lat(),
           longitude: googlePlace.geometry.location.lng()
         },
-        rating: (() => {
-          const rating = googlePlace.rating
-          if (typeof rating === 'number') return rating
-          if (rating && typeof rating === 'object' && 'average' in rating) {
-            return typeof (rating as any).average === 'number' ? (rating as any).average : null
-          }
-          return null
-        })(),
+        rating: typeof googlePlace.rating === 'number' ? googlePlace.rating : null,
         user_ratings_total: googlePlace.user_ratings_total,
         isGooglePlace: true,
         placeId: googlePlace.place_id,
         types: googlePlace.types
       }
       
-      // Try to match with existing venues by location (within 100m)
+      // Try to match with existing venues
       const matchingVenue = venues.find((venue) => {
         if (!venue.location?.latitude || !venue.location?.longitude) return false
         const distance = calculateDistance(
@@ -215,67 +218,40 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       })
       
       if (matchingVenue) {
-        // If we found a matching venue, highlight it
         filtered = [matchingVenue, ...filtered.filter(v => v._id !== matchingVenue._id)]
       } else {
-        // Otherwise, show the Google Place result first
         filtered = [googlePlaceVenue, ...filtered]
       }
     }
 
     // Apply search filter
     if (searchQuery.trim() && !googlePlace) {
-      // Normalize search query: lowercase, remove apostrophes, trim
       const normalize = (str: string) => {
         if (!str) return ''
-        return str.toLowerCase()
-          .replace(/[''""]/g, '') // Remove all apostrophe/quote variations
-          .replace(/\s+/g, ' ') // Normalize whitespace
-          .trim()
+        return str.toLowerCase().replace(/[''""]/g, '').replace(/\s+/g, ' ').trim()
       }
       
       const query = normalize(searchQuery)
-      console.log('Searching for:', query, 'in', filtered.length, 'venues')
-      
       filtered = filtered.filter((venue) => {
-        // Normalize all searchable fields
         const name = normalize(venue.name || '')
         const city = normalize(venue.address?.city || '')
         const state = normalize(venue.address?.state || '')
         const street = normalize(venue.address?.street || '')
         const description = normalize(venue.description || '')
         
-        // Check if query matches any field
-        const nameMatch = name.includes(query)
-        const cityMatch = city.includes(query)
-        const stateMatch = state.includes(query)
-        const streetMatch = street.includes(query)
-        const descriptionMatch = description.includes(query)
-        
-        // Also check individual words for partial matching
         const queryWords = query.split(' ').filter(w => w.length > 0)
         const allFields = `${name} ${city} ${state} ${street} ${description}`
-        const wordMatch = queryWords.every(word => allFields.includes(word))
-        
-        const matches = nameMatch || cityMatch || stateMatch || streetMatch || descriptionMatch || wordMatch
-        if (matches) {
-          console.log('Match found:', venue.name)
-        }
-        return matches
+        return queryWords.every(word => allFields.includes(word))
       })
-      
-      console.log('Filtered results:', filtered.length)
     }
 
     // Apply promotion filter
     if (filter === 'all') return filtered
     if (filter === 'trending') {
-      // Show trending venues (by activity)
       const trendingIds = new Set(trendingVenues.map(v => v._id?.toString()))
       return filtered.filter(venue => trendingIds.has(venue._id?.toString()))
     }
     if (filter === 'tonight') {
-      // Show venues with active promotions happening tonight (current day, evening hours)
       const now = new Date()
       const currentHour = now.getHours()
       const dayOfWeek = now.getDay()
@@ -283,7 +259,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       return filtered.filter((venue) => {
         const promotions = venue.promotions || []
         return promotions.some((p: any) => {
-          // Check if promotion is active tonight
           if (p.schedule && Array.isArray(p.schedule)) {
             const todaySchedule = p.schedule.find((s: any) => {
               const scheduleDays = s.days?.toLowerCase() || ''
@@ -293,18 +268,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             })
             
             if (todaySchedule) {
-              // Check if current time is within the schedule
               const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
               const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
               const currentTime = currentHour * 100 + now.getMinutes()
-              
-              // Tonight is considered 5 PM (17:00) to 2 AM (02:00) next day
               const isEvening = currentHour >= 17 || currentHour < 2
               return isEvening && currentTime >= startTime && currentTime <= endTime
             }
           }
           
-          // If no schedule, check if it's active and marked as tonight/evening
           if (p.isActive) {
             const title = (p.title || '').toLowerCase()
             const description = (p.description || '').toLowerCase()
@@ -315,17 +286,63 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         })
       })
     }
+    // Filter for happy-hour or specials with improved logic
     return filtered.filter((venue) => {
       const promotions = venue.promotions || []
-      return promotions.some((p: any) => 
-        filter === 'happy-hour' 
-          ? p.type === 'happy-hour' || p.title?.toLowerCase().includes('happy hour')
-          : p.type === 'special' || p.title?.toLowerCase().includes('special')
-      )
+      if (filter === 'happy-hour') {
+        return promotions.some((p: any) => {
+          if (!p.isActive) return false
+          const isHappyHourType = p.type === 'happy-hour'
+          const hasHappyHourTitle = p.title?.toLowerCase().includes('happy hour')
+          // Check schedule if available
+          if (p.schedule && Array.isArray(p.schedule)) {
+            const now = new Date()
+            const dayOfWeek = now.getDay()
+            const todaySchedule = p.schedule.find((s: any) => {
+              const scheduleDays = s.days?.toLowerCase() || ''
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+              const todayName = dayNames[dayOfWeek]
+              return scheduleDays.includes(todayName)
+            })
+            if (todaySchedule) {
+              const currentTime = now.getHours() * 100 + now.getMinutes()
+              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
+              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
+              return (isHappyHourType || hasHappyHourTitle) && currentTime >= startTime && currentTime <= endTime
+            }
+          }
+          return isHappyHourType || hasHappyHourTitle
+        })
+      } else if (filter === 'specials') {
+        return promotions.some((p: any) => {
+          if (!p.isActive) return false
+          const isSpecialType = p.type === 'special'
+          const hasSpecialTitle = p.title?.toLowerCase().includes('special')
+          // Check schedule if available
+          if (p.schedule && Array.isArray(p.schedule)) {
+            const now = new Date()
+            const dayOfWeek = now.getDay()
+            const todaySchedule = p.schedule.find((s: any) => {
+              const scheduleDays = s.days?.toLowerCase() || ''
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+              const todayName = dayNames[dayOfWeek]
+              return scheduleDays.includes(todayName)
     })
-  }
+            if (todaySchedule) {
+              const currentTime = now.getHours() * 100 + now.getMinutes()
+              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
+              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
+              return (isSpecialType || hasSpecialTitle) && currentTime >= startTime && currentTime <= endTime
+            }
+          }
+          return isSpecialType || hasSpecialTitle
+        })
+      }
+      return false
+    })
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance])
 
-  const getActivePromotions = (venue: any) => {
+  const getActivePromotions = useCallback((venue: any) => {
     if (!venue) return []
     
     const now = new Date()
@@ -333,7 +350,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     const currentTime = now.getHours() * 100 + now.getMinutes()
     
     return (venue.promotions || []).filter((promo: any) => {
-      // Check if promotion is active based on schedule
       if (promo.schedule) {
         const schedule = promo.schedule[dayOfWeek]
         if (schedule && schedule.start && schedule.end) {
@@ -342,40 +358,79 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           return currentTime >= start && currentTime <= end
         }
       }
-      return true
+      return promo.isActive !== false
     })
-  }
+  }, [])
 
-  // Fetch venues, trending venues, and location on mount and when token/API_URL changes
+  // Fetch data on mount
   useEffect(() => {
     if (token && API_URL) {
-      console.log('🔄 MapTab: Fetching venues, trending venues, and location...')
       fetchVenues()
       fetchTrendingVenues()
       getCurrentLocation()
     }
-  }, [token, API_URL])
+  }, [token, API_URL, fetchVenues, fetchTrendingVenues, getCurrentLocation])
 
-  // Memoize filtered venues to avoid recalculating on every render
-  const filteredVenuesList = useMemo(() => {
-    return getFilteredVenues()
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues])
-
-  // Memoize venue markers for map - must be called unconditionally
+  // Memoize venue markers for map with enhanced styling
   const venueMarkers = useMemo(() => {
-    return filteredVenuesList
+    return getFilteredVenues
       .filter((venue) => venue.location?.latitude && venue.location?.longitude)
-      .map((venue) => ({
+      .map((venue) => {
+        const hasActivePromotions = (venue.promotions || []).some((p: any) => {
+          if (!p.isActive) return false
+          const now = new Date()
+          const dayOfWeek = now.getDay()
+          if (p.schedule && Array.isArray(p.schedule)) {
+            const todaySchedule = p.schedule.find((s: any) => {
+              const scheduleDays = s.days?.toLowerCase() || ''
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+              const todayName = dayNames[dayOfWeek]
+              return scheduleDays.includes(todayName)
+            })
+            if (todaySchedule) {
+              const currentTime = now.getHours() * 100 + now.getMinutes()
+              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
+              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
+              return currentTime >= startTime && currentTime <= endTime
+            }
+          }
+          return p.isActive
+        })
+        
+        // Create custom marker icon with gold color
+        // Use SVG path for better control
+        const markerIcon = {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: hasActivePromotions ? 10 : 8,
+          fillColor: hasActivePromotions ? '#D4AF37' : '#B8945A',
+          fillOpacity: 1,
+          strokeColor: '#000000',
+          strokeWeight: 2
+        }
+        
+        return {
         id: venue._id,
         position: {
           lat: venue.location.latitude,
           lng: venue.location.longitude
         },
         title: venue.name || 'Venue',
-        label: (venue.name?.[0] || 'V').toString(),
+          label: hasActivePromotions ? {
+            text: '🔥',
+            color: '#000000',
+            fontWeight: 'bold',
+            fontSize: '16px'
+          } : {
+            text: venue.name?.[0]?.toUpperCase() || 'V',
+            color: '#000000',
+            fontWeight: 'bold',
+            fontSize: '12px'
+          },
+          icon: markerIcon,
         onClick: () => setViewingVenueId(venue._id)
-      }))
-  }, [filteredVenuesList])
+        }
+      })
+  }, [getFilteredVenues])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -391,11 +446,27 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     }
   }, [showFilterDropdown])
 
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true)
+    fetchVenues()
+    fetchTrendingVenues()
+  }, [fetchVenues, fetchTrendingVenues])
+
   return (
     <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-black border-b border-primary-500/10 sticky top-16 z-10 p-4 backdrop-blur-sm">
-        <h1 className="text-xl font-semibold text-primary-500 mb-3 tracking-tight">Venues</h1>
+      <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-0 z-20 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl font-bold text-primary-500 tracking-tight">Venues</h1>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
+            title="Refresh venues"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
         
         {/* Search Bar */}
         <div className="relative mb-3">
@@ -403,7 +474,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             value={searchQuery}
             onChange={(value) => {
               setSearchQuery(value)
-              // Clear Google Place if search is manually changed
               if (!value) setGooglePlace(null)
             }}
             onPlaceSelect={(place) => {
@@ -416,14 +486,13 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         </div>
         
         {/* Filter Dropdown and View Toggle */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between">
           <div className="relative filter-dropdown-container">
-            {/* Dropdown Menu */}
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 rounded-lg backdrop-blur-sm transition-all"
+              className="flex items-center space-x-2 px-4 py-2 bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50 rounded-xl backdrop-blur-sm transition-all"
             >
-              <span className="text-sm font-medium">
+              <span className="text-sm font-semibold">
                 {filter === 'all' && 'All Venues'}
                 {filter === 'happy-hour' && (
                   <>
@@ -453,15 +522,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
               <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
             </button>
             
-            {/* Dropdown Menu Items */}
             {showFilterDropdown && (
-              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-2xl z-20 min-w-[220px] backdrop-blur-md overflow-hidden">
+              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-xl shadow-2xl z-30 min-w-[240px] backdrop-blur-md overflow-hidden">
                 <button
                   onClick={() => {
                     setFilter('all')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all ${
+                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${
                     filter === 'all'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -474,7 +542,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('trending')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
                     filter === 'trending'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -488,7 +556,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('happy-hour')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
                     filter === 'happy-hour'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -502,7 +570,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     setFilter('specials')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
                     filter === 'specials'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -511,14 +579,13 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   <Tag className="w-4 h-4 mr-2" />
                   Specials
                 </button>
-                {/* Separator before Tonight's Specials */}
                 <div className="border-t border-primary-500/20 my-1"></div>
                 <button
                   onClick={() => {
                     setFilter('tonight')
                     setShowFilterDropdown(false)
                   }}
-                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center ${
+                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
                     filter === 'tonight'
                       ? 'bg-primary-500/20 text-primary-500'
                       : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
@@ -533,10 +600,10 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           <div className="flex space-x-2">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                 viewMode === 'list'
-                  ? 'bg-primary-500 text-black'
-                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500'
+                  ? 'bg-primary-500 text-black shadow-lg'
+                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
               }`}
             >
               <List className="w-4 h-4 inline mr-1.5" />
@@ -544,10 +611,10 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                 viewMode === 'map'
-                  ? 'bg-primary-500 text-black'
-                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500'
+                  ? 'bg-primary-500 text-black shadow-lg'
+                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
               }`}
             >
               <Map className="w-4 h-4 inline mr-1.5" />
@@ -557,25 +624,69 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mx-4 mt-4 bg-red-500/20 border border-red-500/50 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-red-400 font-semibold text-sm">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="text-red-400/70 hover:text-red-400 text-xs underline mt-1"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Map View */}
       {viewMode === 'map' && (
         <div className="h-[calc(100vh-16rem)] relative">
-          {userLocation ? (
+          {!mapsLoaded ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="text-center text-primary-400">
+                <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin text-primary-500" />
+                <p className="text-lg font-semibold">Loading map...</p>
+              </div>
+            </div>
+          ) : userLocation || (venueMarkers.length > 0 && venueMarkers[0]?.position) ? (
+            <div className="relative w-full h-full">
             <GoogleMapComponent
-              center={userLocation}
-              zoom={12}
+                center={userLocation || {
+                  lat: venueMarkers[0].position.lat,
+                  lng: venueMarkers[0].position.lng
+                }}
+                zoom={venueMarkers.length > 0 ? 13 : 12}
               markers={venueMarkers}
               mapContainerStyle={{ width: '100%', height: '100%' }}
             />
+              {/* Map Legend */}
+              {venueMarkers.length > 0 && (
+                <div className="absolute top-4 right-4 bg-black/90 backdrop-blur-md border border-primary-500/30 rounded-xl p-3 shadow-lg z-10">
+                  <div className="text-xs text-primary-400 mb-2 font-semibold">Legend</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-primary-500 border-2 border-black"></div>
+                      <span className="text-xs text-primary-400">Active Specials</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-primary-400 border-2 border-black"></div>
+                      <span className="text-xs text-primary-400">Regular Venue</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <div className="text-center text-primary-400">
-                <MapPin className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Requesting location...</p>
-                <p className="text-sm mt-2">Please allow location access to see venues on map</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="text-center text-primary-400 max-w-sm mx-4">
+                <MapPin className="w-16 h-16 mx-auto mb-4 opacity-50 text-primary-500" />
+                <p className="text-lg font-semibold mb-2 text-primary-500">Location Access Needed</p>
+                <p className="text-sm mb-6 text-primary-400/80">Please allow location access to see venues on the map</p>
                 <button
                   onClick={getCurrentLocation}
-                  className="mt-4 bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600"
+                  className="bg-primary-500 text-black px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/30"
                 >
                   Enable Location
                 </button>
@@ -585,98 +696,106 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         </div>
       )}
 
-      {/* Venue Advertisement Cards - List View */}
+      {/* List View */}
       {viewMode === 'list' && (
       <div className="p-4 space-y-4">
-        {/* Debug info - remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-primary-400/50 mb-2">
-            Debug: {venues.length} total venues, {filteredVenuesList.length} filtered, search: "{searchQuery}", filter: {filter}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 animate-spin text-primary-500 mx-auto mb-4" />
+                <p className="text-primary-400">Loading venues...</p>
           </div>
-        )}
-        {filteredVenuesList.length === 0 ? (
-          <div className="text-center py-12 text-primary-400">
-            <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="text-lg">
+            </div>
+          ) : getFilteredVenues.length === 0 ? (
+            <div className="text-center py-20">
+              <MapPin className="w-16 h-16 mx-auto mb-4 text-primary-500/30" />
+              <p className="text-lg font-semibold text-primary-400 mb-2">
               {searchQuery ? `No venues found matching "${searchQuery}"` : 'No venues found'}
             </p>
-            <p className="text-sm mt-2">
+              <p className="text-sm text-primary-400/70 mb-4">
               {searchQuery ? 'Try a different search term' : 'Check back soon for special offers!'}
             </p>
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="mt-4 text-primary-500 hover:text-primary-400 underline"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setGooglePlace(null)
+                  }}
+                  className="text-primary-500 hover:text-primary-400 underline font-semibold"
               >
                 Clear search
               </button>
             )}
           </div>
         ) : (
-          filteredVenuesList.map((venue: any) => {
-            try {
-              if (!venue || !venue._id) {
-                console.warn('Invalid venue in list:', venue)
-                return null
-              }
+            getFilteredVenues.map((venue: any) => {
+              if (!venue || !venue._id) return null
               
               const activePromos = getActivePromotions(venue)
               const hasActivePromotions = activePromos.length > 0
+              const distance = userLocation && venue.location?.latitude && venue.location?.longitude
+                ? calculateDistance(
+                    userLocation.lat,
+                    userLocation.lng,
+                    venue.location.latitude,
+                    venue.location.longitude
+                  )
+                : null
 
               return (
                 <div
                   key={venue._id}
                   onClick={() => {
-                    try {
                       if (!venue.isGooglePlace && venue._id) {
                         setViewingVenueId(venue._id)
-                      }
-                    } catch (err) {
-                      console.error('Error setting viewing venue:', err)
                     }
                   }}
-                className={`bg-black/40 border rounded-lg overflow-hidden backdrop-blur-sm cursor-pointer hover:bg-primary-500/5 transition-colors ${
+                  className={`bg-black/40 border rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:bg-primary-500/5 transition-all ${
                   hasActivePromotions
-                    ? 'border-primary-500/30 shadow-lg shadow-primary-500/10'
-                    : 'border-primary-500/15'
+                      ? 'border-primary-500/40 shadow-lg shadow-primary-500/20'
+                      : 'border-primary-500/20'
                 }`}
               >
                 {/* Venue Header */}
-                <div className="p-4 border-b border-primary-500/10">
+                  <div className="p-5 border-b border-primary-500/10">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="text-lg font-semibold text-primary-500 tracking-tight">{venue?.name || 'Unknown Venue'}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="text-xl font-bold text-primary-500 tracking-tight truncate">{venue?.name || 'Unknown Venue'}</h3>
                         {venue.isGooglePlace && (
-                          <span className="text-xs bg-primary-500/20 border border-primary-500/30 text-primary-500 px-2 py-0.5 rounded font-medium">
+                            <span className="text-xs bg-primary-500/20 border border-primary-500/30 text-primary-500 px-2 py-1 rounded-lg font-semibold flex-shrink-0">
                             Google
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center text-primary-400 text-sm">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        <span>
+                        <div className="flex items-center text-primary-400/80 text-sm mb-2">
+                          <MapPin className="w-4 h-4 mr-1.5 flex-shrink-0" />
+                          <span className="truncate">
                           {venue.isGooglePlace 
                             ? (venue.address?.street || venue.address || '')
                             : `${venue.address?.street || ''} ${venue.address?.city || ''}, ${venue.address?.state || ''}`.trim()}
                         </span>
                       </div>
+                        {distance !== null && (
+                          <p className="text-primary-400/60 text-xs">
+                            {distance < 1 ? `${(distance * 1000).toFixed(0)}m away` : `${distance.toFixed(1)}km away`}
+                          </p>
+                        )}
                     </div>
                     {(() => {
-                      // Rating is now always a number or null (normalized at data source)
                       const ratingValue: number | null = typeof venue.rating === 'number' ? venue.rating : null
                       const displayCount = venue.user_ratings_total
                       
                       if (ratingValue === null && !displayCount) return null
                       
                       return (
-                        <div className="flex items-center text-primary-500">
+                          <div className="flex items-center text-primary-500 flex-shrink-0 ml-3">
                           <Star className="w-4 h-4 fill-primary-500 mr-1" />
-                          <span className="text-sm font-semibold">
+                            <span className="text-sm font-bold">
                             {ratingValue !== null ? ratingValue.toFixed(1) : 'N/A'}
                           </span>
                           {displayCount && (
-                            <span className="text-xs text-primary-400 ml-1">
+                              <span className="text-xs text-primary-400/70 ml-1">
                               ({displayCount})
                             </span>
                           )}
@@ -686,42 +805,42 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   </div>
                 </div>
 
-                {/* Active Promotions - Advertisement Focus */}
+                  {/* Active Promotions */}
                 {hasActivePromotions && (
-                  <div className="bg-gradient-to-r from-primary-500/10 to-primary-500/5 border-y border-primary-500/20 p-4">
+                    <div className="bg-gradient-to-r from-primary-500/15 to-primary-500/5 border-y border-primary-500/20 p-5">
                     <div className="flex items-center mb-3">
                       <Tag className="w-5 h-5 text-primary-500 mr-2" />
-                      <h4 className="font-bold text-primary-500 text-base tracking-tight">🔥 LIVE SPECIALS</h4>
+                        <h4 className="font-bold text-primary-500 text-base">🔥 LIVE SPECIALS</h4>
                     </div>
                     <div className="space-y-3">
                       {activePromos.map((promo: any, idx: number) => (
-                        <div key={idx} className="bg-black/40 border-2 border-primary-500/30 rounded-lg p-4 backdrop-blur-sm shadow-lg shadow-primary-500/10">
+                          <div key={idx} className="bg-black/50 border-2 border-primary-500/40 rounded-xl p-4 backdrop-blur-sm shadow-lg shadow-primary-500/10">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h5 className="font-bold text-primary-500 text-base tracking-tight">{promo.title}</h5>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h5 className="font-bold text-primary-500 text-base">{promo.title}</h5>
                                 {promo.type === 'happy-hour' && (
-                                  <span className="flex items-center text-xs text-black bg-primary-500 border border-primary-500 px-2 py-1 rounded-full font-bold animate-pulse">
+                                    <span className="flex items-center text-xs text-black bg-primary-500 border border-primary-500 px-2.5 py-1 rounded-full font-bold animate-pulse">
                                     <Martini className="w-3 h-3 mr-1" />
                                     HAPPY HOUR
                                   </span>
                                 )}
                                 {promo.type === 'special' && (
-                                  <span className="flex items-center text-xs text-black bg-primary-500 border border-primary-500 px-2 py-1 rounded-full font-bold">
+                                    <span className="flex items-center text-xs text-black bg-primary-500 border border-primary-500 px-2.5 py-1 rounded-full font-bold">
                                     <Tag className="w-3 h-3 mr-1" />
                                     SPECIAL
                                   </span>
                                 )}
                               </div>
                               {promo.discount && (
-                                <div className="text-primary-400 text-sm font-semibold mb-1">
+                                  <div className="text-primary-400 text-sm font-bold mb-2">
                                   {promo.discount}% OFF
                                 </div>
                               )}
                             </div>
                           </div>
                           {promo.description && (
-                            <p className="text-primary-300/90 text-sm mb-3 font-light leading-relaxed">{promo.description}</p>
+                              <p className="text-primary-300/90 text-sm mb-3 leading-relaxed">{promo.description}</p>
                           )}
                           {(promo.startTime || promo.endTime) && (
                             <div className="flex items-center text-xs text-primary-400/80 mb-2">
@@ -731,41 +850,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                               {promo.endTime && new Date(promo.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           )}
-                          {promo.schedule && Array.isArray(promo.schedule) && promo.schedule.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-primary-400/80">
-                              <Clock className="w-3 h-3" />
-                              {promo.schedule.map((s: any, i: number) => (
-                                <span key={i} className="bg-black/30 px-2 py-1 rounded border border-primary-500/20">
-                                  {s.days}: {s.start} - {s.end}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {promo.validUntil && (
-                            <div className="mt-2 text-xs text-primary-400/70">
-                              Valid until: {new Date(promo.validUntil).toLocaleDateString()}
-                            </div>
-                          )}
-                          {promo.discount && (
-                            <div className="mt-2 text-primary-500 font-bold">
-                              {promo.discount}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* All Promotions (if no active ones) */}
-                {!hasActivePromotions && venue?.promotions && Array.isArray(venue.promotions) && venue.promotions.length > 0 && (
-                  <div className="p-4 border-y border-primary-500/10">
-                    <h4 className="font-semibold text-primary-400 text-sm mb-2">Upcoming Promotions</h4>
-                    <div className="space-y-2">
-                      {venue.promotions.slice(0, 2).map((promo: any, idx: number) => (
-                        <div key={idx} className="text-primary-400 text-sm">
-                          <Tag className="w-3 h-3 inline mr-1" />
-                          {promo.title}
                         </div>
                       ))}
                     </div>
@@ -773,11 +857,11 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                 )}
 
                 {/* Action Buttons */}
-                <div className="p-4 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-5 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                   {!venue.isGooglePlace && (
                     <button
                       onClick={() => setViewingVenueId(venue._id)}
-                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-primary-500 text-black rounded-lg hover:bg-primary-600 transition-all font-medium"
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-primary-500 text-black rounded-xl hover:bg-primary-600 transition-all font-bold shadow-lg shadow-primary-500/20"
                     >
                       <MapPin className="w-4 h-4" />
                       <span className="text-sm">View Profile</span>
@@ -786,28 +870,21 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Open Google Maps with directions
                       let url = ''
-                      
                       if (venue.isGooglePlace && venue.location) {
-                        // Use coordinates for Google Places
                         url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`
                       } else if (venue.location?.latitude && venue.location?.longitude) {
-                        // Use coordinates if available
                         url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`
                       } else {
-                        // Fall back to address search
                         const address = `${venue.address?.street || ''} ${venue.address?.city || ''}, ${venue.address?.state || ''}`.trim()
                         url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
                       }
-                      
-                      // Open in new tab/window
                       window.open(url, '_blank', 'noopener,noreferrer')
                     }}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-black border border-primary-500 text-primary-500 rounded-lg hover:bg-primary-500/10 transition-colors"
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-black/60 border border-primary-500/30 text-primary-500 rounded-xl hover:bg-primary-500/10 transition-all font-semibold"
                   >
                     <Navigation className="w-4 h-4" />
-                    <span className="text-sm font-medium">Directions</span>
+                      <span className="text-sm">Directions</span>
                   </button>
                   {!venue.isGooglePlace && (
                     <button
@@ -815,54 +892,100 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                         e.stopPropagation()
                         setSelectedVenue(venue)
                       }}
-                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-primary-500/20 border border-primary-500 text-primary-500 rounded-lg hover:bg-primary-500/30 transition-all font-medium"
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-primary-500/20 border border-primary-500 text-primary-500 rounded-xl hover:bg-primary-500/30 transition-all font-semibold"
                     >
                       <Martini className="w-4 h-4" />
                       <span className="text-sm">Send Drink</span>
-                    </button>
-                  )}
-                  {venue.isGooglePlace && (
-                    <button
-                      onClick={() => {
-                        alert('This venue is from Google Maps. To send a drink, the venue needs to be registered on Shot On Me.')
-                      }}
-                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-primary-500/20 border border-primary-500/30 text-primary-500 rounded-lg hover:bg-primary-500/30 transition-all font-medium"
-                      >
-                        <Martini className="w-4 h-4" />
-                        <span className="text-sm">Not Registered</span>
                       </button>
                   )}
                   <button
                     onClick={async () => {
+                        try {
                       const venueUrl = `${window.location.origin}/venues/${venue._id}`
+                          const shareText = `Check out ${venue.name}${venue.address?.city ? ` in ${venue.address.city}` : ''} and their specials on Shot On Me!`
+                          
+                          // Try Web Share API first
                       if (navigator.share) {
                         try {
                           await navigator.share({
                             title: venue.name,
-                            text: `Check out ${venue.name} and their specials on Shot On Me!`,
+                                text: shareText,
                             url: venueUrl
                           })
-                        } catch (err) {}
+                              // Success - user shared via native share dialog
+                              return
+                            } catch (shareError: any) {
+                              // User cancelled share - this is fine, just return
+                              if (shareError.name === 'AbortError' || shareError.name === 'NotAllowedError') {
+                                return
+                              }
+                              // Other error - fall through to clipboard
+                              console.warn('Web Share API error:', shareError)
+                            }
+                          }
+                          
+                          // Fallback: Copy to clipboard
+                          try {
+                            // Check if clipboard API is available
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                              await navigator.clipboard.writeText(venueUrl)
+                              // Show success feedback
+                              const toast = document.createElement('div')
+                              toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+                              toast.textContent = 'Venue link copied to clipboard!'
+                              document.body.appendChild(toast)
+                              setTimeout(() => {
+                                toast.remove()
+                              }, 3000)
                       } else {
-                        navigator.clipboard.writeText(venueUrl)
-                        alert('Venue link copied!')
+                              // Fallback for older browsers - use textarea method
+                              const textarea = document.createElement('textarea')
+                              textarea.value = venueUrl
+                              textarea.style.position = 'fixed'
+                              textarea.style.opacity = '0'
+                              document.body.appendChild(textarea)
+                              textarea.select()
+                              try {
+                                document.execCommand('copy')
+                                const toast = document.createElement('div')
+                                toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+                                toast.textContent = 'Venue link copied to clipboard!'
+                                document.body.appendChild(toast)
+                                setTimeout(() => {
+                                  toast.remove()
+                                }, 3000)
+                              } catch (err) {
+                                console.error('Failed to copy:', err)
+                                // Last resort: show the URL in a prompt
+                                prompt('Copy this link to share:', venueUrl)
+                              } finally {
+                                document.body.removeChild(textarea)
+                              }
+                            }
+                          } catch (clipboardError: any) {
+                            console.error('Clipboard error:', clipboardError)
+                            // Last resort: show the URL in a prompt
+                            prompt('Copy this link to share:', venueUrl)
+                          }
+                        } catch (error: any) {
+                          console.error('Share error:', error)
+                          const toast = document.createElement('div')
+                          toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/20 border border-red-500/50 text-red-400 px-6 py-3 rounded-lg shadow-lg font-semibold'
+                          toast.textContent = 'Unable to share venue. Please try again.'
+                          document.body.appendChild(toast)
+                          setTimeout(() => {
+                            toast.remove()
+                          }, 3000)
                       }
                     }}
-                    className="px-4 py-2.5 bg-black border border-primary-500 text-primary-500 rounded-lg hover:bg-primary-500/10 transition-colors"
+                      className="px-4 py-3 bg-black/60 border border-primary-500/30 text-primary-500 rounded-xl hover:bg-primary-500/10 transition-all"
+                      title="Share venue"
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               )
-            } catch (error) {
-              console.error('Error rendering venue card:', error, venue)
-              return (
-                <div key={venue?._id || Math.random()} className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                  <p className="text-red-500 text-sm">Error loading venue</p>
-                </div>
-              )
-            }
           })
         )}
       </div>
@@ -893,10 +1016,10 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         </ErrorBoundary>
       )}
 
-      {/* Venue Selection Modal - for sending drinks */}
+      {/* Venue Selection Modal */}
       {selectedVenue && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-black border-2 border-primary-500 rounded-lg p-6 max-w-md w-full">
+          <div className="bg-black border-2 border-primary-500 rounded-2xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-primary-500 mb-4">Send a Drink to {selectedVenue.name}</h3>
             <p className="text-primary-400 text-sm mb-4">
               This will redirect you to the Send Shot form with {selectedVenue.name} pre-selected.
@@ -904,7 +1027,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             <div className="flex space-x-3">
               <button
                 onClick={() => {
-                  // Store venue data and navigate to profile tab
                   localStorage.setItem('selectedVenue', JSON.stringify({
                     id: selectedVenue._id,
                     name: selectedVenue.name,
@@ -915,21 +1037,17 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                   }))
                   localStorage.setItem('profileAction', 'send-shot')
                   setSelectedVenue(null)
-                  // Navigate to profile tab
                   if (setActiveTab) {
                     setActiveTab('profile')
-                  } else {
-                    window.location.hash = 'profile'
-                    window.dispatchEvent(new Event('hashchange'))
                   }
                 }}
-                className="flex-1 bg-primary-500 text-black py-2.5 rounded-lg font-semibold hover:bg-primary-600"
+                className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold hover:bg-primary-600 transition-all"
               >
                 Continue
               </button>
               <button
                 onClick={() => setSelectedVenue(null)}
-                className="flex-1 bg-black border border-primary-500 text-primary-500 py-2.5 rounded-lg font-semibold hover:bg-primary-500/10"
+                className="flex-1 bg-black border border-primary-500 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-all"
               >
                 Cancel
               </button>

@@ -1,0 +1,74 @@
+# Gitpod Configuration for Shot On Me Project
+# This file configures Gitpod to automatically set up your development environment
+
+image: node:18
+
+# Tasks to run when workspace opens
+tasks:
+  - name: Install Dependencies
+    init: |
+      echo "📦 Installing backend dependencies..."
+      cd backend && npm install
+      echo "📦 Installing Shot On Me dependencies..."
+      cd ../shot-on-me && npm install
+      echo "📦 Installing Venue Portal dependencies..."
+      cd ../venue-portal && npm install
+      echo "📦 Installing Owner Portal dependencies..."
+      cd ../owner-portal && npm install
+      echo "✅ All dependencies installed!"
+
+  - name: Backend Server
+    command: |
+      echo "🚀 Starting Backend (Port 5000)..."
+      cd backend && npm run dev
+
+  - name: Shot On Me App
+    command: |
+      echo "🚀 Starting Shot On Me (Port 3001)..."
+      cd shot-on-me && npm run dev
+
+  - name: Venue Portal
+    command: |
+      echo "🚀 Starting Venue Portal (Port 3000)..."
+      cd venue-portal && npm run dev
+
+  - name: Owner Portal
+    command: |
+      echo "🚀 Starting Owner Portal (Port 3002)..."
+      cd owner-portal && npm run dev
+
+# Ports to expose
+ports:
+  - port: 5000
+    name: Backend API
+    onOpen: open-preview
+    visibility: public
+  - port: 3000
+    name: Venue Portal
+    onOpen: open-preview
+    visibility: public
+  - port: 3001
+    name: Shot On Me App
+    onOpen: open-preview
+    visibility: public
+  - port: 3002
+    name: Owner Portal
+    onOpen: open-preview
+    visibility: public
+
+# VS Code extensions to install
+vscode:
+  extensions:
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - ms-vscode.vscode-typescript-next
+
+# Environment variables (set these in Gitpod dashboard)
+# MONGODB_URI
+# JWT_SECRET
+# STRIPE_SECRET_KEY
+# STRIPE_PUBLISHABLE_KEY
+# CLOUDINARY_CLOUD_NAME
+# CLOUDINARY_API_KEY
+# CLOUDINARY_API_SECRET
+

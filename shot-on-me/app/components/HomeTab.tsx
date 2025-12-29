@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
@@ -20,7 +20,8 @@ import {
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
-import { Tab } from '../types'
+import { Tab } from '@/app/types'
+import InviteFriendsModal from './InviteFriendsModal'
 
 interface HomeTabProps {
   setActiveTab?: (tab: Tab) => void
@@ -54,11 +55,25 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
   const [nearbyFriends, setNearbyFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Use refs to track if we've already fetched to prevent duplicate fetches
+  const hasFetchedRef = useRef(false)
+  const userIdRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (token && user) {
+    const currentUserId = user?.id || (user as any)?._id || null
+    const userIdChanged = userIdRef.current !== currentUserId
+    
+    if (token && user && (!hasFetchedRef.current || userIdChanged)) {
+      hasFetchedRef.current = true
+      userIdRef.current = currentUserId
+      
+      // Fetch immediately - no delay to speed up loading
       fetchHomeData()
+    } else if (!token || !user) {
+      // If no token or user, stop loading immediately
+      setLoading(false)
     }
-  }, [token, user])
+  }, [token, user?.id, (user as any)?._id])
 
   // Real-time wallet updates
   useEffect(() => {
@@ -78,22 +93,37 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
   }, [socket, user])
 
   const fetchHomeData = async () => {
-    if (!token) return
-    setLoading(true)
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    
+    // Show UI immediately - don't block on loading
+    setLoading(false)
 
     try {
-      // Fetch wallet balance
-      const userResponse = await axios.get(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const userData = userResponse.data.user
-      setWalletBalance(userData.wallet?.balance || 0)
-
-      // Fetch venues with active promotions (quick deals)
-      const venuesResponse = await axios.get(`${API_URL}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const venues = venuesResponse.data.venues || []
+      // Fetch critical data first (user and venues)
+      const [userResponse, venuesResponse] = await Promise.allSettled([
+        axios.get(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 6000
+        }),
+        axios.get(`${API_URL}/venues`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 6000
+        })
+      ])
+      
+      // Process critical data immediately
+      if (userResponse.status === 'fulfilled') {
+        const userData = userResponse.value.data.user
+        setWalletBalance(userData.wallet?.balance || 0)
+      }
+      
+      let venues: any[] = []
+      if (venuesResponse.status === 'fulfilled') {
+        venues = venuesResponse.value.data.venues || []
+      }
 
       // Get current active promotions
       const now = new Date()
@@ -131,57 +161,71 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
       )
       setQuickDeals(deals.slice(0, 5))
 
-      // Get trending venues (by follower count) - fallback
+      // Get trending venues (by follower count)
       const trending = venues
-        .filter((v: any) => v.followerCount > 0)
         .sort((a: any, b: any) => (b.followerCount || 0) - (a.followerCount || 0))
-        .slice(0, 3)
+        .slice(0, 10)
       setTrendingVenues(trending)
+      
+      // Fetch non-critical data in background (don't await - let it load asynchronously)
+      Promise.allSettled([
+        axios.get(`${API_URL}/venue-activity/trending/list?limit=5&period=24h`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }).catch(() => ({ data: { venues: [] } })),
+        axios.get(`${API_URL}/location/friends`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }).catch(() => ({ data: { friends: [] } }))
+      ]).then(([activityResponse, friendsResponse]) => {
+        // Process activity venues (non-critical)
+        if (activityResponse.status === 'fulfilled') {
+          setTrendingVenuesActivity(activityResponse.value.data.venues || [])
+        } else {
+          setTrendingVenuesActivity(trending)
+        }
 
-      // Fetch trending venues by activity
-      try {
-        const activityResponse = await axios.get(`${API_URL}/venue-activity/trending/list?limit=5&period=24h`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setTrendingVenuesActivity(activityResponse.data.venues || [])
-      } catch (error) {
-        console.error('Failed to fetch trending venues by activity:', error)
-        // Fallback to regular trending venues
-        setTrendingVenuesActivity(trending)
-      }
+        // Process nearby friends (non-critical)
+        if (friendsResponse.status === 'fulfilled') {
+          setNearbyFriends(friendsResponse.value.data.friends?.slice(0, 3) || [])
+        } else {
+          setNearbyFriends([])
+        }
+      })
 
-      // Get nearby friends
-      try {
-        const friendsResponse = await axios.get(`${API_URL}/location/friends`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setNearbyFriends(friendsResponse.data.friends?.slice(0, 3) || [])
-      } catch (error) {
-        console.error('Failed to fetch nearby friends:', error)
-      }
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch home data:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
+      // Don't block the UI - show empty state instead
+      setQuickDeals([])
+      setTrendingVenues([])
+      setTrendingVenuesActivity([])
+      setNearbyFriends([])
     } finally {
       setLoading(false)
+      console.log('HomeTab: Finished loading, loading state:', false)
     }
   }
 
-  const handleInviteFriend = () => {
-    const inviteLink = `${window.location.origin}?ref=${user?.id}`
-    if (navigator.share) {
-      navigator.share({
-        title: 'Join me on Shot On Me!',
-        text: 'Send drinks to friends at any bar or coffee shop. Join me!',
-        url: inviteLink
-      }).catch(() => {
-        navigator.clipboard.writeText(inviteLink)
-        alert('Invite link copied! Share it with your friends!')
-      })
-    } else {
-      navigator.clipboard.writeText(inviteLink)
-      alert('Invite link copied! Share it with your friends!')
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  const handleInviteFriend = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
     }
+    
+    if (!user?.id && !(user as any)?._id) {
+      alert('Please wait for your account to load, then try again.')
+      return
+    }
+    
+    // Open invite modal for better UX
+    setShowInviteModal(true)
   }
 
   const getTimeRemaining = (endTime: string) => {
@@ -198,10 +242,14 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
     return `${minutes}m left`
   }
 
-  if (loading) {
+  // Show loading only for initial load, not if data fetch fails
+  if (loading && hasFetchedRef.current === false) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
       </div>
     )
   }
@@ -209,7 +257,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
   return (
     <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto">
       {/* Hero Section */}
-      <div className="bg-gradient-to-b from-primary-500/10 via-transparent to-transparent border-b border-primary-500/10 p-6">
+      <div className="bg-gradient-to-b from-primary-500/10 via-transparent to-transparent p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-semibold text-primary-500 mb-1.5 tracking-tight">
@@ -270,7 +318,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
             </div>
             <p className="text-primary-400/70 text-xs mb-3 font-light">Share with friends</p>
             <button
-              onClick={handleInviteFriend}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInviteFriend(e)
+              }}
               className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all text-xs"
             >
               <Share2 className="w-3.5 h-3.5 inline mr-1.5" />
@@ -461,6 +514,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
           </div>
         )}
       </div>
+
+      {/* Invite Friends Modal */}
+      <InviteFriendsModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+      />
     </div>
   )
 }

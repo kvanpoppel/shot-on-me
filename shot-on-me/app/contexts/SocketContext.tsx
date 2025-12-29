@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useRef, useMemo } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './AuthContext'
 import { getSocketUrl } from '../utils/api'
@@ -15,14 +15,19 @@ const SocketContext = createContext<SocketContextType>({ socket: null, connected
 export const useSocket = () => useContext(SocketContext)
 
 // Get socket URL dynamically at runtime in browser context
-// Now uses centralized getSocketUrl() function for consistency
+// Priority: NEXT_PUBLIC_SOCKET_URL env var, then getSocketUrl() fallback
 const getSocketUrlForConnection = () => {
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.trim()
+  }
   return getSocketUrl()
 }
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null)
+  const userIdRef = useRef<string | null>(null)
   
   // Safely get auth context - don't crash if AuthProvider fails
   let user = null
@@ -37,27 +42,119 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     console.warn('SocketProvider: Could not access AuthContext:', error)
   }
 
+  // Get stable user ID for comparison
+  const userId = useMemo(() => {
+    if (!user) return null
+    return user.id || (user as any)?._id || null
+  }, [user?.id, (user as any)?._id])
+
   useEffect(() => {
-    if (user && token) {
-      const newSocket = io(getSocketUrlForConnection(), {
+    // Only reconnect if user ID or token actually changed
+    const currentUserId = userId
+    const hasUserIdChanged = userIdRef.current !== currentUserId
+    const hasToken = !!token
+    
+    // If we already have a socket and nothing changed, don't reconnect
+    if (socketRef.current && socketRef.current.connected && !hasUserIdChanged && hasToken) {
+      return
+    }
+
+    // Clean up existing socket if user changed
+    if (socketRef.current && hasUserIdChanged) {
+      console.log('User changed, closing existing socket')
+      socketRef.current.close()
+      socketRef.current = null
+      setSocket(null)
+      setConnected(false)
+    }
+
+    if (user && token && currentUserId) {
+      const socketUrl = getSocketUrlForConnection()
+      console.log('🔌 Connecting Socket.io to:', socketUrl)
+      
+      const newSocket = io(socketUrl, {
         auth: { token },
         transports: ['websocket', 'polling'],
+        timeout: 20000, // 20 second connection timeout
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity, // Keep trying to reconnect
+        // Exponential backoff
+        randomizationFactor: 0.5,
+        // Force new connection to avoid stale connections
+        forceNew: false,
+        // Auto-connect
+        autoConnect: true,
       })
 
       newSocket.on('connect', () => {
         console.log('Connected to Socket.io')
         setConnected(true)
         
+        // Authenticate socket connection
+        if (token) {
+          newSocket.emit('authenticate', token)
+        }
+        
         // Join user-specific room for notifications
-        if (user.id || (user as any)._id) {
-          const userId = user.id || (user as any)._id
-          newSocket.emit('join-user-room', userId)
-          console.log('Joined notification room for user:', userId)
+        if (currentUserId) {
+          newSocket.emit('join-user-room', currentUserId)
+          console.log('Joined notification room for user:', currentUserId)
+          userIdRef.current = currentUserId
+        }
+        
+        // Send activity ping every 2 minutes to keep status as online
+        const activityInterval = setInterval(() => {
+          if (newSocket.connected) {
+            newSocket.emit('activity-ping')
+          }
+        }, 120000) // 2 minutes
+        
+        // Store interval ID for cleanup
+        ;(newSocket as any).activityInterval = activityInterval
+      })
+      
+      newSocket.on('authenticated', (data: { success: boolean }) => {
+        if (data.success) {
+          console.log('Socket authenticated successfully')
         }
       })
 
-      newSocket.on('disconnect', () => {
-        console.log('Disconnected from Socket.io')
+      newSocket.on('disconnect', (reason) => {
+        console.log('Disconnected from Socket.io:', reason)
+        setConnected(false)
+        
+        // Don't manually reconnect - let Socket.io handle it automatically
+        // Only manual disconnect reasons: 'io client disconnect' (user action)
+        // All other reasons (transport close, ping timeout, etc.) will auto-reconnect
+      })
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to Socket.io after', attemptNumber, 'attempts')
+        setConnected(true)
+        
+        // Re-authenticate after reconnection
+        if (token) {
+          newSocket.emit('authenticate', token)
+        }
+        
+        // Re-join user room
+        if (currentUserId) {
+          newSocket.emit('join-user-room', currentUserId)
+        }
+      })
+
+      newSocket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('Attempting to reconnect to Socket.io (attempt', attemptNumber, ')')
+      })
+
+      newSocket.on('reconnect_error', (error) => {
+        console.warn('Socket.io reconnection error:', error)
+      })
+
+      newSocket.on('reconnect_failed', () => {
+        console.error('Socket.io reconnection failed after all attempts')
         setConnected(false)
       })
 
@@ -74,19 +171,27 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      socketRef.current = newSocket
       setSocket(newSocket)
 
       return () => {
+        // Clear activity ping interval
+        if ((newSocket as any).activityInterval) {
+          clearInterval((newSocket as any).activityInterval)
+        }
         newSocket.close()
+        socketRef.current = null
       }
     } else {
-      if (socket) {
-        socket.close()
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
         setSocket(null)
         setConnected(false)
+        userIdRef.current = null
       }
     }
-  }, [user, token])
+  }, [userId, token])
 
   return (
     <SocketContext.Provider value={{ socket, connected }}>

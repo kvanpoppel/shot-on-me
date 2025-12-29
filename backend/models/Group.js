@@ -41,8 +41,8 @@ const groupSchema = new mongoose.Schema({
     default: false
   },
   inviteCode: {
-    type: String,
-    sparse: true
+    type: String
+    // Index defined below - don't use sparse: true here to avoid duplicate
   }
 }, {
   timestamps: true

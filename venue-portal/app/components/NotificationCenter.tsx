@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { Send, Users, Calendar } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../utils/api'
 
 export default function NotificationCenter() {
   const { token, user } = useAuth()
@@ -20,7 +19,7 @@ export default function NotificationCenter() {
     setSending(true)
     try {
       await axios.post(
-        `${API_URL}/notifications/send`,
+        `${getApiUrl()}/notifications/send`,
         {
           message,
           type,
@@ -41,11 +40,19 @@ export default function NotificationCenter() {
 
   return (
     <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
-      <div className="flex items-center space-x-2 mb-3">
-        <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-          <Send className="w-4 h-4 text-primary-500" />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
+            <Send className="w-4 h-4 text-primary-500" />
+          </div>
+          <h2 className="text-base font-semibold text-primary-500 tracking-tight">Send Notification</h2>
         </div>
-        <h2 className="text-base font-semibold text-primary-500 tracking-tight">Send Notification</h2>
+        <a
+          href="/dashboard/analytics?tab=notifications"
+          className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
+        >
+          History
+        </a>
       </div>
 
       <form onSubmit={handleSend} className="space-y-2">

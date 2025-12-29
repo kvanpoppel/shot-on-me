@@ -115,6 +115,21 @@ input, textarea, select {
   }
 }
 
+/* Touch optimization for mobile */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve mobile menu interactions */
+@media (max-width: 640px) {
+  /* Larger touch targets on mobile */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

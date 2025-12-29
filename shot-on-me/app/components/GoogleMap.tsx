@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { GoogleMap, Marker } from '@react-google-maps/api'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
@@ -27,6 +27,111 @@ const defaultMapContainerStyle: React.CSSProperties = {
   height: '100%'
 }
 
+// Enhanced dark theme for Google Maps with gold accents matching app design
+const mapStyles: google.maps.MapTypeStyle[] = [
+  // Base styling - dark background
+  {
+    featureType: 'all',
+    elementType: 'geometry',
+    stylers: [{ color: '#0f0f0f' }]
+  },
+  {
+    featureType: 'all',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', saturation: 20 }] // Gold text
+  },
+  {
+    featureType: 'all',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: '#000000', visibility: 'on' }]
+  },
+  {
+    featureType: 'all',
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }]
+  },
+  // Water - very dark
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#050505' }]
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', lightness: 30 }]
+  },
+  // Roads - dark with subtle gold tint
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1a1a', lightness: -10 }]
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: '#2a2a2a', lightness: -5 }]
+  },
+  {
+    featureType: 'road.arterial',
+    elementType: 'geometry',
+    stylers: [{ color: '#1f1f1f' }]
+  },
+  {
+    featureType: 'road.local',
+    elementType: 'geometry',
+    stylers: [{ color: '#151515' }]
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', lightness: 40 }]
+  },
+  // Points of Interest
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1a1a' }]
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', lightness: 30 }]
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry',
+    stylers: [{ color: '#0f0f0f' }]
+  },
+  // Administrative areas
+  {
+    featureType: 'administrative',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1a1a' }]
+  },
+  {
+    featureType: 'administrative.locality',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', lightness: 20 }]
+  },
+  {
+    featureType: 'administrative.neighborhood',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#D4AF37', lightness: 30 }]
+  },
+  // Transit
+  {
+    featureType: 'transit',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1a1a' }]
+  },
+  {
+    featureType: 'transit.station',
+    elementType: 'geometry',
+    stylers: [{ color: '#2a2a2a' }]
+  }
+]
+
 export default function GoogleMapComponent({
   center,
   zoom = 13,
@@ -42,36 +147,32 @@ export default function GoogleMapComponent({
       disableDefaultUI: false,
       clickableIcons: true,
       scrollwheel: true,
-      styles: [
-        {
-          featureType: 'all',
-          elementType: 'geometry',
-          stylers: [{ color: '#1a1a1a' }]
-        },
-        {
-          featureType: 'all',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#d4af37' }]
-        },
-        {
-          featureType: 'water',
-          elementType: 'geometry',
-          stylers: [{ color: '#0a0a0a' }]
-        },
-        {
-          featureType: 'road',
-          elementType: 'geometry',
-          stylers: [{ color: '#2a2a2a' }]
-        },
-        {
-          featureType: 'poi',
-          elementType: 'geometry',
-          stylers: [{ color: '#1a1a1a' }]
-        }
-      ]
+      zoomControl: true,
+      mapTypeControl: false,
+      scaleControl: true,
+      streetViewControl: false,
+      rotateControl: false,
+      fullscreenControl: true,
+      styles: mapStyles,
+      backgroundColor: '#000000',
+      // Enhanced control styling
+      zoomControlOptions: {
+        position: google.maps.ControlPosition.RIGHT_BOTTOM,
+        style: google.maps.ZoomControlStyle.SMALL
+      },
+      // Improve map rendering
+      gestureHandling: 'greedy',
+      minZoom: 3,
+      maxZoom: 20,
+      restriction: undefined
     }),
     []
   )
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    // Optional: Add any map initialization logic here
+    console.log('Google Map loaded successfully')
+  }, [])
 
   if (loadError) {
     return (
@@ -103,6 +204,7 @@ export default function GoogleMapComponent({
       zoom={zoom}
       options={mapOptions}
       onClick={onMapClick}
+      onLoad={onMapLoad}
     >
       {markers.map((marker) => {
         // Convert icon format if needed
@@ -133,7 +235,7 @@ export default function GoogleMapComponent({
             labelConfig = {
               text: marker.label.text,
               color: marker.label.color || '#000000',
-              fontWeight: marker.label.fontWeight || 'normal'
+              fontWeight: marker.label.fontWeight || 'bold'
             }
           }
         }
@@ -146,6 +248,7 @@ export default function GoogleMapComponent({
             title={marker.title}
             icon={iconConfig}
             onClick={marker.onClick}
+            animation={google.maps.Animation.DROP}
           />
         )
       })}

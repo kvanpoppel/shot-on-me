@@ -1,16 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
 import { Wallet, MapPin, Users } from 'lucide-react'
+import ForgotPasswordModal from './ForgotPasswordModal'
+import StreamlinedPermissions from './StreamlinedPermissions'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState(() => {
     // Auto-fill email if remembered
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('savedEmail') || ''
+      try {
+        return localStorage.getItem('savedEmail') || ''
+      } catch (err) {
+        return ''
+      }
     }
     return ''
   })
@@ -20,16 +25,36 @@ export default function LoginScreen() {
   const [lastName, setLastName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showPermissions, setShowPermissions] = useState(false)
+  const [justRegistered, setJustRegistered] = useState(false)
   const [rememberMe, setRememberMe] = useState(() => {
     // Check if user previously chose to be remembered
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('rememberMe')
-      return saved === 'true' || saved === null // Default to true for better UX
+      try {
+        const saved = localStorage.getItem('rememberMe')
+        return saved === 'true' || saved === null // Default to true for better UX
+      } catch (err) {
+        return true // Default to true on error
+      }
     }
     return true // Default to true
   })
   const { login, register } = useAuth()
-  const router = useRouter()
+  const [referralCode, setReferralCode] = useState<string>('')
+
+  // Check for referral code in URL on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const ref = params.get('ref')
+      if (ref) {
+        setReferralCode(ref)
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,16 +63,29 @@ export default function LoginScreen() {
 
     try {
       // Save remember me preference
-      localStorage.setItem('rememberMe', rememberMe.toString())
+      try {
+        localStorage.setItem('rememberMe', rememberMe.toString())
+      } catch (err) {
+        // Tracking prevention or localStorage blocked - continue anyway
+      }
       
       if (isLogin) {
         await login(email, password, rememberMe)
+        // Don't use router.push - the app uses state-based navigation
+        // The page.tsx will automatically show the dashboard when user is set
       } else {
-        await register({ email, password, phoneNumber, firstName, lastName })
+        await register({ email, password, phoneNumber, firstName, lastName, referralCode })
         // Also save remember me for registration
-        localStorage.setItem('rememberMe', rememberMe.toString())
+        try {
+          localStorage.setItem('rememberMe', rememberMe.toString())
+        } catch (err) {
+          // Tracking prevention or localStorage blocked - continue anyway
+        }
+        // Show streamlined permissions after successful registration
+        setJustRegistered(true)
+        setShowPermissions(true)
+        // Don't navigate immediately - let permissions modal handle it
       }
-      router.push('/')
     } catch (err: any) {
       setError(err.message || 'Authentication failed')
     } finally {
@@ -174,7 +212,16 @@ export default function LoginScreen() {
                   />
                   <span className="text-primary-400 text-sm">Remember me</span>
                 </label>
-                <a href="#" className="text-primary-500 text-sm hover:underline">Forgot password?</a>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setShowForgotPassword(true)
+                  }}
+                  className="text-primary-500 text-sm hover:underline"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               {error && (
@@ -200,6 +247,24 @@ export default function LoginScreen() {
           </div>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
+
+      {/* Streamlined Permissions - Show after registration */}
+      {showPermissions && justRegistered && (
+        <StreamlinedPermissions
+          showOnMount={true}
+          onComplete={() => {
+            setShowPermissions(false)
+            setJustRegistered(false)
+            // Don't use router.push - the app uses state-based navigation
+            // The page.tsx will automatically show the dashboard when user is set
+          }}
+        />
+      )}
     </div>
   )
 }
