@@ -2267,12 +2267,50 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                     )}
                                   </div>
                                   
-                                  <button
-                                    onClick={() => handleReply(post._id, comment._id || '', comment.user.firstName)}
-                                    className="text-xs text-primary-400 hover:text-primary-500"
-                                  >
-                                    Reply
-                                  </button>
+                                  {/* Reply & More Menu */}
+                                  <div className="relative group/comment-menu">
+                                    <button
+                                      onClick={() => handleReply(post._id, comment._id || '', comment.user.firstName)}
+                                      className="text-xs text-primary-400 hover:text-primary-500 px-2 py-1 rounded hover:bg-primary-500/10 transition-all"
+                                    >
+                                      Reply
+                                    </button>
+                                    
+                                    {/* Comment More Menu - Shows on hover */}
+                                    <div className="absolute left-0 bottom-full mb-1 opacity-0 group-hover/comment-menu:opacity-100 pointer-events-none group-hover/comment-menu:pointer-events-auto transition-opacity z-50">
+                                      <div className="bg-black/95 border border-primary-500/30 rounded-lg shadow-lg min-w-[140px]">
+                                        <div className="py-1">
+                                          {(comment.user._id || comment.user.id) === (user?.id || (user as any)?._id) && (
+                                            <button
+                                              onClick={() => {
+                                                if (confirm('Delete this comment?')) {
+                                                  // TODO: Implement delete comment
+                                                  setCommentMenuOpen(null)
+                                                }
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                              <span>Delete</span>
+                                            </button>
+                                          )}
+                                          {(comment.user._id || comment.user.id) !== (user?.id || (user as any)?._id) && (
+                                            <button
+                                              onClick={() => {
+                                                // TODO: Implement report comment
+                                                alert('Report feature coming soon')
+                                                setCommentMenuOpen(null)
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
+                                            >
+                                              <Flag className="w-3 h-3" />
+                                              <span>Report</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                                 
                                 {/* Nested Replies */}
