@@ -24,7 +24,7 @@ const AIFeedSuggestions = memo(({ nearbyVenues, recentFriendActivity, onSuggesti
   const API_URL = useApiUrl()
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loading, setLoading] = useState(false)
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!token) return

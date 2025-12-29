@@ -7,9 +7,9 @@ import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 interface MarkerData {
   id: string
   position: { lat: number; lng: number }
-  label?: string | { text: string; color?: string; fontWeight?: string }
+  label?: string | { text: string; color?: string; fontWeight?: string; fontSize?: string }
   title?: string
-  icon?: string | { url: string; scaledSize?: { width: number; height: number }; anchor?: { x: number; y: number } }
+  icon?: string | { url: string; scaledSize?: { width: number; height: number }; anchor?: { x: number; y: number } } | google.maps.Symbol | google.maps.Icon
   onClick?: () => void
 }
 
@@ -157,8 +157,7 @@ export default function GoogleMapComponent({
       backgroundColor: '#000000',
       // Enhanced control styling
       zoomControlOptions: {
-        position: google.maps.ControlPosition.RIGHT_BOTTOM,
-        style: google.maps.ZoomControlStyle.SMALL
+        position: google.maps.ControlPosition.RIGHT_BOTTOM
       },
       // Improve map rendering
       gestureHandling: 'greedy',
@@ -214,14 +213,19 @@ export default function GoogleMapComponent({
             iconConfig = marker.icon
           } else {
             // Convert to Google Maps Icon format
-            iconConfig = {
-              url: marker.icon.url,
-              scaledSize: marker.icon.scaledSize 
-                ? new google.maps.Size(marker.icon.scaledSize.width, marker.icon.scaledSize.height)
-                : undefined,
-              anchor: marker.icon.anchor
-                ? new google.maps.Point(marker.icon.anchor.x, marker.icon.anchor.y)
-                : undefined
+            if (typeof marker.icon === 'object' && marker.icon !== null && 'url' in marker.icon) {
+              iconConfig = {
+                url: (marker.icon as any).url,
+                scaledSize: (marker.icon as any).scaledSize
+                  ? new google.maps.Size((marker.icon as any).scaledSize.width, (marker.icon as any).scaledSize.height)
+                  : undefined,
+                anchor: (marker.icon as any).anchor
+                  ? new google.maps.Point((marker.icon as any).anchor.x, (marker.icon as any).anchor.y)
+                  : undefined
+              }
+            } else if (typeof marker.icon === 'object' && marker.icon !== null) {
+              // It's already a Symbol or Icon, use it directly
+              iconConfig = marker.icon as any
             }
           }
         }
