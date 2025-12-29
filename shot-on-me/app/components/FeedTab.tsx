@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Filter, RefreshCw, Flame, Compass, UserCheck, Eye } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Filter, RefreshCw, Flame, Compass, UserCheck, Eye, MoreVertical, Flag, Trash2 } from 'lucide-react'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
 import StoryEditor from './StoryEditor'
@@ -137,6 +137,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
   const [postViews, setPostViews] = useState<Map<string, number>>(new Map())
   const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null)
+  const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
 
   // Scroll restoration - remember scroll position when switching tabs
   useEffect(() => {
@@ -1990,12 +1992,91 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                       <MessageCircle className="w-5 h-5" />
                       <span className="font-semibold">{post.comments.length}</span>
                     </button>
-                    <button 
-                      onClick={() => handleShare(post._id)}
-                      className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </button>
+                    {/* Share & More Menu - Dropdown */}
+                    <div className="relative group/post-menu">
+                      <button 
+                        onClick={() => setPostMenuOpen(postMenuOpen === post._id ? null : post._id)}
+                        className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      
+                      {/* Dropdown Menu */}
+                      {postMenuOpen === post._id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setPostMenuOpen(null)}
+                          />
+                          <div className="absolute right-0 bottom-full mb-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-lg z-50 min-w-[180px]">
+                            <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  handleShare(post._id)
+                                  setPostMenuOpen(null)
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
+                              >
+                                <Share2 className="w-4 h-4" />
+                                <span className="text-sm">Share</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const newSaved = new Set(savedPosts)
+                                  if (savedPosts.has(post._id)) {
+                                    newSaved.delete(post._id)
+                                  } else {
+                                    newSaved.add(post._id)
+                                  }
+                                  setSavedPosts(newSaved)
+                                  try {
+                                    localStorage.setItem('savedPosts', JSON.stringify(Array.from(newSaved)))
+                                  } catch (err) {
+                                    console.error('Failed to save post:', err)
+                                  }
+                                  setPostMenuOpen(null)
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
+                              >
+                                {savedPosts.has(post._id) ? (
+                                  <BookmarkCheck className="w-4 h-4" />
+                                ) : (
+                                  <Bookmark className="w-4 h-4" />
+                                )}
+                                <span className="text-sm">{savedPosts.has(post._id) ? 'Unsave' : 'Save'}</span>
+                              </button>
+                              {authorId === (user?.id || (user as any)?._id) && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm('Delete this post?')) {
+                                      // TODO: Implement delete post
+                                      setPostMenuOpen(null)
+                                    }
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-red-400 hover:bg-red-500/10 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  <span className="text-sm">Delete</span>
+                                </button>
+                              )}
+                              {authorId !== (user?.id || (user as any)?._id) && (
+                                <button
+                                  onClick={() => {
+                                    // TODO: Implement report post
+                                    alert('Report feature coming soon')
+                                    setPostMenuOpen(null)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
+                                >
+                                  <Flag className="w-4 h-4" />
+                                  <span className="text-sm">Report</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                   {post.checkIn && (
                     <button
@@ -2094,7 +2175,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                 <div className="flex items-center gap-3 mt-1">
                                   <span className="text-xs text-primary-400/70">{getTimeAgo(comment.createdAt)}</span>
                                   
-                                  {/* Comment Reaction Button with Picker - Fixed Hover */}
+                                  {/* Enhanced Comment Like/Reaction - More Prominent */}
                                   <div 
                                     className="relative inline-block group/comment-reaction"
                                     onMouseEnter={() => setShowingReactionPicker({ postId: post._id, commentId: comment._id || '' })}
@@ -2119,7 +2200,11 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                           handleCommentReaction(post._id, comment._id || '', '❤️')
                                         }
                                       }}
-                                      className="text-xs text-primary-400 hover:text-primary-500 flex items-center gap-1 transition-colors"
+                                      className={`text-xs flex items-center gap-1.5 px-2 py-1 rounded-full transition-all ${
+                                        getUserCommentReaction(comment)
+                                          ? 'bg-primary-500/20 text-primary-500 border border-primary-500/30'
+                                          : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
+                                      }`}
                                     >
                                       {(() => {
                                         const userReaction = getUserCommentReaction(comment)
@@ -2135,7 +2220,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                           return (
                                             <span className="flex items-center gap-1">
                                               <span>{userReaction}</span>
-                                              {totalCount > 1 && <span className="text-[10px]">{totalCount}</span>}
+                                              {totalCount > 1 && <span className="text-[10px] font-medium">{totalCount}</span>}
                                             </span>
                                           )
                                         }
@@ -2148,7 +2233,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                         return (
                                           <span className="flex items-center gap-1">
                                             <span>{primaryEmoji}</span>
-                                            <span className="text-[10px]">{totalCount}</span>
+                                            <span className="text-[10px] font-medium">{totalCount}</span>
                                           </span>
                                         )
                                       })()}
@@ -2214,7 +2299,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                           <div className="flex items-center gap-3 mt-0.5">
                                             <span className="text-[10px] text-primary-400/70">{getTimeAgo(reply.createdAt)}</span>
                                             
-                                            {/* Reply Reaction Button with Picker - Fixed Hover */}
+                                            {/* Enhanced Reply Like/Reaction - More Prominent */}
                                             <div 
                                               className="relative inline-block group/reply-reaction"
                                               onMouseEnter={() => setShowingReactionPicker({ postId: post._id, commentId: reply._id || comment._id || '' })}
@@ -2236,7 +2321,11 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                                     handleCommentReaction(post._id, reply._id || comment._id || '', '❤️')
                                                   }
                                                 }}
-                                                className="text-[10px] text-primary-400 hover:text-primary-500 flex items-center gap-0.5"
+                                                className={`text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-all ${
+                                                  getUserCommentReaction(reply)
+                                                    ? 'bg-primary-500/20 text-primary-500 border border-primary-500/30'
+                                                    : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
+                                                }`}
                                               >
                                                 {(() => {
                                                   const userReaction = getUserCommentReaction(reply)
@@ -2251,7 +2340,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                                     return (
                                                       <span className="flex items-center gap-0.5">
                                                         <span className="text-xs">{userReaction}</span>
-                                                        {totalCount > 1 && <span className="text-[9px]">{totalCount}</span>}
+                                                        {totalCount > 1 && <span className="text-[9px] font-medium">{totalCount}</span>}
                                                       </span>
                                                     )
                                                   }
@@ -2263,7 +2352,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                                   return (
                                                     <span className="flex items-center gap-0.5">
                                                       <span className="text-xs">{primaryEmoji}</span>
-                                                      <span className="text-[9px]">{totalCount}</span>
+                                                      <span className="text-[9px] font-medium">{totalCount}</span>
                                                     </span>
                                                   )
                                                 })()}
