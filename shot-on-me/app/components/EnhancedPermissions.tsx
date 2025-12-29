@@ -27,6 +27,32 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   })
   const [requesting, setRequesting] = useState<string | null>(null)
   const [requested, setRequested] = useState<Set<string>>(new Set())
+  const [availability, setAvailability] = useState<Record<string, boolean>>({
+    location: true,
+    camera: true,
+    microphone: true,
+    contacts: false,
+    notifications: false
+  })
+
+  // Check availability on mount
+  useEffect(() => {
+    // Check contacts API availability
+    const contactsAvailable = 'contacts' in navigator && 'ContactsManager' in window
+    setAvailability(prev => ({ ...prev, contacts: contactsAvailable }))
+    
+    // Check notifications API availability
+    const notificationsAvailable = 'Notification' in window
+    setAvailability(prev => ({ ...prev, notifications: notificationsAvailable }))
+    
+    // If contacts or notifications are not available, disable them by default
+    if (!contactsAvailable) {
+      setPermissions(prev => ({ ...prev, contacts: false }))
+    }
+    if (!notificationsAvailable) {
+      setPermissions(prev => ({ ...prev, notifications: false }))
+    }
+  }, [])
 
   useEffect(() => {
     if (showOnMount) {
@@ -165,13 +191,26 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
     setRequesting('notifications')
     try {
       if ('Notification' in window) {
+        // Check current permission first
+        if (Notification.permission === 'granted') {
+          setRequested(prev => new Set([...prev, 'notifications']))
+          return true
+        }
+        if (Notification.permission === 'denied') {
+          alert('Notifications are blocked. Please enable them in your browser settings.')
+          return false
+        }
+        // Request permission
         const permission = await Notification.requestPermission()
         if (permission === 'granted') {
           setRequested(prev => new Set([...prev, 'notifications']))
+          return true
         }
-        return permission === 'granted'
+        return false
+      } else {
+        alert('Notifications are not supported in this browser.')
+        return false
       }
-      return false
     } catch (error) {
       console.warn('Notifications permission request failed:', error)
       return false
@@ -286,7 +325,7 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
             const isEnabled = permissions[config.key]
             const isRequesting = requesting === config.key
             const hasRequested = requested.has(config.key)
-            const isUnavailable = config.key === 'contacts' && !('contacts' in navigator && 'ContactsManager' in window)
+            const isUnavailable = !availability[config.key]
 
             return (
               <div
@@ -341,7 +380,13 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
                         <span className="text-primary-400/60">Disabled</span>
                       )}
                       {isUnavailable && (
-                        <span className="text-primary-400/50">Not available on this device</span>
+                        <span className="text-primary-400/50">
+                          {config.key === 'contacts' 
+                            ? 'Contacts API not supported on this device/browser. You can still find friends by searching.'
+                            : config.key === 'notifications'
+                            ? 'Notifications not supported on this device/browser.'
+                            : 'Not available on this device'}
+                        </span>
                       )}
                     </div>
                   </div>
