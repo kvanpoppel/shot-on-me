@@ -17,6 +17,7 @@ import {
   Loader,
   MapPin as CheckInIcon
 } from 'lucide-react'
+import BackButton from './BackButton'
 import CheckInSuccessModal from './CheckInSuccessModal'
 import VenueReferralInvite from './VenueReferralInvite'
 
@@ -246,12 +247,9 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         <div className="text-center">
           <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-primary-400">Venue not found</p>
-          <button
-            onClick={onClose}
-            className="mt-4 px-6 py-2 bg-primary-500 text-black rounded-lg"
-          >
-            Go Back
-          </button>
+          <div className="mt-4">
+            <BackButton onClick={onClose} label="Go Back" />
+          </div>
         </div>
       </div>
     )
@@ -268,12 +266,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         <div className="text-center p-6">
           <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-primary-400 mb-4">Venue data is invalid</p>
-          <button
-            onClick={onClose}
-            className="bg-primary-500 text-black px-6 py-2 rounded-lg font-semibold"
-          >
-            Go Back
-          </button>
+          <BackButton onClick={onClose} label="Go Back" />
         </div>
       </div>
     )
@@ -284,12 +277,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
       {/* Header */}
       <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-primary-500/20 z-10">
         <div className="flex items-center justify-between p-4">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-primary-500/10 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6 text-primary-500" />
-          </button>
+          <BackButton onClick={onClose} />
           <h1 className="text-xl font-semibold text-primary-500">{venue?.name || 'Venue'}</h1>
           <div className="w-10" /> {/* Spacer */}
         </div>

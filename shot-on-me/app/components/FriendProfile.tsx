@@ -17,7 +17,7 @@ import {
   Navigation,
   Share2
 } from 'lucide-react'
-
+import BackButton from './BackButton'
 import { useApiUrl } from '../utils/api'
 
 interface FriendProfileProps {
@@ -215,12 +215,7 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
       {/* Header */}
       <div className="sticky top-0 bg-black/95 backdrop-blur-sm border-b border-primary-500/10 z-10 p-4">
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={onClose}
-            className="p-2 text-primary-400/70 hover:text-primary-500 rounded-lg transition-all"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <BackButton onClick={onClose} />
           <h1 className="text-lg font-semibold text-primary-500 tracking-tight">Profile</h1>
           <div className="w-9"></div>
         </div>
