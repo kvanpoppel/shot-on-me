@@ -5,8 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { Users } from 'lucide-react'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../utils/api'
 
 export default function FollowerCount() {
   const { token, user } = useAuth()
@@ -41,10 +40,18 @@ export default function FollowerCount() {
     if (!token || !user) return
     try {
       // Get user's venue
-      const venuesResponse = await axios.get(`${API_URL}/venues`, {
+      const apiUrl = getApiUrl()
+      const venuesResponse = await axios.get(`${apiUrl}/venues`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const venues = venuesResponse.data.venues || []
+      
+      // Handle both response formats: { venues: [...] } or direct array
+      let venues: any[] = []
+      if (Array.isArray(venuesResponse.data)) {
+        venues = venuesResponse.data
+      } else if (venuesResponse.data?.venues) {
+        venues = venuesResponse.data.venues
+      }
       
       // Find venue owned by current user
       let myVenue = null
@@ -64,7 +71,7 @@ export default function FollowerCount() {
         
         // Get follower count
         try {
-          const followersResponse = await axios.get(`${API_URL}/venues/${vid}/followers`, {
+          const followersResponse = await axios.get(`${getApiUrl()}/venues/${vid}/followers`, {
             headers: { Authorization: `Bearer ${token}` }
           })
           setFollowerCount(followersResponse.data.followerCount || 0)
@@ -92,7 +99,10 @@ export default function FollowerCount() {
   }
 
   return (
-    <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 hover:border-primary-500/25 hover:bg-black/50 transition-all backdrop-blur-sm">
+    <div 
+      onClick={() => window.location.href = '/dashboard/analytics?tab=followers'}
+      className="bg-black/40 border border-primary-500/15 rounded-lg p-3 hover:border-primary-500/25 hover:bg-black/50 transition-all backdrop-blur-sm cursor-pointer group"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
@@ -103,6 +113,7 @@ export default function FollowerCount() {
             <p className="text-lg font-semibold text-primary-500 tracking-tight">{followerCount}</p>
           </div>
         </div>
+        <span className="text-primary-500/50 group-hover:text-primary-500 text-xs">View →</span>
       </div>
     </div>
   )

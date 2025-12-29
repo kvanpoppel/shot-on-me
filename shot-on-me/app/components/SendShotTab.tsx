@@ -48,12 +48,29 @@ export default function SendShotTab() {
   const [qrCodeData, setQrCodeData] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedVenue, setSelectedVenue] = useState<any>(null)
 
   useEffect(() => {
     if (token) {
       fetchRecentRecipients()
       fetchFavoriteVenues()
       fetchPaymentHistory()
+      
+      // Check for pre-selected venue from MapTab or other components
+      const storedVenue = localStorage.getItem('selectedVenue')
+      const profileAction = localStorage.getItem('profileAction')
+      
+      if (storedVenue && profileAction === 'send-shot') {
+        try {
+          const venue = JSON.parse(storedVenue)
+          setSelectedVenue(venue)
+          // Clear the stored data after reading
+          localStorage.removeItem('selectedVenue')
+          localStorage.removeItem('profileAction')
+        } catch (error) {
+          console.error('Failed to parse stored venue:', error)
+        }
+      }
     }
   }, [token])
 
@@ -218,6 +235,21 @@ export default function SendShotTab() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Send Shot</h1>
         <p className="text-gray-400 text-sm">Send money to friends instantly</p>
+        {selectedVenue && (
+          <div className="mt-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary-500" />
+              <span className="text-sm text-primary-500 font-medium">
+                Sending to: {selectedVenue.name}
+              </span>
+            </div>
+            {selectedVenue.address && (
+              <p className="text-xs text-primary-400/70 mt-1 ml-6">
+                {selectedVenue.address}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quick Amount Buttons */}

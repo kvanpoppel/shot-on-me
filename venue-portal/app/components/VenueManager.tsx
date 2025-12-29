@@ -6,7 +6,7 @@ import axios from 'axios'
 import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save } from 'lucide-react'
 import VenueMap from './VenueMap'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../utils/api'
 
 interface Venue {
   _id: string
@@ -21,6 +21,7 @@ interface Venue {
   phone?: string
   email?: string
   website?: string
+  description?: string
   location?: {
     latitude?: number
     longitude?: number
@@ -33,6 +34,7 @@ interface Venue {
 export default function VenueManager() {
   const { token, user } = useAuth()
   const [venue, setVenue] = useState<Venue | null>(null)
+  const [allVenues, setAllVenues] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -44,7 +46,8 @@ export default function VenueManager() {
     zipCode: '',
     phone: '',
     email: '',
-    website: ''
+    website: '',
+    description: ''
   })
   const [schedule, setSchedule] = useState<{ [key: string]: { open: string; close: string; isOpen: boolean } }>({
     monday: { open: '11:00', close: '22:00', isOpen: true },
@@ -65,13 +68,47 @@ export default function VenueManager() {
     
     setLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/venues`, {
+      const apiUrl = getApiUrl()
+      const response = await axios.get(`${apiUrl}/venues`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const venues = response.data.venues || []
-      const myVenue = venues.find((v: any) => v.owner?._id === user.id || v.owner === user.id)
+      
+      // Handle both response formats: { venues: [...] } or direct array
+      let venues: any[] = []
+      if (Array.isArray(response.data)) {
+        venues = response.data
+      } else if (response.data?.venues) {
+        venues = response.data.venues
+      } else if (response.data && typeof response.data === 'object') {
+        // If response.data is an object but not an array, try to extract venues
+        venues = Object.values(response.data).filter(Array.isArray).flat() as any[]
+      }
+      
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Fetched venues:', venues.length, 'venues for user:', user.id)
+      }
+      
+      // Store all venues for potential multi-venue selection
+      setAllVenues(venues)
+      
+      // Improved venue matching: handle both populated owner object and owner ID string
+      const myVenues = venues.filter((v: any) => {
+        const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
+        const userId = user.id?.toString()
+        return ownerId === userId
+      })
+      
+      // If user has multiple venues, select the first one by default
+      // TODO: Add venue selector dropdown if multiple venues exist
+      const myVenue = myVenues.length > 0 ? myVenues[0] : null
       
       if (myVenue) {
+        if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+          console.debug('Selected venue:', myVenue.name, 'ID:', myVenue._id)
+        }
+        if (myVenues.length > 1 && process.env.NODE_ENV === 'development') {
+          console.debug(`User has ${myVenues.length} venues. Currently showing: ${myVenue.name}.`)
+        }
         setVenue(myVenue)
         setFormData({
           name: myVenue.name || '',
@@ -81,14 +118,22 @@ export default function VenueManager() {
           zipCode: myVenue.address?.zipCode || '',
           phone: myVenue.phone || '',
           email: myVenue.email || '',
-          website: myVenue.website || ''
+          website: myVenue.website || '',
+          description: myVenue.description || ''
         })
         if (myVenue.schedule) {
           setSchedule({ ...schedule, ...myVenue.schedule })
         }
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('No venue found for user:', user.id)
+        }
       }
-    } catch (error) {
-      console.error('Failed to fetch venue:', error)
+    } catch (error: any) {
+      // Only log unexpected errors
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Failed to fetch venue:', error.message || error)
+      }
     } finally {
       setLoading(false)
     }
@@ -108,13 +153,14 @@ export default function VenueManager() {
       }
 
       await axios.put(
-        `${API_URL}/venues/${venue._id}`,
+        `${getApiUrl()}/venues/${venue._id}`,
         {
           name: formData.name,
           address,
           phone: formData.phone,
           email: formData.email,
           website: formData.website,
+          description: formData.description,
           schedule
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -128,13 +174,17 @@ export default function VenueManager() {
         phone: formData.phone,
         email: formData.email,
         website: formData.website,
+        description: formData.description,
         schedule
       })
 
       setEditing(false)
       alert('Venue updated successfully!')
     } catch (error: any) {
-      console.error('Failed to update venue:', error)
+      // Log error for debugging but show user-friendly message
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Failed to update venue:', error.message || error)
+      }
       alert(error.response?.data?.error || 'Failed to update venue')
     } finally {
       setSaving(false)
@@ -173,15 +223,12 @@ export default function VenueManager() {
 
   const getGoogleMapsUrl = () => {
     if (!venue) {
-      console.log('getGoogleMapsUrl: No venue')
       return null
     }
     
     // Prefer coordinates if available (most reliable)
     if (venue.location?.latitude && venue.location?.longitude) {
-      const url = `https://www.google.com/maps/search/?api=1&query=${venue.location.latitude},${venue.location.longitude}`
-      console.log('getGoogleMapsUrl: Using coordinates', url)
-      return url
+      return `https://www.google.com/maps/search/?api=1&query=${venue.location.latitude},${venue.location.longitude}`
     }
     
     // Fall back to address from form data
@@ -193,9 +240,7 @@ export default function VenueManager() {
     ].filter(Boolean).join(', ')
     
     if (address) {
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-      console.log('getGoogleMapsUrl: Using form address', url)
-      return url
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
     }
     
     // Try venue address object if form data is empty
@@ -208,20 +253,15 @@ export default function VenueManager() {
       ].filter(Boolean).join(', ')
       
       if (venueAddress) {
-        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`
-        console.log('getGoogleMapsUrl: Using venue address', url)
-        return url
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`
       }
     }
     
     // Last resort: use venue name if nothing else is available
     if (venue.name) {
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}`
-      console.log('getGoogleMapsUrl: Using venue name as fallback', url)
-      return url
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}`
     }
     
-    console.log('getGoogleMapsUrl: No location data available')
     return null
   }
 
@@ -467,6 +507,25 @@ export default function VenueManager() {
               </p>
             )}
           </div>
+
+          {/* Home Page Description */}
+          <div>
+            <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide flex items-center space-x-1">
+              <span>Home Page</span>
+            </label>
+            {editing ? (
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 placeholder-primary-600 text-sm min-h-[120px]"
+                placeholder="Describe your venue, special features, atmosphere, etc. This will appear on your venue's home page."
+              />
+            ) : (
+              <p className="text-primary-400 text-sm whitespace-pre-wrap">
+                {formData.description || 'No description set. Click Edit to add a home page description.'}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -578,7 +637,6 @@ export default function VenueManager() {
               e.preventDefault()
               e.stopPropagation()
               const url = getGoogleMapsUrl()
-              console.log('Google Maps URL:', url)
               if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer')
               } else {
@@ -595,7 +653,6 @@ export default function VenueManager() {
               e.preventDefault()
               e.stopPropagation()
               const url = getAppleMapsUrl()
-              console.log('Apple Maps URL:', url)
               if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer')
               } else {

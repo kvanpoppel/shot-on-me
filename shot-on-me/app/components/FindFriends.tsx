@@ -6,6 +6,7 @@ import axios from 'axios'
 import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
+import InviteFriendsModal from './InviteFriendsModal'
 
 interface FindFriendsProps {
   isOpen: boolean
@@ -117,21 +118,21 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
             (user as any)?.friends?.includes(userId)
   }
 
-  const handleInviteFriend = () => {
-    const inviteLink = `${window.location.origin}?ref=${user?.id}`
-    if (navigator.share) {
-      navigator.share({
-        title: 'Join me on Shot On Me!',
-        text: 'Send drinks to friends at any bar or coffee shop. Join me!',
-        url: inviteLink
-      }).catch(() => {
-        navigator.clipboard.writeText(inviteLink)
-        alert('Invite link copied! Share it with your friends!')
-      })
-    } else {
-      navigator.clipboard.writeText(inviteLink)
-      alert('Invite link copied! Share it with your friends!')
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  const handleInviteFriend = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
     }
+    
+    if (!user?.id && !(user as any)?._id) {
+      alert('Please wait for your account to load, then try again.')
+      return
+    }
+    
+    // Open invite modal for better UX
+    setShowInviteModal(true)
   }
 
   if (!isOpen) return null
@@ -332,7 +333,12 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
                 <p className="text-primary-400/80 font-light mb-4">No suggestions available</p>
                 <button
-                  onClick={handleInviteFriend}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleInviteFriend(e)
+                  }}
                   className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
                 >
                   Invite Friends
@@ -462,13 +468,24 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
       {/* Invite Button */}
       <div className="absolute bottom-0 left-0 right-0 bg-black/95 backdrop-blur-sm border-t border-primary-500/10 p-4">
         <button
-          onClick={handleInviteFriend}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            handleInviteFriend(e)
+          }}
           className="w-full bg-primary-500 text-black py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all flex items-center justify-center space-x-2"
         >
           <UserPlus className="w-4 h-4" />
           <span>Invite Friends</span>
         </button>
       </div>
+
+      {/* Invite Friends Modal */}
+      <InviteFriendsModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+      />
     </div>
   )
 }

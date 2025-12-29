@@ -6,9 +6,11 @@ import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
 import VenueManager from '../../components/VenueManager'
 import StaffManager from '../../components/StaffManager'
+import CollapsibleSection from '../../components/CollapsibleSection'
+import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
 import axios from 'axios'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { getApiUrl } from '../../utils/api'
+import { Settings, CreditCard, MapPin, Users, Sparkles } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user, loading, token } = useAuth()
@@ -42,21 +44,30 @@ export default function SettingsPage() {
 
   const checkStripeStatus = async () => {
     if (!token) {
-      console.log('No token available for Stripe status check')
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('No token available for Stripe status check')
+      }
       return
     }
     
     setLoadingStatus(true)
     try {
-      console.log('Checking Stripe status...', `${API_URL}/venues/connect/status`)
-      const response = await axios.get(`${API_URL}/venues/connect/status`, {
+      const apiUrl = getApiUrl()
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Checking Stripe status...', `${apiUrl}/venues/connect/status`)
+      }
+      const response = await axios.get(`${apiUrl}/venues/connect/status`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      console.log('Stripe status response:', response.data)
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Stripe status response:', response.data)
+      }
       setConnectStatus(response.data)
     } catch (error: any) {
-      console.error('Error checking Stripe status:', error)
-      console.error('Error details:', error.response?.data)
+      // Only log unexpected errors
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Error checking Stripe status:', error.message || error)
+      }
       setConnectStatus({ 
         connected: false, 
         error: error.response?.data?.error || error.message || 'Failed to check status' 
@@ -71,7 +82,8 @@ export default function SettingsPage() {
     
     setConnecting(true)
     try {
-      const response = await axios.post(`${API_URL}/venues/connect/onboard`, {}, {
+      const apiUrl = getApiUrl()
+      const response = await axios.post(`${apiUrl}/venues/connect/onboard`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -97,14 +109,24 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-3xl logo-script text-primary-500 mb-2">Settings</h1>
-          <p className="text-primary-400 text-sm">Manage your venue settings and preferences</p>
+      <div className="space-y-4 md:space-y-5 w-full max-w-full">
+        {/* Clean Header */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="p-2 bg-primary-500/10 rounded-lg border border-primary-500/20">
+              <Settings className="w-5 h-5 text-primary-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-primary-400 mb-1">Settings</h1>
+              <p className="text-sm text-primary-500/70">Manage your venue settings and preferences</p>
+            </div>
+          </div>
         </div>
 
-        {/* Debug info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
+        {/* Debug info - Only show in development with debug flag */}
+        {process.env.NODE_ENV === 'development' && 
+         typeof window !== 'undefined' && 
+         (window as any).__SHOW_DEBUG_INFO__ && (
           <div className="bg-black border border-primary-500/20 rounded p-2 text-xs text-primary-400">
             <p>Status: {connectStatus ? JSON.stringify(connectStatus, null, 2) : 'Not loaded'}</p>
             <p>Loading: {loadingStatus ? 'Yes' : 'No'}</p>
@@ -112,85 +134,90 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Payment Setup - Only show if not connected */}
-        {(!connectStatus || !connectStatus.connected) && (
-          <div className="bg-black border-2 border-primary-500/30 rounded-lg shadow-xl p-5">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <h2 className="text-lg font-semibold text-primary-500">Payment Setup</h2>
-                  <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-xs rounded uppercase tracking-wide">Needs Action</span>
+        {/* Organized Sections */}
+        <div className="space-y-4">
+          {/* Payment Setup - Collapsible */}
+          <CollapsibleSection
+            title="Payment Setup"
+            subtitle="Connect your bank account to receive payouts"
+            defaultOpen={true}
+            icon={<CreditCard className="w-4 h-4" />}
+          >
+            <div className="space-y-4 pt-2">
+              {connectStatus && connectStatus.connected ? (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <span className="text-emerald-400">✅</span>
+                    <p className="text-sm text-emerald-400 font-medium">Payment account connected</p>
+                  </div>
+                  <button
+                    onClick={checkStripeStatus}
+                    disabled={loadingStatus}
+                    className="w-full bg-black border border-primary-500/30 text-primary-500 px-4 py-2.5 rounded-lg hover:bg-primary-500/10 disabled:opacity-50 text-sm transition-colors"
+                  >
+                    {loadingStatus ? 'Checking...' : 'Refresh Status'}
+                  </button>
                 </div>
-              </div>
-            </div>
-            <p className="text-primary-400 text-sm mb-4">Link your bank via Stripe Connect to receive payments.</p>
-            
-            {connectStatus && !connectStatus.connected && connectStatus.error && (
-              <div className="mb-4 p-3 rounded-lg border border-red-500/30 bg-red-500/5">
-                <div className="text-red-400 text-xs font-medium">
-                  ⚠️ {connectStatus.error}
-                </div>
-              </div>
-            )}
-            
-            {!connectStatus && (
-              <div className="mb-4 p-3 rounded-lg border border-primary-500/20 bg-primary-500/5">
-                <div className="text-primary-400 text-xs">
-                  Click "Check Status" to verify your Stripe connection status.
-                </div>
-              </div>
-            )}
-            
-            <div className="flex space-x-3">
-              <button 
-                onClick={handleConnectBank}
-                disabled={connecting || loadingStatus}
-                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
-              >
-                {connecting ? 'Connecting...' : 'Connect Bank'}
-              </button>
-              <button 
-                onClick={checkStripeStatus}
-                disabled={loadingStatus || connecting}
-                className="bg-black border border-primary-500/30 text-primary-500 px-4 py-2 rounded-lg hover:bg-primary-500/10 disabled:opacity-50 text-sm transition-colors"
-              >
-                {loadingStatus ? 'Checking...' : 'Check Status'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Payment Status - Show when connected */}
-        {connectStatus && connectStatus.connected && (
-          <div className="bg-black border-2 border-emerald-500/30 rounded-lg shadow-xl p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-xl">✅</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-emerald-400">Payment Setup Complete</h2>
-                  <p className="text-primary-400 text-xs mt-0.5">Your bank account is connected and ready to receive payments</p>
-                  {connectStatus.accountId && (
-                    <p className="text-primary-500/60 text-xs mt-1 font-mono">Account: {connectStatus.accountId.substring(0, 20)}...</p>
+              ) : (
+                <div className="space-y-3">
+                  {connectStatus && !connectStatus.connected && connectStatus.error && (
+                    <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/5">
+                      <div className="text-red-400 text-xs font-medium">
+                        ⚠️ {connectStatus.error}
+                      </div>
+                    </div>
                   )}
+                  <button 
+                    onClick={handleConnectBank}
+                    disabled={connecting || loadingStatus}
+                    className="w-full bg-primary-500 text-black px-4 py-3 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-all shadow-lg hover:shadow-xl"
+                  >
+                    {connecting ? 'Connecting...' : 'Connect Payment Account'}
+                  </button>
+                  <p className="text-xs text-primary-500/70 text-center">
+                    Secure connection powered by Stripe
+                  </p>
                 </div>
-              </div>
-              <button
-                onClick={checkStripeStatus}
-                disabled={loadingStatus}
-                className="bg-black border border-primary-500/30 text-primary-500 px-3 py-1.5 rounded-lg hover:bg-primary-500/10 disabled:opacity-50 text-xs transition-colors"
-                title="Refresh status"
-              >
-                🔄
-              </button>
+              )}
             </div>
-          </div>
-        )}
+          </CollapsibleSection>
 
-        {/* Venue Management */}
-        <VenueManager />
+          {/* Venue Management - Collapsible */}
+          <CollapsibleSection
+            title="Venue Information"
+            subtitle="Manage your venue details, hours, and location"
+            defaultOpen={true}
+            icon={<MapPin className="w-4 h-4" />}
+          >
+            <div className="pt-2">
+              <VenueManager />
+            </div>
+          </CollapsibleSection>
 
-        {/* Staff Management */}
-        <StaffManager />
+          {/* Staff Management - Collapsible */}
+          <CollapsibleSection
+            title="Team Management"
+            subtitle="Add and manage staff members"
+            defaultOpen={false}
+            icon={<Users className="w-4 h-4" />}
+          >
+            <div className="pt-2">
+              <StaffManager />
+            </div>
+          </CollapsibleSection>
+
+          {/* AI Recommendations - Collapsible */}
+          <CollapsibleSection
+            title="AI Venue Optimization"
+            subtitle="AI-powered recommendations to improve your venue performance"
+            defaultOpen={false}
+            icon={<Sparkles className="w-4 h-4" />}
+          >
+            <div className="pt-2">
+              <AIAnalyticsSummary />
+            </div>
+          </CollapsibleSection>
+        </div>
       </div>
     </DashboardLayout>
   )

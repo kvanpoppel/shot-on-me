@@ -92,7 +92,9 @@ export default function PlacesAutocomplete({
       onLoad={onLoad}
       onPlaceChanged={onPlaceChanged}
       options={{
-        types: ['establishment', 'point_of_interest', 'restaurant', 'bar', 'cafe'],
+        // Note: 'establishment' cannot be mixed with other types
+        // Using specific venue types instead
+        types: ['restaurant', 'bar', 'cafe', 'night_club', 'food'],
         fields: ['formatted_address', 'geometry', 'name', 'place_id', 'types', 'rating', 'user_ratings_total']
       }}
     >

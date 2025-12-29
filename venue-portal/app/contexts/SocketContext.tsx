@@ -25,10 +25,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       const newSocket = io(API_URL, {
         auth: { token },
         transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+        timeout: 10000,
       })
 
       newSocket.on('connect', () => {
-        console.log('Venue Portal: Connected to Socket.io')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Venue Portal: Connected to Socket.io')
+        }
         setConnected(true)
         
         // Join venue-specific rooms for real-time updates
@@ -39,22 +45,47 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      newSocket.on('disconnect', () => {
-        console.log('Venue Portal: Disconnected from Socket.io')
+      newSocket.on('disconnect', (reason) => {
+        // Only log unexpected disconnects
+        if (reason !== 'io client disconnect' && process.env.NODE_ENV === 'development') {
+          console.debug('Venue Portal: Disconnected from Socket.io', reason)
+        }
         setConnected(false)
       })
 
+      newSocket.on('connect_error', (error) => {
+        // Silently handle connection errors - don't spam console
+        // These are expected during initial connection attempts
+        if (error.message.includes('websocket') || error.message.includes('closed')) {
+          // WebSocket connection failed, will retry with polling - this is normal
+          return
+        }
+        // Only log persistent connection errors
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Venue Portal Socket.io connection retry:', error.message)
+        }
+      })
+
       newSocket.on('error', (error) => {
-        console.error('Venue Portal Socket.io error:', error)
+        // Only log actual errors, not connection retries
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Venue Portal Socket.io error:', error)
+        }
       })
 
       setSocket(newSocket)
 
       return () => {
+        if (newSocket.connected) {
+          newSocket.disconnect()
+        }
         newSocket.close()
       }
     } else {
       if (socket) {
+        if (socket.connected) {
+          socket.disconnect()
+        }
         socket.close()
         setSocket(null)
         setConnected(false)

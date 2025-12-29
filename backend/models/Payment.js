@@ -18,19 +18,29 @@ const paymentSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
+  currency: {
+    type: String,
+    default: 'usd'
+  },
   type: {
     type: String,
-    enum: ['wallet_topup', 'shot_sent', 'shot_redeemed', 'transfer'],
+    enum: ['wallet_topup', 'shot_sent', 'shot_redeemed', 'transfer', 'tap_and_pay'],
     required: true
   },
   stripePaymentIntentId: String,
   stripeTransferId: String,
   stripeChargeId: String,
+  stripeAuthorizationId: String, // For Issuing authorizations (virtual card charges)
   redemptionCode: String,
   status: { 
     type: String, 
     enum: ['pending', 'processing', 'succeeded', 'failed', 'canceled'],
     default: 'pending' 
+  },
+  idempotencyKey: {
+    type: String,
+    index: true,
+    sparse: true
   },
   metadata: {
     type: Map,
@@ -47,7 +57,9 @@ paymentSchema.index({ venueId: 1, createdAt: -1 });
 paymentSchema.index({ stripePaymentIntentId: 1 });
 paymentSchema.index({ stripeTransferId: 1 });
 paymentSchema.index({ status: 1 });
-paymentSchema.index({ redemptionCode: 1 }, { sparse: true });
+// Sparse unique index - only enforces uniqueness for non-null values
+// Note: sparse indexes skip null/undefined values, allowing multiple nulls
+paymentSchema.index({ redemptionCode: 1 }, { sparse: true, unique: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);
 

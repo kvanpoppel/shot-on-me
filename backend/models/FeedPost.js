@@ -57,6 +57,26 @@ const feedPostSchema = new mongoose.Schema({
       required: true,
       maxlength: 500
     },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FeedPost.comments',
+      default: null
+    },
+    reactions: [{
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      emoji: {
+        type: String,
+        default: '❤️',
+        enum: ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉']
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
     createdAt: {
       type: Date,
       default: Date.now
@@ -66,8 +86,11 @@ const feedPostSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better query performance
+// Indexes for better query performance
 feedPostSchema.index({ author: 1 });
 feedPostSchema.index({ createdAt: -1 });
+feedPostSchema.index({ author: 1, createdAt: -1 }); // Compound index for author + time queries
+feedPostSchema.index({ 'reactions.user': 1 }); // Index for reaction queries
+feedPostSchema.index({ 'comments.user': 1 }); // Index for comment queries
 
 module.exports = mongoose.model('FeedPost', feedPostSchema);

@@ -23,17 +23,26 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     contacts: 'prompt',
     notifications: 'prompt'
   })
-  const [currentStep, setCurrentStep] = useState(0)
-  const [requesting, setRequesting] = useState(false)
+  const [requesting, setRequesting] = useState<string | null>(null)
 
   useEffect(() => {
     if (showOnMount) {
       // Check if permissions have been requested before
-      const permissionsShown = localStorage.getItem('permissions-shown')
+      let permissionsShown = null
+      try {
+        permissionsShown = localStorage.getItem('permissions-shown')
+      } catch (err) {
+        // Tracking prevention or localStorage blocked - show modal anyway
+        permissionsShown = null
+      }
       if (!permissionsShown) {
         checkPermissions()
         setShowModal(true)
       }
+    } else {
+      // If showOnMount is false, always show when component mounts (called from Settings)
+      checkPermissions()
+      setShowModal(true)
     }
   }, [showOnMount])
 
@@ -59,27 +68,15 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       }
     }
 
-    // Check Camera
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-        stream.getTracks().forEach(track => track.stop())
-        status.camera = 'granted'
-      } catch (error: any) {
-        if (error.name === 'NotAllowedError') {
-          status.camera = 'denied'
-        } else {
-          status.camera = 'prompt'
-        }
-      }
+    // Check Camera - don't request, just check if available
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      status.camera = 'prompt' // Assume prompt if available
     }
 
     // Check Contacts (Contacts API is only available on Android Chrome and some mobile browsers)
     if ('contacts' in navigator && 'ContactsManager' in window) {
-      // API is available, but we can't check permission without requesting
       status.contacts = 'prompt'
     } else {
-      // API not available (most browsers/desktop)
       status.contacts = 'unavailable'
     }
 
@@ -98,23 +95,33 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
   }
 
   const requestLocation = async () => {
-    setRequesting(true)
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not available in this browser')
+      return false
+    }
+    
+    setRequesting('location')
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+          timeout: 5000,
+          enableHighAccuracy: true,
+          maximumAge: 60000
+        })
       })
       setPermissions(prev => ({ ...prev, location: 'granted' }))
       return true
     } catch (error) {
+      console.warn('Location permission request failed:', error)
       setPermissions(prev => ({ ...prev, location: 'denied' }))
       return false
     } finally {
-      setRequesting(false)
+      setRequesting(null)
     }
   }
 
   const requestCamera = async () => {
-    setRequesting(true)
+    setRequesting('camera')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       stream.getTracks().forEach(track => track.stop())
@@ -124,25 +131,23 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       setPermissions(prev => ({ ...prev, camera: 'denied' }))
       return false
     } finally {
-      setRequesting(false)
+      setRequesting(null)
     }
   }
 
   const requestContacts = async () => {
-    setRequesting(true)
+    setRequesting('contacts')
     try {
       if ('contacts' in navigator && 'ContactsManager' in window) {
         const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
         if (contacts && contacts.length > 0) {
           setPermissions(prev => ({ ...prev, contacts: 'granted' }))
-          // You could process contacts here and send to backend
           return true
         } else {
           setPermissions(prev => ({ ...prev, contacts: 'denied' }))
           return false
         }
       } else {
-        // API not available - show helpful message
         alert('Contacts API is not available on this device/browser. You can still find friends by searching for their name, username, or email in the Find Friends section.')
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
         return false
@@ -155,12 +160,12 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       }
       return false
     } finally {
-      setRequesting(false)
+      setRequesting(null)
     }
   }
 
   const requestNotifications = async () => {
-    setRequesting(true)
+    setRequesting('notifications')
     try {
       if ('Notification' in window) {
         const permission = await Notification.requestPermission()
@@ -172,7 +177,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       setPermissions(prev => ({ ...prev, notifications: 'denied' }))
       return false
     } finally {
-      setRequesting(false)
+      setRequesting(null)
     }
   }
 
@@ -191,26 +196,16 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         await requestNotifications()
         break
     }
-    setCurrentStep(prev => Math.min(prev + 1, 3))
+    // Refresh permissions after request
+    setTimeout(() => checkPermissions(), 500)
   }
 
-  const handleSkip = () => {
-    localStorage.setItem('permissions-shown', 'true')
+  const handleClose = () => {
     setShowModal(false)
     if (onComplete) onComplete()
   }
 
-  const handleContinue = () => {
-    if (currentStep < 3) {
-      setCurrentStep(prev => prev + 1)
-    } else {
-      localStorage.setItem('permissions-shown', 'true')
-      setShowModal(false)
-      if (onComplete) onComplete()
-    }
-  }
-
-  const permissionSteps = [
+  const permissionList = [
     {
       icon: MapPin,
       title: 'Location Access',
@@ -241,130 +236,132 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
   ]
 
-  const currentPermission = permissionSteps[currentStep]
-  const currentStatus = permissions[currentPermission.permission]
-  const Icon = currentPermission.icon
-
   if (!showModal) return null
 
+  const getStatusIcon = (status: string) => {
+    if (status === 'granted') {
+      return <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+    } else if (status === 'unavailable') {
+      return <AlertCircle className="w-5 h-5 text-primary-400" />
+    } else if (status === 'denied') {
+      return <AlertCircle className="w-5 h-5 text-red-400" />
+    }
+    return null
+  }
+
+  const getStatusText = (status: string) => {
+    if (status === 'granted') return 'Granted'
+    if (status === 'unavailable') return 'Not Available'
+    if (status === 'denied') return 'Denied'
+    return 'Not Set'
+  }
+
+  const getStatusColor = (status: string) => {
+    if (status === 'granted') return 'text-emerald-400'
+    if (status === 'unavailable') return 'text-primary-400'
+    if (status === 'denied') return 'text-red-400'
+    return 'text-primary-400'
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
-      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-md w-full backdrop-blur-md">
-        {/* Progress Indicator */}
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex space-x-2">
-            {permissionSteps.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1 flex-1 rounded-full ${
-                  idx <= currentStep
-                    ? 'bg-primary-500'
-                    : 'bg-primary-500/20'
-                }`}
-              />
-            ))}
-          </div>
-          {currentStep > 0 && (
-            <button
-              onClick={() => setCurrentStep(prev => prev - 1)}
-              className="ml-4 text-primary-400 hover:text-primary-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Permission Icon */}
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 border-2 border-primary-500 rounded-full flex items-center justify-center bg-primary-500/10">
-            <Icon className="w-10 h-10 text-primary-500" />
-          </div>
-        </div>
-
-        {/* Title and Description */}
-        <h2 className="text-2xl font-bold text-primary-500 text-center mb-2 tracking-tight">
-          {currentPermission.title}
-        </h2>
-        <p className="text-primary-400 text-center mb-6 font-light">
-          {currentPermission.description}
-        </p>
-
-        {/* Why We Need This */}
-        <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 mb-6 backdrop-blur-sm">
-          <p className="text-primary-400/80 text-sm font-light">
-            <span className="text-primary-500 font-medium">Why we need this:</span>{' '}
-            {currentPermission.why}
-          </p>
-        </div>
-
-        {/* Status Indicator */}
-        {currentStatus !== 'prompt' && (
-          <div className={`flex items-center justify-center space-x-2 mb-6 p-3 rounded-lg ${
-            currentStatus === 'granted'
-              ? 'bg-emerald-500/10 border border-emerald-500/20'
-              : currentStatus === 'unavailable'
-              ? 'bg-primary-500/10 border border-primary-500/20'
-              : 'bg-red-500/10 border border-red-500/20'
-          }`}>
-            {currentStatus === 'granted' ? (
-              <>
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Permission granted</span>
-              </>
-            ) : currentStatus === 'unavailable' ? (
-              <>
-                <AlertCircle className="w-5 h-5 text-primary-400" />
-                <span className="text-primary-400 font-medium">Not available on this device</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <span className="text-red-400 font-medium">Permission denied</span>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex space-x-3">
-          {currentStatus === 'prompt' ? (
-            <>
-              <button
-                onClick={() => handleRequestPermission(currentPermission.permission)}
-                disabled={requesting}
-                className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {requesting ? 'Requesting...' : 'Allow'}
-              </button>
-              <button
-                onClick={handleContinue}
-                disabled={requesting}
-                className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-3 rounded-lg font-medium hover:bg-primary-500/10 transition-all backdrop-blur-sm disabled:opacity-50"
-              >
-                Skip
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleContinue}
-              className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all"
-            >
-              {currentStep < 3 ? 'Continue' : 'Get Started'}
-            </button>
-          )}
-        </div>
-
-        {/* Skip All */}
-        {currentStep === 0 && (
+          <h2 className="text-2xl font-bold text-primary-500 tracking-tight">App Permissions</h2>
           <button
-            onClick={handleSkip}
-            className="w-full mt-3 text-primary-400 hover:text-primary-500 text-sm font-light"
+            onClick={handleClose}
+            className="text-primary-400 hover:text-primary-500 transition-all"
+            title="Close"
           >
-            Skip all permissions
+            <X className="w-6 h-6" />
           </button>
-        )}
+        </div>
+
+        {/* All Permissions List */}
+        <div className="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+          {permissionList.map((perm) => {
+            const Icon = perm.icon
+            const status = permissions[perm.permission]
+            const isRequesting = requesting === perm.permission
+            const canRequest = status === 'prompt' && !isRequesting
+
+            return (
+              <div
+                key={perm.permission}
+                className="bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/30 transition-all"
+              >
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full flex items-center justify-center bg-primary-500/10 flex-shrink-0">
+                    <Icon className="w-6 h-6 text-primary-500" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-primary-500">{perm.title}</h3>
+                      {getStatusIcon(status) && (
+                        <div className={`flex items-center gap-2 ${getStatusColor(status)}`}>
+                          {getStatusIcon(status)}
+                          <span className="text-sm font-medium">{getStatusText(status)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-primary-400/80 mb-2 font-light">{perm.description}</p>
+                    <div className="bg-black/40 border border-primary-500/10 rounded p-2 mb-3">
+                      <p className="text-xs text-primary-400/70 font-light">
+                        <span className="text-primary-500 font-medium">Why:</span> {perm.why}
+                      </p>
+                    </div>
+
+                    {/* Status and Action */}
+                    <div className="flex items-center justify-between">
+                      <div className={`text-sm font-medium ${getStatusColor(status)}`}>
+                        Status: {getStatusText(status)}
+                      </div>
+                      {canRequest && (
+                        <button
+                          onClick={() => handleRequestPermission(perm.permission)}
+                          disabled={isRequesting}
+                          className="px-4 py-2 bg-primary-500 text-black rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          {isRequesting ? 'Requesting...' : 'Allow'}
+                        </button>
+                      )}
+                      {status === 'granted' && (
+                        <div className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium">
+                          ✓ Enabled
+                        </div>
+                      )}
+                      {status === 'denied' && (
+                        <div className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium">
+                          Blocked
+                        </div>
+                      )}
+                      {status === 'unavailable' && (
+                        <div className="px-4 py-2 bg-primary-500/20 text-primary-400 rounded-lg text-sm font-medium">
+                          Not Available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 pt-4 border-t border-primary-500/10">
+          <button
+            onClick={handleClose}
+            className="w-full bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   )
 }
-

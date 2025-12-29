@@ -51,11 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     }
     
-    // Safety timeout - always stop loading after 10 seconds to prevent infinite loading
+    // Safety timeout - reduced to 5 seconds for faster initial load
     const timeout = setTimeout(() => {
-      console.warn('Auth loading timeout - forcing loading to false')
-      setLoading(false)
-    }, 10000)
+      if (loading) {
+        // Silently handle timeout - this is a fallback mechanism
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Auth loading timeout - using fallback')
+        }
+        setLoading(false)
+      }
+    }, 5000)
     
     return () => clearTimeout(timeout)
   }, [])
@@ -87,7 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Ensure only venue users can stay logged into the venue portal
       if (fetchedUser.userType !== 'venue') {
-        console.warn('Non-venue user attempted to access venue portal')
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Non-venue user attempted to access venue portal')
+        }
         localStorage.removeItem('token')
         localStorage.removeItem('rememberedEmail')
         setToken(null)
@@ -95,22 +102,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // Successfully logged in - set user
         setUser(fetchedUser)
-        console.log('✅ Auto-login successful for:', fetchedUser.email)
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('✅ Auto-login successful for:', fetchedUser.email)
+        }
       }
     } catch (error: any) {
-      console.error('Failed to fetch user:', error)
+      // Only log actual errors, not expected connection retries
+      if (error.response?.status !== 401 && error.response?.status !== 403 && 
+          !error.code?.includes('ECONNABORTED') && !error.message?.includes('timeout')) {
+        console.error('Failed to fetch user:', error.message || error)
+      }
       
       // Only clear token if it's an auth error (401/403), not network errors
       // This allows retry if backend is temporarily unavailable
       if (error.response?.status === 401 || error.response?.status === 403) {
-        console.log('Token expired or invalid - clearing stored credentials')
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Token expired or invalid - clearing stored credentials')
+        }
         localStorage.removeItem('token')
         localStorage.removeItem('rememberedEmail')
         setToken(null)
         setUser(null)
       } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         // Network timeout - keep token but don't set user
-        console.warn('Backend timeout - keeping token for retry')
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Backend timeout - keeping token for retry')
+        }
         setUser(null)
       } else {
         // Other errors - clear token to be safe
@@ -127,7 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const apiUrl = getApiUrl()
       const loginUrl = `${apiUrl}/auth/login`
-      console.log('Attempting login to:', loginUrl)
+      if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+        console.debug('Attempting login to:', loginUrl)
+      }
       
       const response = await axios.post(loginUrl,
         { email, password },
@@ -154,13 +173,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData)
       localStorage.setItem('token', authToken)
     } catch (error: any) {
-      console.error('Login error details:', {
-        code: error.code,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Login error details:', {
+          code: error.code,
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          url: error.config?.url
+        })
+      }
       
       let errorMessage = 'Login failed'
       
@@ -181,7 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    console.log('Logging out user')
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('Logging out user')
+    }
     setUser(null)
     setToken(null)
     localStorage.removeItem('token')

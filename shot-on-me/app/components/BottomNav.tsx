@@ -1,11 +1,11 @@
 'use client'
 
-import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera, Send } from 'lucide-react'
+import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera, Send, LayoutGrid } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
-import { Tab } from '../types'
+import { Tab } from '@/app/types'
 
 interface BottomNavProps {
   activeTab: Tab
@@ -13,37 +13,11 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
-  const { token } = useAuth()
-  const API_URL = useApiUrl()
-  const [unreadCount, setUnreadCount] = useState(0)
 
-  useEffect(() => {
-    if (token) {
-      fetchUnreadCount()
-      // Poll for unread count every 30 seconds
-      const interval = setInterval(fetchUnreadCount, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [token])
-
-  const fetchUnreadCount = async () => {
-    if (!token) return
-    try {
-      const response = await axios.get(`${API_URL}/messages/unread-count`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setUnreadCount(response.data.unreadCount || 0)
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error)
-    }
-  }
-
-  const tabs = [
-    { id: 'home' as Tab, icon: Home, label: 'Home' },
-    { id: 'feed' as Tab, icon: MessageSquare, label: 'Feed' },
-    { id: 'stories' as Tab, icon: Camera, label: 'Stories' },
+  const tabs: Array<{ id: Tab; icon: any; label: string; badge?: number }> = [
+    { id: 'feed' as Tab, icon: LayoutGrid, label: 'Feed' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
-    { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages', badge: unreadCount },
+    { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },
     { id: 'send-shot' as Tab, icon: Send, label: 'Send Shot' },
   ]
 
@@ -60,14 +34,12 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('Tab clicked:', tab.id)
                   
+                  // Smooth tab transition
                   setActiveTab(tab.id)
                   
-                  // Clear badge when opening messages
-                  if (tab.id === 'messages' && unreadCount > 0) {
-                    fetchUnreadCount()
-                  }
+                  // Scroll to top when switching tabs for better UX
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
                 }}
                 type="button"
                 className={`relative flex items-center justify-center px-2.5 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 ${

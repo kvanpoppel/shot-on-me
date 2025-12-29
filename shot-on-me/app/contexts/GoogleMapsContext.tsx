@@ -2,6 +2,7 @@
 
 import { createContext, useContext, ReactNode, useEffect } from 'react'
 import { useJsApiLoader } from '@react-google-maps/api'
+import { GOOGLE_LIBRARIES } from '../utils/google'
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBAUfIjkw1qX7KVA1JYS-CetjTFdFovkB8'
 
@@ -19,7 +20,7 @@ export function GoogleMapsProvider({ children }: { children: ReactNode }) {
     loaderResult = useJsApiLoader({
       id: 'google-maps-script-loader',
       googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-      libraries: ['places']
+      libraries: GOOGLE_LIBRARIES
     })
   } catch (error) {
     console.error('GoogleMapsProvider: Error initializing Google Maps API:', error)

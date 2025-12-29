@@ -5,6 +5,9 @@ import { useJsApiLoader } from '@react-google-maps/api'
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBAUfIjkw1qX7KVA1JYS-CetjTFdFovkB8'
 
+// Define libraries as a constant to prevent re-renders
+const GOOGLE_MAPS_LIBRARIES: ('places' | 'geometry' | 'drawing' | 'visualization')[] = ['places']
+
 interface GoogleMapsContextType {
   isLoaded: boolean
   loadError: Error | undefined
@@ -16,7 +19,7 @@ export function GoogleMapsProvider({ children }: { children: ReactNode }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-maps-script-loader-venue',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places']
+    libraries: GOOGLE_MAPS_LIBRARIES
   })
 
   useEffect(() => {

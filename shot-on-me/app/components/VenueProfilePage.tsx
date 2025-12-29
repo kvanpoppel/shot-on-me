@@ -18,6 +18,7 @@ import {
   MapPin as CheckInIcon
 } from 'lucide-react'
 import CheckInSuccessModal from './CheckInSuccessModal'
+import VenueReferralInvite from './VenueReferralInvite'
 
 interface VenueProfilePageProps {
   venueId: string
@@ -37,6 +38,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
   const [showCheckInSuccess, setShowCheckInSuccess] = useState(false)
   const [checkInResult, setCheckInResult] = useState<any>(null)
   const [loyaltyData, setLoyaltyData] = useState<any>(null)
+  const [showReferralInvite, setShowReferralInvite] = useState(false)
 
   useEffect(() => {
     if (token && venueId && API_URL) {
@@ -170,12 +172,24 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         }
       }
 
+      // Check if this check-in is via a venue referral
+      let referralId = null
+      if (typeof window !== 'undefined') {
+        const storedRef = sessionStorage.getItem(`venue_referral_${venue._id}`)
+        if (storedRef) {
+          referralId = storedRef
+          // Clear it after use
+          sessionStorage.removeItem(`venue_referral_${venue._id}`)
+        }
+      }
+
       const response = await axios.post(
         `${API_URL}/checkins`,
         {
           venueId: venue._id,
           latitude,
-          longitude
+          longitude,
+          referralId // Pass referral ID if present
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -359,20 +373,30 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
               </>
             )}
           </button>
-          {loyaltyData && loyaltyData.checkInCount > 0 && (
-            <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg px-4 py-3 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary-500" />
-              <div>
-                <p className="text-primary-500 font-semibold text-sm">
-                  {loyaltyData.checkInCount} check-in{loyaltyData.checkInCount !== 1 ? 's' : ''}
-                </p>
-                {loyaltyData.tier && loyaltyData.tier !== 'bronze' && (
-                  <p className="text-primary-400 text-xs capitalize">{loyaltyData.tier} Member</p>
-                )}
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => setShowReferralInvite(true)}
+            className="bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            title="Invite friends to check in"
+          >
+            <Users className="w-5 h-5" />
+            <span className="hidden sm:inline">Invite</span>
+          </button>
         </div>
+        
+        {/* Loyalty info */}
+        {loyaltyData && loyaltyData.checkInCount > 0 && (
+          <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg px-4 py-3 flex items-center gap-2 mt-3">
+            <Sparkles className="w-5 h-5 text-primary-500" />
+            <div>
+              <p className="text-primary-500 font-semibold text-sm">
+                {loyaltyData.checkInCount} check-in{loyaltyData.checkInCount !== 1 ? 's' : ''}
+              </p>
+              {loyaltyData.tier && loyaltyData.tier !== 'bronze' && (
+                <p className="text-primary-400 text-xs capitalize">{loyaltyData.tier} Member</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Hours */}
         {venue?.schedule && typeof venue.schedule === 'object' && (
@@ -491,6 +515,15 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         }}
         checkInData={checkInResult}
       />
+
+      {/* Venue Referral Invite Modal */}
+      {venue && (
+        <VenueReferralInvite
+          isOpen={showReferralInvite}
+          onClose={() => setShowReferralInvite(false)}
+          venue={venue}
+        />
+      )}
     </div>
   )
 }

@@ -31,7 +31,6 @@ export default function ProximityNotifications() {
   const [showNotification, setShowNotification] = useState(false)
   const [currentNotification, setCurrentNotification] = useState<NearbyVenue | null>(null)
   const notifiedVenuesRef = useRef<Set<string>>(new Set())
-  const locationWatchIdRef = useRef<number | null>(null)
 
   // Request notification permission
   useEffect(() => {
@@ -62,7 +61,7 @@ export default function ProximityNotifications() {
           setNotifications(prev => [...newVenues, ...prev])
 
           // Show browser notification if permission granted
-          if ('Notification' in window && Notification.permission === 'granted') {
+          if ('Notification' in window && Notification.permission === 'granted' && closest.promotions && closest.promotions.length > 0) {
             const promo = closest.promotions[0]
             new Notification(`🎉 Special at ${closest.venue.name}!`, {
               body: `${promo.title} - ${closest.distance} km away`,
@@ -120,23 +119,38 @@ export default function ProximityNotifications() {
 
     const checkProximity = async () => {
       try {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
+        if (!('geolocation' in navigator)) {
+          console.warn('Geolocation not available')
+          return
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
               const { latitude, longitude } = position.coords
               
               // Update location on server
-              await axios.put(
-                `${API_URL}/location/update`,
-                { latitude, longitude },
-                { headers: { Authorization: `Bearer ${token}` } }
-              )
+              try {
+                await axios.put(
+                  `${API_URL}/location/update`,
+                  { latitude, longitude },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                )
+              } catch (error) {
+                console.error('Failed to update location:', error)
+                // Continue even if location update fails
+              }
 
               // Check for nearby venues with promotions
-              const response = await axios.get(
-                `${API_URL}/location/check-proximity?latitude=${latitude}&longitude=${longitude}&radius=2`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              )
+              let response
+              try {
+                response = await axios.get(
+                  `${API_URL}/location/check-proximity?latitude=${latitude}&longitude=${longitude}&radius=2`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                )
+              } catch (error) {
+                console.error('Failed to check proximity:', error)
+                return // Exit early if API call fails
+              }
 
               if (response.data.venues && response.data.venues.length > 0) {
                 // Filter out already notified venues
@@ -155,7 +169,7 @@ export default function ProximityNotifications() {
                   setNotifications(prev => [...newVenues, ...prev])
 
                   // Browser notification
-                  if ('Notification' in window && Notification.permission === 'granted') {
+                  if ('Notification' in window && Notification.permission === 'granted' && closest.promotions && closest.promotions.length > 0) {
                     const promo = closest.promotions[0]
                     new Notification(`🎉 Special at ${closest.venue.name}!`, {
                       body: `${promo.title} - ${closest.distance} km away`,
@@ -167,11 +181,12 @@ export default function ProximityNotifications() {
               }
             },
             (error) => {
-              console.error('Geolocation error:', error)
+              // Handle errors gracefully - don't block app
+              console.warn('Geolocation error:', error.message || error)
+              // Continue without location - don't block app
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
           )
-        }
       } catch (error) {
         console.error('Proximity check error:', error)
       }
@@ -184,7 +199,7 @@ export default function ProximityNotifications() {
     const interval = setInterval(checkProximity, 30000)
 
     return () => clearInterval(interval)
-  }, [token, user])
+  }, [token, user, API_URL])
 
   const handleClose = () => {
     setShowNotification(false)
@@ -194,6 +209,11 @@ export default function ProximityNotifications() {
   }
 
   if (!showNotification || !currentNotification) return null
+
+  // Safety check: ensure promotions exist
+  if (!currentNotification.promotions || currentNotification.promotions.length === 0) {
+    return null
+  }
 
   const promo = currentNotification.promotions[0]
 

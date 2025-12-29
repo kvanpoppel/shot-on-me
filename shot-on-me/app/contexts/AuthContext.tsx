@@ -38,6 +38,7 @@ interface RegisterData {
   phoneNumber: string
   firstName: string
   lastName: string
+  referralCode?: string
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -57,26 +58,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
+    let isMounted = true
+    
     try {
       const storedToken = localStorage.getItem('token')
       if (storedToken) {
         setToken(storedToken)
         fetchUser(storedToken)
       } else {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     } catch (error) {
       console.error('Error accessing localStorage:', error)
-      setLoading(false)
+      if (isMounted) setLoading(false)
     }
     
-    // Safety timeout - always stop loading after 10 seconds to prevent infinite loading
+    // Safety timeout - always stop loading after 10 seconds to prevent slow loading
     const timeout = setTimeout(() => {
-      console.warn('Auth loading timeout - forcing loading to false')
-      setLoading(false)
-    }, 10000)
+      if (isMounted) {
+        // Only log in development with debug flag
+        if (process.env.NODE_ENV === 'development' && (window as any).__SHOW_DEBUG_INFO__) {
+          console.debug('Auth loading timeout - using fallback')
+        }
+        setLoading(false)
+      }
+    }, 10000) // 10 seconds - increased for reliability
     
-    return () => clearTimeout(timeout)
+    return () => {
+      isMounted = false
+      clearTimeout(timeout)
+    }
   }, [])
 
   const fetchUser = async (authToken: string) => {
@@ -86,22 +97,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const apiUrl = getApiUrl()
+      
       const response = await axios.get(`${apiUrl}/users/me`, {
         headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 5000 // 5 second timeout - reduced for faster loading
+        timeout: 10000 // 10 seconds - increased for reliability
       })
+      
       // Normalize user data - convert _id to id if needed
       const userData = response.data.user
       if (userData && userData._id && !userData.id) {
         userData.id = userData._id.toString()
       }
+      
+      // Ensure wallet exists
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
+      }
+      
       setUser(userData)
+      setToken(authToken) // Ensure token is set
     } catch (error: any) {
       console.error('Failed to fetch user:', error)
-      // Clear token on any error to prevent infinite loading
-      localStorage.removeItem('token')
-      setToken(null)
-      setUser(null)
+      // Only clear token on auth errors, not network errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        try {
+          localStorage.removeItem('token')
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        setToken(null)
+        setUser(null)
+      } else {
+        // For network errors, keep token but show login screen
+        // User can retry when network is available
+        console.warn('Network error - keeping token for retry')
+      }
     } finally {
       setLoading(false)
     }
@@ -112,10 +142,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const apiUrl = getApiUrl()
       const loginUrl = buildApiUrl('auth/login')
       
-      console.log('🔐 Base API URL:', apiUrl)
-      console.log('🔐 Login URL:', loginUrl)
-      console.log('🔐 Method: POST')
-      
       // Validate URL doesn't have double /api
       if (loginUrl.includes('/api/api')) {
         console.error('❌ ERROR: Double /api detected in URL:', loginUrl)
@@ -123,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const response = await axios.post(loginUrl, { email, password }, { 
-        timeout: 8000, // 8 seconds - reduced for faster feedback
+        timeout: 30000, // 30 seconds - increased for slow connections
         headers: {
           'Content-Type': 'application/json'
         }
@@ -135,6 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Already has id, use as is
       } else if (userData && userData._id) {
         userData.id = userData._id.toString()
+      }
+      
+      // Ensure wallet exists in user data
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
       }
       
       // Set state immediately - don't wait for any additional calls
@@ -157,10 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Error saving to localStorage:', error)
+        // Continue even if localStorage fails
       }
       
       // Don't call fetchUser - we already have the user data from login response
-      console.log('✅ Login successful, user data set directly from response')
     } catch (error: any) {
       let errorMessage = 'Login failed'
       
@@ -173,7 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = 'Connection timeout. Please check if the backend server is running on port 5000.'
+        // More helpful error message
+        const apiUrl = getApiUrl()
+        errorMessage = `Connection timeout. Backend may be slow or unreachable at ${apiUrl}. Please check if the server is running.`
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
       } else if (error.response?.status === 405) {
@@ -206,7 +239,9 @@ For LOCAL development:
   const register = async (data: RegisterData) => {
     try {
           const apiUrl = getApiUrl()
-          const response = await axios.post(`${apiUrl}/auth/register`, data)
+          const response = await axios.post(`${apiUrl}/auth/register`, data, {
+            timeout: 30000 // 30 seconds - increased for slow connections
+          })
       const { token: authToken, user: userData } = response.data
       // Normalize user data - ensure id field exists
       if (userData && userData.id) {
@@ -214,6 +249,12 @@ For LOCAL development:
       } else if (userData && userData._id) {
         userData.id = userData._id.toString()
       }
+      
+      // Ensure wallet exists
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
+      }
+      
       setToken(authToken)
       setUser(userData)
       try {
@@ -222,6 +263,31 @@ For LOCAL development:
         }
       } catch (storageError) {
         console.error('Error saving token to localStorage:', storageError)
+        // Continue even if localStorage fails
+      }
+      
+      // Apply referral code if provided (after user is created)
+      if (data.referralCode && userData?.id) {
+        try {
+          await axios.post(`${apiUrl}/referrals/apply`, {
+            code: data.referralCode,
+            userId: userData.id
+          }, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          })
+        } catch (refError: any) {
+          // Don't fail registration if referral code fails
+          console.warn('Failed to apply referral code:', refError.message)
+        }
+      }
+      
+      // After successful registration, check if virtual card was automatically created
+      // This happens in the background - no user action needed
+      // The card will be visible in the Wallet tab automatically
+      if (userData && userData.userType === 'user') {
+        // Card creation happens automatically in backend during registration
+        // No need to do anything here - just let the Wallet tab load it
+        console.log('✅ User registered - virtual card will be created automatically if Issuing is enabled')
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Registration failed'

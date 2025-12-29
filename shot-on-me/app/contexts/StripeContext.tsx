@@ -38,18 +38,41 @@ export function StripeProvider({ children }: { children: ReactNode }) {
         }
 
         // Fallback to fetching from backend
-        const response = await axios.get(`${API_URL}/payments/stripe-key`)
-        const publishableKey = response.data.publishableKey
+        try {
+          const response = await axios.get(`${API_URL}/payments/stripe-key`)
+          
+          // Check if Stripe is configured
+          if (response.status === 503 || !response.data.configured) {
+            setError('Payment processing is not configured')
+            setLoading(false)
+            return
+          }
+          
+          const publishableKey = response.data.publishableKey
 
-        if (publishableKey) {
-          const stripeInstance = await loadStripe(publishableKey)
-          setStripe(stripeInstance)
-        } else {
-          setError('Stripe publishable key not found')
+          if (publishableKey && !publishableKey.includes('your_stripe') && !publishableKey.includes('placeholder')) {
+            const stripeInstance = await loadStripe(publishableKey)
+            setStripe(stripeInstance)
+          } else {
+            setError('Stripe publishable key not found')
+          }
+        } catch (fetchErr: any) {
+          // If it's a 503, Stripe is not configured (this is OK)
+          if (fetchErr.response?.status === 503) {
+            setError('Payment processing is not configured')
+          } else {
+            console.error('Failed to fetch Stripe key:', fetchErr)
+            setError('Failed to load payment system')
+          }
         }
       } catch (err: any) {
-        console.error('Failed to initialize Stripe:', err)
-        setError(err.message || 'Failed to load Stripe')
+        // If loadStripe fails due to invalid key, handle gracefully
+        if (err.message?.includes('Invalid API Key') || err.message?.includes('Invalid')) {
+          setError('Payment processing is not properly configured')
+        } else {
+          console.error('Failed to initialize Stripe:', err)
+          setError(err.message || 'Failed to load Stripe')
+        }
       } finally {
         setLoading(false)
       }
