@@ -3,6 +3,10 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // Disable PWA in development for faster reloads
+  buildExcludes: [/middleware-manifest\.json$/],
+  // Force update on new deployments
+  reloadOnOnline: true,
+  sw: 'sw.js',
   // Exclude backend API calls from service worker
   publicExcludes: ['**/api/**'],
   buildExcludes: [/middleware-manifest\.json$/],
