@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Wallet, MapPin, Users } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
-import StreamlinedPermissions from './StreamlinedPermissions'
+import WalletOnboarding from './WalletOnboarding'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -27,7 +27,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showPermissions, setShowPermissions] = useState(false)
-  const [justRegistered, setJustRegistered] = useState(false)
+  const [justAuthenticated, setJustAuthenticated] = useState(false)
   const [rememberMe, setRememberMe] = useState(() => {
     // Check if user previously chose to be remembered
     if (typeof window !== 'undefined') {
@@ -71,8 +71,9 @@ export default function LoginScreen() {
       
       if (isLogin) {
         await login(email, password, rememberMe)
-        // Don't use router.push - the app uses state-based navigation
-        // The page.tsx will automatically show the dashboard when user is set
+        // Show permissions after login (if not shown before)
+        setJustAuthenticated(true)
+        setShowPermissions(true)
       } else {
         await register({ email, password, phoneNumber, firstName, lastName, referralCode })
         // Also save remember me for registration
@@ -81,10 +82,9 @@ export default function LoginScreen() {
         } catch (err) {
           // Tracking prevention or localStorage blocked - continue anyway
         }
-        // Show streamlined permissions after successful registration
-        setJustRegistered(true)
+        // Show enhanced permissions after successful registration
+        setJustAuthenticated(true)
         setShowPermissions(true)
-        // Don't navigate immediately - let permissions modal handle it
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed')
@@ -253,13 +253,13 @@ export default function LoginScreen() {
         onClose={() => setShowForgotPassword(false)}
       />
 
-      {/* Streamlined Permissions - Show after registration */}
-      {showPermissions && justRegistered && (
-        <StreamlinedPermissions
+      {/* Wallet Onboarding - Show after login or registration (PRIMARY ONBOARDING) */}
+      {showPermissions && justAuthenticated && (
+        <WalletOnboarding
           showOnMount={true}
           onComplete={() => {
             setShowPermissions(false)
-            setJustRegistered(false)
+            setJustAuthenticated(false)
             // Don't use router.push - the app uses state-based navigation
             // The page.tsx will automatically show the dashboard when user is set
           }}
