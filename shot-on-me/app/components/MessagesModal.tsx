@@ -706,7 +706,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
               <>
                 <button 
                   onClick={() => {
-                    const phoneNumber = otherUser?.phoneNumber || otherUser?.phone
+                    const phoneNumber = (otherUser as any)?.phoneNumber || (otherUser as any)?.phone
                     if (phoneNumber) {
                       window.location.href = `tel:${phoneNumber}`
                     } else {
@@ -726,7 +726,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
                   onClick={() => {
                     // For video calls, we can use WebRTC or a third-party service
                     // For now, initiate a video call link or show a message
-                    const phoneNumber = otherUser?.phoneNumber || otherUser?.phone
+                    const phoneNumber = (otherUser as any)?.phoneNumber || (otherUser as any)?.phone
                     if (phoneNumber) {
                       // Try to use FaceTime on iOS or video calling on Android
                       if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {

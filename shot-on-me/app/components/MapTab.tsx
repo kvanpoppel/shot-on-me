@@ -86,7 +86,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     try {
       setError(null)
       console.log('🔍 Fetching venues from:', `${API_URL}/venues`)
-      console.log('🔍 User info:', { userId: user?.id || user?._id, userType: user?.userType })
+      console.log('🔍 User info:', { userId: (user as any)?.id || (user as any)?._id, userType: (user as any)?.userType })
       
       const response = await axios.get(`${API_URL}/venues`, {
         headers: { Authorization: `Bearer ${token}` },

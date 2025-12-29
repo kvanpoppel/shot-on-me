@@ -715,7 +715,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     setReplyingTo(null)
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/feed/${postId}/comment`,
         { 
           content: commentContent,
@@ -1963,8 +1963,12 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                         // Get replies for this comment - check both _id and string comparison
                         const replies = post.comments.filter(c => {
                           if (!c.replyTo) return false
-                          const replyToId = typeof c.replyTo === 'string' ? c.replyTo : c.replyTo._id || c.replyTo
-                          const commentId = comment._id || comment.id
+                          const replyToId = typeof c.replyTo === 'string' 
+                            ? c.replyTo 
+                            : (typeof c.replyTo === 'object' && c.replyTo !== null && '_id' in c.replyTo)
+                              ? (c.replyTo as any)._id 
+                              : String(c.replyTo)
+                          const commentId = comment._id
                           return replyToId?.toString() === commentId?.toString()
                         })
                         return (
