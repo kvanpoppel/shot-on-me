@@ -2280,7 +2280,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                     <div className="absolute left-0 bottom-full mb-1 opacity-0 group-hover/comment-menu:opacity-100 pointer-events-none group-hover/comment-menu:pointer-events-auto transition-opacity z-50">
                                       <div className="bg-black/95 border border-primary-500/30 rounded-lg shadow-lg min-w-[140px]">
                                         <div className="py-1">
-                                          {(comment.user._id || comment.user.id) === (user?.id || (user as any)?._id) && (
+                                          {(comment.user._id) === (user?.id || (user as any)?._id) && (
                                             <button
                                               onClick={() => {
                                                 if (confirm('Delete this comment?')) {
@@ -2294,7 +2294,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                               <span>Delete</span>
                                             </button>
                                           )}
-                                          {(comment.user._id || comment.user.id) !== (user?.id || (user as any)?._id) && (
+                                          {(comment.user._id) !== (user?.id || (user as any)?._id) && (
                                             <button
                                               onClick={() => {
                                                 // TODO: Implement report comment
