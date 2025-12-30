@@ -39,9 +39,36 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
   try {
     const { recipientPhone, recipientId, amount, message } = req.body;
     
-    // Basic validation
-    if ((!recipientPhone && !recipientId) || !amount || amount <= 0) {
-      return res.status(400).json({ message: 'Recipient and amount are required' });
+    // Log request for debugging
+    console.log('📤 Payment send request:', {
+      hasRecipientPhone: !!recipientPhone,
+      hasRecipientId: !!recipientId,
+      amount: amount,
+      amountType: typeof amount,
+      message: message ? 'present' : 'missing'
+    });
+    
+    // Basic validation with detailed error messages
+    if (!recipientPhone && !recipientId) {
+      return res.status(400).json({ 
+        message: 'Recipient is required',
+        error: 'Please provide either recipientPhone or recipientId'
+      });
+    }
+    
+    if (!amount) {
+      return res.status(400).json({ 
+        message: 'Amount is required',
+        error: 'Please provide a valid amount'
+      });
+    }
+    
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ 
+        message: 'Invalid amount',
+        error: `Amount must be a positive number. Received: ${amount}`
+      });
     }
 
     const sender = await User.findById(req.user.userId);
@@ -51,8 +78,11 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
 
     // Check sender balance
     const balance = sender.wallet?.balance || 0;
-    if (balance < amount) {
-      return res.status(400).json({ message: 'Insufficient balance' });
+    if (balance < amountNum) {
+      return res.status(400).json({ 
+        message: 'Insufficient balance',
+        error: `Your balance is $${balance.toFixed(2)}, but you're trying to send $${amountNum.toFixed(2)}`
+      });
     }
 
     // Find recipient by phone or ID
@@ -67,12 +97,15 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       return res.status(404).json({ message: 'Recipient not found' });
     }
 
+    // Use parsed amount
+    const finalAmount = amountNum;
+    
     // Update balances
     sender.wallet = sender.wallet || { balance: 0, pendingBalance: 0 };
     recipient.wallet = recipient.wallet || { balance: 0, pendingBalance: 0 };
     
-    sender.wallet.balance -= amount;
-    recipient.wallet.pendingBalance = (recipient.wallet.pendingBalance || 0) + amount;
+    sender.wallet.balance -= finalAmount;
+    recipient.wallet.pendingBalance = (recipient.wallet.pendingBalance || 0) + finalAmount;
 
     await sender.save();
     await recipient.save();
@@ -85,7 +118,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     const payment = new Payment({
       senderId: req.user.userId,
       recipientId: recipient._id,
-      amount: amount,
+      amount: finalAmount,
       type: 'shot_sent',
       redemptionCode: redemptionCode,
       status: 'succeeded'
@@ -103,7 +136,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       sendPaymentSMS(
         recipient.phoneNumber,
         senderName,
-        amount,
+        finalAmount,
         redemptionCode,
         message || ''
       ).catch(err => {
@@ -128,7 +161,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         recipient: recipient._id,
         actor: req.user.userId,
         type: 'payment_received',
-        content: `${senderName} sent you $${amount.toFixed(2)}`
+        content: `${senderName} sent you $${finalAmount.toFixed(2)}`
       });
       await recipientNotification.save();
       
@@ -137,7 +170,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         recipient: req.user.userId,
         actor: req.user.userId,
         type: 'payment_sent',
-        content: `You sent $${amount.toFixed(2)} to ${recipient.name || recipient.phoneNumber}`
+        content: `You sent $${finalAmount.toFixed(2)} to ${recipient.name || recipient.phoneNumber}`
       });
       await senderNotification.save();
       
@@ -146,7 +179,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       if (socketIO) {
         socketIO.to(recipient._id.toString()).emit('new-notification', {
           notification: recipientNotification,
-          message: `${senderName} sent you $${amount.toFixed(2)}`
+          message: `${senderName} sent you $${finalAmount.toFixed(2)}`
         });
         socketIO.to(req.user.userId.toString()).emit('new-notification', {
           notification: senderNotification,
@@ -163,7 +196,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       payment: {
         transactionId,
         redemptionCode,
-        amount,
+        amount: finalAmount,
         paymentId: payment._id,
         recipient: {
           id: recipient._id,

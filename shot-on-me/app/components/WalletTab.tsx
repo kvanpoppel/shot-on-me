@@ -125,13 +125,27 @@ export default function WalletTab() {
     setError(null)
     setSuccess(null)
 
+    // Frontend validation
+    if (!recipientPhone.trim()) {
+      setError('Please enter a recipient phone number')
+      setSending(false)
+      return
+    }
+
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Please enter a valid amount greater than 0')
+      setSending(false)
+      return
+    }
+
     try {
       const response = await axios.post(
         `${API_URL}/payments/send`,
         {
-          recipientPhone,
-          amount: parseFloat(amount),
-          message
+          recipientPhone: recipientPhone.trim(),
+          amount: amountNum,
+          message: message.trim() || undefined
         },
         {
           headers: { Authorization: `Bearer ${token}` }
