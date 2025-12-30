@@ -37,20 +37,37 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
 
   // Check availability on mount
   useEffect(() => {
-    // Check contacts API availability
-    const contactsAvailable = 'contacts' in navigator && 'ContactsManager' in window
-    setAvailability(prev => ({ ...prev, contacts: contactsAvailable }))
-    
-    // Check notifications API availability
-    const notificationsAvailable = 'Notification' in window
-    setAvailability(prev => ({ ...prev, notifications: notificationsAvailable }))
-    
-    // If contacts or notifications are not available, disable them by default
-    if (!contactsAvailable) {
-      setPermissions(prev => ({ ...prev, contacts: false }))
-    }
-    if (!notificationsAvailable) {
-      setPermissions(prev => ({ ...prev, notifications: false }))
+    try {
+      // Check contacts API availability (only available on mobile browsers with HTTPS)
+      let contactsAvailable = false
+      try {
+        contactsAvailable = 'contacts' in navigator && typeof (window as any).ContactsManager !== 'undefined'
+      } catch (e) {
+        contactsAvailable = false
+      }
+      setAvailability(prev => ({ ...prev, contacts: contactsAvailable }))
+      
+      // Check notifications API availability
+      const notificationsAvailable = typeof window !== 'undefined' && 'Notification' in window
+      setAvailability(prev => ({ ...prev, notifications: notificationsAvailable }))
+      
+      // If contacts or notifications are not available, disable them by default
+      if (!contactsAvailable) {
+        setPermissions(prev => ({ ...prev, contacts: false }))
+      }
+      if (!notificationsAvailable) {
+        setPermissions(prev => ({ ...prev, notifications: false }))
+      }
+    } catch (error) {
+      console.error('Error checking permission availability:', error)
+      // Set defaults on error
+      setAvailability({
+        location: true,
+        camera: true,
+        microphone: true,
+        contacts: false,
+        notifications: false
+      })
     }
   }, [])
 
@@ -110,24 +127,42 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   ]
 
   const requestLocation = async () => {
-    if (!('geolocation' in navigator)) {
-      alert('Geolocation is not available in this browser')
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      console.warn('Geolocation is not available in this browser')
       return false
     }
     
     setRequesting('location')
     try {
       await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { 
-          timeout: 5000,
-          enableHighAccuracy: true,
-          maximumAge: 60000
-        })
+        const timeout = setTimeout(() => {
+          reject(new Error('Location request timeout'))
+        }, 10000) // 10 second timeout
+        
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeout)
+            resolve(position)
+          },
+          (error) => {
+            clearTimeout(timeout)
+            reject(error)
+          },
+          { 
+            timeout: 8000,
+            enableHighAccuracy: false, // Changed to false for better compatibility
+            maximumAge: 60000
+          }
+        )
       })
       setRequested(prev => new Set([...prev, 'location']))
       return true
-    } catch (error) {
-      console.warn('Location permission request failed:', error)
+    } catch (error: any) {
+      console.warn('Location permission request failed:', error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.code !== 1) { // PERMISSION_DENIED
+        console.warn('Location error details:', error)
+      }
       return false
     } finally {
       setRequesting(null)
@@ -135,14 +170,26 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   }
 
   const requestCamera = async () => {
+    if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Camera API is not available in this browser')
+      return false
+    }
+    
     setRequesting('camera')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      stream.getTracks().forEach(track => track.stop())
+      // Stop all tracks immediately to release the camera
+      stream.getTracks().forEach(track => {
+        track.stop()
+      })
       setRequested(prev => new Set([...prev, 'camera']))
       return true
     } catch (error: any) {
-      console.warn('Camera permission request failed:', error)
+      console.warn('Camera permission request failed:', error?.name || error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.name !== 'NotAllowedError') {
+        console.warn('Camera error details:', error)
+      }
       return false
     } finally {
       setRequesting(null)
@@ -150,14 +197,26 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   }
 
   const requestMicrophone = async () => {
+    if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Microphone API is not available in this browser')
+      return false
+    }
+    
     setRequesting('microphone')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach(track => track.stop())
+      // Stop all tracks immediately to release the microphone
+      stream.getTracks().forEach(track => {
+        track.stop()
+      })
       setRequested(prev => new Set([...prev, 'microphone']))
       return true
     } catch (error: any) {
-      console.warn('Microphone permission request failed:', error)
+      console.warn('Microphone permission request failed:', error?.name || error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.name !== 'NotAllowedError') {
+        console.warn('Microphone error details:', error)
+      }
       return false
     } finally {
       setRequesting(null)
@@ -167,19 +226,34 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   const requestContacts = async () => {
     setRequesting('contacts')
     try {
-      if ('contacts' in navigator && 'ContactsManager' in window) {
-        const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
-        if (contacts && contacts.length > 0) {
-          setRequested(prev => new Set([...prev, 'contacts']))
-          return true
-        }
-      } else {
-        alert('Contacts API is not available on this device/browser. You can still find friends by searching in the Find Friends section.')
+      // Check if Contacts API is available
+      if (typeof window === 'undefined' || !('contacts' in navigator)) {
+        console.warn('Contacts API is not available on this device/browser')
         return false
       }
+      
+      // Check for ContactsManager (Chrome/Edge on Android)
+      const ContactsManager = (window as any).ContactsManager
+      if (!ContactsManager) {
+        console.warn('ContactsManager is not available. Contacts API requires HTTPS and mobile browser support.')
+        return false
+      }
+      
+      // Request contacts access
+      const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
+      if (contacts && contacts.length > 0) {
+        setRequested(prev => new Set([...prev, 'contacts']))
+        return true
+      }
+      return false
     } catch (error: any) {
-      if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
-        console.warn('Contacts permission denied')
+      // Handle specific error types
+      if (error?.name === 'NotAllowedError' || error?.name === 'AbortError') {
+        console.warn('Contacts permission denied by user')
+      } else if (error?.name === 'NotSupportedError') {
+        console.warn('Contacts API not supported on this device/browser')
+      } else {
+        console.warn('Contacts permission request failed:', error?.message || error)
       }
       return false
     } finally {
@@ -188,31 +262,34 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   }
 
   const requestNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      console.warn('Notifications are not supported in this browser')
+      return false
+    }
+    
     setRequesting('notifications')
     try {
-      if ('Notification' in window) {
-        // Check current permission first
-        if (Notification.permission === 'granted') {
-          setRequested(prev => new Set([...prev, 'notifications']))
-          return true
-        }
-        if (Notification.permission === 'denied') {
-          alert('Notifications are blocked. Please enable them in your browser settings.')
-          return false
-        }
-        // Request permission
-        const permission = await Notification.requestPermission()
-        if (permission === 'granted') {
-          setRequested(prev => new Set([...prev, 'notifications']))
-          return true
-        }
-        return false
-      } else {
-        alert('Notifications are not supported in this browser.')
+      // Check current permission first
+      if (Notification.permission === 'granted') {
+        setRequested(prev => new Set([...prev, 'notifications']))
+        return true
+      }
+      
+      if (Notification.permission === 'denied') {
+        console.warn('Notifications are blocked. User must enable them in browser settings.')
         return false
       }
-    } catch (error) {
-      console.warn('Notifications permission request failed:', error)
+      
+      // Request permission (only works in response to user gesture)
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        setRequested(prev => new Set([...prev, 'notifications']))
+        return true
+      }
+      
+      return false
+    } catch (error: any) {
+      console.warn('Notifications permission request failed:', error?.message || error)
       return false
     } finally {
       setRequesting(null)
@@ -220,68 +297,95 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   }
 
   const handleToggle = async (key: string) => {
-    const newValue = !permissions[key]
-    setPermissions(prev => ({ ...prev, [key]: newValue }))
+    try {
+      const newValue = !permissions[key]
+      setPermissions(prev => ({ ...prev, [key]: newValue }))
 
-    // If enabling, request permission immediately
-    if (newValue && !requested.has(key)) {
-      switch (key) {
-        case 'location':
-          await requestLocation()
-          break
-        case 'camera':
-          await requestCamera()
-          break
-        case 'microphone':
-          await requestMicrophone()
-          break
-        case 'contacts':
-          await requestContacts()
-          break
-        case 'notifications':
-          await requestNotifications()
-          break
+      // If enabling, request permission immediately
+      if (newValue && !requested.has(key)) {
+        let success = false
+        switch (key) {
+          case 'location':
+            success = await requestLocation()
+            break
+          case 'camera':
+            success = await requestCamera()
+            break
+          case 'microphone':
+            success = await requestMicrophone()
+            break
+          case 'contacts':
+            success = await requestContacts()
+            break
+          case 'notifications':
+            success = await requestNotifications()
+            break
+        }
+        
+        // If permission request failed and it's not available, disable the toggle
+        if (!success && !availability[key]) {
+          setPermissions(prev => ({ ...prev, [key]: false }))
+        }
       }
+    } catch (error) {
+      console.error('Error in handleToggle:', error)
+      // Revert toggle on error
+      setPermissions(prev => ({ ...prev, [key]: !prev[key] }))
     }
   }
 
   const handleContinue = async () => {
-    // Request all enabled permissions
-    const permissionTypes = ['location', 'camera', 'microphone', 'contacts', 'notifications'] as const
-    
-    for (const type of permissionTypes) {
-      if (permissions[type] && !requested.has(type)) {
-        switch (type) {
-          case 'location':
-            await requestLocation()
-            break
-          case 'camera':
-            await requestCamera()
-            break
-          case 'microphone':
-            await requestMicrophone()
-            break
-          case 'contacts':
-            await requestContacts()
-            break
-          case 'notifications':
-            await requestNotifications()
-            break
-        }
-        // Small delay between requests to avoid overwhelming the browser
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-    }
-
-    // Mark as shown
     try {
-      localStorage.setItem('permissions-shown', 'true')
-    } catch (err) {
-      // Continue anyway
+      // Request all enabled permissions
+      const permissionTypes = ['location', 'camera', 'microphone', 'contacts', 'notifications'] as const
+      
+      for (const type of permissionTypes) {
+        if (permissions[type] && !requested.has(type) && availability[type]) {
+          try {
+            switch (type) {
+              case 'location':
+                await requestLocation()
+                break
+              case 'camera':
+                await requestCamera()
+                break
+              case 'microphone':
+                await requestMicrophone()
+                break
+              case 'contacts':
+                await requestContacts()
+                break
+              case 'notifications':
+                await requestNotifications()
+                break
+            }
+          } catch (error) {
+            console.warn(`Failed to request ${type} permission:`, error)
+            // Continue with other permissions even if one fails
+          }
+          // Small delay between requests to avoid overwhelming the browser
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+
+      // Mark as shown
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('permissions-shown', 'true')
+        }
+      } catch (err) {
+        console.warn('Failed to save permissions-shown flag:', err)
+        // Continue anyway
+      }
+      
+      setShowModal(false)
+      if (onComplete) onComplete()
+    } catch (error) {
+      console.error('Error in handleContinue:', error)
+      // Still close modal and call onComplete even on error
+      setShowModal(false)
+      if (onComplete) onComplete()
     }
-    
-    setShowModal(false)
-    if (onComplete) onComplete()
   }
 
   const handleSkip = () => {
