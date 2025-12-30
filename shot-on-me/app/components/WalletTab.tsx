@@ -9,6 +9,7 @@ import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
 import VirtualCardManager from './VirtualCardManager'
+import CardPaymentModal from './CardPaymentModal'
 import TapAndPayModal from './TapAndPayModal'
 import { useApiUrl } from '../utils/api'
 
@@ -631,6 +632,36 @@ export default function WalletTab() {
           setSuccess(`Payment successful! $${payment.payment?.amount?.toFixed(2) || '0.00'} paid to ${payment.venue?.name || 'venue'}`)
           setTimeout(() => setSuccess(null), 5000)
         }}
+      />
+
+      {/* Card Payment Modal for Insufficient Balance */}
+      <CardPaymentModal
+        isOpen={showCardPayment}
+        onClose={() => {
+          setShowCardPayment(false)
+          setCardPaymentRecipient(null)
+          setCardPaymentAmount(0)
+        }}
+        onSuccess={async () => {
+          // Refresh user data and payments
+          if (updateUser) {
+            await updateUser({})
+          }
+          await fetchPayments()
+          setSuccess('Payment sent successfully via card!')
+          setTimeout(() => setSuccess(null), 8000)
+          setShowCardPayment(false)
+          setShowSendForm(false)
+          setRecipientPhone('')
+          setAmount('')
+          setMessage('')
+          setCardPaymentRecipient(null)
+          setCardPaymentAmount(0)
+        }}
+        amount={cardPaymentAmount}
+        recipientPhone={cardPaymentRecipient?.phone}
+        recipientId={cardPaymentRecipient?.id}
+        message={cardPaymentRecipient?.message}
       />
     </div>
   )
