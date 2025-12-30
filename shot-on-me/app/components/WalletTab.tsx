@@ -584,7 +584,15 @@ export default function WalletTab() {
       <AddFundsModal
         isOpen={showAddFunds}
         onClose={() => setShowAddFunds(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
+          // Refresh user data to get updated balance
+          if (updateUser) {
+            await updateUser({})
+          }
+          // Also fetch payments to show the new transaction
+          await fetchPayments()
+          setSuccess('Funds added successfully!')
+          setTimeout(() => setSuccess(null), 5000)
           if (updateUser) {
             updateUser({})
           }

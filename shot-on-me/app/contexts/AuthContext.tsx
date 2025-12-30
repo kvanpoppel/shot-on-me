@@ -323,6 +323,30 @@ For LOCAL development:
         return
       }
       
+      // If called with empty data, fetch fresh user data from server
+      const isEmpty = Object.keys(data).length === 0
+      if (isEmpty) {
+        // Refresh user data from server
+        const apiUrl = getApiUrl()
+        const response = await axios.get(`${apiUrl}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (response.data.user) {
+          const userData = response.data.user
+          if (userData._id && !userData.id) {
+            userData.id = userData._id.toString()
+          }
+          // Ensure wallet exists
+          if (!userData.wallet) {
+            userData.wallet = { balance: 0, pendingBalance: 0 }
+          }
+          setUser(userData)
+          console.log('✅ User data refreshed from server. Balance:', userData.wallet?.balance)
+        }
+        return
+      }
+      
       // Otherwise, try to update via API
       const apiUrl = getApiUrl()
       const response = await axios.put(`${apiUrl}/users/me`, data, {
@@ -335,6 +359,10 @@ For LOCAL development:
         if (userData._id && !userData.id) {
           userData.id = userData._id.toString()
         }
+        // Ensure wallet exists
+        if (!userData.wallet) {
+          userData.wallet = { balance: 0, pendingBalance: 0 }
+        }
         setUser(userData)
       } else {
         // Merge with existing user data
@@ -345,7 +373,9 @@ For LOCAL development:
       if (data.profilePicture) {
         setUser(prev => prev ? { ...prev, ...data } : null)
       } else {
-        throw new Error(error.response?.data?.error || 'Failed to update user')
+        console.error('Error updating user:', error)
+        // Don't throw - just log the error to avoid breaking the UI
+        // The balance will update via webhook/Socket.io eventually
       }
     }
   }
