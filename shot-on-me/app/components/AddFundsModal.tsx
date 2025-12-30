@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js'
 import axios from 'axios'
@@ -297,46 +297,10 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
           }
         }
 
-        // 4. Create PaymentIntent only if amount is valid (> 0)
-        // Validate amount before creating PaymentIntent to prevent 400 errors
-        const amountToUse = parseFloat(String(selectedAmount)) || 0
-        if (amountToUse > 0) {
-          const intentResponse = await axios.post(
-            `${API_URL}/payments/create-intent`,
-            { 
-              amount: amountToUse,
-              paymentMethodId: currentUseSavedCard && currentSelectedPaymentMethod ? currentSelectedPaymentMethod : undefined,
-              savePaymentMethod: !currentUseSavedCard
-            },
-            { 
-              headers: { Authorization: `Bearer ${token}` },
-              signal
-            }
-          )
-
-          if (signal.aborted) return
-
-          const { clientSecret: secret, status } = intentResponse.data
-          
-          // If using saved card and payment succeeded immediately
-          if (status === 'succeeded' && currentUseSavedCard && currentSelectedPaymentMethod) {
-            setTimeout(() => {
-              onSuccess()
-              onClose()
-            }, 0)
-            return
-          }
-
-          if (!secret) {
-            throw new Error('Failed to create payment intent')
-          }
-
-          setClientSecret(secret)
-        } else {
-          // Amount is 0 or invalid - PaymentIntent will be created when user selects valid amount
-          // This is OK - we'll create it when user clicks pay or selects an amount
-          console.log('⏳ Amount is 0 or invalid. PaymentIntent will be created when user selects amount.')
-        }
+        // 4. Don't create PaymentIntent during initialization
+        // PaymentIntent will be created when user selects an amount or clicks to pay
+        // This prevents 400 errors from trying to create PaymentIntent with invalid/zero amounts
+        console.log('✅ Stripe initialized. PaymentIntent will be created when user selects amount.')
       } catch (err: any) {
         if (signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
           return
@@ -367,6 +331,69 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
       }
     }
   }, [isOpen, token, API_URL]) // Only re-run when modal opens/closes or auth changes
+
+  // Helper function to create PaymentIntent
+  const createPaymentIntent = async (amount: number, paymentMethodId?: string, savePaymentMethod = false) => {
+    if (!amount || amount <= 0) {
+      console.log('⏳ Skipping PaymentIntent creation - invalid amount:', amount)
+      return null
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      const intentResponse = await axios.post(
+        `${API_URL}/payments/create-intent`,
+        { 
+          amount: amount,
+          paymentMethodId: paymentMethodId,
+          savePaymentMethod: savePaymentMethod
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      
+      const { clientSecret: secret, status } = intentResponse.data
+      
+      // If using saved card and payment succeeded immediately
+      if (status === 'succeeded' && paymentMethodId) {
+        setTimeout(() => {
+          onSuccess()
+          onClose()
+        }, 0)
+        return null
+      }
+
+      if (secret) {
+        setClientSecret(secret)
+      }
+      return secret
+    } catch (err: any) {
+      console.error('Failed to create payment intent:', err)
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create payment intent'
+      setError(errorMessage)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Create PaymentIntent when amount changes (if valid)
+  useEffect(() => {
+    if (!isOpen || !stripePromise || !token) return
+    
+    const amountNum = parseFloat(String(selectedAmount)) || 0
+    // Only create PaymentIntent if amount is valid and we don't already have a clientSecret
+    if (amountNum > 0 && !clientSecret && !loading) {
+      // Small delay to avoid creating multiple PaymentIntents
+      const timeoutId = setTimeout(() => {
+        if (parseFloat(String(selectedAmount)) === amountNum && amountNum > 0 && !clientSecret) {
+          createPaymentIntent(amountNum, useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined, !useSavedCard)
+        }
+      }, 300)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [selectedAmount, isOpen, stripePromise, token, clientSecret, loading, useSavedCard, selectedPaymentMethod])
 
   if (!isOpen) return null
 
@@ -456,26 +483,8 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
                   setClientSecret(null)
                   setError(null)
                   
-                  try {
-                    setLoading(true)
-                    const intentResponse = await axios.post(
-                      `${API_URL}/payments/create-intent`,
-                      { 
-                        amount: selectedAmount,
-                        savePaymentMethod: true
-                      },
-                      { headers: { Authorization: `Bearer ${token}` } }
-                    )
-                    const { clientSecret: secret } = intentResponse.data
-                    if (secret) {
-                      setClientSecret(secret)
-                    }
-                  } catch (err: any) {
-                    console.error('Failed to create payment intent:', err)
-                    setError(err.response?.data?.message || 'Failed to initialize payment form')
-                  } finally {
-                    setLoading(false)
-                  }
+                  // Create PaymentIntent for new card
+                  await createPaymentIntent(selectedAmount, undefined, true)
                 }}
                 className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
                   !useSavedCard
@@ -497,7 +506,13 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
               <button
                 key={quickAmount}
                 type="button"
-                onClick={() => setSelectedAmount(quickAmount)}
+                onClick={async () => {
+                  setSelectedAmount(quickAmount)
+                  // Create PaymentIntent when user selects an amount
+                  if (quickAmount > 0) {
+                    await createPaymentIntent(quickAmount, useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined, !useSavedCard)
+                  }
+                }}
                 disabled={loading}
                 className={`py-2 px-3 rounded-lg border-2 transition-all disabled:opacity-50 ${
                   selectedAmount === quickAmount
@@ -519,35 +534,7 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
               onChange={(e) => {
                 const newAmount = parseFloat(e.target.value) || 0
                 setSelectedAmount(newAmount)
-                // Create PaymentIntent when user enters a valid amount
-                if (newAmount > 0 && !clientSecret) {
-                  // Debounce: wait a bit before creating PaymentIntent
-                  setTimeout(async () => {
-                    if (parseFloat(e.target.value) === newAmount && newAmount > 0) {
-                      try {
-                        setLoading(true)
-                        const intentResponse = await axios.post(
-                          `${API_URL}/payments/create-intent`,
-                          { 
-                            amount: newAmount,
-                            paymentMethodId: useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined,
-                            savePaymentMethod: !useSavedCard
-                          },
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        )
-                        const { clientSecret: secret } = intentResponse.data
-                        if (secret) {
-                          setClientSecret(secret)
-                        }
-                      } catch (err: any) {
-                        console.error('Failed to create payment intent:', err)
-                        // Don't show error on input - only show when user tries to pay
-                      } finally {
-                        setLoading(false)
-                      }
-                    }
-                  }, 500)
-                }
+                // PaymentIntent will be created automatically via useEffect when amount changes
               }}
               placeholder="Enter amount"
               disabled={loading}
