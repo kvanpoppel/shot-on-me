@@ -793,7 +793,7 @@ router.post('/create-intent', auth, async (req, res) => {
     try {
       const paymentData = {
         senderId: req.user.userId,
-        amount: amount,
+        amount: amountNum,
         type: 'wallet_topup',
         stripePaymentIntentId: paymentIntent.id,
         status: paymentIntent.status === 'succeeded' ? 'succeeded' : 'pending'
