@@ -503,7 +503,7 @@ router.post('/:postId/reaction', auth, async (req, res) => {
         const socketIO = io || req.app.get('io');
         if (socketIO) {
           socketIO.to(post.author._id.toString()).emit('new-notification', {
-            type: 'reaction',
+            notification: notification,
             message: notification.content,
             postId: post._id
           });
@@ -623,7 +623,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
         const socketIO = io || req.app.get('io');
         if (socketIO) {
           socketIO.to(post.author._id.toString()).emit('new-notification', {
-            type: 'comment',
+            notification: notification,
             message: notification.content,
             postId: post._id
           });
@@ -658,7 +658,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
         
         if (socketIO) {
           socketIO.to(commenterId).emit('new-notification', {
-            type: 'comment_reply',
+            notification: notification,
             message: notification.content,
             postId: post._id
           });

@@ -206,10 +206,30 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           // Show browser notification if permission granted
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(data.title || 'Shot On Me', {
-              body: data.message || data.text,
+              body: data.message || data.text || data.content,
               icon: '/icon-192x192.png',
               badge: '/icon-192x192.png',
-              tag: data.id || 'notification',
+              tag: data.id || data.notification?._id || 'notification',
+              requireInteraction: false
+            })
+          }
+        }
+      })
+
+      // Listen for new-notification events (from backend)
+      newSocket.on('new-notification', (data: any) => {
+        console.log('🔔 New notification event:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }))
+          
+          // Show browser notification if permission granted
+          if ('Notification' in window && Notification.permission === 'granted' && data.notification) {
+            const notif = data.notification
+            new Notification('Shot On Me', {
+              body: notif.content || data.message || 'You have a new notification',
+              icon: '/icon-192x192.png',
+              badge: '/icon-192x192.png',
+              tag: notif._id || 'notification',
               requireInteraction: false
             })
           }

@@ -96,6 +96,50 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     handlePaymentSent(req.user.userId, amount).catch(err => console.error('Gamification error:', err));
     handlePaymentReceived(recipient._id, amount).catch(err => console.error('Gamification error:', err));
 
+    // Create notifications for both sender and recipient
+    try {
+      const Notification = require('../models/Notification');
+      const User = require('../models/User');
+      
+      // Get sender info for notification
+      const senderInfo = await User.findById(req.user.userId).select('firstName lastName name');
+      const senderName = senderInfo?.firstName || senderInfo?.name || 'Someone';
+      
+      // Notification for recipient
+      const recipientNotification = new Notification({
+        recipient: recipient._id,
+        actor: req.user.userId,
+        type: 'payment_received',
+        content: `${senderName} sent you $${amount.toFixed(2)}`
+      });
+      await recipientNotification.save();
+      
+      // Notification for sender (confirmation)
+      const senderNotification = new Notification({
+        recipient: req.user.userId,
+        actor: req.user.userId,
+        type: 'payment_sent',
+        content: `You sent $${amount.toFixed(2)} to ${recipient.name || recipient.phoneNumber}`
+      });
+      await senderNotification.save();
+      
+      // Emit real-time notifications via Socket.io
+      const socketIO = req.app.get('io');
+      if (socketIO) {
+        socketIO.to(recipient._id.toString()).emit('new-notification', {
+          notification: recipientNotification,
+          message: `${senderName} sent you $${amount.toFixed(2)}`
+        });
+        socketIO.to(req.user.userId.toString()).emit('new-notification', {
+          notification: senderNotification,
+          message: `Payment sent successfully`
+        });
+      }
+    } catch (notifError) {
+      console.error('Error creating payment notifications:', notifError);
+      // Don't fail payment if notification creation fails
+    }
+
     res.json({ 
       message: 'Payment sent successfully',
       payment: {
@@ -429,6 +473,33 @@ router.post('/redeem', auth, async (req, res) => {
 
       await session.commitTransaction();
       session.endSession();
+
+      // Create notification for successful redemption
+      try {
+        const Notification = require('../models/Notification');
+        const sender = await User.findById(payment.senderId).select('firstName lastName name');
+        const senderName = sender?.firstName || sender?.name || 'Someone';
+        
+        const redemptionNotification = new Notification({
+          recipient: userId,
+          actor: payment.senderId,
+          type: 'payment_received',
+          content: `You redeemed $${amountInDollars.toFixed(2)} at ${venue.name}`
+        });
+        await redemptionNotification.save();
+        
+        // Emit real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(userId.toString()).emit('new-notification', {
+            notification: redemptionNotification,
+            message: `Payment redeemed at ${venue.name}`
+          });
+        }
+      } catch (notifError) {
+        console.error('Error creating redemption notification:', notifError);
+        // Don't fail redemption if notification creation fails
+      }
 
       // Emit socket events for real-time updates
       const io = req.app.get('io');
