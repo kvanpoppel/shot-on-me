@@ -31,6 +31,9 @@ export default function WalletTab() {
   const [showAddFunds, setShowAddFunds] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
   const [showTapAndPay, setShowTapAndPay] = useState(false)
+  const [showCardPayment, setShowCardPayment] = useState(false)
+  const [cardPaymentAmount, setCardPaymentAmount] = useState(0)
+  const [cardPaymentRecipient, setCardPaymentRecipient] = useState<{ phone?: string; id?: string; message?: string } | null>(null)
   const [points, setPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -163,10 +166,21 @@ export default function WalletTab() {
       }
       setTimeout(() => setSuccess(null), 8000)
     } catch (error: any) {
-      setError(error.response?.data?.error || error.response?.data?.message || 'Failed to send payment')
-      setTimeout(() => setError(null), 5000)
-    } finally {
-      setSending(false)
+      // Check if insufficient balance and card payment is available
+      if (error.response?.status === 402 && error.response?.data?.canPayWithCard) {
+        // Show card payment modal
+        setCardPaymentAmount(amountNum)
+        setCardPaymentRecipient({
+          phone: recipientPhone.trim(),
+          message: message.trim() || undefined
+        })
+        setShowCardPayment(true)
+        setSending(false)
+      } else {
+        setError(error.response?.data?.error || error.response?.data?.message || 'Failed to send payment')
+        setTimeout(() => setError(null), 5000)
+        setSending(false)
+      }
     }
   }
 
