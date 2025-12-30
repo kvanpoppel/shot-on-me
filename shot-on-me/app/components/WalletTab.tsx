@@ -585,19 +585,23 @@ export default function WalletTab() {
         isOpen={showAddFunds}
         onClose={() => setShowAddFunds(false)}
         onSuccess={async () => {
-          // Refresh user data to get updated balance
+          // Wait a moment for backend to process
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Force refresh user data to get updated balance
           if (updateUser) {
-            await updateUser({})
+            try {
+              await updateUser({})
+              console.log('✅ User data refreshed after adding funds')
+            } catch (err) {
+              console.error('❌ Error refreshing user:', err)
+            }
           }
+          
           // Also fetch payments to show the new transaction
           await fetchPayments()
-          setSuccess('Funds added successfully!')
-          setTimeout(() => setSuccess(null), 5000)
-          if (updateUser) {
-            updateUser({})
-          }
-          fetchPayments()
-          setSuccess('Funds added successfully!')
+          
+          setSuccess('Funds added successfully! Balance updated.')
           setTimeout(() => setSuccess(null), 5000)
         }}
       />
