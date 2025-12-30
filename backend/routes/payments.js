@@ -78,10 +78,18 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
 
     // Check sender balance
     const balance = sender.wallet?.balance || 0;
-    if (balance < amountNum) {
-      return res.status(400).json({ 
+    const insufficientBalance = balance < amountNum;
+    
+    // If insufficient balance, return special error code to allow card payment
+    if (insufficientBalance) {
+      return res.status(402).json({ 
         message: 'Insufficient balance',
-        error: `Your balance is $${balance.toFixed(2)}, but you're trying to send $${amountNum.toFixed(2)}`
+        error: `Your balance is $${balance.toFixed(2)}, but you're trying to send $${amountNum.toFixed(2)}`,
+        insufficientBalance: true,
+        currentBalance: balance,
+        requiredAmount: amountNum,
+        shortfall: amountNum - balance,
+        canPayWithCard: true
       });
     }
 
