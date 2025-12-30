@@ -156,7 +156,7 @@ export default function WalletTab() {
         }
       )
 
-      setSuccess(`Payment sent! Redemption code: ${response.data.payment.redemptionCode}`)
+      setSuccess(`Payment sent! Recipient can use their tap-and-pay card at venues.`)
       setShowSendForm(false)
       setRecipientPhone('')
       setAmount('')
@@ -544,18 +544,19 @@ export default function WalletTab() {
           className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
         >
           <QrCode className="w-5 h-5" />
-          <span>{showRedeemForm ? 'Cancel Redeem' : 'Redeem Code'}</span>
+          <span>{showRedeemForm ? 'Cancel' : 'Redeem Reward Code'}</span>
         </button>
 
         {showRedeemForm && (
           <form onSubmit={handleRedeem} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
             <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Redemption Code</label>
+              <label className="block text-primary-500 text-sm font-semibold mb-2">Reward Code (Points/Rewards)</label>
+              <p className="text-xs text-primary-400/70 mb-2">Enter a reward code from venue promotions or point system</p>
               <input
                 type="text"
                 value={redemptionCode}
                 onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
-                placeholder="Enter redemption code"
+                placeholder="Enter reward code"
                 required
                 className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
               />
