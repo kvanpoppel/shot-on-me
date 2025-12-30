@@ -780,4 +780,163 @@ router.post('/:postId/comment/:commentId/reaction', auth, async (req, res) => {
   }
 });
 
+// Delete a post
+router.delete('/:postId', auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await FeedPost.findById(postId);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if user is the author
+    if (post.author.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to delete this post' });
+    }
+
+    // Delete media from Cloudinary if present
+    if (post.media && post.media.length > 0) {
+      for (const media of post.media) {
+        if (media.publicId) {
+          try {
+            await cloudinary.uploader.destroy(media.publicId, {
+              resource_type: media.type === 'video' ? 'video' : 'image'
+            });
+          } catch (cloudinaryError) {
+            console.warn('Failed to delete media from Cloudinary:', cloudinaryError);
+            // Continue even if Cloudinary deletion fails
+          }
+        }
+      }
+    }
+
+    await FeedPost.findByIdAndDelete(postId);
+
+    // Emit deletion event
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('post-deleted', { postId });
+    }
+
+    res.json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a comment
+router.delete('/:postId/comment/:commentId', auth, async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const post = await FeedPost.findById(postId);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    // Check if user is the comment author
+    if (comment.user.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    // Remove comment and all its replies
+    post.comments = post.comments.filter(c => {
+      const commentIdStr = commentId.toString();
+      const cIdStr = c._id.toString();
+      // Remove the comment itself or any replies to it
+      return cIdStr !== commentIdStr && (c.replyTo?.toString() !== commentIdStr);
+    });
+
+    await post.save();
+
+    // Emit deletion event
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('comment-deleted', { postId, commentId });
+    }
+
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report a post
+router.post('/:postId/report', auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { reason, details } = req.body;
+    
+    const post = await FeedPost.findById(postId).populate('author', 'name firstName lastName');
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Prevent users from reporting their own posts
+    if (post.author._id.toString() === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot report your own post' });
+    }
+
+    // TODO: Store report in database (create Report model if needed)
+    // For now, just log it
+    console.log(`🚨 Post reported: ${postId} by user ${req.user.userId}`);
+    console.log(`Reason: ${reason || 'Not specified'}`);
+    console.log(`Details: ${details || 'None'}`);
+    console.log(`Reported post author: ${post.author.name || post.author.firstName}`);
+
+    // In production, you would:
+    // 1. Create a Report document
+    // 2. Send notification to admins
+    // 3. Track report count and auto-hide if threshold reached
+
+    res.json({ message: 'Report submitted successfully. Thank you for helping keep our community safe.' });
+  } catch (error) {
+    console.error('Error reporting post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report a comment
+router.post('/:postId/comment/:commentId/report', auth, async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const { reason, details } = req.body;
+    
+    const post = await FeedPost.findById(postId);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    // Prevent users from reporting their own comments
+    if (comment.user.toString() === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot report your own comment' });
+    }
+
+    // TODO: Store report in database
+    console.log(`🚨 Comment reported: ${commentId} on post ${postId} by user ${req.user.userId}`);
+    console.log(`Reason: ${reason || 'Not specified'}`);
+    console.log(`Details: ${details || 'None'}`);
+
+    res.json({ message: 'Report submitted successfully. Thank you for helping keep our community safe.' });
+  } catch (error) {
+    console.error('Error reporting comment:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

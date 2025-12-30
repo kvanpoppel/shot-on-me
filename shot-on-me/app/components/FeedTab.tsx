@@ -139,6 +139,25 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null)
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
+  const postMenuRef = useRef<HTMLDivElement | null>(null)
+  const commentMenuRef = useRef<HTMLDivElement | null>(null)
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (postMenuOpen && postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) {
+        setPostMenuOpen(null)
+      }
+      if (commentMenuOpen && commentMenuRef.current && !commentMenuRef.current.contains(event.target as Node)) {
+        setCommentMenuOpen(null)
+      }
+    }
+
+    if (postMenuOpen || commentMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [postMenuOpen, commentMenuOpen])
 
   // Scroll restoration - remember scroll position when switching tabs
   useEffect(() => {
@@ -994,6 +1013,140 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       alert(errorMessage)
     } finally {
       setPosting(false)
+    }
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    if (!token) {
+      alert('Please log in to delete posts')
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      return
+    }
+
+    // Optimistically remove from UI
+    const previousPosts = [...posts]
+    setPosts(prev => prev.filter(p => p._id !== postId))
+
+    try {
+      await axios.delete(`${API_URL}/feed/${postId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Show success feedback
+      const toast = document.createElement('div')
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.textContent = 'Post deleted successfully'
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 3000)
+    } catch (error: any) {
+      console.error('Failed to delete post:', error)
+      // Revert optimistic update
+      setPosts(previousPosts)
+      alert(error.response?.data?.message || 'Failed to delete post. Please try again.')
+    }
+  }
+
+  const handleReportPost = async (postId: string) => {
+    if (!token) {
+      alert('Please log in to report posts')
+      return
+    }
+
+    const reason = prompt('Why are you reporting this post?\n\n1. Spam\n2. Harassment\n3. Inappropriate content\n4. Other\n\nPlease enter the number or reason:')
+    if (!reason || !reason.trim()) {
+      return
+    }
+
+    try {
+      await axios.post(
+        `${API_URL}/feed/${postId}/report`,
+        { reason: reason.trim(), details: '' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      // Show success feedback
+      const toast = document.createElement('div')
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.textContent = 'Report submitted. Thank you for helping keep our community safe.'
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 4000)
+    } catch (error: any) {
+      console.error('Failed to report post:', error)
+      alert(error.response?.data?.message || 'Failed to submit report. Please try again.')
+    }
+  }
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!token) {
+      alert('Please log in to delete comments')
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
+      return
+    }
+
+    // Optimistically remove from UI
+    const previousPosts = [...posts]
+    setPosts(prev => prev.map(post => {
+      if (post._id === postId) {
+        return {
+          ...post,
+          comments: post.comments.filter(c => c._id !== commentId)
+        }
+      }
+      return post
+    }))
+
+    try {
+      await axios.delete(`${API_URL}/feed/${postId}/comment/${commentId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Show success feedback
+      const toast = document.createElement('div')
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.textContent = 'Comment deleted successfully'
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 3000)
+    } catch (error: any) {
+      console.error('Failed to delete comment:', error)
+      // Revert optimistic update
+      setPosts(previousPosts)
+      alert(error.response?.data?.message || 'Failed to delete comment. Please try again.')
+    }
+  }
+
+  const handleReportComment = async (postId: string, commentId: string) => {
+    if (!token) {
+      alert('Please log in to report comments')
+      return
+    }
+
+    const reason = prompt('Why are you reporting this comment?\n\n1. Spam\n2. Harassment\n3. Inappropriate content\n4. Other\n\nPlease enter the number or reason:')
+    if (!reason || !reason.trim()) {
+      return
+    }
+
+    try {
+      await axios.post(
+        `${API_URL}/feed/${postId}/comment/${commentId}/report`,
+        { reason: reason.trim(), details: '' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      // Show success feedback
+      const toast = document.createElement('div')
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.textContent = 'Report submitted. Thank you for helping keep our community safe.'
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 4000)
+    } catch (error: any) {
+      console.error('Failed to report comment:', error)
+      alert(error.response?.data?.message || 'Failed to submit report. Please try again.')
     }
   }
 
@@ -1993,9 +2146,12 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                       <span className="font-semibold">{post.comments.length}</span>
                     </button>
                     {/* Share & More Menu - Dropdown */}
-                    <div className="relative group/post-menu">
+                    <div className="relative group/post-menu" ref={postMenuRef}>
                       <button 
-                        onClick={() => setPostMenuOpen(postMenuOpen === post._id ? null : post._id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPostMenuOpen(postMenuOpen === post._id ? null : post._id)
+                        }}
                         className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
@@ -2003,12 +2159,10 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                       
                       {/* Dropdown Menu */}
                       {postMenuOpen === post._id && (
-                        <>
-                          <div 
-                            className="fixed inset-0 z-40" 
-                            onClick={() => setPostMenuOpen(null)}
-                          />
-                          <div className="absolute right-0 bottom-full mb-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-lg z-50 min-w-[180px]">
+                        <div 
+                          className="absolute right-0 bottom-full mb-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-lg z-50 min-w-[180px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                             <div className="py-1">
                               <button
                                 onClick={() => {
@@ -2048,10 +2202,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                               {authorId === (user?.id || (user as any)?._id) && (
                                 <button
                                   onClick={() => {
-                                    if (confirm('Delete this post?')) {
-                                      // TODO: Implement delete post
-                                      setPostMenuOpen(null)
-                                    }
+                                    setPostMenuOpen(null)
+                                    handleDeletePost(post._id)
                                   }}
                                   className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-red-400 hover:bg-red-500/10 transition-colors"
                                 >
@@ -2062,9 +2214,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                               {authorId !== (user?.id || (user as any)?._id) && (
                                 <button
                                   onClick={() => {
-                                    // TODO: Implement report post
-                                    alert('Report feature coming soon')
                                     setPostMenuOpen(null)
+                                    handleReportPost(post._id)
                                   }}
                                   className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
                                 >
@@ -2074,7 +2225,6 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                               )}
                             </div>
                           </div>
-                        </>
                       )}
                     </div>
                   </div>
@@ -2268,25 +2418,44 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                   </div>
                                   
                                   {/* Reply & More Menu */}
-                                  <div className="relative group/comment-menu">
+                                  <div className="relative group/comment-menu" ref={commentMenuRef}>
                                     <button
-                                      onClick={() => handleReply(post._id, comment._id || '', comment.user.firstName)}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleReply(post._id, comment._id || '', comment.user.firstName)
+                                      }}
                                       className="text-xs text-primary-400 hover:text-primary-500 px-2 py-1 rounded hover:bg-primary-500/10 transition-all"
                                     >
                                       Reply
                                     </button>
                                     
-                                    {/* Comment More Menu - Shows on hover */}
-                                    <div className="absolute left-0 bottom-full mb-1 opacity-0 group-hover/comment-menu:opacity-100 pointer-events-none group-hover/comment-menu:pointer-events-auto transition-opacity z-50">
-                                      <div className="bg-black/95 border border-primary-500/30 rounded-lg shadow-lg min-w-[140px]">
+                                    {/* Comment More Menu - Click to show */}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setCommentMenuOpen(
+                                          commentMenuOpen?.postId === post._id && commentMenuOpen?.commentId === comment._id
+                                            ? null
+                                            : { postId: post._id, commentId: comment._id || '' }
+                                        )
+                                      }}
+                                      className="text-xs text-primary-400 hover:text-primary-500 px-2 py-1 rounded hover:bg-primary-500/10 transition-all ml-1"
+                                    >
+                                      <MoreVertical className="w-3 h-3" />
+                                    </button>
+                                    
+                                    {/* Comment More Menu Dropdown */}
+                                    {commentMenuOpen?.postId === post._id && commentMenuOpen?.commentId === comment._id && (
+                                      <div 
+                                        className="absolute left-0 bottom-full mb-1 bg-black/95 border border-primary-500/30 rounded-lg shadow-lg min-w-[140px] z-50"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
                                         <div className="py-1">
                                           {(comment.user._id) === (user?.id || (user as any)?._id) && (
                                             <button
                                               onClick={() => {
-                                                if (confirm('Delete this comment?')) {
-                                                  // TODO: Implement delete comment
-                                                  setCommentMenuOpen(null)
-                                                }
+                                                setCommentMenuOpen(null)
+                                                handleDeleteComment(post._id, comment._id || '')
                                               }}
                                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
                                             >
@@ -2297,9 +2466,8 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                           {(comment.user._id) !== (user?.id || (user as any)?._id) && (
                                             <button
                                               onClick={() => {
-                                                // TODO: Implement report comment
-                                                alert('Report feature coming soon')
                                                 setCommentMenuOpen(null)
+                                                handleReportComment(post._id, comment._id || '')
                                               }}
                                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
                                             >
@@ -2309,7 +2477,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                                           )}
                                         </div>
                                       </div>
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                                 
