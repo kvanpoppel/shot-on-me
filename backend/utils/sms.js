@@ -33,11 +33,11 @@ if (!twilioClient) {
  * @param {string} recipientPhone - Recipient's phone number (E.164 format: +1234567890)
  * @param {string} senderName - Name of the person who sent the payment
  * @param {number} amount - Payment amount
- * @param {string} redemptionCode - Unique redemption code
+ * @param {string|null} redemptionCode - Redemption code (null for money transfers - use tap-and-pay instead)
  * @param {string} message - Optional personal message from sender
  * @returns {Promise<boolean>} - True if SMS sent successfully, false otherwise
  */
-const sendPaymentSMS = async (recipientPhone, senderName, amount, redemptionCode, message = '') => {
+const sendPaymentSMS = async (recipientPhone, senderName, amount, redemptionCode = null, message = '') => {
   if (!twilioClient) {
     console.warn('⚠️ Twilio not configured. SMS not sent.');
     return false;
@@ -58,7 +58,17 @@ const sendPaymentSMS = async (recipientPhone, senderName, amount, redemptionCode
 
   // Build SMS message
   const personalMessage = message ? `\n\n"${message}"` : '';
-  const smsBody = `🎉 You received $${amount.toFixed(2)} from ${senderName}!${personalMessage}\n\nRedemption Code: ${redemptionCode}\n\nUse this code at any participating venue. No app needed!\n\nShot On Me`;
+  
+  // If redemption code provided (for point/reward system), include it
+  // Otherwise, money transfer - use tap-and-pay card
+  let smsBody;
+  if (redemptionCode) {
+    // Redemption code for point/reward system
+    smsBody = `🎉 You received $${amount.toFixed(2)} from ${senderName}!${personalMessage}\n\nReward Code: ${redemptionCode}\n\nUse this code at participating venues for points/rewards!\n\nShot On Me`;
+  } else {
+    // Money transfer - use tap-and-pay card
+    smsBody = `🎉 You received $${amount.toFixed(2)} from ${senderName}!${personalMessage}\n\nMoney added to your wallet. Use your tap-and-pay card at any participating venue!\n\nShot On Me`;
+  }
 
   try {
     const twilioPhone = process.env.TWILIO_PHONE_NUMBER;

@@ -118,17 +118,17 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     await sender.save();
     await recipient.save();
 
-    // Generate redemption code
-    const redemptionCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // NO redemption code for money transfers - money goes to wallet, recipient uses tap-and-pay card
+    // Redemption codes are ONLY for point/reward system between users and venue owners
     const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Log payment to database
+    // Log payment to database (no redemption code for money transfers)
     const payment = new Payment({
       senderId: req.user.userId,
       recipientId: recipient._id,
       amount: finalAmount,
       type: 'shot_sent',
-      redemptionCode: redemptionCode,
+      // redemptionCode: null - Money transfers use tap-and-pay, not redemption codes
       status: 'succeeded'
     });
     await payment.save();
@@ -138,6 +138,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     handlePaymentReceived(recipient._id, amount).catch(err => console.error('Gamification error:', err));
 
     // Send SMS notification to recipient (if phone number available)
+    // Money transfers use tap-and-pay, not redemption codes
     if (recipient.phoneNumber) {
       const { sendPaymentSMS } = require('../utils/sms');
       const senderName = sender.firstName || sender.name || 'Someone';
@@ -145,7 +146,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         recipient.phoneNumber,
         senderName,
         finalAmount,
-        redemptionCode,
+        null, // No redemption code for money transfers - use tap-and-pay card
         message || ''
       ).catch(err => {
         console.error('Error sending payment SMS:', err);
@@ -200,10 +201,10 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     }
 
     res.json({ 
-      message: 'Payment sent successfully',
+      message: 'Payment sent successfully. Recipient can use their tap-and-pay card to spend at venues.',
       payment: {
         transactionId,
-        redemptionCode,
+        // No redemptionCode - money transfers use tap-and-pay
         amount: finalAmount,
         paymentId: payment._id,
         recipient: {
