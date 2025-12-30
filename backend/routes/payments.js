@@ -96,6 +96,24 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     handlePaymentSent(req.user.userId, amount).catch(err => console.error('Gamification error:', err));
     handlePaymentReceived(recipient._id, amount).catch(err => console.error('Gamification error:', err));
 
+    // Send SMS notification to recipient (if phone number available)
+    if (recipient.phoneNumber) {
+      const { sendPaymentSMS } = require('../utils/sms');
+      const senderName = sender.firstName || sender.name || 'Someone';
+      sendPaymentSMS(
+        recipient.phoneNumber,
+        senderName,
+        amount,
+        redemptionCode,
+        message || ''
+      ).catch(err => {
+        console.error('Error sending payment SMS:', err);
+        // Don't fail payment if SMS fails
+      });
+    } else {
+      console.log('⚠️ Recipient has no phone number. SMS not sent.');
+    }
+
     // Create notifications for both sender and recipient
     try {
       const Notification = require('../models/Notification');
