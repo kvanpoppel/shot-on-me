@@ -618,8 +618,13 @@ router.post('/create-intent', auth, async (req, res) => {
   try {
     const { amount, paymentMethodId, savePaymentMethod } = req.body;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ message: 'Valid amount is required' });
+    // Validate and parse amount
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ 
+        message: 'Valid amount is required',
+        error: `Amount must be a positive number. Received: ${amount} (type: ${typeof amount})`
+      });
     }
 
     // Check if Stripe is configured
@@ -713,7 +718,7 @@ router.post('/create-intent', auth, async (req, res) => {
       }
     }
 
-    const amountInCents = Math.round(amount * 100);
+    const amountInCents = Math.round(amountNum * 100);
 
     // Create payment intent with optional saved payment method
     const paymentIntentData = {

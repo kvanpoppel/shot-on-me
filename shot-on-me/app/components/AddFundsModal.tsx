@@ -297,38 +297,46 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
           }
         }
 
-        // 4. Create PaymentIntent
-        const intentResponse = await axios.post(
-          `${API_URL}/payments/create-intent`,
-          { 
-            amount: selectedAmount,
-            paymentMethodId: currentUseSavedCard && currentSelectedPaymentMethod ? currentSelectedPaymentMethod : undefined,
-            savePaymentMethod: !currentUseSavedCard
-          },
-          { 
-            headers: { Authorization: `Bearer ${token}` },
-            signal
+        // 4. Create PaymentIntent only if amount is valid (> 0)
+        // Validate amount before creating PaymentIntent to prevent 400 errors
+        const amountToUse = parseFloat(String(selectedAmount)) || 0
+        if (amountToUse > 0) {
+          const intentResponse = await axios.post(
+            `${API_URL}/payments/create-intent`,
+            { 
+              amount: amountToUse,
+              paymentMethodId: currentUseSavedCard && currentSelectedPaymentMethod ? currentSelectedPaymentMethod : undefined,
+              savePaymentMethod: !currentUseSavedCard
+            },
+            { 
+              headers: { Authorization: `Bearer ${token}` },
+              signal
+            }
+          )
+
+          if (signal.aborted) return
+
+          const { clientSecret: secret, status } = intentResponse.data
+          
+          // If using saved card and payment succeeded immediately
+          if (status === 'succeeded' && currentUseSavedCard && currentSelectedPaymentMethod) {
+            setTimeout(() => {
+              onSuccess()
+              onClose()
+            }, 0)
+            return
           }
-        )
 
-        if (signal.aborted) return
+          if (!secret) {
+            throw new Error('Failed to create payment intent')
+          }
 
-        const { clientSecret: secret, status } = intentResponse.data
-        
-        // If using saved card and payment succeeded immediately
-        if (status === 'succeeded' && currentUseSavedCard && currentSelectedPaymentMethod) {
-          setTimeout(() => {
-            onSuccess()
-            onClose()
-          }, 0)
-          return
+          setClientSecret(secret)
+        } else {
+          // Amount is 0 or invalid - PaymentIntent will be created when user selects valid amount
+          // This is OK - we'll create it when user clicks pay or selects an amount
+          console.log('⏳ Amount is 0 or invalid. PaymentIntent will be created when user selects amount.')
         }
-
-        if (!secret) {
-          throw new Error('Failed to create payment intent')
-        }
-
-        setClientSecret(secret)
       } catch (err: any) {
         if (signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
           return
@@ -508,7 +516,39 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
               min="1"
               step="0.01"
               value={selectedAmount}
-              onChange={(e) => setSelectedAmount(parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const newAmount = parseFloat(e.target.value) || 0
+                setSelectedAmount(newAmount)
+                // Create PaymentIntent when user enters a valid amount
+                if (newAmount > 0 && !clientSecret) {
+                  // Debounce: wait a bit before creating PaymentIntent
+                  setTimeout(async () => {
+                    if (parseFloat(e.target.value) === newAmount && newAmount > 0) {
+                      try {
+                        setLoading(true)
+                        const intentResponse = await axios.post(
+                          `${API_URL}/payments/create-intent`,
+                          { 
+                            amount: newAmount,
+                            paymentMethodId: useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined,
+                            savePaymentMethod: !useSavedCard
+                          },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        )
+                        const { clientSecret: secret } = intentResponse.data
+                        if (secret) {
+                          setClientSecret(secret)
+                        }
+                      } catch (err: any) {
+                        console.error('Failed to create payment intent:', err)
+                        // Don't show error on input - only show when user tries to pay
+                      } finally {
+                        setLoading(false)
+                      }
+                    }
+                  }, 500)
+                }
+              }}
               placeholder="Enter amount"
               disabled={loading}
               className="w-full px-4 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
