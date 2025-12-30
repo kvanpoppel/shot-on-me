@@ -68,9 +68,28 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
 
     const handleNewNotification = (data: any) => {
       console.log('📬 New notification received:', data)
-      // Refresh notifications
-      fetchNotifications()
-      fetchUnreadCount()
+      
+      // Add notification to list immediately for instant feedback
+      if (data.notification) {
+        setNotifications(prev => [data.notification, ...prev])
+        setUnreadCount(prev => prev + 1)
+      } else {
+        // Refresh if no notification object provided
+        fetchNotifications()
+        fetchUnreadCount()
+      }
+      
+      // Show browser notification if permission granted
+      if ('Notification' in window && Notification.permission === 'granted' && data.notification) {
+        const notif = data.notification
+        new Notification('Shot On Me', {
+          body: notif.content || data.message || 'You have a new notification',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          tag: notif._id || 'notification',
+          requireInteraction: false
+        })
+      }
     }
 
     socket.on('new-notification', handleNewNotification)

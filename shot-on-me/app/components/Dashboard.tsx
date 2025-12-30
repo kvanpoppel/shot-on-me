@@ -10,6 +10,7 @@ import LocationFinder from './LocationFinder'
 import SettingsMenu from './SettingsMenu'
 import FindFriends from './FindFriends'
 import ActivityFeed from './ActivityFeed'
+import NotificationCenter from './NotificationCenter'
 import MessagesModal from './MessagesModal'
 import { Tab } from '@/app/types'
 
@@ -282,10 +283,13 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
       {/* Settings Menu */}
       <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
       
-      {/* Activity Feed */}
+      {/* Activity Feed / Notification Center */}
       <ActivityFeed 
         isOpen={showActivityFeed} 
-        onClose={() => setShowActivityFeed(false)}
+        onClose={() => {
+          setShowActivityFeed(false)
+          fetchNotificationCount()
+        }}
         onViewProfile={setViewingProfile}
       />
       

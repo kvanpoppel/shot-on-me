@@ -498,11 +498,11 @@ router.post('/friends/:userId', auth, async (req, res) => {
     // Emit real-time notifications
     if (io) {
       io.to(userId.toString()).emit('new-notification', {
-        type: 'friend_accepted',
+        notification: friendNotification,
         message: friendNotification.content
       });
       io.to(currentUserId.toString()).emit('new-notification', {
-        type: 'friend_accepted',
+        notification: userNotification,
         message: userNotification.content
       });
     }
