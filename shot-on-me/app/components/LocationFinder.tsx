@@ -25,11 +25,44 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
+  const locationWatchIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (isOpen && token) {
       fetchFriends()
       getCurrentLocation()
+      
+      // Start watching location for continuous updates
+      if ('geolocation' in navigator) {
+        locationWatchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            const loc = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            }
+            setUserLocation(loc)
+            updateLocation(loc.lat, loc.lng)
+          },
+          (error) => {
+            if (error.code === error.PERMISSION_DENIED) {
+              console.warn('Location permission denied')
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          }
+        )
+      }
+    }
+
+    // Cleanup: stop watching location when component unmounts or modal closes
+    return () => {
+      if (locationWatchIdRef.current !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(locationWatchIdRef.current)
+        locationWatchIdRef.current = null
+      }
     }
   }, [isOpen, token])
 
@@ -56,10 +89,27 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
     }
   }, [socket, isOpen])
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     // Check if geolocation is available
     if (!('geolocation' in navigator)) {
       console.warn('Geolocation is not available in this browser')
+      return
+    }
+
+    // Check permission status first
+    let permissionStatus: 'granted' | 'denied' | 'prompt' = 'prompt'
+    if ('permissions' in navigator) {
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        permissionStatus = result.state as 'granted' | 'denied' | 'prompt'
+      } catch {
+        permissionStatus = 'prompt'
+      }
+    }
+
+    // If denied, inform user but don't block
+    if (permissionStatus === 'denied') {
+      console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
       return
     }
 

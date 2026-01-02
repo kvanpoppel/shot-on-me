@@ -60,6 +60,11 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         try {
           const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
           status.location = result.state as 'granted' | 'denied' | 'prompt'
+          
+          // Listen for permission changes
+          result.onchange = () => {
+            setPermissions(prev => ({ ...prev, location: result.state as 'granted' | 'denied' | 'prompt' }))
+          }
         } catch {
           status.location = 'prompt'
         }

@@ -205,13 +205,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           
           // Show browser notification if permission granted
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(data.title || 'Shot On Me', {
-              body: data.message || data.text || data.content,
-              icon: '/icon-192x192.png',
-              badge: '/icon-192x192.png',
-              tag: data.id || data.notification?._id || 'notification',
-              requireInteraction: false
-            })
+            try {
+              new Notification(data.title || 'Shot On Me', {
+                body: data.message || data.text || data.content,
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: data.id || data.notification?._id || 'notification',
+                requireInteraction: false,
+                silent: false
+              })
+            } catch (error) {
+              console.error('Error showing notification:', error)
+            }
           }
         }
       })
@@ -224,14 +229,19 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           
           // Show browser notification if permission granted
           if ('Notification' in window && Notification.permission === 'granted' && data.notification) {
-            const notif = data.notification
-            new Notification('Shot On Me', {
-              body: notif.content || data.message || 'You have a new notification',
-              icon: '/icon-192x192.png',
-              badge: '/icon-192x192.png',
-              tag: notif._id || 'notification',
-              requireInteraction: false
-            })
+            try {
+              const notif = data.notification
+              new Notification('Shot On Me', {
+                body: notif.content || data.message || 'You have a new notification',
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: notif._id || 'notification',
+                requireInteraction: false,
+                silent: false
+              })
+            } catch (error) {
+              console.error('Error showing notification:', error)
+            }
           }
         }
       })

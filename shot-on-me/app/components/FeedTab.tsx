@@ -1759,12 +1759,38 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
               onClick={async () => {
                 // Request camera permission first
                 try {
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                    stream.getTracks().forEach(track => track.stop())
+                  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    // Camera not available, use file picker
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*'
+                    input.onchange = (e: any) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                          alert('Image size must be less than 10MB')
+                          return
+                        }
+                        setSelectedMedia([...selectedMedia, file])
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          const result = event?.target?.result
+                          if (result) {
+                            setMediaPreviews([...mediaPreviews, result as string])
+                          }
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }
+                    input.click()
+                    return
                   }
+
+                  // Request camera access
+                  const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                  stream.getTracks().forEach(track => track.stop())
                   
-                  // Permission granted, open file picker
+                  // Permission granted, open file picker with camera option
                   const input = document.createElement('input')
                   input.type = 'file'
                   input.accept = 'image/*'
@@ -1789,10 +1815,32 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                   }
                   input.click()
                 } catch (error: any) {
-                  if (error.name === 'NotAllowedError') {
-                    alert('Camera permission denied. Please enable camera access in Settings → App Permissions.')
+                  if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    // Permission denied - fallback to file picker
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*'
+                    input.onchange = (e: any) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                          alert('Image size must be less than 10MB')
+                          return
+                        }
+                        setSelectedMedia([...selectedMedia, file])
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          const result = event?.target?.result
+                          if (result) {
+                            setMediaPreviews([...mediaPreviews, result as string])
+                          }
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }
+                    input.click()
                   } else {
-                    // Fallback to file picker without camera
+                    // Other error - still try file picker
                     const input = document.createElement('input')
                     input.type = 'file'
                     input.accept = 'image/*'
