@@ -379,7 +379,12 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       if (pageNum === 1) {
         setPosts(newPosts)
       } else {
-        setPosts(prev => [...prev, ...newPosts])
+        // Filter out duplicates when appending posts
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p._id))
+          const uniqueNewPosts = newPosts.filter((p: any) => !existingIds.has(p._id))
+          return [...prev, ...uniqueNewPosts]
+        })
       }
       
       setHasMore(newPosts.length === 10) // If we got 10 posts, there might be more
@@ -1646,15 +1651,28 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                   value={invitePhone}
                   onChange={(e) => {
                     // Format phone number as user types
-                    let value = e.target.value.replace(/\D/g, '') // Remove non-digits
-                    if (value.length > 0 && !value.startsWith('+')) {
-                      // Add +1 for US numbers if not present
-                      if (value.length <= 10) {
-                        value = '+1' + value
-                      } else if (!value.startsWith('+')) {
-                        value = '+' + value
+                    let value = e.target.value
+                    
+                    // If it already starts with +, preserve it and only allow digits after
+                    if (value.startsWith('+')) {
+                      // Keep the + and only allow digits after it
+                      const digits = value.slice(1).replace(/\D/g, '')
+                      value = '+' + digits
+                    } else {
+                      // Remove all non-digits
+                      const digits = value.replace(/\D/g, '')
+                      
+                      // If it's a 10-digit number (US without country code), add +1
+                      if (digits.length === 10) {
+                        value = '+1' + digits
+                      } else if (digits.length > 0) {
+                        // For other lengths, just add + prefix
+                        value = '+' + digits
+                      } else {
+                        value = ''
                       }
                     }
+                    
                     setInvitePhone(value)
                   }}
                   placeholder="+1234567890"
@@ -1885,13 +1903,16 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
             </button>
           </div>
         ) : (
-          posts.map((post) => {
+          posts.map((post, index) => {
             const authorId = post.author._id || post.author.id
             const isFriend = (user as any)?.friends?.includes(authorId) || authorId === user?.id
             const liked = post.userReaction === '❤️' || isLiked(post)
             
+            // Use a combination of post ID and index to ensure unique keys
+            const uniqueKey = post._id ? `${post._id}-${index}` : `post-${index}`
+            
             return (
-              <div key={post._id} className="bg-gradient-to-b from-black via-black to-black/80 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg">
+              <div key={uniqueKey} className="bg-gradient-to-b from-black via-black to-black/80 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg">
                 {/* Author Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">

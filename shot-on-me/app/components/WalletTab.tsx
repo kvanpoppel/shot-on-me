@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -13,13 +13,19 @@ import CardPaymentModal from './CardPaymentModal'
 import TapAndPayModal from './TapAndPayModal'
 import { useApiUrl } from '../utils/api'
 
-export default function WalletTab() {
+interface WalletTabProps {
+  autoOpenSendForm?: boolean
+  onSendFormOpened?: () => void
+}
+
+export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }: WalletTabProps) {
   const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
   const { socket } = useSocket()
   const router = useRouter()
   const [showSendForm, setShowSendForm] = useState(false)
   const [showRedeemForm, setShowRedeemForm] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | 'sent' | 'received' | null>(null)
   const [recipientPhone, setRecipientPhone] = useState('')
   const [amount, setAmount] = useState('')
@@ -38,13 +44,55 @@ export default function WalletTab() {
   const [points, setPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [insufficientBalanceData, setInsufficientBalanceData] = useState<{ shortfall: number; recipientPhone: string; amount: number; message?: string } | null>(null)
+  const [addingFunds, setAddingFunds] = useState(false)
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<any>(null)
+  const [addFundsAmount, setAddFundsAmount] = useState<string>('')
+  const hasAutoOpenedRef = useRef(false)
 
   useEffect(() => {
     if (token) {
       fetchPayments()
       fetchPoints()
+      fetchDefaultPaymentMethod()
     }
   }, [token])
+
+  const fetchDefaultPaymentMethod = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/payment-methods`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const defaultPM = response.data.paymentMethods?.find((pm: any) => pm.isDefault)
+      setDefaultPaymentMethod(defaultPM || null)
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error)
+    }
+  }
+
+  // Auto-open send form if requested (e.g., from Home tab)
+  useEffect(() => {
+    if (autoOpenSendForm && !hasAutoOpenedRef.current) {
+      hasAutoOpenedRef.current = true
+      setShowSendForm(true)
+      setShowRedeemForm(false)
+      setShowMoreMenu(false)
+      // Scroll to send form after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        const sendButton = document.querySelector('[data-send-money-button]')
+        if (sendButton) {
+          sendButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 200)
+      // Notify parent that form is opened
+      if (onSendFormOpened) {
+        onSendFormOpened()
+      }
+    } else if (!autoOpenSendForm) {
+      // Reset the ref when flag is cleared
+      hasAutoOpenedRef.current = false
+    }
+  }, [autoOpenSendForm, onSendFormOpened])
 
   const fetchPoints = async () => {
     try {
@@ -66,6 +114,8 @@ export default function WalletTab() {
         updateUser({})
       }
       fetchPayments()
+      // Refresh default payment method in case it changed
+      fetchDefaultPaymentMethod()
     }
 
     if (typeof window !== 'undefined') {
@@ -74,7 +124,7 @@ export default function WalletTab() {
         window.removeEventListener('wallet-updated', handleWalletUpdate as EventListener)
       }
     }
-  }, [updateUser])
+  }, [updateUser, token])
 
   // Listen for real-time payment updates
   useEffect(() => {
@@ -167,21 +217,145 @@ export default function WalletTab() {
       }
       setTimeout(() => setSuccess(null), 8000)
     } catch (error: any) {
-      // Check if insufficient balance and card payment is available
+      // Check if insufficient balance
       if (error.response?.status === 402 && error.response?.data?.canPayWithCard) {
-        // Show card payment modal
-        setCardPaymentAmount(amountNum)
-        setCardPaymentRecipient({
-          phone: recipientPhone.trim(),
-          message: message.trim() || undefined
-        })
-        setShowCardPayment(true)
-        setSending(false)
+        const shortfall = error.response?.data?.shortfall || amountNum
+        const currentBalance = error.response?.data?.currentBalance || 0
+        
+        // If user has a default payment method, offer quick "Add Funds"
+        if (defaultPaymentMethod) {
+          // Calculate suggested amount (round up to nearest $5, minimum $5)
+          const suggestedAmount = Math.max(5, Math.ceil(shortfall / 5) * 5)
+          setInsufficientBalanceData({
+            shortfall: shortfall,
+            recipientPhone: recipientPhone.trim(),
+            amount: amountNum,
+            message: message.trim() || undefined
+          })
+          setAddFundsAmount(suggestedAmount.toFixed(2)) // Set suggested amount
+          setSending(false)
+        } else {
+          // No default payment method - show full card payment modal
+          setCardPaymentAmount(amountNum)
+          setCardPaymentRecipient({
+            phone: recipientPhone.trim(),
+            message: message.trim() || undefined
+          })
+          setShowCardPayment(true)
+          setSending(false)
+        }
       } else {
         setError(error.response?.data?.error || error.response?.data?.message || 'Failed to send payment')
         setTimeout(() => setError(null), 5000)
         setSending(false)
       }
+    }
+  }
+
+  const handleQuickAddFunds = async () => {
+    if (!insufficientBalanceData || !defaultPaymentMethod) return
+
+    // Validate amount input
+    const amountToAdd = parseFloat(addFundsAmount)
+    if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      setError('Please enter a valid amount to add')
+      return
+    }
+    if (amountToAdd < insufficientBalanceData.shortfall) {
+      setError(`Amount must be at least $${insufficientBalanceData.shortfall.toFixed(2)} to cover the shortfall`)
+      return
+    }
+    if (amountToAdd < 5) {
+      setError('Minimum amount to add is $5.00')
+      return
+    }
+
+    setAddingFunds(true)
+    setError(null)
+
+    try {
+      // Create payment intent with default payment method
+      const response = await axios.post(
+        `${API_URL}/payments/create-intent`,
+        {
+          amount: amountToAdd,
+          paymentMethodId: defaultPaymentMethod.id,
+          savePaymentMethod: false // Already saved
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+
+      // If payment succeeded immediately (saved payment method)
+      if (response.data.status === 'succeeded') {
+        // Wait a moment for wallet to update
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Refresh user data to get updated balance
+        if (updateUser) {
+          await updateUser({})
+        }
+
+        // Now retry the send transaction
+        await retrySendAfterAddFunds()
+      } else if (response.data.requiresAction) {
+        // Payment requires additional action (3D Secure, etc.)
+        setError('Payment requires additional verification. Please use the full payment form.')
+        setAddingFunds(false)
+        // Fall back to full card payment modal
+        setCardPaymentAmount(insufficientBalanceData.amount)
+        setCardPaymentRecipient({
+          phone: insufficientBalanceData.recipientPhone,
+          message: insufficientBalanceData.message
+        })
+        setShowCardPayment(true)
+        setInsufficientBalanceData(null)
+      } else {
+        setError('Payment is processing. Please wait...')
+        setAddingFunds(false)
+      }
+    } catch (error: any) {
+      console.error('Error adding funds:', error)
+      setError(error.response?.data?.message || 'Failed to add funds. Please try again.')
+      setAddingFunds(false)
+    }
+  }
+
+  const retrySendAfterAddFunds = async () => {
+    if (!insufficientBalanceData) return
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/payments/send`,
+        {
+          recipientPhone: insufficientBalanceData.recipientPhone,
+          amount: insufficientBalanceData.amount,
+          message: insufficientBalanceData.message || undefined
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+
+      setSuccess(`Funds added and payment sent! Recipient can use their tap-and-pay card at venues.`)
+      setShowSendForm(false)
+      setRecipientPhone('')
+      setAmount('')
+      setMessage('')
+      setInsufficientBalanceData(null) // This closes the modal
+      setAddFundsAmount('') // Clear the amount input
+      fetchPayments()
+      if (updateUser) {
+        updateUser({})
+      }
+      setTimeout(() => setSuccess(null), 8000)
+    } catch (error: any) {
+      // If still insufficient, show error
+      setError(error.response?.data?.error || error.response?.data?.message || 'Failed to send payment after adding funds')
+      setTimeout(() => setError(null), 5000)
+    } finally {
+      setAddingFunds(false)
     }
   }
 
@@ -328,6 +502,79 @@ export default function WalletTab() {
         </div>
       </div>
 
+      {/* Primary Action: Send Money */}
+      <div className="px-4 mb-5">
+        <button
+          data-send-money-button
+          onClick={() => {
+            setShowSendForm(!showSendForm)
+            setShowRedeemForm(false)
+            setShowMoreMenu(false)
+          }}
+          className="w-full bg-primary-500 text-black py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.01] active:scale-[0.99] text-lg"
+        >
+          <Send className="w-6 h-6" />
+          <span>{showSendForm ? 'Cancel' : 'Send Money'}</span>
+        </button>
+
+        {showSendForm && (
+          <form onSubmit={handleSend} className="mt-4 bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+            <div>
+              <label className="block text-primary-500 text-sm font-semibold mb-2">Recipient Phone</label>
+              <input
+                type="tel"
+                value={recipientPhone}
+                onChange={(e) => setRecipientPhone(e.target.value)}
+                placeholder="+1234567890"
+                required
+                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-primary-500 text-sm font-semibold mb-2">Amount ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-primary-500 text-sm font-semibold mb-2">Message (optional)</label>
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Happy birthday!"
+                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={sending || !amount || parseFloat(amount) <= 0}
+              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+            >
+              {sending ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  <span>Send Payment</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+      </div>
+
       {/* Quick Actions Grid */}
       <div className="px-4 mb-5">
         <div className="grid grid-cols-2 gap-3">
@@ -467,133 +714,85 @@ export default function WalletTab() {
         )}
       </div>
 
-      {/* Secondary Actions */}
-      <div className="px-4 mb-6 space-y-3">
-        <button
-          onClick={() => {
-            setShowSendForm(!showSendForm)
-            setShowRedeemForm(false)
-          }}
-          className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
-        >
-          <Send className="w-5 h-5" />
-          <span>{showSendForm ? 'Cancel Send' : 'Send Money'}</span>
-        </button>
+      {/* More Menu - Secondary Actions */}
+      <div className="px-4 mb-6">
+        <div className="relative">
+          <button
+            onClick={() => {
+              setShowMoreMenu(!showMoreMenu)
+              setShowSendForm(false)
+            }}
+            className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
+          >
+            <MoreVertical className="w-5 h-5" />
+            <span>More Options</span>
+          </button>
 
-        {showSendForm && (
-          <form onSubmit={handleSend} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
-            <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Recipient Phone</label>
-              <input
-                type="tel"
-                value={recipientPhone}
-                onChange={(e) => setRecipientPhone(e.target.value)}
-                placeholder="+1234567890"
-                required
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+          {showMoreMenu && (
+            <div className="mt-2 bg-black/90 border-2 border-primary-500/30 rounded-xl overflow-hidden shadow-xl">
+              <button
+                onClick={() => {
+                  setShowRedeemForm(!showRedeemForm)
+                  setShowMoreMenu(false)
+                }}
+                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3 border-b border-primary-500/10"
+              >
+                <QrCode className="w-5 h-5" />
+                <span>{showRedeemForm ? 'Hide' : 'Redeem'} Reward Code</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentMethods(!showPaymentMethods)
+                  setShowMoreMenu(false)
+                }}
+                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3"
+              >
+                <CreditCard className="w-5 h-5" />
+                <span>{showPaymentMethods ? 'Hide' : 'Manage'} Payment Methods</span>
+              </button>
             </div>
-            <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Amount ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                required
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+          )}
+
+          {showRedeemForm && (
+            <form onSubmit={handleRedeem} className="mt-4 bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+              <div>
+                <label className="block text-primary-500 text-sm font-semibold mb-2">Reward Code (Points/Rewards)</label>
+                <p className="text-xs text-primary-400/70 mb-2">Enter a reward code from venue promotions or point system</p>
+                <input
+                  type="text"
+                  value={redemptionCode}
+                  onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
+                  placeholder="Enter reward code"
+                  required
+                  className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={redeeming || !redemptionCode.trim()}
+                className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                {redeeming ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Redeeming...</span>
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-5 h-5" />
+                    <span>Redeem</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {showPaymentMethods && (
+            <div className="mt-4 p-5 bg-black/50 border border-primary-500/20 rounded-xl">
+              <PaymentMethodsManager />
             </div>
-            <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Message (optional)</label>
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Happy birthday!"
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={sending || !amount || parseFloat(amount) <= 0}
-              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  <span>Send Payment</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        <button 
-          onClick={() => {
-            setShowRedeemForm(!showRedeemForm)
-            setShowSendForm(false)
-          }}
-          className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
-        >
-          <QrCode className="w-5 h-5" />
-          <span>{showRedeemForm ? 'Cancel' : 'Redeem Reward Code'}</span>
-        </button>
-
-        {showRedeemForm && (
-          <form onSubmit={handleRedeem} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
-            <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Reward Code (Points/Rewards)</label>
-              <p className="text-xs text-primary-400/70 mb-2">Enter a reward code from venue promotions or point system</p>
-              <input
-                type="text"
-                value={redemptionCode}
-                onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
-                placeholder="Enter reward code"
-                required
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={redeeming || !redemptionCode.trim()}
-              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
-            >
-              {redeeming ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Redeeming...</span>
-                </>
-              ) : (
-                <>
-                  <QrCode className="w-5 h-5" />
-                  <span>Redeem</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        <button
-          onClick={() => setShowPaymentMethods(!showPaymentMethods)}
-          className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
-        >
-          <CreditCard className="w-5 h-5" />
-          <span>{showPaymentMethods ? 'Hide' : 'Manage'} Payment Methods</span>
-        </button>
-
-        {showPaymentMethods && (
-          <div className="mt-3 p-5 bg-black/50 border border-primary-500/20 rounded-xl">
-            <PaymentMethodsManager />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -634,6 +833,132 @@ export default function WalletTab() {
           setTimeout(() => setSuccess(null), 5000)
         }}
       />
+
+      {/* Insufficient Balance - Quick Add Funds Modal */}
+      {insufficientBalanceData && defaultPaymentMethod && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <div className="bg-black border-2 border-primary-500/40 rounded-2xl p-6 max-w-md w-full backdrop-blur-md">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/40">
+                  <WalletIcon className="w-5 h-5 text-primary-500" />
+                </div>
+                <h2 className="text-xl font-bold text-primary-500">Insufficient Balance</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setInsufficientBalanceData(null)
+                  setAddFundsAmount('')
+                  setError(null)
+                }}
+                className="text-primary-400 hover:text-primary-500 transition-colors"
+                disabled={addingFunds}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4">
+              <p className="text-primary-400/80 text-sm">
+                You need <span className="font-bold text-primary-500">${insufficientBalanceData.shortfall.toFixed(2)}</span> more to send <span className="font-bold text-primary-500">${insufficientBalanceData.amount.toFixed(2)}</span>.
+              </p>
+
+              {/* Default Payment Method Display */}
+              <div className="bg-black/40 rounded-lg p-4 border border-primary-500/20">
+                <p className="text-primary-400/70 text-xs mb-2 uppercase tracking-wider font-semibold">Quick Add Funds</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/30">
+                    <CreditCard className="w-5 h-5 text-primary-500" />
+                  </div>
+                  <div>
+                    <p className="text-primary-500 font-bold text-sm">
+                      {defaultPaymentMethod.card?.brand?.toUpperCase()} •••• {defaultPaymentMethod.card?.last4}
+                    </p>
+                    <p className="text-primary-400/60 text-xs">Default payment method</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Amount Input */}
+              <div>
+                <label className="block text-primary-500 text-sm font-semibold mb-2">
+                  Amount to Add ($)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary-400 text-lg font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={insufficientBalanceData.shortfall}
+                    value={addFundsAmount}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      // Allow empty, numbers, and one decimal point
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setAddFundsAmount(value)
+                        setError(null) // Clear error when user types
+                      }
+                    }}
+                    placeholder={`${Math.max(5, Math.ceil(insufficientBalanceData.shortfall / 5) * 5).toFixed(2)}`}
+                    disabled={addingFunds}
+                    className="w-full pl-8 pr-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
+                  />
+                </div>
+                <p className="text-primary-400/60 text-xs mt-1.5">
+                  Minimum: ${Math.max(insufficientBalanceData.shortfall, 5).toFixed(2)}
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleQuickAddFunds}
+                  disabled={addingFunds || !addFundsAmount || parseFloat(addFundsAmount) < Math.max(insufficientBalanceData.shortfall, 5)}
+                  className="flex-1 bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25"
+                >
+                  {addingFunds ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Adding Funds...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5" />
+                      <span>Add Funds & Send</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setInsufficientBalanceData(null)
+                    setAddFundsAmount('')
+                    setError(null)
+                    setCardPaymentAmount(insufficientBalanceData.amount)
+                    setCardPaymentRecipient({
+                      phone: insufficientBalanceData.recipientPhone,
+                      message: insufficientBalanceData.message
+                    })
+                    setShowCardPayment(true)
+                  }}
+                  disabled={addingFunds}
+                  className="px-4 bg-black/40 border border-primary-500/30 text-primary-500 py-3.5 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-500/10 transition-all"
+                >
+                  Different Card
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Card Payment Modal for Insufficient Balance */}
       <CardPaymentModal

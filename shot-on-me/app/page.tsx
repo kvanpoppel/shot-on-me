@@ -29,6 +29,7 @@ export default function Home() {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
+  const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
 
   // Removed console.log to reduce noise - tab changes are handled by state
 
@@ -79,9 +80,12 @@ export default function Home() {
       />
       <ProximityNotifications />
       <main className="pt-16 min-h-screen bg-black pb-16">
-        {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
+        {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} onSendMoney={() => {
+          setAutoOpenSendForm(true)
+          setActiveTab('wallet')
+        }} />}
         {activeTab === 'send-shot' && <SendShotTab />}
-        {activeTab === 'wallet' && <WalletTab />}
+        {activeTab === 'wallet' && <WalletTab autoOpenSendForm={autoOpenSendForm} onSendFormOpened={() => setAutoOpenSendForm(false)} />}
         {activeTab === 'feed' && (
           <ErrorBoundary>
             <FeedTab onViewProfile={setViewingProfile} />

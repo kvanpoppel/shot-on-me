@@ -18,6 +18,15 @@ let stripeInitialized = false
 
 function initializeGlobalStripe() {
   if (stripeInitialized) return globalStripePromise
+  
+  // Skip during build time (server-side rendering)
+  // Stripe key will be fetched at runtime in the browser
+  if (typeof window === 'undefined') {
+    stripeInitialized = true
+    globalStripePromise = Promise.resolve(null)
+    return globalStripePromise
+  }
+  
   stripeInitialized = true
   
   const promise = (async () => {
@@ -34,7 +43,8 @@ function initializeGlobalStripe() {
       }
       return null
     } catch (error: any) {
-      if (error.response?.status !== 503) {
+      // Suppress errors during build or if backend is unavailable
+      if (error.response?.status !== 503 && typeof window !== 'undefined') {
         console.error('❌ Failed to fetch Stripe key:', error)
       }
       return null

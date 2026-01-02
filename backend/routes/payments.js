@@ -108,6 +108,14 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     // Use parsed amount
     const finalAmount = amountNum;
     
+    // Ensure both users have a name (required by User model)
+    if (!sender.name) {
+      sender.name = sender.phoneNumber || sender.email || 'User';
+    }
+    if (!recipient.name) {
+      recipient.name = recipient.phoneNumber || recipient.email || 'User';
+    }
+    
     // Update balances
     sender.wallet = sender.wallet || { balance: 0, pendingBalance: 0 };
     recipient.wallet = recipient.wallet || { balance: 0, pendingBalance: 0 };
@@ -728,18 +736,21 @@ router.post('/create-intent', auth, async (req, res) => {
       metadata: {
         userId: req.user.userId.toString(),
         type: 'wallet_topup'
-      },
-      automatic_payment_methods: {
-        enabled: true
       }
     };
 
-    // If using saved payment method, attach it
+    // If using saved payment method, attach it and use confirmation_method
+    // NOTE: Cannot use both automatic_payment_methods and confirmation_method together
     if (paymentMethodId) {
       paymentIntentData.payment_method = paymentMethodId;
       paymentIntentData.confirmation_method = 'automatic';
       paymentIntentData.confirm = true;
       paymentIntentData.return_url = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/wallet?success=true`;
+    } else {
+      // Only use automatic_payment_methods when NOT using a saved payment method
+      paymentIntentData.automatic_payment_methods = {
+        enabled: true
+      };
     }
 
     // If saving payment method, set up future usage

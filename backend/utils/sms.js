@@ -10,15 +10,35 @@ const initializeTwilio = () => {
 
   if (!accountSid || !authToken || !phoneNumber) {
     console.warn('⚠️ Twilio credentials not configured. SMS notifications will be disabled.');
+    console.warn('   Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in backend/.env');
+    return null;
+  }
+
+  // Validate Account SID format (must start with "AC")
+  if (!accountSid.startsWith('AC')) {
+    console.error('❌ Invalid Twilio Account SID format. Account SID must start with "AC".');
+    console.error(`   Received: ${accountSid.substring(0, 5)}... (first 5 chars)`);
+    console.error('   Please check your TWILIO_ACCOUNT_SID in backend/.env');
+    return null;
+  }
+
+  // Validate phone number format (should start with +)
+  if (!phoneNumber.startsWith('+')) {
+    console.error('❌ Invalid Twilio phone number format. Phone number must start with "+".');
+    console.error(`   Received: ${phoneNumber}`);
+    console.error('   Example: +1234567890');
+    console.error('   Please check your TWILIO_PHONE_NUMBER in backend/.env');
     return null;
   }
 
   try {
     twilioClient = twilio(accountSid, authToken);
     console.log('✅ Twilio initialized successfully');
+    console.log(`   Phone: ${phoneNumber}`);
     return twilioClient;
   } catch (error) {
-    console.error('❌ Error initializing Twilio:', error);
+    console.error('❌ Error initializing Twilio:', error.message);
+    console.error('   Please verify your Twilio credentials in backend/.env');
     return null;
   }
 };
@@ -27,6 +47,13 @@ const initializeTwilio = () => {
 if (!twilioClient) {
   twilioClient = initializeTwilio();
 }
+
+// Re-initialize function for when credentials are updated
+const reinitializeTwilio = () => {
+  twilioClient = null;
+  twilioClient = initializeTwilio();
+  return twilioClient;
+};
 
 /**
  * Send SMS notification for payment received
@@ -38,9 +65,13 @@ if (!twilioClient) {
  * @returns {Promise<boolean>} - True if SMS sent successfully, false otherwise
  */
 const sendPaymentSMS = async (recipientPhone, senderName, amount, redemptionCode = null, message = '') => {
+  // Re-initialize if client is null (credentials might have been updated)
   if (!twilioClient) {
-    console.warn('⚠️ Twilio not configured. SMS not sent.');
-    return false;
+    twilioClient = initializeTwilio();
+    if (!twilioClient) {
+      console.warn('⚠️ Twilio not configured. SMS not sent.');
+      return false;
+    }
   }
 
   if (!recipientPhone) {
@@ -96,9 +127,13 @@ const sendPaymentSMS = async (recipientPhone, senderName, amount, redemptionCode
  * @returns {Promise<boolean>}
  */
 const sendFriendInviteSMS = async (recipientPhone, inviterName, inviteLink) => {
+  // Re-initialize if client is null (credentials might have been updated)
   if (!twilioClient) {
-    console.warn('⚠️ Twilio not configured. SMS not sent.');
-    return false;
+    twilioClient = initializeTwilio();
+    if (!twilioClient) {
+      console.warn('⚠️ Twilio not configured. SMS not sent.');
+      return false;
+    }
   }
 
   if (!recipientPhone) {
@@ -144,6 +179,7 @@ module.exports = {
   sendPaymentSMS,
   sendFriendInviteSMS,
   isTwilioConfigured,
-  initializeTwilio
+  initializeTwilio,
+  reinitializeTwilio
 };
 
