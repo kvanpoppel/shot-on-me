@@ -177,7 +177,11 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         if (permissionStatus !== 'denied') {
           try {
             const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+              navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                timeout: 15000, // Increased to 15 seconds
+                enableHighAccuracy: false, // Use less accurate but faster location
+                maximumAge: 300000 // Accept cached location up to 5 minutes old
+              })
             })
             latitude = position.coords.latitude
             longitude = position.coords.longitude
