@@ -162,14 +162,28 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
       let longitude: number | undefined
       
       if (navigator.geolocation) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-          })
-          latitude = position.coords.latitude
-          longitude = position.coords.longitude
-        } catch (error) {
-          console.log('Location not available, proceeding without it')
+        // Check permission status first
+        let permissionStatus: 'granted' | 'denied' | 'prompt' = 'prompt'
+        if ('permissions' in navigator) {
+          try {
+            const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+            permissionStatus = result.state as 'granted' | 'denied' | 'prompt'
+          } catch {
+            permissionStatus = 'prompt'
+          }
+        }
+
+        // Only request location if permission is not denied
+        if (permissionStatus !== 'denied') {
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+            })
+            latitude = position.coords.latitude
+            longitude = position.coords.longitude
+          } catch (error) {
+            console.log('Location not available, proceeding without it')
+          }
         }
       }
 

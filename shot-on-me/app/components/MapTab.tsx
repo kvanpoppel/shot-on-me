@@ -50,9 +50,26 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     }
   }, [token, API_URL])
 
-  const getCurrentLocation = useCallback(() => {
+  const getCurrentLocation = useCallback(async () => {
     if (!('geolocation' in navigator)) {
       console.warn('Geolocation is not available in this browser')
+      return
+    }
+
+    // Check permission status first
+    let permissionStatus: 'granted' | 'denied' | 'prompt' = 'prompt'
+    if ('permissions' in navigator) {
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        permissionStatus = result.state as 'granted' | 'denied' | 'prompt'
+      } catch {
+        permissionStatus = 'prompt'
+      }
+    }
+
+    // If denied, inform user but don't block
+    if (permissionStatus === 'denied') {
+      console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
       return
     }
 
@@ -66,6 +83,9 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         },
         (error) => {
           console.warn('Geolocation error:', error.message || error)
+          if (error.code === error.PERMISSION_DENIED) {
+            console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
+          }
         },
         {
           enableHighAccuracy: true,
