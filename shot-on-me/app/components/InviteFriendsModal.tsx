@@ -227,15 +227,28 @@ export default function InviteFriendsModal({ isOpen, onClose }: InviteFriendsMod
                   value={smsNumber}
                   onChange={(e) => {
                     // Format phone number as user types
-                    let value = e.target.value.replace(/\D/g, '') // Remove non-digits
-                    if (value.length > 0 && !value.startsWith('+')) {
-                      // Add +1 for US numbers if not present
-                      if (value.length <= 10) {
-                        value = '+1' + value
-                      } else if (!value.startsWith('+')) {
-                        value = '+' + value
+                    let value = e.target.value
+                    
+                    // If it already starts with +, preserve it and only allow digits after
+                    if (value.startsWith('+')) {
+                      // Keep the + and only allow digits after it
+                      const digits = value.slice(1).replace(/\D/g, '')
+                      value = '+' + digits
+                    } else {
+                      // Remove all non-digits
+                      const digits = value.replace(/\D/g, '')
+                      
+                      // If it's a 10-digit number (US without country code), add +1
+                      if (digits.length === 10) {
+                        value = '+1' + digits
+                      } else if (digits.length > 0) {
+                        // For other lengths, just add + prefix
+                        value = '+' + digits
+                      } else {
+                        value = ''
                       }
                     }
+                    
                     setSmsNumber(value)
                   }}
                   placeholder="Phone number (e.g., +1234567890)"

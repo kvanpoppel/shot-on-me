@@ -230,6 +230,7 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
       setPaymentMethods([])
       setSelectedPaymentMethod(null)
       setUseSavedCard(false)
+      setStripeInitialized(false)
       initializedRef.current = false
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
@@ -301,6 +302,7 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
         // PaymentIntent will be created when user selects an amount or clicks to pay
         // This prevents 400 errors from trying to create PaymentIntent with invalid/zero amounts
         console.log('✅ Stripe initialized. PaymentIntent will be created when user selects amount.')
+        setStripeInitialized(true)
       } catch (err: any) {
         if (signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
           return
@@ -316,6 +318,7 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
         } else {
           setError(errorMessage)
         }
+        setStripeInitialized(false)
       } finally {
         if (!signal.aborted) {
           setLoading(false)
@@ -332,9 +335,10 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
     }
   }, [isOpen, token, API_URL]) // Only re-run when modal opens/closes or auth changes
 
-  // Helper function to create PaymentIntent
-  const createPaymentIntent = async (amount: number, paymentMethodId?: string, savePaymentMethod = false) => {
-    if (!amount || amount <= 0) {
+  // Helper function to create PaymentIntent (memoized to prevent unnecessary re-renders)
+  const createPaymentIntent = useCallback(async (amount: number, paymentMethodId?: string, savePaymentMethod = false) => {
+    const amountNum = parseFloat(String(amount)) || 0
+    if (!amountNum || amountNum <= 0) {
       console.log('⏳ Skipping PaymentIntent creation - invalid amount:', amount)
       return null
     }
@@ -342,13 +346,18 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
     try {
       setLoading(true)
       setError(null)
+      
+      const requestBody = { 
+        amount: amountNum, // Ensure we send a number
+        ...(paymentMethodId && { paymentMethodId }),
+        savePaymentMethod: savePaymentMethod
+      }
+      
+      console.log('💳 Creating PaymentIntent with:', { amount: amountNum, hasPaymentMethodId: !!paymentMethodId, savePaymentMethod })
+      
       const intentResponse = await axios.post(
         `${API_URL}/payments/create-intent`,
-        { 
-          amount: amount,
-          paymentMethodId: paymentMethodId,
-          savePaymentMethod: savePaymentMethod
-        },
+        requestBody,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       
@@ -368,32 +377,30 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
       }
       return secret
     } catch (err: any) {
-      console.error('Failed to create payment intent:', err)
+      console.error('❌ Failed to create payment intent:', err)
+      console.error('   Request body was:', { amount: amountNum, paymentMethodId, savePaymentMethod })
+      console.error('   Response:', err.response?.data)
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create payment intent'
       setError(errorMessage)
       return null
     } finally {
       setLoading(false)
     }
-  }
+  }, [API_URL, token, onSuccess, onClose])
 
-  // Create PaymentIntent when amount changes (if valid)
+  // Track if Stripe initialization is complete
+  const [stripeInitialized, setStripeInitialized] = useState(false)
+
+  // Clear clientSecret if amount becomes invalid (but don't auto-create PaymentIntent)
   useEffect(() => {
-    if (!isOpen || !stripePromise || !token) return
+    if (!isOpen) return
     
     const amountNum = parseFloat(String(selectedAmount)) || 0
-    // Only create PaymentIntent if amount is valid and we don't already have a clientSecret
-    if (amountNum > 0 && !clientSecret && !loading) {
-      // Small delay to avoid creating multiple PaymentIntents
-      const timeoutId = setTimeout(() => {
-        if (parseFloat(String(selectedAmount)) === amountNum && amountNum > 0 && !clientSecret) {
-          createPaymentIntent(amountNum, useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined, !useSavedCard)
-        }
-      }, 300)
-      
-      return () => clearTimeout(timeoutId)
+    // Clear clientSecret if amount becomes invalid
+    if (amountNum <= 0 && clientSecret) {
+      setClientSecret(null)
     }
-  }, [selectedAmount, isOpen, stripePromise, token, clientSecret, loading, useSavedCard, selectedPaymentMethod])
+  }, [selectedAmount, isOpen, clientSecret])
 
   if (!isOpen) return null
 
@@ -478,13 +485,18 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
               <button
                 type="button"
                 onClick={async () => {
+                  const amountNum = parseFloat(String(selectedAmount)) || 0
+                  if (amountNum <= 0) {
+                    setError('Please select a valid amount before choosing a payment method.')
+                    return
+                  }
                   setUseSavedCard(false)
                   setSelectedPaymentMethod(null)
                   setClientSecret(null)
                   setError(null)
                   
                   // Create PaymentIntent for new card
-                  await createPaymentIntent(selectedAmount, undefined, true)
+                  await createPaymentIntent(amountNum, undefined, true)
                 }}
                 className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
                   !useSavedCard
@@ -508,9 +520,10 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
                 type="button"
                 onClick={async () => {
                   setSelectedAmount(quickAmount)
-                  // Create PaymentIntent when user selects an amount
-                  if (quickAmount > 0) {
-                    await createPaymentIntent(quickAmount, useSavedCard && selectedPaymentMethod ? selectedPaymentMethod : undefined, !useSavedCard)
+                  // Only create PaymentIntent if using a new card (not saved card)
+                  // For saved cards, PaymentIntent will be created when user clicks "Add $X"
+                  if (quickAmount > 0 && !useSavedCard) {
+                    await createPaymentIntent(quickAmount, undefined, true)
                   }
                 }}
                 disabled={loading}
@@ -547,31 +560,14 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess, amount = 50 
         {useSavedCard && selectedPaymentMethod && paymentMethods.length > 0 ? (
           <button
             onClick={async () => {
-              try {
-                setLoading(true)
-                setError(null)
-                const intentResponse = await axios.post(
-                  `${API_URL}/payments/create-intent`,
-                  { 
-                    amount: selectedAmount,
-                    paymentMethodId: selectedPaymentMethod
-                  },
-                  { headers: { Authorization: `Bearer ${token}` } }
-                )
-                
-                if (intentResponse.data.status === 'succeeded') {
-                  onSuccess()
-                  onClose()
-                } else {
-                  setError('Payment processing. Please wait...')
-                }
-              } catch (err: any) {
-                setError(err.response?.data?.message || 'Payment failed')
-              } finally {
-                setLoading(false)
+              const amountNum = parseFloat(String(selectedAmount)) || 0
+              if (amountNum <= 0) {
+                setError('Please select a valid amount to add funds.')
+                return
               }
+              await createPaymentIntent(amountNum, selectedPaymentMethod, false)
             }}
-            disabled={loading}
+            disabled={loading || !selectedAmount || selectedAmount <= 0}
             className="w-full bg-primary-500 text-black py-4 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
           >
             {loading ? (

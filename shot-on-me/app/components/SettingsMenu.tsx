@@ -627,47 +627,16 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
               )}
             </button>
 
+            {/* Device Permissions - Browser/OS Level */}
             <button
               onClick={() => setShowPermissions(true)}
               className="w-full flex items-center space-x-3 px-4 py-2.5 text-left text-primary-400/80 hover:bg-primary-500/10 hover:text-primary-500 rounded-lg transition-all font-light"
             >
               <Shield className="w-5 h-5" />
-              <span>App Permissions</span>
-            </button>
-
-            <button
-              onClick={async () => {
-                try {
-                  // Open notification settings - use browser's native notification settings if available
-                  if ('Notification' in window && Notification.permission !== 'granted') {
-                    const permission = await Notification.requestPermission()
-                    const toast = document.createElement('div')
-                    toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
-                    toast.textContent = permission === 'granted' 
-                      ? 'Notifications enabled! You\'ll receive updates.' 
-                      : 'Notifications blocked. Enable them in your browser settings.'
-                    document.body.appendChild(toast)
-                    setTimeout(() => toast.remove(), 4000)
-                  } else {
-                    const toast = document.createElement('div')
-                    toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
-                    toast.textContent = 'Notification settings: Check your browser settings or device settings to customize notifications.'
-                    document.body.appendChild(toast)
-                    setTimeout(() => toast.remove(), 4000)
-                  }
-                } catch (error) {
-                  console.error('Error accessing notification settings:', error)
-                  const toast = document.createElement('div')
-                  toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
-                  toast.textContent = 'Unable to access notification settings. Please check your browser settings.'
-                  document.body.appendChild(toast)
-                  setTimeout(() => toast.remove(), 4000)
-                }
-              }}
-              className="w-full flex items-center space-x-3 px-4 py-2.5 text-left text-primary-400/80 hover:bg-primary-500/10 hover:text-primary-500 rounded-lg transition-all font-light"
-            >
-              <Settings className="w-5 h-5" />
-              <span>Notification Settings</span>
+              <div className="flex-1">
+                <span className="block">Device Permissions</span>
+                <span className="text-xs text-primary-400/60 font-light">Location, Camera, Contacts</span>
+              </div>
             </button>
           </div>
 

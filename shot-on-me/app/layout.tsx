@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from 'next'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import AppWrapper from './components/AppWrapper'
@@ -23,14 +23,6 @@ export const metadata: Metadata = {
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#B8945A',
 }
 
 export default function RootLayout({
