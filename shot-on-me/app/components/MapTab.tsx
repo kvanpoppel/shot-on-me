@@ -85,12 +85,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
           console.warn('Geolocation error:', error.message || error)
           if (error.code === error.PERMISSION_DENIED) {
             console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
+          } else if (error.code === error.TIMEOUT) {
+            console.warn('Location request timed out. This is normal if location services are slow.')
           }
         },
         {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 60000
+          enableHighAccuracy: false, // Use less accurate but faster location
+          timeout: 15000, // Increased to 15 seconds
+          maximumAge: 300000 // Accept cached location up to 5 minutes old
         }
       )
     } catch (error) {

@@ -49,9 +49,9 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
             }
           },
           {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
+            enableHighAccuracy: false, // Use less accurate but faster location
+            timeout: 15000, // Increased to 15 seconds
+            maximumAge: 300000 // Accept cached location up to 5 minutes old
           }
         )
       }
@@ -140,9 +140,9 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
           // Fallback: continue without location (don't block app)
         },
         {
-          enableHighAccuracy: true,
-          timeout: 5000, // Reduced from 10000 to 5000ms
-          maximumAge: 60000 // Accept cached location up to 1 minute old
+          enableHighAccuracy: false, // Use less accurate but faster location
+          timeout: 15000, // Increased to 15 seconds for better reliability
+          maximumAge: 300000 // Accept cached location up to 5 minutes old
         }
       )
     } catch (error) {
