@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const response = await axios.post(loginUrl, { email, password }, { 
-        timeout: 30000, // 30 seconds - increased for slow connections
+        timeout: 8000, // 8 seconds - fail faster if backend is down
         headers: {
           'Content-Type': 'application/json'
         }
@@ -205,8 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         // More helpful error message
-        const apiUrl = getApiUrl()
-        errorMessage = `Connection timeout. Backend may be slow or unreachable at ${apiUrl}. Please check if the server is running.`
+        errorMessage = 'Connection timeout. The backend server may not be running or is not responding. Please check the backend PowerShell window and ensure MongoDB is connected.'
+      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('refused')) {
+        errorMessage = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
       } else if (error.response?.status === 405) {

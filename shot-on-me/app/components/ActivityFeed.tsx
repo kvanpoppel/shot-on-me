@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { Bell, X, Heart, MessageCircle, UserPlus, MapPin, DollarSign, Camera, CheckCircle, Share2, Trophy, Gift, Users } from 'lucide-react'
+import BackButton from './BackButton'
 import { useApiUrl } from '../utils/api'
 
 interface Notification {
@@ -214,6 +215,7 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-primary-500/20">
           <div className="flex items-center gap-3">
+            <BackButton onClick={onClose} />
             <Bell className="w-6 h-6 text-primary-500" />
             <h2 className="text-xl font-bold text-primary-500">Activity Feed</h2>
             {unreadCount > 0 && (
@@ -231,12 +233,6 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
                 Mark all read
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="p-2 text-primary-400 hover:text-primary-500 rounded-lg hover:bg-primary-500/10 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
 

@@ -7,7 +7,6 @@ import Dashboard from './components/Dashboard'
 import BottomNav from './components/BottomNav'
 import FeedTab from './components/FeedTab'
 import WalletTab from './components/WalletTab'
-import SendShotTab from './components/SendShotTab'
 import MapTab from './components/MapTab'
 import ProfileTab from './components/ProfileTab'
 import HomeTab from './components/HomeTab'
@@ -30,6 +29,52 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
   const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
+  const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
+
+  // Scroll to top when returning to home tab
+  useEffect(() => {
+    if (activeTab === 'home') {
+      // Force scroll to absolute top - use requestAnimationFrame for reliable execution
+      const scrollToTop = () => {
+        // Use all available scroll methods
+        window.scrollTo(0, 0)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        if (typeof document !== 'undefined') {
+          if (document.documentElement) {
+            document.documentElement.scrollTop = 0
+            document.documentElement.scrollLeft = 0
+          }
+          if (document.body) {
+            document.body.scrollTop = 0
+            document.body.scrollLeft = 0
+          }
+          // Also try scrolling the main element
+          const mainElement = document.querySelector('main')
+          if (mainElement) {
+            mainElement.scrollTop = 0
+          }
+          // Force scroll on window - check current position and force scroll if needed
+          if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
+            window.scrollTo(0, 0)
+          }
+          if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
+            window.scrollTo(0, 0)
+          }
+        }
+      }
+      
+      // Scroll immediately using requestAnimationFrame for better reliability
+      requestAnimationFrame(() => {
+        scrollToTop()
+        // Also scroll after brief delays
+        setTimeout(scrollToTop, 0)
+        setTimeout(scrollToTop, 10)
+        setTimeout(scrollToTop, 50)
+        setTimeout(scrollToTop, 100)
+        setTimeout(scrollToTop, 200)
+      })
+    }
+  }, [activeTab])
 
   // Removed console.log to reduce noise - tab changes are handled by state
 
@@ -71,27 +116,49 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <PermissionsManager />
+      {user && <PermissionsManager />}
       <Dashboard 
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
         viewingProfile={viewingProfile}
         setViewingProfile={setViewingProfile}
+        onOpenAddFunds={() => setAutoOpenAddFunds(true)}
       />
       <ProximityNotifications />
-      <main className="pt-16 min-h-screen bg-black pb-16">
-        {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} onSendMoney={() => {
-          setAutoOpenSendForm(true)
-          setActiveTab('wallet')
-        }} />}
-        {activeTab === 'send-shot' && <SendShotTab />}
-        {activeTab === 'wallet' && <WalletTab autoOpenSendForm={autoOpenSendForm} onSendFormOpened={() => setAutoOpenSendForm(false)} />}
+      <main className="pt-0 min-h-screen bg-black pb-20 overflow-y-auto">
+        {activeTab === 'home' && (
+          <HomeTab 
+            setActiveTab={setActiveTab} 
+            onViewProfile={setViewingProfile} 
+            onSendMoney={() => {
+              setAutoOpenSendForm(true)
+              setActiveTab('wallet')
+            }} 
+          />
+        )}
+        {activeTab === 'wallet' && <WalletTab 
+          autoOpenSendForm={autoOpenSendForm} 
+          onSendFormOpened={() => setAutoOpenSendForm(false)}
+          autoOpenAddFunds={autoOpenAddFunds}
+          onAddFundsOpened={() => setAutoOpenAddFunds(false)}
+        />}
         {activeTab === 'feed' && (
           <ErrorBoundary>
             <FeedTab onViewProfile={setViewingProfile} />
           </ErrorBoundary>
         )}
-        {activeTab === 'map' && <MapTab setActiveTab={setActiveTab} />}
+        {activeTab === 'map' && (
+          <MapTab 
+            setActiveTab={setActiveTab} 
+            onViewProfile={setViewingProfile} 
+            activeTab={activeTab}
+            onOpenSettings={() => {
+              // Trigger settings modal from Dashboard
+              const event = new CustomEvent('open-settings')
+              window.dispatchEvent(event)
+            }}
+          />
+        )}
         {/* Messages are now in header modal, not a tab */}
         {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} />}
@@ -110,7 +177,8 @@ export default function Home() {
           onClose={() => setViewingProfile(null)}
           onSendShot={(userId) => {
             setViewingProfile(null)
-            setActiveTab('send-shot')
+            setAutoOpenSendForm(true)
+            setActiveTab('wallet')
           }}
         />
       )}

@@ -7,6 +7,7 @@ import axios from 'axios'
 import { X, Camera, CreditCard, Settings, User, Shield, Trash2, Check, Plus } from 'lucide-react'
 import SecureCardElement from './CardElement'
 import PermissionsManager from './PermissionsManager'
+import BackButton from './BackButton'
 import { useModal } from '../contexts/ModalContext'
 import { useApiUrl } from '../utils/api'
 
@@ -581,13 +582,9 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-6">
+            <BackButton onClick={onClose} />
             <h2 className="text-lg font-semibold text-primary-500 tracking-tight">Settings</h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-primary-400/70 hover:text-primary-500 rounded-lg transition-all"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="w-9"></div>
           </div>
 
           <div className="space-y-2">
@@ -701,13 +698,9 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-primary-500/10 flex-shrink-0">
+              <BackButton onClick={() => setShowPaymentMethods(false)} />
               <h3 className="text-lg font-semibold text-primary-500 tracking-tight">Payment Methods</h3>
-              <button
-                onClick={() => setShowPaymentMethods(false)}
-                className="p-1 text-primary-400/70 hover:text-primary-500 transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="w-9"></div>
             </div>
 
             {/* Scrollable Content */}

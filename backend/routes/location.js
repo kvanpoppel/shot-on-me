@@ -213,6 +213,24 @@ router.get('/friends', auth, async (req, res) => {
         friend.location.longitude
       );
       
+      // Calculate time since last update
+      const lastUpdated = friend.location?.lastUpdated ? new Date(friend.location.lastUpdated) : new Date()
+      const timeSinceUpdate = Date.now() - lastUpdated.getTime()
+      const minutesAgo = Math.floor(timeSinceUpdate / 60000)
+      const hoursAgo = Math.floor(minutesAgo / 60)
+      
+      let timeLabel = 'now'
+      if (minutesAgo < 1) {
+        timeLabel = 'now'
+      } else if (minutesAgo < 60) {
+        timeLabel = `${minutesAgo}m`
+      } else if (hoursAgo < 24) {
+        timeLabel = `${hoursAgo}h`
+      } else {
+        const daysAgo = Math.floor(hoursAgo / 24)
+        timeLabel = `${daysAgo}d`
+      }
+      
       return {
         _id: friend._id,
         id: friend._id,
@@ -221,7 +239,9 @@ router.get('/friends', auth, async (req, res) => {
         lastName: friend.lastName || friend.name?.split(' ').slice(1).join(' ') || '',
         profilePicture: friend.profilePicture,
         location: friend.location,
-        distance: distance.toFixed(1) + ' miles'
+        distance: distance.toFixed(1) + ' miles',
+        lastUpdated: friend.location?.lastUpdated || lastUpdated,
+        timeLabel: timeLabel
       };
     });
 

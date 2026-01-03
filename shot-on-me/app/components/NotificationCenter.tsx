@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { Bell, X, Check, Trash2, Heart, MessageCircle, UserPlus, CreditCard, MapPin, Sparkles, Eye } from 'lucide-react'
+import BackButton from './BackButton'
 import { useApiUrl } from '../utils/api'
 
 interface Notification {
@@ -189,6 +190,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationClic
         {/* Header */}
         <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-primary-500/10 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <BackButton onClick={onClose} />
             <Bell className="w-6 h-6 text-primary-500" />
             <h2 className="text-xl font-bold text-primary-500">Notifications</h2>
             {unreadCount > 0 && (
