@@ -207,6 +207,12 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
 
   const handleClose = () => {
     setShowModal(false)
+    // Mark permissions as shown so it doesn't show again on next load
+    try {
+      localStorage.setItem('permissions-shown', 'true')
+    } catch (err) {
+      // Ignore localStorage errors
+    }
     if (onComplete) onComplete()
   }
 
@@ -268,12 +274,39 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     return 'text-primary-400'
   }
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showModal) {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [showModal])
+
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+    <div 
+      className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto"
+      onClick={(e) => {
+        // Close modal when clicking outside the content area
+        if (e.target === e.currentTarget) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleClose()
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="permissions-title"
+    >
+      <div 
+        className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-primary-500 tracking-tight">App Permissions</h2>
+          <h2 id="permissions-title" className="text-2xl font-bold text-primary-500 tracking-tight">App Permissions</h2>
           <button
             onClick={handleClose}
             className="text-primary-400 hover:text-primary-500 transition-all"

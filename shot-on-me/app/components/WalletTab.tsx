@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -12,13 +12,16 @@ import VirtualCardManager from './VirtualCardManager'
 import CardPaymentModal from './CardPaymentModal'
 import TapAndPayModal from './TapAndPayModal'
 import { useApiUrl } from '../utils/api'
+import { QRCodeSVG } from 'qrcode.react'
 
 interface WalletTabProps {
   autoOpenSendForm?: boolean
   onSendFormOpened?: () => void
+  autoOpenAddFunds?: boolean
+  onAddFundsOpened?: () => void
 }
 
-export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }: WalletTabProps) {
+export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, autoOpenAddFunds = false, onAddFundsOpened }: WalletTabProps) {
   const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
   const { socket } = useSocket()
@@ -49,14 +52,56 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
   const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<any>(null)
   const [addFundsAmount, setAddFundsAmount] = useState<string>('')
   const hasAutoOpenedRef = useRef(false)
+  const hasAutoOpenedAddFundsRef = useRef(false)
+  
+  // Enhanced features from SendShotTab
+  const [recentRecipients, setRecentRecipients] = useState<any[]>([])
+  const [favoriteVenues, setFavoriteVenues] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [selectedVenue, setSelectedVenue] = useState<any>(null)
+  const [recipientName, setRecipientName] = useState('')
+  const [showQRCode, setShowQRCode] = useState(false)
+  const [qrCodeData, setQrCodeData] = useState('')
 
   useEffect(() => {
     if (token) {
       fetchPayments()
       fetchPoints()
       fetchDefaultPaymentMethod()
+      fetchRecentRecipients()
+      fetchFavoriteVenues()
+      
+      // Check for pre-selected venue from MapTab or other components
+      const storedVenue = localStorage.getItem('selectedVenue')
+      const profileAction = localStorage.getItem('profileAction')
+      
+      if (storedVenue && (profileAction === 'send-shot' || profileAction === 'send-money')) {
+        try {
+          const venue = JSON.parse(storedVenue)
+          setSelectedVenue(venue)
+          // Clear the stored data after reading
+          localStorage.removeItem('selectedVenue')
+          localStorage.removeItem('profileAction')
+        } catch (error) {
+          console.error('Failed to parse stored venue:', error)
+        }
+      }
     }
   }, [token])
+
+  // Auto-open add funds modal if requested
+  useEffect(() => {
+    if (autoOpenAddFunds && !hasAutoOpenedAddFundsRef.current) {
+      hasAutoOpenedAddFundsRef.current = true
+      setShowAddFunds(true)
+      if (onAddFundsOpened) {
+        onAddFundsOpened()
+      }
+    } else if (!autoOpenAddFunds) {
+      hasAutoOpenedAddFundsRef.current = false
+    }
+  }, [autoOpenAddFunds, onAddFundsOpened])
 
   const fetchDefaultPaymentMethod = async () => {
     try {
@@ -68,6 +113,71 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
     } catch (error) {
       console.error('Failed to fetch payment methods:', error)
     }
+  }
+
+  const fetchRecentRecipients = async () => {
+    if (!token) return
+    try {
+      const response = await axios.get(`${API_URL}/payments/recent-recipients`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setRecentRecipients(response.data.recipients || [])
+    } catch (error) {
+      console.error('Failed to fetch recent recipients:', error)
+    }
+  }
+
+  const fetchFavoriteVenues = async () => {
+    if (!token) return
+    try {
+      const response = await axios.get(`${API_URL}/favorites/venues`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setFavoriteVenues(response.data.venues || [])
+    } catch (error) {
+      console.error('Failed to fetch favorite venues:', error)
+    }
+  }
+
+  const searchUsers = async (query: string) => {
+    if (!query.trim() || !token) {
+      setSearchResults([])
+      return
+    }
+    try {
+      const response = await axios.get(`${API_URL}/users/search/${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSearchResults(response.data.users || [])
+    } catch (error) {
+      console.error('Failed to search users:', error)
+      setSearchResults([])
+    }
+  }
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery) {
+        searchUsers(searchQuery)
+      } else {
+        setSearchResults([])
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchQuery])
+
+  const handleSelectRecipient = (recipient: any) => {
+    setRecipientPhone(recipient.phoneNumber || '')
+    setRecipientName(`${recipient.firstName} ${recipient.lastName}`)
+    setShowSendForm(true)
+    setSearchQuery('')
+    setSearchResults([])
+  }
+
+  const handleQuickAmount = (value: string) => {
+    setAmount(value)
+    setShowSendForm(true)
   }
 
   // Auto-open send form if requested (e.g., from Home tab)
@@ -206,16 +316,26 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
         }
       )
 
-      setSuccess(`Payment sent! Recipient can use their tap-and-pay card at venues.`)
+      // Show QR code if redemption code is returned
+      if (response.data.redemptionCode) {
+        setQrCodeData(response.data.redemptionCode)
+        setShowQRCode(true)
+      } else {
+        setSuccess(`Payment sent! Recipient can use their tap-and-pay card at venues.`)
+        setTimeout(() => setSuccess(null), 8000)
+      }
+      
       setShowSendForm(false)
       setRecipientPhone('')
+      setRecipientName('')
       setAmount('')
       setMessage('')
+      setSelectedVenue(null)
       fetchPayments()
+      fetchRecentRecipients()
       if (updateUser) {
         updateUser({})
       }
-      setTimeout(() => setSuccess(null), 8000)
     } catch (error: any) {
       // Check if insufficient balance
       if (error.response?.status === 402 && error.response?.data?.canPayWithCard) {
@@ -510,6 +630,10 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
             setShowSendForm(!showSendForm)
             setShowRedeemForm(false)
             setShowMoreMenu(false)
+            if (!showSendForm) {
+              setSearchQuery('')
+              setSearchResults([])
+            }
           }}
           className="w-full bg-primary-500 text-black py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.01] active:scale-[0.99] text-lg"
         >
@@ -518,59 +642,228 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
         </button>
 
         {showSendForm && (
-          <form onSubmit={handleSend} className="mt-4 bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+          <div className="mt-4 space-y-4">
+            {/* Selected Venue Display */}
+            {selectedVenue && (
+              <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary-500" />
+                    <span className="text-sm text-primary-500 font-medium">
+                      Sending to: {selectedVenue.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedVenue(null)}
+                    className="text-primary-400/70 hover:text-primary-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {selectedVenue.address && (
+                  <p className="text-xs text-primary-400/70 mt-1 ml-6">
+                    {selectedVenue.address}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Quick Amount Buttons */}
             <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Recipient Phone</label>
-              <input
-                type="tel"
-                value={recipientPhone}
-                onChange={(e) => setRecipientPhone(e.target.value)}
-                placeholder="+1234567890"
-                required
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+              <p className="text-primary-400/70 text-sm mb-2 font-medium">Quick Amount</p>
+              <div className="grid grid-cols-4 gap-2">
+                {['5', '10', '20', '50'].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => handleQuickAmount(value)}
+                    className="bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 rounded-lg py-2.5 px-3 text-center transition-colors text-primary-500 font-semibold"
+                  >
+                    ${value}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Recent Recipients */}
+            {recentRecipients.length > 0 && !recipientPhone && (
+              <div>
+                <p className="text-primary-400/70 text-sm mb-2 font-medium">Recent</p>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                  {recentRecipients.map((recipient) => (
+                    <button
+                      key={recipient._id}
+                      type="button"
+                      onClick={() => handleSelectRecipient(recipient)}
+                      className="flex-shrink-0 flex flex-col items-center gap-2 bg-black/40 border border-primary-500/20 hover:bg-primary-500/10 hover:border-primary-500/40 rounded-lg p-3 min-w-[80px] transition-all"
+                    >
+                      {recipient.profilePicture ? (
+                        <img
+                          src={recipient.profilePicture}
+                          alt={`${recipient.firstName} ${recipient.lastName}`}
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+                          <User className="w-6 h-6 text-primary-500" />
+                        </div>
+                      )}
+                      <span className="text-xs text-primary-400 text-center truncate w-full">
+                        {recipient.firstName} {recipient.lastName}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* User Search */}
             <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Amount ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                required
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-primary-500 text-sm font-semibold mb-2">Message (optional)</label>
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Happy birthday!"
-                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={sending || !amount || parseFloat(amount) <= 0}
-              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  <span>Send Payment</span>
-                </>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400/60" />
+                <input
+                  type="text"
+                  placeholder="Search by name or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-black/60 border border-primary-500/30 rounded-lg pl-10 pr-4 py-3 text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mt-2 bg-black/60 border border-primary-500/30 rounded-lg overflow-hidden">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user._id}
+                      type="button"
+                      onClick={() => handleSelectRecipient(user)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-primary-500/10 transition-colors text-left"
+                    >
+                      {user.profilePicture ? (
+                        <img
+                          src={user.profilePicture}
+                          alt={`${user.firstName} ${user.lastName}`}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary-500" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-primary-400">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        {user.phoneNumber && (
+                          <p className="text-xs text-primary-400/60">{user.phoneNumber}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
-          </form>
+            </div>
+
+            {/* Send Form */}
+            <form onSubmit={handleSend} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+              <div>
+                <label className="block text-primary-500 text-sm font-semibold mb-2">
+                  {recipientName ? 'Recipient' : 'Recipient Phone'}
+                </label>
+                {recipientName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={recipientName}
+                      readOnly
+                      className="flex-1 px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecipientPhone('')
+                        setRecipientName('')
+                      }}
+                      className="px-3 py-3 bg-primary-500/20 border border-primary-500/30 rounded-lg text-primary-500 hover:bg-primary-500/30 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="tel"
+                    value={recipientPhone}
+                    onChange={(e) => setRecipientPhone(e.target.value)}
+                    placeholder="+1234567890"
+                    required
+                    className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-primary-500 text-sm font-semibold mb-2">Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                  className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-primary-500 text-sm font-semibold mb-2">Message (optional)</label>
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Happy birthday!"
+                  className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {/* Optional Venue Selection */}
+              {favoriteVenues.length > 0 && !selectedVenue && (
+                <div>
+                  <label className="block text-primary-500 text-sm font-semibold mb-2">Venue (optional)</label>
+                  <select
+                    value={selectedVenue?._id || ''}
+                    onChange={(e) => {
+                      const venue = favoriteVenues.find(v => v._id === e.target.value)
+                      setSelectedVenue(venue || null)
+                    }}
+                    className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">Select a venue (optional)</option>
+                    {favoriteVenues.map((venue) => (
+                      <option key={venue._id} value={venue._id}>
+                        {venue.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={sending || !amount || parseFloat(amount) <= 0 || !recipientPhone}
+                className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                {sending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    <span>Send Payment</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
         )}
 
       </div>
@@ -989,6 +1282,47 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened }
         recipientId={cardPaymentRecipient?.id}
         message={cardPaymentRecipient?.message}
       />
+
+      {/* QR Code Modal */}
+      {showQRCode && qrCodeData && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-primary-500">Redemption Code</h3>
+              <button
+                onClick={() => {
+                  setShowQRCode(false)
+                  setQrCodeData('')
+                }}
+                className="text-primary-400 hover:text-primary-500"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex flex-col items-center space-y-4">
+              <div className="bg-white p-4 rounded-lg">
+                <QRCodeSVG value={qrCodeData} size={200} />
+              </div>
+              <div className="text-center">
+                <p className="text-primary-400/70 text-sm mb-2">Share this code with the recipient</p>
+                <div className="bg-black/40 border border-primary-500/30 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-primary-500 font-mono">{qrCodeData}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(qrCodeData)
+                  setSuccess('Code copied to clipboard!')
+                  setTimeout(() => setSuccess(null), 3000)
+                }}
+                className="w-full bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all"
+              >
+                Copy Code
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

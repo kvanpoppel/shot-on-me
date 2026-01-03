@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map, ChevronDown, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map, ChevronDown, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -15,9 +15,12 @@ import { Tab } from '@/app/types'
 
 interface MapTabProps {
   setActiveTab?: (tab: Tab) => void
+  onViewProfile?: (userId: string) => void
+  activeTab?: Tab
+  onOpenSettings?: () => void
 }
 
-export default function MapTab({ setActiveTab }: MapTabProps) {
+export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -27,7 +30,17 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending' | 'tonight'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('map')
+  
+  // Auto-switch to map view when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'map' && viewMode === 'list') {
+      // Small delay to ensure smooth transition
+      setTimeout(() => {
+        setViewMode('map')
+      }, 100)
+    }
+  }, [activeTab, viewMode])
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -35,6 +48,12 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [friends, setFriends] = useState<any[]>([])
+  const [showFriends, setShowFriends] = useState(true)
+  const [selectedFriend, setSelectedFriend] = useState<any | null>(null)
+  const [currentCity, setCurrentCity] = useState<string>('Indianapolis')
+  const [explorationPercent, setExplorationPercent] = useState<number>(45.1)
+  const [temperature, setTemperature] = useState<number>(73)
 
   const fetchTrendingVenues = useCallback(async () => {
     if (!token || !API_URL) return
@@ -47,6 +66,20 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     } catch (error) {
       console.error('Failed to fetch trending venues:', error)
       setTrendingVenues([])
+    }
+  }, [token, API_URL])
+
+  const fetchFriends = useCallback(async () => {
+    if (!token || !API_URL) return
+    try {
+      const response = await axios.get(`${API_URL}/location/friends`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
+      })
+      setFriends(response.data.friends || [])
+    } catch (error) {
+      console.error('Failed to fetch friends:', error)
+      setFriends([])
     }
   }, [token, API_URL])
 
@@ -384,14 +417,113 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     })
   }, [])
 
+  // Real-time friend location updates
+  useEffect(() => {
+    if (!socket) return
+
+    const handleLocationUpdate = (data: { userId: string; location: any }) => {
+      setFriends((prevFriends) =>
+        prevFriends.map((friend) =>
+          (friend._id === data.userId || friend.id === data.userId)
+            ? { ...friend, location: data.location }
+            : friend
+        )
+      )
+    }
+
+    socket.on('location-updated', handleLocationUpdate)
+    socket.on('friend-location-update', handleLocationUpdate)
+
+    return () => {
+      socket.off('location-updated', handleLocationUpdate)
+      socket.off('friend-location-update', handleLocationUpdate)
+    }
+  }, [socket])
+
   // Fetch data on mount
   useEffect(() => {
     if (token && API_URL) {
       fetchVenues()
       fetchTrendingVenues()
+      fetchFriends()
       getCurrentLocation()
     }
-  }, [token, API_URL, fetchVenues, fetchTrendingVenues, getCurrentLocation])
+  }, [token, API_URL, fetchVenues, fetchTrendingVenues, fetchFriends, getCurrentLocation])
+
+  // Create friend avatar markers (like Snapchat Bitmojis)
+  const friendMarkers = useMemo(() => {
+    if (!showFriends || !mapsLoaded || typeof google === 'undefined' || !google.maps) return []
+    
+    return friends
+      .filter((friend) => friend.location?.latitude && friend.location?.longitude && friend.location?.isVisible)
+      .map((friend) => {
+        // Create circular avatar icon from profile picture
+        let iconConfig: any = undefined
+        
+        if (friend.profilePicture) {
+          // Use profile picture as circular marker
+          iconConfig = {
+            url: friend.profilePicture,
+            scaledSize: new google.maps.Size(50, 50),
+            anchor: new google.maps.Point(25, 25),
+            // Add border styling via custom icon
+            shape: { type: 'circle', coords: [25, 25, 25] }
+          }
+        } else {
+          // Fallback: create colored circle with initials
+          const initials = `${friend.firstName?.[0] || ''}${friend.lastName?.[0] || ''}`.toUpperCase() || '?'
+          // Create a data URL for a circular avatar with initials
+          const canvas = document.createElement('canvas')
+          canvas.width = 50
+          canvas.height = 50
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            // Draw circle background
+            ctx.beginPath()
+            ctx.arc(25, 25, 25, 0, 2 * Math.PI)
+            ctx.fillStyle = '#D4AF37' // Gold color
+            ctx.fill()
+            ctx.strokeStyle = '#000000'
+            ctx.lineWidth = 3
+            ctx.stroke()
+            // Draw initials
+            ctx.fillStyle = '#000000'
+            ctx.font = 'bold 20px Arial'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(initials, 25, 25)
+          }
+          iconConfig = {
+            url: canvas.toDataURL(),
+            scaledSize: new google.maps.Size(50, 50),
+            anchor: new google.maps.Point(25, 25)
+          }
+        }
+        
+        // Create label with name and timestamp
+        const friendName = friend.firstName || friend.name?.split(' ')[0] || 'Friend'
+        const timeLabel = friend.timeLabel || 'now'
+        const isActive = timeLabel === 'now' || (timeLabel.includes('m') && parseInt(timeLabel) < 60)
+        
+        return {
+          id: `friend-${friend._id || friend.id}`,
+          position: {
+            lat: friend.location.latitude,
+            lng: friend.location.longitude
+          },
+          title: `${friend.firstName} ${friend.lastName} - ${timeLabel}`,
+          icon: iconConfig,
+          label: {
+            text: `${friendName} ${isActive ? '🟢' : ''} ${timeLabel}`,
+            color: '#FFFFFF',
+            fontWeight: 'bold',
+            fontSize: '11px',
+            className: 'friend-marker-label'
+          },
+          onClick: () => setSelectedFriend(friend)
+        }
+      })
+  }, [friends, showFriends, mapsLoaded])
 
   // Memoize venue markers for map with enhanced styling
   const venueMarkers = useMemo(() => {
@@ -468,183 +600,245 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     }
   }, [showFilterDropdown])
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    fetchVenues()
-    fetchTrendingVenues()
-  }, [fetchVenues, fetchTrendingVenues])
+    try {
+      await Promise.all([
+        fetchVenues(),
+        fetchTrendingVenues(),
+        fetchFriends(),
+        getCurrentLocation()
+      ])
+    } catch (error) {
+      console.error('Error refreshing map data:', error)
+    } finally {
+      setTimeout(() => {
+        setRefreshing(false)
+      }, 1000)
+    }
+  }, [fetchVenues, fetchTrendingVenues, fetchFriends, getCurrentLocation])
 
   return (
     <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-0 z-20 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl font-bold text-primary-500 tracking-tight">Venues</h1>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
-            title="Refresh venues"
-          >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-        
-        {/* Search Bar */}
-        <div className="relative mb-3">
-          <PlacesAutocomplete
-            value={searchQuery}
-            onChange={(value) => {
-              setSearchQuery(value)
-              if (!value) setGooglePlace(null)
-            }}
-            onPlaceSelect={(place) => {
-              setGooglePlace(place)
-              setSearchQuery(place.name || place.formatted_address || '')
-            }}
-            placeholder="Search venues by name, city, or address..."
-            className="w-full"
-          />
-        </div>
-        
-        {/* Filter Dropdown and View Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="relative filter-dropdown-container">
+      {/* Header - Screenshot Design */}
+      {viewMode === 'map' ? (
+        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-0 z-20 p-4">
+          {/* Location Bar with Profile and Settings */}
+          <div className="flex items-center justify-center gap-3 mb-3">
+            {/* Profile Icon */}
             <button
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50 rounded-xl backdrop-blur-sm transition-all"
+              onClick={() => onViewProfile && user && onViewProfile((user as any)._id || (user as any).id)}
+              className="flex-shrink-0"
             >
-              <span className="text-sm font-semibold">
-                {filter === 'all' && 'All Venues'}
-                {filter === 'happy-hour' && (
-                  <>
-                    <Clock className="w-3.5 h-3.5 inline mr-1.5" />
-                    Happy Hour
-                  </>
-                )}
-                {filter === 'specials' && (
-                  <>
-                    <Tag className="w-3.5 h-3.5 inline mr-1.5" />
-                    Specials
-                  </>
-                )}
-                {filter === 'trending' && (
-                  <>
-                    <TrendingUp className="w-3.5 h-3.5 inline mr-1.5" />
-                    Trending
-                  </>
-                )}
-                {filter === 'tonight' && (
-                  <>
-                    <Moon className="w-3.5 h-3.5 inline mr-1.5" />
-                    Tonight's Specials
-                  </>
-                )}
-              </span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.firstName || 'Profile'}
+                  className="w-10 h-10 rounded-full border-2 border-primary-500/30"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-primary-500/20 border-2 border-primary-500/30 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary-500" />
+                </div>
+              )}
             </button>
             
-            {showFilterDropdown && (
-              <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-xl shadow-2xl z-30 min-w-[240px] backdrop-blur-md overflow-hidden">
-                <button
-                  onClick={() => {
-                    setFilter('all')
-                    setShowFilterDropdown(false)
-                  }}
-                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${
-                    filter === 'all'
-                      ? 'bg-primary-500/20 text-primary-500'
-                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
-                  }`}
-                >
-                  All Venues
-                </button>
-                <button
-                  onClick={() => {
-                    setFilter('trending')
-                    setShowFilterDropdown(false)
-                  }}
-                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
-                    filter === 'trending'
-                      ? 'bg-primary-500/20 text-primary-500'
-                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
-                  }`}
-                >
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Trending Now
-                </button>
-                <button
-                  onClick={() => {
-                    setFilter('happy-hour')
-                    setShowFilterDropdown(false)
-                  }}
-                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
-                    filter === 'happy-hour'
-                      ? 'bg-primary-500/20 text-primary-500'
-                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
-                  }`}
-                >
-                  <Clock className="w-4 h-4 mr-2" />
-                  Happy Hour
-                </button>
-                <button
-                  onClick={() => {
-                    setFilter('specials')
-                    setShowFilterDropdown(false)
-                  }}
-                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
-                    filter === 'specials'
-                      ? 'bg-primary-500/20 text-primary-500'
-                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
-                  }`}
-                >
-                  <Tag className="w-4 h-4 mr-2" />
-                  Specials
-                </button>
-                <div className="border-t border-primary-500/20 my-1"></div>
-                <button
-                  onClick={() => {
-                    setFilter('tonight')
-                    setShowFilterDropdown(false)
-                  }}
-                  className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
-                    filter === 'tonight'
-                      ? 'bg-primary-500/20 text-primary-500'
-                      : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
-                  }`}
-                >
-                  <Moon className="w-4 h-4 mr-2 text-primary-500" />
-                  Tonight's Specials
-                </button>
-              </div>
-            )}
+            {/* Location Bar */}
+            <div className="flex-1 max-w-md bg-white rounded-xl px-4 py-3 flex items-center justify-center gap-2">
+              <MapPin className="w-4 h-4 text-black" />
+              <span className="text-black font-semibold text-base">{currentCity}</span>
+            </div>
+            
+            {/* Settings Icon */}
+            <button
+              onClick={() => onOpenSettings?.()}
+              className="flex-shrink-0 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                viewMode === 'list'
-                  ? 'bg-primary-500 text-black shadow-lg'
-                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-              }`}
-            >
-              <List className="w-4 h-4 inline mr-1.5" />
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                viewMode === 'map'
-                  ? 'bg-primary-500 text-black shadow-lg'
-                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-              }`}
-            >
-              <Map className="w-4 h-4 inline mr-1.5" />
-              Map
-            </button>
+          
+          {/* Exploration and Temperature */}
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <div className="bg-purple-500/20 border border-purple-500/30 rounded-full px-3 py-1">
+              <span className="text-purple-400 text-sm font-semibold">{explorationPercent}% Explored</span>
+            </div>
+            <div className="flex items-center gap-1 text-primary-400">
+              <ThermometerSun className="w-4 h-4" />
+              <span className="text-sm font-semibold">{temperature} °F</span>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-0 z-20 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-2xl font-bold text-primary-500 tracking-tight">Venues</h1>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
+              title="Refresh venues"
+            >
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          
+          {/* Search Bar - Only for List View */}
+          <div className="relative mb-3">
+            <PlacesAutocomplete
+              value={searchQuery}
+              onChange={(value) => {
+                setSearchQuery(value)
+                if (!value) setGooglePlace(null)
+              }}
+              onPlaceSelect={(place) => {
+                setGooglePlace(place)
+                setSearchQuery(place.name || place.formatted_address || '')
+              }}
+              placeholder="Search venues by name, city, or address..."
+              className="w-full"
+            />
+          </div>
+          
+          {/* Filter Dropdown and View Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="relative filter-dropdown-container">
+              <button
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className="flex items-center space-x-2 px-4 py-2 bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50 rounded-xl backdrop-blur-sm transition-all"
+              >
+                <span className="text-sm font-semibold">
+                  {filter === 'all' && 'All Venues'}
+                  {filter === 'happy-hour' && (
+                    <>
+                      <Clock className="w-3.5 h-3.5 inline mr-1.5" />
+                      Happy Hour
+                    </>
+                  )}
+                  {filter === 'specials' && (
+                    <>
+                      <Tag className="w-3.5 h-3.5 inline mr-1.5" />
+                      Specials
+                    </>
+                  )}
+                  {filter === 'trending' && (
+                    <>
+                      <TrendingUp className="w-3.5 h-3.5 inline mr-1.5" />
+                      Trending
+                    </>
+                  )}
+                  {filter === 'tonight' && (
+                    <>
+                      <Moon className="w-3.5 h-3.5 inline mr-1.5" />
+                      Tonight's Specials
+                    </>
+                  )}
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showFilterDropdown && (
+                <div className="absolute top-full left-0 mt-2 bg-black/95 border border-primary-500/30 rounded-xl shadow-2xl z-30 min-w-[240px] backdrop-blur-md overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setFilter('all')
+                      setShowFilterDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${
+                      filter === 'all'
+                        ? 'bg-primary-500/20 text-primary-500'
+                        : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                    }`}
+                  >
+                    All Venues
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilter('trending')
+                      setShowFilterDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
+                      filter === 'trending'
+                        ? 'bg-primary-500/20 text-primary-500'
+                        : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Trending Now
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilter('happy-hour')
+                      setShowFilterDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
+                      filter === 'happy-hour'
+                        ? 'bg-primary-500/20 text-primary-500'
+                        : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Happy Hour
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilter('specials')
+                      setShowFilterDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
+                      filter === 'specials'
+                        ? 'bg-primary-500/20 text-primary-500'
+                        : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                    }`}
+                  >
+                    <Tag className="w-4 h-4 mr-2" />
+                    Specials
+                  </button>
+                  <div className="border-t border-primary-500/20 my-1"></div>
+                  <button
+                    onClick={() => {
+                      setFilter('tonight')
+                      setShowFilterDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center ${
+                      filter === 'tonight'
+                        ? 'bg-primary-500/20 text-primary-500'
+                        : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
+                    }`}
+                  >
+                    <Moon className="w-4 h-4 mr-2 text-primary-500" />
+                    Tonight's Specials
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-primary-500 text-black shadow-lg'
+                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
+                }`}
+              >
+                <List className="w-4 h-4 inline mr-1.5" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  (viewMode as string) === 'map'
+                    ? 'bg-primary-500 text-black shadow-lg'
+                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
+                }`}
+              >
+                <Map className="w-4 h-4 inline mr-1.5" />
+                Map
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -676,26 +870,45 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             <div className="relative w-full h-full">
             <GoogleMapComponent
                 center={userLocation || {
-                  lat: venueMarkers[0].position.lat,
-                  lng: venueMarkers[0].position.lng
+                  lat: venueMarkers[0]?.position?.lat || 39.7684,
+                  lng: venueMarkers[0]?.position?.lng || -86.1581
                 }}
                 zoom={venueMarkers.length > 0 ? 13 : 12}
-              markers={venueMarkers}
+              markers={[...venueMarkers, ...friendMarkers]}
               mapContainerStyle={{ width: '100%', height: '100%' }}
             />
               {/* Map Legend */}
-              {venueMarkers.length > 0 && (
+              {(venueMarkers.length > 0 || friendMarkers.length > 0) && (
                 <div className="absolute top-4 right-4 bg-black/90 backdrop-blur-md border border-primary-500/30 rounded-xl p-3 shadow-lg z-10">
                   <div className="text-xs text-primary-400 mb-2 font-semibold">Legend</div>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-primary-500 border-2 border-black"></div>
-                      <span className="text-xs text-primary-400">Active Specials</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-primary-400 border-2 border-black"></div>
-                      <span className="text-xs text-primary-400">Regular Venue</span>
-                    </div>
+                    {venueMarkers.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-primary-500 border-2 border-black"></div>
+                          <span className="text-xs text-primary-400">Active Specials</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-primary-400 border-2 border-black"></div>
+                          <span className="text-xs text-primary-400">Regular Venue</span>
+                        </div>
+                      </>
+                    )}
+                    {friendMarkers.length > 0 && (
+                      <>
+                        {venueMarkers.length > 0 && <div className="border-t border-primary-500/20 my-2"></div>}
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-primary-500/20 border-2 border-primary-500"></div>
+                          <span className="text-xs text-primary-400">Friends</span>
+                        </div>
+                        <button
+                          onClick={() => setShowFriends(!showFriends)}
+                          className="w-full mt-2 px-2 py-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 rounded-lg transition-all"
+                        >
+                          {showFriends ? 'Hide' : 'Show'} Friends
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -1057,7 +1270,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                     state: selectedVenue.address?.state || '',
                     placeId: selectedVenue.placeId
                   }))
-                  localStorage.setItem('profileAction', 'send-shot')
+                  localStorage.setItem('profileAction', 'send-money')
                   setSelectedVenue(null)
                   if (setActiveTab) {
                     setActiveTab('profile')
@@ -1072,6 +1285,71 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                 className="flex-1 bg-black border border-primary-500 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-all"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Friend Profile Modal - Snapchat-style */}
+      {selectedFriend && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-black/95 backdrop-blur-md border border-primary-500/30 rounded-2xl p-6 max-w-sm w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-primary-500">Friend Location</h3>
+              <button
+                onClick={() => setSelectedFriend(null)}
+                className="text-primary-400 hover:text-primary-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-4 mb-4">
+              {selectedFriend.profilePicture ? (
+                <img
+                  src={selectedFriend.profilePicture}
+                  alt={`${selectedFriend.firstName} ${selectedFriend.lastName}`}
+                  className="w-16 h-16 rounded-full border-2 border-primary-500/30"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-primary-500/20 border-2 border-primary-500/30 flex items-center justify-center">
+                  <span className="text-primary-500 font-bold text-lg">
+                    {selectedFriend.firstName?.[0]}{selectedFriend.lastName?.[0]}
+                  </span>
+                </div>
+              )}
+              <div>
+                <h4 className="text-primary-500 font-semibold">
+                  {selectedFriend.firstName} {selectedFriend.lastName}
+                </h4>
+                {selectedFriend.distance && (
+                  <p className="text-primary-400/70 text-sm">{selectedFriend.distance} away</p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (selectedFriend.location) {
+                    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedFriend.location.latitude},${selectedFriend.location.longitude}`
+                    window.open(url, '_blank')
+                  }
+                }}
+                className="flex-1 bg-primary-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                <Navigation className="w-4 h-4" />
+                Get Directions
+              </button>
+              <button
+                onClick={() => {
+                  if (onViewProfile && selectedFriend) {
+                    onViewProfile(selectedFriend._id || selectedFriend.id)
+                  }
+                  setSelectedFriend(null)
+                }}
+                className="flex-1 bg-black/40 border border-primary-500/30 text-primary-500 px-4 py-2 rounded-lg font-semibold hover:bg-primary-500/10 transition-all"
+              >
+                View Profile
               </button>
             </div>
           </div>

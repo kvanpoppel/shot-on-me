@@ -9,6 +9,7 @@ import {
   Heart, Reply, Share2, MoreVertical, Search, Trash2,
   Check, CheckCheck, Copy, Forward, Volume2, Phone, Video, Plus, UserPlus
 } from 'lucide-react'
+import BackButton from './BackButton'
 import { useApiUrl } from '../utils/api'
 
 interface Message {
@@ -642,17 +643,14 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
       <div className="fixed inset-0 bg-black" style={{ zIndex: 60 }}>
         {/* Chat Header */}
         <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4 flex items-center gap-3">
-          <button
+          <BackButton
             onClick={() => {
               setSelectedConversation(null)
               setSelectedGroup(null)
               setReplyingTo(null)
               setSelectedMessage(null)
             }}
-            className="text-primary-400 hover:text-primary-500 transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
+          />
           {isGroup ? (
             <>
               <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
@@ -1142,6 +1140,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
     <div className="fixed inset-0 z-50 bg-black">
       {/* Header */}
       <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4 flex items-center justify-between">
+        <BackButton onClick={onClose} />
         <h2 className="text-xl font-bold text-primary-500">Messages</h2>
         <div className="flex items-center gap-2">
           <button
@@ -1153,12 +1152,6 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
             title="New Message"
           >
             <Plus className="w-5 h-5" />
-          </button>
-          <button
-            onClick={onClose}
-            className="text-primary-400 hover:text-primary-500 p-2 transition-colors"
-          >
-            <X className="w-6 h-6" />
           </button>
         </div>
       </div>

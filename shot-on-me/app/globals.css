@@ -12,11 +12,26 @@
   --primary-gold-dark: #9A7A4A; /* Darker gold for hover states */
 }
 
+html {
+  scroll-behavior: auto;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  height: auto;
+  min-height: 100%;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  position: relative;
+  height: auto;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* Ensure all form elements use the soft gold */

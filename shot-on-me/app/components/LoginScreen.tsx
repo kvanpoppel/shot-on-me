@@ -87,7 +87,25 @@ export default function LoginScreen() {
         setShowPermissions(true)
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed')
+      console.error('Login error:', err)
+      let errorMsg = err.message || 'Authentication failed'
+      
+      // Provide more helpful error messages
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorMsg = 'Connection timeout. The backend server may not be running. Please check the backend PowerShell window.'
+      } else if (err.code === 'ECONNREFUSED' || err.message?.includes('refused')) {
+        errorMsg = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
+      } else if (err.response?.status === 401) {
+        errorMsg = 'Invalid email or password. Please check your credentials.'
+      } else if (err.response?.status === 503) {
+        errorMsg = 'Backend server is unavailable. Please check if the server is running and MongoDB is connected.'
+      }
+      
+      setError(errorMsg)
+      // Keep error visible for 5 seconds
+      setTimeout(() => {
+        setError('')
+      }, 5000)
     } finally {
       setLoading(false)
     }
@@ -225,8 +243,8 @@ export default function LoginScreen() {
               </div>
 
               {error && (
-                <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
-                  {error}
+                <div className="bg-red-900/90 border-2 border-red-600 text-red-200 px-4 py-3 rounded-lg text-sm font-medium animate-pulse">
+                  ⚠️ {error}
                 </div>
               )}
 

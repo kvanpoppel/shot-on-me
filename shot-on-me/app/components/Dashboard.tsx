@@ -29,6 +29,15 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const router = useRouter()
   const [showMenu, setShowMenu] = useState(false)
   
+  // Listen for settings open event
+  useEffect(() => {
+    const handleOpenSettings = () => {
+      setShowSettings(true)
+    }
+    window.addEventListener('open-settings', handleOpenSettings)
+    return () => window.removeEventListener('open-settings', handleOpenSettings)
+  }, [])
+  
   // Ensure menu closes on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -266,18 +275,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                 <ChevronDown className={`w-4 h-4 text-primary-400/60 transition-transform flex-shrink-0 ${showProfileDropdown ? 'rotate-180' : ''}`} />
               </button>
               
-              {/* Search Icon - Next to Profile */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Dispatch custom event to trigger search in HomeTab
-                  window.dispatchEvent(new CustomEvent('open-search'))
-                }}
-                className="p-2 text-primary-500 hover:bg-primary-500/10 active:bg-primary-500/20 rounded-lg transition-all touch-manipulation pointer-events-auto"
-                aria-label="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
 
               {/* Profile Dropdown Menu */}
               {showProfileDropdown && (
@@ -376,7 +373,7 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
           </div>
 
           <div className="flex items-center gap-2 pointer-events-auto">
-            {/* Wallet Balance Display - Elegant and Prominent */}
+            {/* Wallet Balance Display - Simplified and Clean */}
             <div 
               onClick={() => {
                 setActiveTab('wallet')
@@ -387,19 +384,17 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                   }, 100)
                 }
               }}
-              className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-primary-500/5 border border-primary-500/30 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 cursor-pointer hover:from-primary-500/25 hover:via-primary-500/15 hover:to-primary-500/10 hover:border-primary-500/50 hover:shadow-lg hover:shadow-primary-500/20 transition-all group backdrop-blur-sm"
+              className="flex items-center bg-primary-500/15 border border-primary-500/30 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-primary-500/20 hover:border-primary-500/50 transition-all pointer-events-auto"
             >
-              <div className="flex items-baseline gap-1.5 sm:gap-2">
-                {(user?.wallet?.balance || 0) > 0 ? (
-                  <span className="text-base sm:text-xl font-bold text-primary-500 leading-none truncate">
-                    ${Math.round(user?.wallet?.balance || 0)}
-                  </span>
-                ) : (
-                  <span className="text-base sm:text-xl font-bold text-primary-500 leading-none truncate">
-                    Deposit $
-                  </span>
-                )}
-              </div>
+              {(user?.wallet?.balance || 0) > 0 ? (
+                <span className="text-sm sm:text-base font-semibold text-primary-500 leading-none">
+                  ${Math.round(user?.wallet?.balance || 0)}
+                </span>
+              ) : (
+                <span className="text-sm sm:text-base font-semibold text-primary-500 leading-none">
+                  Deposit
+                </span>
+              )}
             </div>
 
             {/* Messages Button */}

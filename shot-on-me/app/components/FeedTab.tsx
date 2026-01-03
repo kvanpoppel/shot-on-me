@@ -137,6 +137,13 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
   const [postViews, setPostViews] = useState<Map<string, number>>(new Map())
   const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [showTrendingVenues, setShowTrendingVenues] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('showTrendingVenues')
+      return saved === 'true'
+    }
+    return false // Hidden by default
+  })
   const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null)
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
   const postMenuRef = useRef<HTMLDivElement | null>(null)
@@ -1446,12 +1453,36 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
         onViewProfile={onViewProfile}
       />
 
-      {/* Enhanced Header with Filters */}
+      {/* Simplified Header */}
       <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm sticky top-16 z-30">
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h1 className="text-xl font-semibold text-primary-500 tracking-tight">Feed</h1>
-            <div className="flex space-x-2">
+        <div className="p-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* Active Filter Display */}
+              {(() => {
+                const filterConfig = {
+                  following: { label: 'Following', icon: UserCheck },
+                  trending: { label: 'Trending', icon: Flame },
+                  nearby: { label: 'Nearby', icon: Compass },
+                  foryou: { label: 'For You', icon: Sparkles },
+                  discover: { label: 'Discover', icon: Eye }
+                }[feedFilter]
+                const Icon = filterConfig?.icon || UserCheck
+                return (
+                  <button
+                    onClick={() => setShowFilterMenu(!showFilterMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-500/10 text-primary-500 hover:bg-primary-500/20 transition-all"
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{filterConfig?.label || 'Following'}</span>
+                    <Filter className="w-3 h-3 ml-1" />
+                  </button>
+                )
+              })()}
+            </div>
+            
+            {/* Actions Menu */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   setPage(1)
@@ -1460,99 +1491,102 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                   fetchFeed(1, feedFilter)
                 }}
                 disabled={loading || pullToRefresh}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center disabled:opacity-50"
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all disabled:opacity-50"
+                title="Refresh"
               >
                 <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
               </button>
               <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className={`bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center ${showFilterMenu ? 'bg-primary-500/20' : ''}`}
-              >
-                <Filter className="w-4 h-4 mr-1.5" />
-                <span className="text-sm hidden sm:inline">Filter</span>
-              </button>
-              <button
-                onClick={() => setShowFriendInvite(true)}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center"
-              >
-                <UserPlus className="w-4 h-4 mr-1.5" />
-                <span className="text-sm hidden sm:inline">Invite</span>
-              </button>
-              <button
                 onClick={() => setShowPostForm(!showPostForm)}
-                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all"
+                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
               >
                 Post
               </button>
             </div>
           </div>
           
-          {/* Filter Tabs */}
-          <div className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2">
-            {[
-              { id: 'following', label: 'Following', icon: UserCheck },
-              { id: 'trending', label: 'Trending', icon: Flame },
-              { id: 'nearby', label: 'Nearby', icon: Compass },
-              { id: 'foryou', label: 'For You', icon: Sparkles },
-              { id: 'discover', label: 'Discover', icon: Eye }
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setFeedFilter(id as any)
-                  setPage(1)
-                  setHasMore(true)
-                  setLoading(true)
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
-                  feedFilter === id
-                    ? 'bg-primary-500 text-black'
-                    : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
+          {/* Filter Menu Dropdown */}
+          {showFilterMenu && (
+            <div className="mt-2 p-2 bg-black/90 border border-primary-500/20 rounded-lg backdrop-blur-md">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'following', label: 'Following', icon: UserCheck },
+                  { id: 'trending', label: 'Trending', icon: Flame },
+                  { id: 'nearby', label: 'Nearby', icon: Compass },
+                  { id: 'foryou', label: 'For You', icon: Sparkles },
+                  { id: 'discover', label: 'Discover', icon: Eye }
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setFeedFilter(id as any)
+                      setPage(1)
+                      setHasMore(true)
+                      setLoading(true)
+                      setShowFilterMenu(false)
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                      feedFilter === id
+                        ? 'bg-primary-500 text-black'
+                        : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 pt-2 border-t border-primary-500/10">
+                <button
+                  onClick={() => setShowFriendInvite(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm bg-primary-500/10 text-primary-500 hover:bg-primary-500/20 transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Invite Friends</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Show "Show Suggestions" button if hidden */}
-      {!showSuggestions && friendSuggestions.length > 0 && (
-        <div className="p-4 border-b border-primary-500/10">
-          <button
-            onClick={() => {
-              setShowSuggestions(true)
-              localStorage.setItem('showFriendSuggestions', 'true')
-            }}
-            className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 px-4 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center justify-center"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Show Friend Suggestions
-          </button>
-        </div>
-      )}
-
-      {/* Friend Suggestions */}
-      {showSuggestions && friendSuggestions.length > 0 && (
-        <div className="p-4 border-b border-primary-500/10 bg-gradient-to-r from-primary-500/5 to-transparent">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 text-primary-500" />
-              <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
-            </div>
+      {/* Friend Suggestions - Collapsible */}
+      {friendSuggestions.length > 0 && (
+        <div className="border-b border-primary-500/10">
+          {!showSuggestions ? (
             <button
               onClick={() => {
-                setShowSuggestions(false)
-                localStorage.setItem('showFriendSuggestions', 'false')
+                setShowSuggestions(true)
+                localStorage.setItem('showFriendSuggestions', 'true')
               }}
-              className="text-primary-400 hover:text-primary-500 text-xs"
+              className="w-full p-3 bg-primary-500/5 hover:bg-primary-500/10 transition-all flex items-center justify-between text-left"
             >
-              Hide
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary-500" />
+                <span className="text-sm text-primary-400">
+                  {friendSuggestions.length} friend suggestion{friendSuggestions.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <span className="text-xs text-primary-500/70">Tap to view</span>
             </button>
-          </div>
-          <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
+          ) : (
+            <div className="p-4 bg-gradient-to-r from-primary-500/5 to-transparent">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-primary-500" />
+                  <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSuggestions(false)
+                    localStorage.setItem('showFriendSuggestions', 'false')
+                  }}
+                  className="text-primary-400 hover:text-primary-500 text-xs"
+                >
+                  Hide
+                </button>
+              </div>
+              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
                 {friendSuggestions.slice(0, 5).map((suggestion) => (
                   <div
                     key={suggestion._id || suggestion.id}
@@ -1597,35 +1631,68 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                     </button>
                   </div>
                 ))}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Trending Venues */}
+      {/* Trending Venues - Collapsible */}
       {trendingVenues.length > 0 && (
-        <div className="p-4 border-b border-primary-500/10">
-          <div className="flex items-center space-x-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-primary-500">Trending Venues</h2>
-          </div>
-          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
-            {trendingVenues.map((venue) => (
-              <button
-                key={venue._id}
-                onClick={() => {
-                  setSelectedVenue(venue)
-                  setShowPostForm(true)
-                }}
-                className="flex items-center space-x-2 bg-black/50 border border-primary-500/20 rounded-lg px-3 py-2 flex-shrink-0 hover:border-primary-500/50 transition-colors"
-              >
-                <MapPin className="w-4 h-4 text-primary-500" />
-                <div className="text-left">
-                  <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
-                  <p className="text-xs text-primary-400">{venue.followerCount || 0} followers</p>
+        <div className="border-b border-primary-500/10">
+          {!showTrendingVenues ? (
+            <button
+              onClick={() => {
+                setShowTrendingVenues(true)
+                localStorage.setItem('showTrendingVenues', 'true')
+              }}
+              className="w-full p-3 bg-primary-500/5 hover:bg-primary-500/10 transition-all flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary-500" />
+                <span className="text-sm text-primary-400">
+                  {trendingVenues.length} trending venue{trendingVenues.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <span className="text-xs text-primary-500/70">Tap to view</span>
+            </button>
+          ) : (
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="w-4 h-4 text-primary-500" />
+                  <h2 className="text-sm font-semibold text-primary-500">Trending Venues</h2>
                 </div>
-              </button>
-            ))}
-          </div>
+                <button
+                  onClick={() => {
+                    setShowTrendingVenues(false)
+                    localStorage.setItem('showTrendingVenues', 'false')
+                  }}
+                  className="text-primary-400 hover:text-primary-500 text-xs"
+                >
+                  Hide
+                </button>
+              </div>
+              <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+                {trendingVenues.map((venue) => (
+                  <button
+                    key={venue._id}
+                    onClick={() => {
+                      setSelectedVenue(venue)
+                      setShowPostForm(true)
+                    }}
+                    className="flex items-center space-x-2 bg-black/50 border border-primary-500/20 rounded-lg px-3 py-2 flex-shrink-0 hover:border-primary-500/50 transition-colors"
+                  >
+                    <MapPin className="w-4 h-4 text-primary-500" />
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
+                      <p className="text-xs text-primary-400">{venue.followerCount || 0} followers</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
