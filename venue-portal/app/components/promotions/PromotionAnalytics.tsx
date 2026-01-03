@@ -64,15 +64,92 @@ export default function PromotionAnalytics({ venueId, promotionId, promotionTitl
       setError(null)
       const apiUrl = getApiUrl()
       console.log('Fetching analytics for:', { venueId, promotionId })
-      const response = await axios.get(
-        `${apiUrl}/promotion-analytics/${venueId}/${promotionId}`,
+      
+      // Fetch analytics from our new endpoint
+      const analyticsResponse = await axios.get(
+        `${apiUrl}/venues/${venueId}/promotions/${promotionId}/analytics`,
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
         }
       )
-      console.log('Analytics response:', response.data)
-      setData(response.data)
+      
+      const analytics = analyticsResponse.data.analytics || {
+        views: 0,
+        clicks: 0,
+        shares: 0,
+        redemptions: 0,
+        revenue: 0,
+        viewHistory: []
+      }
+      
+      // Fetch promotion details to get full data
+      const venueResponse = await axios.get(
+        `${apiUrl}/venues/${venueId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+      
+      const venue = venueResponse.data.venue
+      const promotion = venue.promotions.find((p: any) => p._id === promotionId)
+      
+      if (!promotion) {
+        throw new Error('Promotion not found')
+      }
+      
+      // Calculate metrics
+      const conversionRate = analytics.views > 0 
+        ? ((analytics.redemptions / analytics.views) * 100).toFixed(2)
+        : '0.00'
+      const clickThroughRate = analytics.views > 0
+        ? ((analytics.clicks / analytics.views) * 100).toFixed(2)
+        : '0.00'
+      const averageOrderValue = analytics.redemptions > 0
+        ? (analytics.revenue / analytics.redemptions).toFixed(2)
+        : '0.00'
+      
+      // Format view history for charts
+      const dailyPerformance = analytics.viewHistory.map((h: any) => ({
+        _id: h.date,
+        count: h.count || 0,
+        revenue: 0 // Revenue would come from redemptions data
+      }))
+      
+      const responseData = {
+        promotion: {
+          id: promotion._id,
+          title: promotion.title,
+          description: promotion.description || '',
+          type: promotion.type,
+          isActive: promotion.isActive,
+          startTime: promotion.startTime,
+          endTime: promotion.endTime,
+          discount: promotion.discount || 0
+        },
+        metrics: {
+          views: analytics.views || 0,
+          clicks: analytics.clicks || 0,
+          shares: analytics.shares || 0,
+          redemptions: analytics.redemptions || 0,
+          revenue: analytics.revenue || 0,
+          checkIns: 0, // Would need separate endpoint
+          conversionRate,
+          clickThroughRate,
+          averageOrderValue
+        },
+        charts: {
+          dailyPerformance,
+          hourlyPerformance: [] // Would need separate aggregation
+        },
+        period: {
+          start: promotion.startTime,
+          end: promotion.endTime
+        }
+      }
+      
+      console.log('Analytics response:', responseData)
+      setData(responseData)
     } catch (err: any) {
       console.error('Error fetching analytics:', err)
       console.error('Error response:', err.response?.data)

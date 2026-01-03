@@ -66,11 +66,72 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [searchQuery, setSearchQuery] = useState('')
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([])
   const [showSearch, setShowSearch] = useState(false)
-  const [liveActivity, setLiveActivity] = useState<any[]>([])
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [liveActivity, setLiveActivity] = useState<any[]>([]) // Venue-specific events
+  const [trendingFriendActivity, setTrendingFriendActivity] = useState<any[]>([]) // Aggregated friend activity
+  const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
   const userIdRef = useRef<string | null>(null)
+
+  // Scroll to top when HomeTab mounts or becomes visible
+  useEffect(() => {
+    // Force scroll to absolute top - ensure the very top is visible
+    const scrollToTop = () => {
+      try {
+        // Set scroll position to 0 on all scrollable elements
+        window.scrollTo(0, 0)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        
+        if (typeof document !== 'undefined') {
+          // Force scroll on document elements
+          if (document.documentElement) {
+            document.documentElement.scrollTop = 0
+            document.documentElement.scrollLeft = 0
+            document.documentElement.style.scrollBehavior = 'auto'
+            document.documentElement.style.overflowY = 'auto'
+          }
+          if (document.body) {
+            document.body.scrollTop = 0
+            document.body.scrollLeft = 0
+            document.body.style.scrollBehavior = 'auto'
+            document.body.style.overflowY = 'auto'
+          }
+          
+          // Also try scrolling the main element
+          const mainElement = document.querySelector('main') as HTMLElement | null
+          if (mainElement) {
+            mainElement.scrollTop = 0
+            mainElement.style.scrollBehavior = 'auto'
+          }
+          
+          // Force scroll on window - check current position and force scroll if needed
+          if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
+            window.scrollTo(0, 0)
+          }
+          if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
+            window.scrollTo(0, 0)
+          }
+        }
+      } catch (e) {
+        // Silently handle scroll errors
+      }
+    }
+    
+    // Scroll immediately and repeatedly to ensure it sticks
+    scrollToTop()
+    requestAnimationFrame(() => {
+      scrollToTop()
+      setTimeout(scrollToTop, 0)
+      setTimeout(scrollToTop, 10)
+      setTimeout(scrollToTop, 50)
+      setTimeout(scrollToTop, 100)
+      setTimeout(scrollToTop, 200)
+      setTimeout(scrollToTop, 300)
+      setTimeout(scrollToTop, 500)
+    })
+  }, []) // Empty dependency array - only run on mount
 
   useEffect(() => {
     const currentUserId = user?.id || (user as any)?._id || null
@@ -155,72 +216,155 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   // Fetch recent activity on load
   useEffect(() => {
     if (token) {
-      fetchLiveActivity()
+      fetchLiveActivity() // Venue-specific events
+      fetchTrendingFriendActivity() // Friend activity aggregation
+      fetchFeaturedVenues() // Featured venues for Spotlight
     }
   }, [token])
 
+  // Fetch venue-specific events for "What's Happening Now"
   const fetchLiveActivity = async () => {
     if (!token) return
     try {
-      // Fetch recent friend activity: check-ins, payments, posts
-      const [paymentsRes, feedRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/payments/history?limit=5&type=transfer`, {
+      // Fetch venue-specific ongoing events (promotions, active events)
+      const [venuesRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/venues`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { payments: [] } })),
-        axios.get(`${API_URL}/feed?limit=5`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { posts: [] } }))
+        }).catch(() => ({ data: { venues: [] } }))
       ])
 
-      const activities: any[] = []
-      const userId = user?.id || (user as any)?._id
+      const venueEvents: any[] = []
+      const now = new Date()
 
-      // Add payment activities (only from friends)
-      if (paymentsRes.status === 'fulfilled') {
-        const payments = paymentsRes.value.data.payments || []
-        payments.forEach((payment: any) => {
-          // Only show if user is sender or recipient (friend activity)
-          if (payment.senderId?._id?.toString() === userId || payment.recipientId?._id?.toString() === userId) {
-            activities.push({
-              type: 'payment',
-              sender: payment.senderId,
-              recipient: payment.recipientId,
-              amount: payment.amount,
-              timestamp: payment.createdAt,
-              id: `payment-${payment._id}`
+      // Get venues with active promotions (ongoing events)
+      if (venuesRes.status === 'fulfilled') {
+        const venues = venuesRes.value.data.venues || []
+        
+        venues.forEach((venue: any) => {
+          if (venue.promotions && venue.promotions.length > 0) {
+            venue.promotions.forEach((promo: any) => {
+              const startTime = new Date(promo.startTime)
+              const endTime = new Date(promo.endTime)
+              if (promo.isActive && now >= startTime && now <= endTime) {
+                venueEvents.push({
+                  type: 'venue-event',
+                  venue: { _id: venue._id, name: venue.name, address: venue.address },
+                  event: {
+                    title: promo.title,
+                    description: promo.description,
+                    type: promo.type,
+                    startTime: promo.startTime,
+                    endTime: promo.endTime,
+                    timeRemaining: Math.max(0, new Date(promo.endTime).getTime() - now.getTime())
+                  },
+                  timestamp: now,
+                  id: `event-${venue._id}-${promo.title}`
+                })
+              }
             })
           }
         })
       }
 
-      // Add recent posts from friends
+      // Sort by time remaining (soonest ending first) and take most recent
+      venueEvents.sort((a, b) => a.event.timeRemaining - b.event.timeRemaining)
+      setLiveActivity(venueEvents.slice(0, 10))
+    } catch (error) {
+      console.error('Failed to fetch venue events:', error)
+    }
+  }
+
+  // Fetch featured venues for Venue Spotlight
+  const fetchFeaturedVenues = async () => {
+    if (!token) return
+    try {
+      const response = await axios.get(`${API_URL}/venues/featured`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setFeaturedVenues(response.data.venues || [])
+    } catch (error) {
+      console.error('Failed to fetch featured venues:', error)
+      setFeaturedVenues([])
+    }
+  }
+
+  // Fetch aggregated friend activity for "Trending Now"
+  const fetchTrendingFriendActivity = async () => {
+    if (!token) return
+    try {
+      // Fetch friend activity: check-ins, posts, location updates
+      const [feedRes, friendsLocationRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/feed?limit=20`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: { posts: [] } })),
+        axios.get(`${API_URL}/location/friends`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: { friends: [] } }))
+      ])
+
+      const activities: any[] = []
+
+      // Get friend check-ins and posts (aggregated across diverse venues)
       if (feedRes.status === 'fulfilled') {
         const posts = feedRes.value.data.posts || []
-        posts.slice(0, 3).forEach((post: any) => {
-          if (post.checkIn) {
+        posts.forEach((post: any) => {
+          if (post.checkIn && post.checkIn.venue) {
             activities.push({
-              type: 'checkin',
+              type: 'friend-checkin',
               user: post.author,
               venue: post.checkIn.venue,
               timestamp: post.createdAt,
               id: `checkin-${post._id}`
             })
-          } else {
+          } else if (post.location && post.location.venue) {
             activities.push({
-              type: 'post',
+              type: 'friend-post',
               user: post.author,
+              venue: post.location.venue,
+              content: post.content,
               timestamp: post.createdAt,
               id: `post-${post._id}`
+            })
+          } else if (post.content || post.media?.length > 0) {
+            // General posts from friends
+            activities.push({
+              type: 'friend-activity',
+              user: post.author,
+              content: post.content,
+              timestamp: post.createdAt,
+              id: `activity-${post._id}`
             })
           }
         })
       }
 
-      // Sort by timestamp and take most recent
+      // Get real-time location updates from friends
+      if (friendsLocationRes.status === 'fulfilled') {
+        const friends = friendsLocationRes.value.data.friends || []
+        friends.forEach((friend: any) => {
+          if (friend.location && friend.currentVenue) {
+            activities.push({
+              type: 'friend-location',
+              user: {
+                _id: friend._id,
+                firstName: friend.firstName,
+                lastName: friend.lastName,
+                profilePicture: friend.profilePicture
+              },
+              venue: friend.currentVenue,
+              location: friend.location,
+              timestamp: friend.location.updatedAt || new Date(),
+              id: `location-${friend._id}`
+            })
+          }
+        })
+      }
+
+      // Sort by timestamp and take most recent (most frequently shared activities)
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      setLiveActivity(activities.slice(0, 10))
+      setTrendingFriendActivity(activities.slice(0, 15))
     } catch (error) {
-      console.error('Failed to fetch live activity:', error)
+      console.error('Failed to fetch trending friend activity:', error)
     }
   }
 
@@ -349,7 +493,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       
       // Fetch non-critical data in background (don't await - let it load asynchronously)
       Promise.allSettled([
-        axios.get(`${API_URL}/venue-activity/trending/list?limit=5&period=24h`, {
+        // Fetch friend-based trending (aggregated from user connections)
+        axios.get(`${API_URL}/venue-activity/trending/friends?limit=10&period=24h`, {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 5000
         }).catch(() => ({ data: { venues: [] } })),
@@ -358,10 +503,11 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           timeout: 5000
         }).catch(() => ({ data: { friends: [] } }))
       ]).then(([activityResponse, friendsResponse]) => {
-        // Process activity venues (non-critical)
+        // Process friend-based trending venues (non-critical)
         if (activityResponse.status === 'fulfilled') {
           setTrendingVenuesActivity(activityResponse.value.data.venues || [])
         } else {
+          // Fallback to regular trending if friend-based fails
           setTrendingVenuesActivity(trending)
         }
 
@@ -466,151 +612,62 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto">
-      {/* Enhanced Hero Section with Search */}
-      <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-primary-500 mb-2 tracking-tight">
-              Welcome back, {user?.firstName} 👋
-            </h1>
-            <p className="text-primary-400/80 text-sm font-light">Discover exclusive deals and connect with friends</p>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-5">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400/60" />
-            <input
-              type="text"
-              placeholder="Search venues, deals..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowSearch(true)}
-              className="w-full pl-12 pr-4 py-3.5 bg-black/60 border border-primary-500/20 rounded-xl text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all backdrop-blur-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setShowSearch(false)
-                }}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary-400/60 hover:text-primary-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Enhanced Wallet Quick View */}
-        <div 
-          onClick={() => setActiveTab?.('wallet')}
-          className="relative bg-gradient-to-br from-primary-500/20 via-primary-500/10 to-transparent border-2 border-primary-500/30 rounded-2xl p-5 cursor-pointer hover:border-primary-500/50 hover:from-primary-500/25 transition-all backdrop-blur-sm group overflow-hidden"
-        >
-          {/* Decorative background elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-          
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-primary-500/20 border-2 border-primary-500/40 rounded-xl p-3 shadow-lg shadow-primary-500/20">
-                <Wallet className="w-6 h-6 text-primary-500" />
-              </div>
-              <div>
-                <p className="text-primary-400/70 text-xs uppercase tracking-wider font-semibold mb-1">Wallet Balance</p>
-                <p className="text-3xl font-bold text-primary-500">${walletBalance.toFixed(2)}</p>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
-          </div>
+    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible">
+      {/* Enhanced Hero Section - Extends behind header */}
+      <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8 pt-24 -mt-16">
+        {/* Centered "Shot on me" title */}
+        <div className="text-center mb-6">
+          <h1 className="text-5xl md:text-6xl logo-script text-primary-500 mb-3 tracking-wide drop-shadow-lg">
+            Shot on me
+          </h1>
+          <p className="text-primary-400/80 text-sm font-light">Discover exclusive deals and connect with friends</p>
         </div>
       </div>
 
-      {/* Live Activity Feed - THE MOST ENGAGING FEATURE */}
-      {liveActivity.length > 0 && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5 animate-pulse">
-                <Activity className="w-4 h-4 text-primary-500" />
-              </div>
-              <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening Now</h2>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('feed')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              See All
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {liveActivity.slice(0, 5).map((activity) => (
-              <div
-                key={activity.id}
+      {/* Search Modal - Shown when search icon is clicked */}
+      {showSearchModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center p-4 pt-20">
+          <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-primary-500">Search</h2>
+              <button
                 onClick={() => {
-                  if (activity.type === 'checkin' && activity.venue) {
-                    setActiveTab?.('map')
-                  } else if (activity.user) {
-                    onViewProfile?.(activity.user._id || activity.user.id)
-                  }
+                  setShowSearchModal(false)
+                  setSearchQuery('')
                 }}
-                className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-3 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all backdrop-blur-sm group"
+                className="text-primary-400 hover:text-primary-500"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                    {activity.user?.profilePicture ? (
-                      <img src={activity.user.profilePicture} alt={activity.user.firstName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                        <span className="text-primary-500 font-medium text-xs">
-                          {activity.user?.firstName?.[0]}{activity.user?.lastName?.[0]}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {activity.type === 'checkin' && (
-                      <p className="text-sm text-primary-400">
-                        <span className="font-semibold text-primary-500">{activity.user?.firstName} {activity.user?.lastName}</span>
-                        {' checked in at '}
-                        <span className="font-semibold text-primary-500">{activity.venue?.name || 'a venue'}</span>
-                      </p>
-                    )}
-                    {activity.type === 'payment' && (
-                      <p className="text-sm text-primary-400">
-                        <span className="font-semibold text-primary-500">{activity.sender?.firstName} {activity.sender?.lastName}</span>
-                        {' sent $'}
-                        <span className="font-semibold text-primary-500">{activity.amount?.toFixed(2)}</span>
-                        {' to '}
-                        <span className="font-semibold text-primary-500">{activity.recipient?.firstName} {activity.recipient?.lastName}</span>
-                      </p>
-                    )}
-                    {activity.type === 'post' && (
-                      <p className="text-sm text-primary-400">
-                        <span className="font-semibold text-primary-500">{activity.user?.firstName} {activity.user?.lastName}</span>
-                        {' shared a new post'}
-                      </p>
-                    )}
-                    <p className="text-xs text-primary-400/60 mt-0.5">
-                      {getTimeAgo(activity.timestamp)}
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {activity.type === 'checkin' && <MapPin className="w-4 h-4 text-primary-500/60" />}
-                    {activity.type === 'payment' && <Send className="w-4 h-4 text-primary-500/60" />}
-                    {activity.type === 'post' && <Radio className="w-4 h-4 text-primary-500/60" />}
-                  </div>
-                </div>
-              </div>
-            ))}
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400/60" />
+              <input
+                type="text"
+                placeholder="Search venues, deals..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowSearch(true)}
+                autoFocus
+                className="w-full pl-12 pr-4 py-3.5 bg-black/60 border border-primary-500/20 rounded-xl text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all backdrop-blur-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setShowSearch(false)
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary-400/60 hover:text-primary-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Quick Actions - Enhanced */}
+      {/* Quick Actions - Enhanced - Moved Above "What's Happening Now" */}
       <div className="px-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           {/* Send Money - Primary Action */}
@@ -652,6 +709,114 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           </button>
         </div>
       </div>
+
+      {/* What's Happening Now - Venue Promotions & Deals */}
+      {liveActivity.length > 0 && !searchQuery && (
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2.5">
+              <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5">
+                <Gift className="w-4 h-4 text-primary-500" />
+              </div>
+              <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening Now</h2>
+            </div>
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
+            >
+              See All
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {liveActivity.slice(0, 5).map((activity) => (
+              <div
+                key={activity.id}
+                onClick={() => {
+                  if (activity.venue) {
+                    setActiveTab?.('map')
+                    // Track view analytics for promotion
+                    if (activity.event && activity.venue?._id) {
+                      axios.post(`${API_URL}/venues/${activity.venue._id}/promotions/track`, {
+                        promotionTitle: activity.event.title,
+                        type: 'view'
+                      }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                      }).catch(() => {})
+                    }
+                  }
+                }}
+                className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border-2 border-primary-500/30 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:from-primary-500/15 transition-all backdrop-blur-sm group shadow-lg shadow-primary-500/10"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1.5">
+                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                      <p className="text-sm font-bold text-primary-500">{activity.venue?.name}</p>
+                      <span className="text-[10px] text-primary-400/60 bg-primary-500/10 px-1.5 py-0.5 rounded">Promoted</span>
+                    </div>
+                    {activity.type === 'venue-event' && (
+                      <>
+                        <p className="text-base font-bold text-primary-400 mb-1">{activity.event?.title}</p>
+                        {activity.event?.description && (
+                          <p className="text-xs text-primary-400/80 mb-2 line-clamp-2">{activity.event.description}</p>
+                        )}
+                        {activity.event?.type && (
+                          <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-2 ${
+                            activity.event.type === 'happy-hour' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                            activity.event.type === 'flash-deal' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                            'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+                          }`}>
+                            {activity.event.type === 'happy-hour' ? '🍺 Happy Hour' :
+                             activity.event.type === 'flash-deal' ? '⚡ Flash Deal' :
+                             activity.event.type === 'special' ? '⭐ Special' :
+                             activity.event.type}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 ml-3">
+                    <div className="w-12 h-12 border-2 border-primary-500/40 rounded-lg flex items-center justify-center bg-primary-500/10">
+                      <Gift className="w-6 h-6 text-primary-500" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-primary-500/20">
+                  <div className="flex items-center space-x-2 text-xs text-primary-400/70">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      {activity.event?.timeRemaining > 0 
+                        ? `${Math.floor(activity.event.timeRemaining / 60000)} min remaining`
+                        : 'Ending soon'}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActiveTab?.('map')
+                      // Track click analytics
+                      if (activity.event && activity.venue?._id) {
+                        axios.post(`${API_URL}/venues/${activity.venue._id}/promotions/track`, {
+                          promotionTitle: activity.event.title,
+                          type: 'click'
+                        }, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        }).catch(() => {})
+                      }
+                    }}
+                    className="bg-primary-500 text-black px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-primary-600 transition-all flex items-center"
+                  >
+                    Claim Deal
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {/* AI-Powered Recommendations */}
       {aiRecommendations.length > 0 && !searchQuery && (
@@ -752,13 +917,13 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Trending Venues by Activity */}
-      {filteredTrending.length > 0 && (
+      {/* Trending Now - Friend Activity & Social Discovery */}
+      {filteredTrending.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2.5">
               <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-                <TrendingUp className="w-4 h-4 text-primary-500" />
+                <Users className="w-4 h-4 text-primary-500" />
               </div>
               <h2 className="text-lg font-bold text-primary-500 tracking-tight">🔥 Trending Now</h2>
             </div>
@@ -771,7 +936,10 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             </button>
           </div>
           <div className="grid grid-cols-1 gap-3">
-            {filteredTrending.slice(0, 5).map((venue: any) => (
+            {filteredTrending
+              .filter((venue: any) => venue.activity && venue.activity.friendCount > 0) // Only show venues with friend activity
+              .slice(0, 5)
+              .map((venue: any) => (
               <div
                 key={venue._id}
                 onClick={() => setActiveTab?.('map')}
@@ -779,33 +947,45 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1">
-                    <MapPin className="w-5 h-5 text-primary-500 flex-shrink-0" />
+                    <div className="relative">
+                      <MapPin className="w-5 h-5 text-primary-500 flex-shrink-0" />
+                      {venue.activity?.friendCount > 0 && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary-500 rounded-full border-2 border-black flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-black">{venue.activity.friendCount}</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-primary-500 truncate">{venue.name}</p>
-                      {venue.activity ? (
-                        <div className="flex items-center space-x-3 mt-1">
-                          <p className="text-xs text-primary-400">
-                            <span className="text-primary-500 font-semibold">{venue.activity.totalActivity || 0}</span> activity
-                          </p>
+                      {venue.activity && (
+                        <div className="flex items-center space-x-3 mt-1.5 flex-wrap gap-2">
+                          {venue.activity.friendCount > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <Users className="w-3 h-3 text-primary-500" />
+                              <p className="text-xs text-primary-400">
+                                <span className="text-primary-500 font-bold">{venue.activity.friendCount}</span>
+                                <span className="text-primary-400/70"> friend{venue.activity.friendCount !== 1 ? 's' : ''} here now</span>
+                              </p>
+                            </div>
+                          )}
                           {venue.activity.checkIns > 0 && (
                             <p className="text-xs text-primary-400/70">
-                              {venue.activity.checkIns} check-in{venue.activity.checkIns !== 1 ? 's' : ''}
+                              <span className="text-primary-500 font-semibold">{venue.activity.checkIns}</span> check-in{venue.activity.checkIns !== 1 ? 's' : ''}
                             </p>
                           )}
                           {venue.activity.posts > 0 && (
                             <p className="text-xs text-primary-400/70">
-                              {venue.activity.posts} post{venue.activity.posts !== 1 ? 's' : ''}
+                              <span className="text-primary-500 font-semibold">{venue.activity.posts}</span> post{venue.activity.posts !== 1 ? 's' : ''}
                             </p>
                           )}
                         </div>
-                      ) : (
-                        <p className="text-xs text-primary-400">
-                          {venue.followerCount || 0} followers
-                        </p>
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0 ml-2" />
+                  <button className="bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center">
+                    Join
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </button>
                 </div>
               </div>
             ))}

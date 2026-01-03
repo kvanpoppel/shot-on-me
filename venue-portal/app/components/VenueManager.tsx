@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save } from 'lucide-react'
+import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown } from 'lucide-react'
 import VenueMap from './VenueMap'
 
 import { getApiUrl } from '../utils/api'
@@ -47,7 +47,11 @@ export default function VenueManager() {
     phone: '',
     email: '',
     website: '',
-    description: ''
+    description: '',
+    subscriptionTier: 'free' as 'free' | 'basic' | 'premium' | 'enterprise',
+    isFeatured: false,
+    featuredUntil: '',
+    subscriptionExpiresAt: ''
   })
   const [schedule, setSchedule] = useState<{ [key: string]: { open: string; close: string; isOpen: boolean } }>({
     monday: { open: '11:00', close: '22:00', isOpen: true },
@@ -119,7 +123,11 @@ export default function VenueManager() {
           phone: myVenue.phone || '',
           email: myVenue.email || '',
           website: myVenue.website || '',
-          description: myVenue.description || ''
+          description: myVenue.description || '',
+          subscriptionTier: myVenue.subscriptionTier || 'free',
+          isFeatured: myVenue.isFeatured || false,
+          featuredUntil: myVenue.featuredUntil ? new Date(myVenue.featuredUntil).toISOString().slice(0, 16) : '',
+          subscriptionExpiresAt: myVenue.subscriptionExpiresAt ? new Date(myVenue.subscriptionExpiresAt).toISOString().slice(0, 16) : ''
         })
         if (myVenue.schedule) {
           setSchedule({ ...schedule, ...myVenue.schedule })
@@ -161,7 +169,11 @@ export default function VenueManager() {
           email: formData.email,
           website: formData.website,
           description: formData.description,
-          schedule
+          schedule,
+          subscriptionTier: formData.subscriptionTier,
+          isFeatured: formData.isFeatured,
+          featuredUntil: formData.featuredUntil || null,
+          subscriptionExpiresAt: formData.subscriptionExpiresAt || null
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -624,6 +636,81 @@ export default function VenueManager() {
           />
         </div>
       )}
+
+      {/* Subscription & Featured Status */}
+      <div className="border-t border-primary-500/20 pt-4">
+        <div className="flex items-center space-x-2 mb-3">
+          <Crown className="w-4 h-4 text-primary-500" />
+          <h3 className="text-sm font-semibold text-primary-500 uppercase tracking-wide">Subscription & Featured Status</h3>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Subscription Tier</label>
+            {editing ? (
+              <select
+                value={formData.subscriptionTier}
+                onChange={(e) => setFormData({ ...formData, subscriptionTier: e.target.value as any })}
+                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500 text-sm"
+              >
+                <option value="free">Free Trial</option>
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            ) : (
+              <p className="text-primary-400 text-sm capitalize">{formData.subscriptionTier}</p>
+            )}
+          </div>
+          <div>
+            <label className="flex items-center space-x-2">
+              {editing ? (
+                <>
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                    className="border-primary-500 text-primary-500 focus:ring-primary-500 bg-black"
+                  />
+                  <span className="text-primary-400 text-sm">Featured Venue</span>
+                </>
+              ) : (
+                <span className="text-primary-400 text-sm">
+                  {formData.isFeatured ? (
+                    <span className="flex items-center space-x-1 text-yellow-400">
+                      <Star className="w-4 h-4" />
+                      <span>Featured</span>
+                    </span>
+                  ) : (
+                    'Not Featured'
+                  )}
+                </span>
+              )}
+            </label>
+          </div>
+          {editing && formData.isFeatured && (
+            <div>
+              <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Featured Until</label>
+              <input
+                type="datetime-local"
+                value={formData.featuredUntil}
+                onChange={(e) => setFormData({ ...formData, featuredUntil: e.target.value })}
+                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 text-sm"
+              />
+            </div>
+          )}
+          {editing && formData.subscriptionTier !== 'free' && (
+            <div>
+              <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Subscription Expires</label>
+              <input
+                type="datetime-local"
+                value={formData.subscriptionExpiresAt}
+                onChange={(e) => setFormData({ ...formData, subscriptionExpiresAt: e.target.value })}
+                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 text-sm"
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Maps Links & Share */}
       <div className="border-t border-primary-500/20 pt-6">
