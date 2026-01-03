@@ -531,7 +531,7 @@ export default function PromotionManagerEnhanced() {
               timeBased: editingPromo.targeting?.timeBased || false,
               timeWindow: editingPromo.targeting?.timeWindow || { start: '', end: '' }
             }
-          } : undefined}
+          } : undefined)}
           onSave={handleSavePromotion}
           onCancel={() => {
             setShowWizard(false)

@@ -195,7 +195,7 @@ router.put('/:venueId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this venue' });
     }
 
-    const { name, address, phone, email, website, schedule, location } = req.body;
+    const { name, address, phone, email, website, schedule, location, description, subscriptionTier, isFeatured, featuredUntil, subscriptionExpiresAt } = req.body;
 
     // Update fields if provided
     if (name) venue.name = name;
@@ -203,6 +203,7 @@ router.put('/:venueId', auth, async (req, res) => {
     if (phone !== undefined) venue.phone = phone;
     if (email !== undefined) venue.email = email;
     if (website !== undefined) venue.website = website;
+    if (description !== undefined) venue.description = description;
     if (schedule) venue.schedule = { ...venue.schedule, ...schedule };
     if (location && location.latitude && location.longitude) {
       venue.location = {
@@ -210,6 +211,11 @@ router.put('/:venueId', auth, async (req, res) => {
         coordinates: [location.longitude, location.latitude]
       };
     }
+    // Subscription and featured status
+    if (subscriptionTier !== undefined) venue.subscriptionTier = subscriptionTier;
+    if (isFeatured !== undefined) venue.isFeatured = isFeatured;
+    if (featuredUntil !== undefined) venue.featuredUntil = featuredUntil ? new Date(featuredUntil) : null;
+    if (subscriptionExpiresAt !== undefined) venue.subscriptionExpiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
 
     await venue.save();
 

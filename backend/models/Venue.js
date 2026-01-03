@@ -39,6 +39,18 @@ const venueSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Subscription and promotion features
+  subscriptionTier: {
+    type: String,
+    enum: ['free', 'basic', 'premium', 'enterprise'],
+    default: 'free'
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  featuredUntil: Date, // When featured status expires
+  subscriptionExpiresAt: Date, // When subscription expires
   promotions: [{
     title: String,
     description: String,
