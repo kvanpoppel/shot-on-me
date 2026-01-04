@@ -105,12 +105,8 @@ export default function Home() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setActiveTab, user, loading])
 
-  // Show login screen immediately if no token, don't wait for loading
-  if (!user && !loading) {
-    return <LoginScreen />
-  }
-
   // Show minimal loading state - don't block the entire app
+  // Always show loading state during SSR to prevent hydration mismatch
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -122,6 +118,7 @@ export default function Home() {
     )
   }
 
+  // Show login screen if no user
   if (!user) {
     return <LoginScreen />
   }

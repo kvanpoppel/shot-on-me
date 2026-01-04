@@ -28,18 +28,26 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const { socket } = useSocket()
   const router = useRouter()
   const [showMenu, setShowMenu] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Ensure component is mounted before accessing browser APIs
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   
   // Listen for settings open event
   useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return
     const handleOpenSettings = () => {
       setShowSettings(true)
     }
     window.addEventListener('open-settings', handleOpenSettings)
     return () => window.removeEventListener('open-settings', handleOpenSettings)
-  }, [])
+  }, [isMounted])
   
   // Ensure menu closes on escape key
   useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowMenu(false)
@@ -48,7 +56,7 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [])
+  }, [isMounted])
   const [showLocationFinder, setShowLocationFinder] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showFindFriends, setShowFindFriends] = useState(false)
