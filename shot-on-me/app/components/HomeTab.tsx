@@ -135,16 +135,17 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     scrollToTop()
     if (typeof window !== 'undefined' && window.requestAnimationFrame) {
       requestAnimationFrame(() => {
-      scrollToTop()
-      setTimeout(scrollToTop, 0)
-      setTimeout(scrollToTop, 10)
-      setTimeout(scrollToTop, 50)
-      setTimeout(scrollToTop, 100)
-      setTimeout(scrollToTop, 200)
-      setTimeout(scrollToTop, 300)
-      setTimeout(scrollToTop, 500)
-    })
-  }, []) // Empty dependency array - only run on mount
+        scrollToTop()
+        setTimeout(scrollToTop, 0)
+        setTimeout(scrollToTop, 10)
+        setTimeout(scrollToTop, 50)
+        setTimeout(scrollToTop, 100)
+        setTimeout(scrollToTop, 200)
+        setTimeout(scrollToTop, 300)
+        setTimeout(scrollToTop, 500)
+      })
+    }
+  }, [isMounted]) // Run when component mounts
 
   useEffect(() => {
     const currentUserId = user?.id || (user as any)?._id || null
