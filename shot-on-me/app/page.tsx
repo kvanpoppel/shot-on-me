@@ -253,3 +253,16 @@ function Home() {
   )
 }
 
+// Export with SSR completely disabled to prevent hydration errors
+export default dynamic(() => Promise.resolve(Home), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+        <p className="text-primary-400 text-sm">Loading...</p>
+      </div>
+    </div>
+  )
+})
+
