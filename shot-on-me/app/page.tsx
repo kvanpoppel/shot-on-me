@@ -68,8 +68,8 @@ export default function Home() {
       }
       
       // Scroll immediately using requestAnimationFrame for better reliability
-      if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-        requestAnimationFrame(() => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
           scrollToTop()
           // Also scroll after brief delays
           setTimeout(scrollToTop, 0)
