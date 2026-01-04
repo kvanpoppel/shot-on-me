@@ -253,3 +253,8 @@ function Home() {
   )
 }
 
+// NUCLEAR FIX: Completely disable SSR to prevent ALL hydration errors
+export default dynamic(() => Promise.resolve(Home), {
+  ssr: false
+})
+
