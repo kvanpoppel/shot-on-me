@@ -30,6 +30,12 @@ export default function Home() {
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
   const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // CRITICAL: Ensure component is mounted before rendering
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Scroll to top when returning to home tab
   useEffect(() => {
@@ -105,9 +111,9 @@ export default function Home() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setActiveTab, user, loading])
 
-  // Show minimal loading state - don't block the entire app
-  // Always show loading state during SSR to prevent hydration mismatch
-  if (loading) {
+  // CRITICAL: Always show loading state during SSR to prevent hydration mismatch
+  // Only render after component is fully mounted on client
+  if (typeof window === 'undefined' || !isMounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
@@ -125,7 +131,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      {user && <PermissionsManager />}
+      {user && isMounted && <PermissionsManager />}
       <Dashboard 
         activeTab={activeTab} 
         setActiveTab={setActiveTab}

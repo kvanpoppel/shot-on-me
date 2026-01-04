@@ -219,10 +219,15 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     router.push('/')
   }
 
+  // CRITICAL: Don't render until mounted to prevent hydration mismatch
+  if (typeof window === 'undefined' || !isMounted) {
+    return null
+  }
+
   return (
     <>
       {/* Header with Hamburger Menu */}
-      <header className="fixed top-0 left-0 right-0 z-30 bg-transparent backdrop-blur-none border-0 outline-none shadow-none pointer-events-none">
+      <header className="fixed top-0 left-0 right-0 z-30 bg-transparent backdrop-blur-none border-0 outline-none shadow-none pointer-events-none" suppressHydrationWarning>
         <div className="flex items-center justify-between px-4 py-3 border-0 outline-none pointer-events-auto">
           {/* Left Side: Profile Picture/Name - Interactive */}
           <div className="flex items-center gap-3 pointer-events-auto">

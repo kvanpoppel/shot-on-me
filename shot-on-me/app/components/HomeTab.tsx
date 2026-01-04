@@ -611,7 +611,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   }
 
   const getTimeAgo = (timestamp: string | Date) => {
-    if (!isMounted) return '' // Prevent hydration mismatch
+    // CRITICAL: Always return empty string during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined' || !isMounted) return ''
     const now = new Date()
     const time = new Date(timestamp)
     const diff = now.getTime() - time.getTime()
@@ -625,7 +626,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     if (minutes < 60) return `${minutes}m ago`
     if (hours < 24) return `${hours}h ago`
     if (days < 7) return `${days}d ago`
-    return time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    // Use safe date formatting
+    try {
+      return time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    } catch {
+      return ''
+    }
   }
 
   // Filter venues based on search
@@ -642,9 +648,21 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       )
     : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
 
+  // CRITICAL: Always show loading during SSR to prevent hydration mismatch
+  // Only render content after component is fully mounted on client
+  if (typeof window === 'undefined' || !isMounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Show loading only for initial load, not if data fetch fails
-  // Also check if component is mounted to prevent hydration mismatch
-  if (!isMounted || (loading && hasFetchedRef.current === false)) {
+  if (loading && hasFetchedRef.current === false) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -656,7 +674,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible">
+    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible" suppressHydrationWarning>
       {/* Enhanced Hero Section - Extends behind header */}
       <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8 pt-24 -mt-16">
         {/* Centered "Shot on me" title */}
