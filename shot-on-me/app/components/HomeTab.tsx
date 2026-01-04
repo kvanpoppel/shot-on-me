@@ -673,6 +673,18 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     )
   }
 
+  // Double-check mounted state before rendering
+  if (!isMounted || typeof window === 'undefined') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible" suppressHydrationWarning>
       {/* Enhanced Hero Section - Extends behind header */}

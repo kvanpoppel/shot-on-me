@@ -220,8 +220,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   }
 
   // CRITICAL: Don't render until mounted to prevent hydration mismatch
+  // Return empty div instead of null to maintain consistent structure
   if (typeof window === 'undefined' || !isMounted) {
-    return null
+    return <div style={{ display: 'none' }} suppressHydrationWarning />
   }
 
   return (

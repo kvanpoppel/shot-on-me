@@ -32,14 +32,14 @@ export default function Home() {
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // CRITICAL: Ensure component is mounted before rendering
-  // Also clear any stale cache on mount
+  // CRITICAL: Ensure component is mounted before rendering ANYTHING
+  // This prevents ALL hydration mismatches by making the app client-only
   useEffect(() => {
     if (typeof window === 'undefined') return
     
     // Clear localStorage cache version to force fresh load
     const cacheVersion = localStorage.getItem('app-cache-version')
-    const currentVersion = '13bdefee-hydration-fix-v2' // Update this on each deployment
+    const currentVersion = '91eb7fa1-hydration-fix-v3' // Update this on each deployment
     
     if (cacheVersion !== currentVersion) {
       // Clear all caches
@@ -65,7 +65,15 @@ export default function Home() {
       return
     }
     
-    setIsMounted(true)
+    // Use requestAnimationFrame to ensure DOM is ready
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        setIsMounted(true)
+      })
+    } else {
+      // Fallback
+      setTimeout(() => setIsMounted(true), 0)
+    }
   }, [])
 
   // Scroll to top when returning to home tab
@@ -142,9 +150,21 @@ export default function Home() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setActiveTab, user, loading])
 
-  // CRITICAL: Always show loading state during SSR to prevent hydration mismatch
-  // Only render after component is fully mounted on client
-  if (typeof window === 'undefined' || !isMounted || loading) {
+  // CRITICAL: NEVER render anything during SSR - completely client-only
+  // This is the nuclear option to prevent ALL hydration mismatches
+  if (typeof window === 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Wait for mount AND loading to complete
+  if (!isMounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
