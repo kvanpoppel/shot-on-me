@@ -30,17 +30,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending' | 'tonight'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('map')
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list') // Default to list view to show venues
   
-  // Auto-switch to map view when tab becomes active
-  useEffect(() => {
-    if (activeTab === 'map' && viewMode === 'list') {
-      // Small delay to ensure smooth transition
-      setTimeout(() => {
-        setViewMode('map')
-      }, 100)
-    }
-  }, [activeTab, viewMode])
+  // Don't auto-switch to map - let user choose their preferred view
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -672,6 +664,24 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               <ThermometerSun className="w-4 h-4" />
               <span className="text-sm font-semibold">{temperature} °F</span>
             </div>
+          </div>
+          
+          {/* View Toggle - Map View */}
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <button
+              onClick={() => setViewMode('list')}
+              className="px-3 py-2 rounded-xl text-sm font-semibold transition-all bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50"
+            >
+              <List className="w-4 h-4 inline mr-1.5" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className="px-3 py-2 rounded-xl text-sm font-semibold transition-all bg-primary-500 text-black shadow-lg"
+            >
+              <Map className="w-4 h-4 inline mr-1.5" />
+              Map
+            </button>
           </div>
         </div>
       ) : (
