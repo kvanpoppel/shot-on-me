@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from './contexts/AuthContext'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
@@ -24,7 +25,7 @@ import MyVenuesTab from './components/MyVenuesTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
-export default function Home() {
+function Home() {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
@@ -221,4 +222,6 @@ export default function Home() {
     </ErrorBoundary>
   )
 }
+
+export default dynamic(() => Promise.resolve(Home), { ssr: false })
 
