@@ -133,8 +133,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     
     // Scroll immediately and repeatedly to ensure it sticks
     scrollToTop()
-    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-      requestAnimationFrame(() => {
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
         scrollToTop()
         setTimeout(scrollToTop, 0)
         setTimeout(scrollToTop, 10)
