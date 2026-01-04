@@ -33,7 +33,38 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false)
 
   // CRITICAL: Ensure component is mounted before rendering
+  // Also clear any stale cache on mount
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Clear localStorage cache version to force fresh load
+    const cacheVersion = localStorage.getItem('app-cache-version')
+    const currentVersion = '13bdefee-hydration-fix-v2' // Update this on each deployment
+    
+    if (cacheVersion !== currentVersion) {
+      // Clear all caches
+      if ('caches' in window) {
+        caches.keys().then((cacheNames) => {
+          cacheNames.forEach((cacheName) => {
+            caches.delete(cacheName)
+          })
+        })
+      }
+      // Unregister service workers
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister()
+          })
+        })
+      }
+      // Set new cache version
+      localStorage.setItem('app-cache-version', currentVersion)
+      // Reload to get fresh code
+      window.location.reload()
+      return
+    }
+    
     setIsMounted(true)
   }, [])
 
