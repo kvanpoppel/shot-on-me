@@ -31,6 +31,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'trending' | 'tonight'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list') // Default to list view to show venues
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Ensure component is mounted before accessing browser APIs
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   
   // Don't auto-switch to map - let user choose their preferred view
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
@@ -1095,9 +1101,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                           {(promo.startTime || promo.endTime) && (
                             <div className="flex items-center text-xs text-primary-400/80 mb-2">
                               <Clock className="w-3 h-3 mr-1" />
-                              {promo.startTime && new Date(promo.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {isMounted && promo.startTime && new Date(promo.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               {promo.startTime && promo.endTime && ' - '}
-                              {promo.endTime && new Date(promo.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {isMounted && promo.endTime && new Date(promo.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           )}
                         </div>

@@ -38,6 +38,12 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationClic
   const [loading, setLoading] = useState(true)
   const [markingAllRead, setMarkingAllRead] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Ensure component is mounted before accessing browser APIs
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     if (isOpen && token) {
@@ -282,7 +288,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationClic
                       
                       {/* Time */}
                       <p className="text-xs text-primary-400/50 mt-1">
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {isMounted ? new Date(notification.createdAt).toLocaleString() : ''}
                       </p>
                     </div>
                     
