@@ -33,48 +33,33 @@ function Home() {
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // CRITICAL: Ensure component is mounted before rendering ANYTHING
-  // This prevents ALL hydration mismatches by making the app client-only
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    // Clear localStorage cache version to force fresh load
-    const cacheVersion = localStorage.getItem('app-cache-version')
-    const currentVersion = '91eb7fa1-hydration-fix-v3' // Update this on each deployment
+    // SAFARI FIX: Detect Safari and force cache clear
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const currentVersion = 'v64e81093-safari-force'
+    const storedVersion = sessionStorage.getItem('app-version')
     
-    if (cacheVersion !== currentVersion) {
-      // Clear all caches
+    if (isSafari && storedVersion !== currentVersion) {
+      // Clear everything for Safari
       if ('caches' in window) {
-        caches.keys().then((cacheNames) => {
-          cacheNames.forEach((cacheName) => {
-            caches.delete(cacheName)
-          })
-        })
+        caches.keys().then(names => names.forEach(name => caches.delete(name)))
       }
-      // Unregister service workers
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          registrations.forEach((registration) => {
-            registration.unregister()
-          })
-        })
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
       }
-      // Set new cache version
-      localStorage.setItem('app-cache-version', currentVersion)
-      // Reload to get fresh code
-      window.location.reload()
-      return
+      
+      sessionStorage.setItem('app-version', currentVersion)
+      
+      // Force reload with cache bust
+      if (storedVersion) {
+        window.location.href = window.location.origin + window.location.pathname + '?nocache=' + Date.now()
+        return
+      }
     }
     
-    // Use requestAnimationFrame to ensure DOM is ready
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        setIsMounted(true)
-      })
-    } else {
-      // Fallback
-      setTimeout(() => setIsMounted(true), 0)
-    }
+    setIsMounted(true)
   }, [])
 
   // Scroll to top when returning to home tab
