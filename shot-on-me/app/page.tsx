@@ -36,27 +36,12 @@ function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    // SAFARI FIX: Detect Safari and force cache clear
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const currentVersion = 'v64e81093-safari-force'
-    const storedVersion = sessionStorage.getItem('app-version')
-    
-    if (isSafari && storedVersion !== currentVersion) {
-      // Clear everything for Safari
-      if ('caches' in window) {
-        caches.keys().then(names => names.forEach(name => caches.delete(name)))
-      }
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
-      }
-      
-      sessionStorage.setItem('app-version', currentVersion)
-      
-      // Force reload with cache bust
-      if (storedVersion) {
-        window.location.href = window.location.origin + window.location.pathname + '?nocache=' + Date.now()
-        return
-      }
+    // Clear caches but DON'T reload (prevents infinite loop)
+    if ('caches' in window) {
+      caches.keys().then(names => names.forEach(name => caches.delete(name)))
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
     }
     
     setIsMounted(true)
