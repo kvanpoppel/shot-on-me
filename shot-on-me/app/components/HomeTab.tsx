@@ -613,7 +613,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
 
   // Show loading only for initial load, not if data fetch fails
-  if (loading && hasFetchedRef.current === false) {
+  // Also check if component is mounted to prevent hydration mismatch
+  if (!isMounted || (loading && hasFetchedRef.current === false)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

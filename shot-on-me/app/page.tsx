@@ -33,12 +33,14 @@ export default function Home() {
 
   // Scroll to top when returning to home tab
   useEffect(() => {
-    if (activeTab === 'home') {
+    if (activeTab === 'home' && typeof window !== 'undefined') {
       // Force scroll to absolute top - use requestAnimationFrame for reliable execution
       const scrollToTop = () => {
         // Use all available scroll methods
-        window.scrollTo(0, 0)
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, 0)
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        }
         if (typeof document !== 'undefined') {
           if (document.documentElement) {
             document.documentElement.scrollTop = 0
