@@ -30,6 +30,8 @@ import {
 import { useApiUrl } from '../utils/api'
 import { Tab } from '@/app/types'
 import InviteFriendsModal from './InviteFriendsModal'
+import GoogleMapComponent from './GoogleMap'
+import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
 interface HomeTabProps {
   setActiveTab?: (tab: Tab) => void
@@ -70,6 +72,9 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [liveActivity, setLiveActivity] = useState<any[]>([]) // Venue-specific events
   const [trendingFriendActivity, setTrendingFriendActivity] = useState<any[]>([]) // Aggregated friend activity
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
+  const [showFriendsMap, setShowFriendsMap] = useState(false) // Toggle between list and map view for friends
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const { isLoaded: mapsLoaded } = useGoogleMaps()
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
@@ -226,6 +231,28 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       socket.off('new-post', handleNewPost)
     }
   }, [socket, token])
+
+  // Get user location for map
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          })
+        },
+        () => {
+          // Default to Indianapolis if location unavailable
+          setUserLocation({ lat: 39.7684, lng: -86.1581 })
+        },
+        { timeout: 5000, maximumAge: 300000 }
+      )
+    } else {
+      // Default to Indianapolis if geolocation unavailable
+      setUserLocation({ lat: 39.7684, lng: -86.1581 })
+    }
+  }, [])
 
   // Fetch recent activity on load
   useEffect(() => {
@@ -1024,47 +1051,104 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* What's Happening - Nearby Friends */}
+      {/* What's Happening - Nearby Friends (Social Map) */}
       {nearbyFriends.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
-          <div className="flex items-center space-x-2.5 mb-4">
-            <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-              <Users className="w-4 h-4 text-primary-500" />
-            </div>
-            <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening</h2>
-          </div>
-          <div className="space-y-2">
-            {nearbyFriends.map((friend) => (
-              <div
-                key={friend._id || friend.id}
-                className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm cursor-pointer hover:bg-black/60 hover:border-primary-500/40 transition-all group"
-                onClick={() => onViewProfile?.(friend._id || friend.id)}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                    {friend.profilePicture ? (
-                      <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                        <span className="text-primary-500 font-medium text-sm">
-                          {friend.firstName?.[0]}{friend.lastName?.[0]}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-bold text-primary-500 tracking-tight">
-                      {friend.firstName} {friend.lastName}
-                    </p>
-                    {friend.distance && (
-                      <p className="text-xs text-primary-400/70 font-light">{friend.distance} km away</p>
-                    )}
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2.5">
+              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
+                <Users className="w-4 h-4 text-primary-500" />
               </div>
-            ))}
+              <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening</h2>
+            </div>
+            <button
+              onClick={() => setShowFriendsMap(!showFriendsMap)}
+              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
+            >
+              {showFriendsMap ? (
+                <>
+                  <List className="w-4 h-4 mr-1" />
+                  List
+                </>
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4 mr-1" />
+                  Map
+                </>
+              )}
+            </button>
           </div>
+          
+          {showFriendsMap && mapsLoaded ? (
+            <div className="bg-black/50 border-2 border-primary-500/20 rounded-xl overflow-hidden backdrop-blur-sm" style={{ height: '400px' }}>
+              <GoogleMapComponent
+                center={userLocation || { lat: 39.7684, lng: -86.1581 }}
+                zoom={13}
+                markers={nearbyFriends
+                  .filter(friend => friend.location?.latitude && friend.location?.longitude)
+                  .map(friend => ({
+                    id: friend._id || friend.id,
+                    position: {
+                      lat: friend.location.latitude,
+                      lng: friend.location.longitude
+                    },
+                    title: `${friend.firstName} ${friend.lastName}`,
+                    label: {
+                      text: friend.firstName?.[0] || '?',
+                      color: '#B8945A',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    },
+                    icon: friend.profilePicture ? {
+                      url: friend.profilePicture,
+                      scaledSize: { width: 40, height: 40 },
+                      anchor: { x: 20, y: 20 }
+                    } : undefined,
+                    onClick: () => onViewProfile?.(friend._id || friend.id)
+                  }))}
+              />
+            </div>
+          ) : showFriendsMap && !mapsLoaded ? (
+            <div className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-8 flex items-center justify-center backdrop-blur-sm" style={{ height: '400px' }}>
+              <div className="text-center">
+                <MapPin className="w-12 h-12 text-primary-500/40 mx-auto mb-4" />
+                <p className="text-primary-400/80 text-sm">Loading map...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {nearbyFriends.map((friend) => (
+                <div
+                  key={friend._id || friend.id}
+                  className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm cursor-pointer hover:bg-black/60 hover:border-primary-500/40 transition-all group"
+                  onClick={() => onViewProfile?.(friend._id || friend.id)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                      {friend.profilePicture ? (
+                        <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                          <span className="text-primary-500 font-medium text-sm">
+                            {friend.firstName?.[0]}{friend.lastName?.[0]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-primary-500 tracking-tight">
+                        {friend.firstName} {friend.lastName}
+                      </p>
+                      {friend.distance && (
+                        <p className="text-xs text-primary-400/70 font-light">{friend.distance} km away</p>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
