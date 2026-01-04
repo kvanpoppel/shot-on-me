@@ -24,7 +24,8 @@ import {
   Send,
   X,
   Activity,
-  Radio
+  Radio,
+  List
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
