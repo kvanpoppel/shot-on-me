@@ -56,25 +56,35 @@ export default function Home() {
             mainElement.scrollTop = 0
           }
           // Force scroll on window - check current position and force scroll if needed
-          if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
-            window.scrollTo(0, 0)
-          }
-          if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
-            window.scrollTo(0, 0)
+          if (typeof window !== 'undefined') {
+            if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
+              window.scrollTo(0, 0)
+            }
+            if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
+              window.scrollTo(0, 0)
+            }
           }
         }
       }
       
       // Scroll immediately using requestAnimationFrame for better reliability
-      requestAnimationFrame(() => {
+      if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+        requestAnimationFrame(() => {
+          scrollToTop()
+          // Also scroll after brief delays
+          setTimeout(scrollToTop, 0)
+          setTimeout(scrollToTop, 10)
+          setTimeout(scrollToTop, 50)
+          setTimeout(scrollToTop, 100)
+          setTimeout(scrollToTop, 200)
+        })
+      } else {
+        // Fallback if requestAnimationFrame not available
         scrollToTop()
-        // Also scroll after brief delays
         setTimeout(scrollToTop, 0)
-        setTimeout(scrollToTop, 10)
         setTimeout(scrollToTop, 50)
         setTimeout(scrollToTop, 100)
-        setTimeout(scrollToTop, 200)
-      })
+      }
     }
   }, [activeTab])
 
