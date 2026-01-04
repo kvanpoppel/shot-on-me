@@ -648,33 +648,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       )
     : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
 
-  // CRITICAL: Always show loading during SSR to prevent hydration mismatch
-  // Only render content after component is fully mounted on client
-  if (typeof window === 'undefined' || !isMounted) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-primary-400 text-sm">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show loading only for initial load, not if data fetch fails
-  if (loading && hasFetchedRef.current === false) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-primary-400 text-sm">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Double-check mounted state before rendering
-  if (!isMounted || typeof window === 'undefined') {
+  // Show loading only for initial load
+  if (!isMounted || (loading && hasFetchedRef.current === false)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

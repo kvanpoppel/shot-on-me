@@ -219,10 +219,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     router.push('/')
   }
 
-  // CRITICAL: Don't render until mounted to prevent hydration mismatch
-  // Return empty div instead of null to maintain consistent structure
-  if (typeof window === 'undefined' || !isMounted) {
-    return <div style={{ display: 'none' }} suppressHydrationWarning />
+  // Don't render until mounted
+  if (!isMounted) {
+    return null
   }
 
   return (
