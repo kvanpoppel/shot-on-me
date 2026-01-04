@@ -24,7 +24,7 @@ import MyVenuesTab from './components/MyVenuesTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
-function Home() {
+export default function Home() {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
@@ -221,9 +221,4 @@ function Home() {
     </ErrorBoundary>
   )
 }
-
-// NUCLEAR FIX: Completely disable SSR to prevent ALL hydration errors
-export default dynamic(() => Promise.resolve(Home), {
-  ssr: false
-})
 
