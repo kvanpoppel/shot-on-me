@@ -611,6 +611,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   }
 
   const getTimeAgo = (timestamp: string | Date) => {
+    if (!isMounted) return '' // Prevent hydration mismatch
     const now = new Date()
     const time = new Date(timestamp)
     const diff = now.getTime() - time.getTime()
