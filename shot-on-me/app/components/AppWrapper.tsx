@@ -9,11 +9,13 @@ export default function AppWrapper({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // NUCLEAR OPTION: Force Safari to clear everything
-    const version = 'v35949811-ssr-disabled'
+    // Detect Safari
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const version = 'v580423b0-safari-fix'
     const cachedVersion = sessionStorage.getItem('app-version')
     
-    if (cachedVersion !== version) {
+    // Clear ALL caches immediately for Safari
+    if (isSafari || cachedVersion !== version) {
       // Clear ALL caches
       if ('caches' in window) {
         caches.keys().then((cacheNames) => {
@@ -28,23 +30,8 @@ export default function AppWrapper({ children }: { children: ReactNode }) {
         })
       }
 
-      // Clear Safari's aggressive cache
-      if ('localStorage' in window) {
-        try {
-          localStorage.clear()
-        } catch (e) {
-          // Ignore if blocked
-        }
-      }
-
       // Set new version
       sessionStorage.setItem('app-version', version)
-      
-      // Force reload if version changed (but only once)
-      if (cachedVersion && cachedVersion !== version) {
-        window.location.reload()
-        return
-      }
     }
   }, [])
 
