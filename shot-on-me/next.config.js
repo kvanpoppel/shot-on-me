@@ -1,8 +1,8 @@
 const withPWA = require('next-pwa')({
   dest: 'public',
-  register: true,
+  register: false, // TEMPORARILY DISABLED to prevent cache issues
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in development for faster reloads
+  disable: process.env.NODE_ENV === 'development' || true, // TEMPORARILY DISABLED to prevent cache issues
   // Force update on new deployments
   reloadOnOnline: true,
   sw: 'sw.js',
