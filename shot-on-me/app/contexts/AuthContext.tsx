@@ -52,11 +52,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    // Safety check for browser environment
-    if (typeof window === 'undefined') {
+    // CRITICAL: Safety check for browser environment - must be client-side
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
       setLoading(false)
       return
     }
+    
+    // Double-check we're in browser - wait for DOM
+    if (!document.body) {
+      // Wait for DOM to be ready
+      const checkDOM = setInterval(() => {
+        if (document.body) {
+          clearInterval(checkDOM)
+          initializeAuth()
+        }
+      }, 10)
+      return () => clearInterval(checkDOM)
+    }
+    
+    initializeAuth()
+  }, [])
+
+  const initializeAuth = () => {
+    if (typeof window === 'undefined') return
     
     let isMounted = true
     
@@ -88,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false
       clearTimeout(timeout)
     }
-  }, [])
+  }
 
   const fetchUser = async (authToken: string) => {
     if (!authToken) {

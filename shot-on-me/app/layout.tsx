@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+// Removed Inter font import to prevent hydration mismatches - using CSS font instead
 import './globals.css'
 import AppWrapper from './components/AppWrapper'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Shot On Me - Send Money, Share Moments',
@@ -43,7 +41,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
         <AppWrapper>
           {children}
         </AppWrapper>
