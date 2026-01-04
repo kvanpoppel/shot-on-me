@@ -79,13 +79,14 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:js)$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: 'NetworkFirst', // Changed to NetworkFirst to always get fresh JS
       options: {
         cacheName: 'static-js-assets',
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
+          maxAgeSeconds: 0 // No cache for JS files - always fetch fresh
+        },
+        networkTimeoutSeconds: 3 // Fallback to cache only if network fails
       }
     },
     {
@@ -120,8 +121,9 @@ const withPWA = require('next-pwa')({
         cacheName: 'pages',
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
+          maxAgeSeconds: 0 // No cache for pages - always fetch fresh
+        },
+        networkTimeoutSeconds: 3 // Fallback to cache only if network fails
       }
     }
   ]
