@@ -167,11 +167,16 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           .trim()
       }
       
-      // Filter out "Kate's Venue" specifically
+      // Keep all venues - don't filter out Kate's Pub or Paige's Pub
+      // Only filter out "Kate's Venue" if it's specifically that (not "Kate's Pub")
       const uniqueVenues = fetchedVenues.filter((venue: any) => {
         const normalizedName = normalizeName(venue.name)
+        // Only filter out "Kate's Venue" (not "Kate's Pub" or "Paige's Pub")
         const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
-        return !isKatesVenue
+        // Always keep Kate's Pub and Paige's Pub
+        const isKatesPub = normalizedName === "kates pub" || normalizedName === "kate pub"
+        const isPaigesPub = normalizedName === "paiges pub" || normalizedName === "paige pub"
+        return !isKatesVenue || isKatesPub || isPaigesPub
       })
       
       // Normalize rating objects to numbers and transform location format
