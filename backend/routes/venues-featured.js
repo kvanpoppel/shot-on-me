@@ -25,14 +25,14 @@ router.get('/featured', auth, async (req, res) => {
     
     // Filter to only show venues with active promotions
     const venuesWithActivePromos = featuredVenues.map(venue => {
-      const activePromotions = venue.promotions.filter((promo) => {
-        if (!promo.isActive) return false;
+      const activePromotions = (venue.promotions || []).filter((promo) => {
+        if (!promo || !promo.isActive) return false;
         const startTime = new Date(promo.startTime);
         const endTime = new Date(promo.endTime);
         return now >= startTime && now <= endTime;
       });
       return { ...venue, promotions: activePromotions };
-    }).filter(venue => venue.promotions.length > 0);
+    }).filter(venue => venue.promotions && venue.promotions.length > 0);
 
     res.json({ venues: venuesWithActivePromos });
   } catch (error) {
