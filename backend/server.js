@@ -223,16 +223,19 @@ app.use('/api', (req, res, next) => {
   apiLimiter(req, res, next);
 });
 app.use('/api/users', require('./routes/users'));
-const venuesRouter = require('./routes/venues');
-venuesRouter.setIO(io); // Pass Socket.io instance to venues router
-app.use('/api/venues', venuesRouter);
 
-// Featured venues and analytics routes
+// Featured venues and analytics routes MUST come BEFORE generic /:venueId route
+// to prevent "featured" from being treated as a venue ID
 const venuesFeaturedRouter = require('./routes/venues-featured');
 app.use('/api/venues', venuesFeaturedRouter);
 
 const venuesAnalyticsRouter = require('./routes/venues-analytics');
 app.use('/api/venues', venuesAnalyticsRouter);
+
+// Generic venues routes (including /:venueId) - must come AFTER specific routes
+const venuesRouter = require('./routes/venues');
+venuesRouter.setIO(io); // Pass Socket.io instance to venues router
+app.use('/api/venues', venuesRouter);
 const messagesRouter = require('./routes/messages');
 messagesRouter.setIO(io); // Pass Socket.io instance to messages router
 app.use('/api/messages', messagesRouter);
