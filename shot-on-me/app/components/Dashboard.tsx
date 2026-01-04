@@ -187,10 +187,8 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     {
       title: 'Rewards & Achievements',
       items: [
-        { icon: Trophy, label: 'Badges', action: () => { setShowMenu(false); setActiveTab('badges'); }, description: 'Your achievements' },
-        { icon: Sparkles, label: 'Leaderboards', action: () => { setShowMenu(false); setActiveTab('leaderboards'); }, description: 'Compete with friends' },
-        { icon: Gift, label: 'Rewards', action: () => { setShowMenu(false); setActiveTab('rewards'); }, description: 'Redeem your points' },
-        { icon: Share2, label: 'Referrals', action: () => { setShowMenu(false); setActiveTab('referrals'); }, description: 'Invite & earn rewards' },
+        { icon: Trophy, label: 'Achievements', action: () => { setShowMenu(false); setActiveTab('badges'); }, description: 'Badges & leaderboards' },
+        { icon: Gift, label: 'Rewards', action: () => { setShowMenu(false); setActiveTab('rewards'); }, description: 'Redeem points & referrals' },
       ]
     },
     {
