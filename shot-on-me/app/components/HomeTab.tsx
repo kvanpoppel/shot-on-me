@@ -672,26 +672,43 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         <div className="grid grid-cols-2 gap-4">
           {/* Send Money - Primary Action */}
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               if (onSendMoney) {
                 onSendMoney()
               } else {
                 setActiveTab?.('wallet')
               }
             }}
-            className="group relative bg-gradient-to-br from-primary-500 to-primary-600 text-black rounded-2xl p-5 hover:from-primary-500 hover:to-primary-500 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
+            className="group relative bg-gradient-to-br from-primary-500 to-primary-600 text-black rounded-2xl p-5 hover:from-primary-500 hover:to-primary-500 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
           >
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-center space-x-2 mb-2">
-                <Send className="w-5 h-5" />
-                <h3 className="text-sm font-bold tracking-tight">Send Money</h3>
-              </div>
-              <p className="text-black/70 text-xs font-medium">Send to friends instantly</p>
+            <div className="relative z-10 flex items-center justify-center space-x-2">
+              <Send className="w-5 h-5" />
+              <h3 className="text-sm font-bold tracking-tight">Send Money</h3>
             </div>
           </button>
 
-          {/* Invite Friends */}
+          {/* Find Friends on Map - Quick Access */}
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setActiveTab?.('map')
+            }}
+            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-5 hover:border-primary-500/50 hover:bg-black/70 transition-all shadow-lg shadow-primary-500/10 hover:shadow-primary-500/20 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
+          >
+            <div className="absolute top-0 right-0 w-20 h-20 bg-primary-500/5 rounded-full blur-2xl"></div>
+            <div className="relative z-10 flex items-center justify-center space-x-2">
+              <MapPin className="w-5 h-5" />
+              <h3 className="text-sm font-bold tracking-tight">Find Friends</h3>
+            </div>
+          </button>
+        </div>
+        
+        {/* Invite Friends - Secondary Action */}
+        <div className="mt-4">
           <button
             type="button"
             onClick={(e) => {
@@ -699,13 +716,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               e.stopPropagation()
               handleInviteFriend(e)
             }}
-            className="group bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-5 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all backdrop-blur-sm hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full group bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all backdrop-blur-sm hover:scale-[1.01] active:scale-[0.99] pointer-events-auto z-10"
           >
-            <div className="flex items-center space-x-2 mb-2">
+            <div className="flex items-center justify-center space-x-2">
               <UserPlus className="w-5 h-5" />
               <h3 className="text-sm font-bold tracking-tight">Invite</h3>
             </div>
-            <p className="text-primary-400/70 text-xs font-medium">Share with friends</p>
           </button>
         </div>
       </div>
@@ -993,14 +1009,14 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Nearby Friends */}
+      {/* What's Happening - Nearby Friends */}
       {nearbyFriends.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
           <div className="flex items-center space-x-2.5 mb-4">
             <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
               <Users className="w-4 h-4 text-primary-500" />
             </div>
-            <h2 className="text-lg font-bold text-primary-500 tracking-tight">Friends Nearby</h2>
+            <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening</h2>
           </div>
           <div className="space-y-2">
             {nearbyFriends.map((friend) => (
