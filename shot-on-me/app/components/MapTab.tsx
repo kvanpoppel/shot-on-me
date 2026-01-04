@@ -167,15 +167,15 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           .trim()
       }
       
-      // Keep all venues - don't filter out Kate's Pub or Paige's Pub
-      // Only filter out "Kate's Venue" if it's specifically that (not "Kate's Pub")
+      // Keep all venues - only filter out "Kate's Venue" (not "Kate's Pub" or "Paige's Pub")
       const uniqueVenues = fetchedVenues.filter((venue: any) => {
         const normalizedName = normalizeName(venue.name)
-        // Only filter out "Kate's Venue" (not "Kate's Pub" or "Paige's Pub")
+        // Only filter out "Kate's Venue" specifically (keep "Kate's Pub" and "Paige's Pub")
         const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
-        // Always keep Kate's Pub and Paige's Pub
+        // Always keep Kate's Pub and Paige's Pub (test venues)
         const isKatesPub = normalizedName === "kates pub" || normalizedName === "kate pub"
         const isPaigesPub = normalizedName === "paiges pub" || normalizedName === "paige pub"
+        // Keep if it's NOT Kate's Venue, OR if it IS Kate's Pub or Paige's Pub
         return !isKatesVenue || isKatesPub || isPaigesPub
       })
       
