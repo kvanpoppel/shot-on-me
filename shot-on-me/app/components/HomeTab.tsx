@@ -74,15 +74,25 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
   const userIdRef = useRef<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Ensure component is mounted before accessing browser APIs
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Scroll to top when HomeTab mounts or becomes visible
   useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return
+    
     // Force scroll to absolute top - ensure the very top is visible
     const scrollToTop = () => {
       try {
         // Set scroll position to 0 on all scrollable elements
-        window.scrollTo(0, 0)
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, 0)
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        }
         
         if (typeof document !== 'undefined') {
           // Force scroll on document elements
@@ -107,11 +117,13 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           }
           
           // Force scroll on window - check current position and force scroll if needed
-          if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
-            window.scrollTo(0, 0)
-          }
-          if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
-            window.scrollTo(0, 0)
+          if (typeof window !== 'undefined') {
+            if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
+              window.scrollTo(0, 0)
+            }
+            if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
+              window.scrollTo(0, 0)
+            }
           }
         }
       } catch (e) {
@@ -121,7 +133,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     
     // Scroll immediately and repeatedly to ensure it sticks
     scrollToTop()
-    requestAnimationFrame(() => {
+    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+      requestAnimationFrame(() => {
       scrollToTop()
       setTimeout(scrollToTop, 0)
       setTimeout(scrollToTop, 10)
