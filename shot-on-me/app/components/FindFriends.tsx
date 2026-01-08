@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft } from 'lucide-react'
+import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft, Share2 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
 import InviteFriendsModal from './InviteFriendsModal'
@@ -22,7 +22,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [currentFriends, setCurrentFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'search' | 'suggestions' | 'friends'>('suggestions')
+  const [activeTab, setActiveTab] = useState<'search' | 'suggestions' | 'friends' | 'invite'>('suggestions')
 
   useEffect(() => {
     if (isOpen && token) {
@@ -360,6 +360,17 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
             <Users className="w-4 h-4 inline mr-1.5" />
             My Friends ({currentFriends.length})
           </button>
+          <button
+            onClick={() => setActiveTab('invite')}
+            className={`flex-1 py-2 text-sm font-medium transition-all ${
+              activeTab === 'invite'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-primary-400/70 hover:text-primary-500'
+            }`}
+          >
+            <Share2 className="w-4 h-4 inline mr-1.5" />
+            Invite
+          </button>
         </div>
       </div>
 
@@ -533,12 +544,24 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
                 <p className="text-primary-400/80 font-light mb-2">No friends yet</p>
                 <p className="text-primary-400/60 text-sm mb-4 font-light">Start adding friends to connect!</p>
-                <button
-                  onClick={() => setActiveTab('suggestions')}
-                  className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
-                >
-                  Find Friends
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setActiveTab('suggestions')}
+                    className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
+                  >
+                    Find Friends
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleInviteFriend(e)
+                    }}
+                    className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-6 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
+                  >
+                    Invite Friends
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
@@ -590,8 +613,75 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                     </div>
                   </div>
                 ))}
+                <div className="mt-4 pt-4 border-t border-primary-500/10">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleInviteFriend(e)
+                    }}
+                    className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Invite More Friends</span>
+                  </button>
+                </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'invite' && (
+          <div className="py-6">
+            <div className="text-center mb-6">
+              <Share2 className="w-16 h-16 text-primary-500/40 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-primary-500 mb-2">Invite Friends to Shot On Me</h3>
+              <p className="text-primary-400/70 text-sm font-light mb-6">
+                Share your referral link and earn rewards when friends join!
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleInviteFriend(e)
+                }}
+                className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary-500/25"
+              >
+                <Share2 className="w-5 h-5" />
+                <span>Open Invite Options</span>
+              </button>
+
+              <div className="bg-black/40 border border-primary-500/15 rounded-lg p-4">
+                <h4 className="text-primary-500 font-semibold mb-2 text-sm">Ways to Invite:</h4>
+                <ul className="space-y-2 text-primary-400/70 text-xs font-light">
+                  <li className="flex items-start space-x-2">
+                    <span className="text-primary-500 mt-0.5">•</span>
+                    <span>Share via SMS, Email, or Social Media</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-primary-500 mt-0.5">•</span>
+                    <span>Copy your referral link to share anywhere</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-primary-500 mt-0.5">•</span>
+                    <span>Use your referral code for easy sign-ups</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-primary-500 mt-0.5">•</span>
+                    <span>Earn rewards when friends join and use the app</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-gradient-to-r from-primary-500/10 to-primary-400/10 border border-primary-500/20 rounded-lg p-4">
+                <p className="text-primary-400/80 text-xs font-light text-center">
+                  💰 <span className="font-medium">Pro Tip:</span> The more friends you invite, the more rewards you earn!
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
