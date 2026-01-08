@@ -86,7 +86,8 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
 
     // Check Camera - Actually check permission status
-    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+    const mediaDevices = typeof navigator !== 'undefined' ? navigator.mediaDevices : null
+    if (mediaDevices && typeof mediaDevices.getUserMedia === 'function') {
       try {
         if ('permissions' in navigator) {
           try {
@@ -99,8 +100,8 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           } catch {
             // Fallback: check by trying to enumerate devices
             try {
-              if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
-                const devices = await navigator.mediaDevices.enumerateDevices()
+              if (mediaDevices && typeof mediaDevices.enumerateDevices === 'function') {
+                const devices = await mediaDevices.enumerateDevices()
                 const hasVideo = devices.some(device => device.kind === 'videoinput')
                 status.camera = hasVideo ? 'prompt' : 'unavailable'
               } else {
@@ -113,8 +114,8 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         } else {
           // No permissions API, check if camera devices exist
           try {
-            if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
-              const devices = await navigator.mediaDevices.enumerateDevices()
+            if (mediaDevices && typeof mediaDevices.enumerateDevices === 'function') {
+              const devices = await mediaDevices.enumerateDevices()
               const hasVideo = devices.some(device => device.kind === 'videoinput')
               status.camera = hasVideo ? 'prompt' : 'unavailable'
             } else {
