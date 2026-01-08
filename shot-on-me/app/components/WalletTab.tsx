@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -555,7 +555,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const pendingBalance = user?.wallet?.pendingBalance || 0
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-4xl mx-auto">
+    <div className="min-h-screen pb-20 bg-black max-w-4xl mx-auto pt-20">
       {/* Success/Error Messages */}
       {success && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3 text-green-400 text-sm max-w-md mx-4 shadow-lg backdrop-blur-sm">
@@ -575,47 +575,47 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       )}
 
       {/* Header Section */}
-      <div className="sticky top-0 z-10 bg-black/95 backdrop-blur-md border-b border-primary-500/10">
-        <div className="px-4 py-5">
-          <h2 className="text-2xl font-bold text-primary-500 mb-1">Wallet</h2>
-          <p className="text-primary-400/70 text-sm">Manage your balance and payments</p>
+      <div className="sticky top-20 z-10 bg-black backdrop-blur-md border-b border-primary-500/10">
+        <div className="px-4 py-4">
+          <h2 className="text-2xl font-bold text-primary-500 mb-0.5 text-center">Wallet</h2>
+          <p className="text-primary-400/70 text-sm text-center">Manage your balance and payments</p>
         </div>
       </div>
 
       {/* Balance Card - Hero Section */}
-      <div className="px-4 pt-6 pb-5">
-        <div className="relative bg-gradient-to-br from-primary-500/25 via-primary-500/15 to-primary-500/5 border-2 border-primary-500/40 rounded-3xl p-6 shadow-2xl shadow-primary-500/10 overflow-hidden">
+      <div className="px-4 pt-6 pb-4">
+        <div className="relative bg-gradient-to-br from-primary-500/25 via-primary-500/15 to-primary-500/5 border-2 border-primary-500/40 rounded-2xl p-5 shadow-2xl shadow-primary-500/10 overflow-hidden">
           {/* Decorative background elements */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
           
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-primary-500/30 rounded-2xl flex items-center justify-center border border-primary-500/40 shadow-lg">
-                  <WalletIcon className="w-7 h-7 text-primary-500" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-primary-500/30 rounded-lg flex items-center justify-center border border-primary-500/40 shadow-lg flex-shrink-0">
+                  <WalletIcon className="w-5 h-5 text-primary-500" />
                 </div>
                 <div>
-                  <p className="text-primary-400/60 text-xs uppercase tracking-widest font-semibold mb-1.5">Available Balance</p>
-                  <p className="text-5xl font-bold text-primary-500 tracking-tight">${balance.toFixed(2)}</p>
+                  <p className="text-primary-400/60 text-xs uppercase tracking-widest font-semibold mb-0.5">Available Balance</p>
+                  <p className="text-3xl font-bold text-primary-500 tracking-tight">${balance.toFixed(2)}</p>
                 </div>
               </div>
               {pendingBalance > 0 && (
-                <div className="text-right bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-2.5">
-                  <p className="text-yellow-400/70 text-xs uppercase tracking-wider font-semibold mb-1">Pending</p>
-                  <p className="text-xl font-bold text-yellow-500">${pendingBalance.toFixed(2)}</p>
+                <div className="text-right bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2 flex-shrink-0">
+                  <p className="text-yellow-400/70 text-xs uppercase tracking-wider font-semibold mb-0.5">Pending</p>
+                  <p className="text-lg font-bold text-yellow-500">${pendingBalance.toFixed(2)}</p>
                 </div>
               )}
             </div>
             
             {/* Points Display */}
-            <div className="flex items-center gap-2.5 pt-4 border-t border-primary-500/20">
-              <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center border border-yellow-500/30">
-                <Sparkles className="w-4 h-4 text-yellow-500" />
+            <div className="flex items-center gap-2.5 pt-3 border-t border-primary-500/20">
+              <div className="w-7 h-7 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/30 flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5 text-primary-500" />
               </div>
               <div>
                 <p className="text-primary-400/60 text-xs uppercase tracking-wider font-semibold">Reward Points</p>
-                <p className="text-yellow-500 font-bold text-lg">{points.toLocaleString()}</p>
+                <p className="text-primary-500 font-bold text-lg">{points.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -623,7 +623,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       </div>
 
       {/* Primary Action: Send Money */}
-      <div className="px-4 mb-5">
+      <div className="px-4 mb-4">
         <button
           data-send-money-button
           onClick={() => {
@@ -635,9 +635,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               setSearchResults([])
             }
           }}
-          className="w-full bg-primary-500 text-black py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.01] active:scale-[0.99] text-lg"
+          className="w-full bg-primary-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.01] active:scale-[0.99] text-lg"
         >
-          <Send className="w-6 h-6" />
+          <Send className="w-5 h-5" />
           <span>{showSendForm ? 'Cancel' : 'Send Money'}</span>
         </button>
 
@@ -719,7 +719,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
 
             {/* User Search */}
             <div>
-              <div className="relative">
+              <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400/60" />
                 <input
                   type="text"
@@ -729,6 +729,42 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                   className="w-full bg-black/60 border border-primary-500/30 rounded-lg pl-10 pr-4 py-3 text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
+
+              {/* Import from Contacts Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if ('contacts' in navigator && 'ContactsManager' in window) {
+                      const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
+                      if (contacts && contacts.length > 0) {
+                        // Find the first contact with a phone number
+                        const contactWithPhone = contacts.find((c: any) => c.tel && (c.tel[0] || c.tel))
+                        if (contactWithPhone) {
+                          const phoneNumber = contactWithPhone.tel[0] || contactWithPhone.tel
+                          // Search for user by phone number
+                          setSearchQuery(phoneNumber)
+                          searchUsers(phoneNumber)
+                        } else {
+                          alert('Selected contact does not have a phone number')
+                        }
+                      }
+                    } else {
+                      alert('Contacts access is not available on this device. Please search manually or use the Find Friends feature.')
+                    }
+                  } catch (error: any) {
+                    if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
+                      alert('Contacts permission denied. Please enable contacts access in Settings → App Permissions.')
+                    } else {
+                      alert('Unable to access contacts. Please search manually.')
+                    }
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-primary-500/10 border border-primary-500/30 text-primary-500 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all mb-3"
+              >
+                <Phone className="w-4 h-4" />
+                <span>Import from Contacts</span>
+              </button>
 
               {/* Search Results */}
               {searchResults.length > 0 && (
@@ -869,18 +905,18 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       </div>
 
       {/* Quick Actions Grid */}
-      <div className="px-4 mb-5">
+      <div className="px-4 mb-4">
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowAddFunds(true)}
-            className="group relative bg-primary-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-2.5 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative bg-primary-500 text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>Add Funds</span>
           </button>
           <button
             onClick={() => setShowTapAndPay(true)}
-            className="group bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-4 rounded-2xl font-bold flex items-center justify-center gap-2.5 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
+            className="group bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Radio className="w-5 h-5" />
             <span>Tap & Pay</span>
@@ -889,7 +925,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       </div>
 
       {/* Virtual Card Manager */}
-      <div className="px-4 mb-5">
+      <div className="px-4 mb-4">
         <VirtualCardManager />
       </div>
 

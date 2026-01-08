@@ -45,9 +45,10 @@ interface FeedPost {
 
 interface ProfileTabProps {
   onViewProfile?: (userId: string) => void
+  setActiveTab?: (tab: 'feed' | 'home' | 'map' | 'wallet' | 'profile') => void
 }
 
-export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
+export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
@@ -284,6 +285,20 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
       <div className="p-4">
         {activeView === 'posts' && (
           <div>
+            {/* Create Post Button - Always Visible */}
+            <button
+              onClick={() => {
+                if (setActiveTab) {
+                  window.dispatchEvent(new CustomEvent('open-post-form'))
+                  setActiveTab('feed')
+                }
+              }}
+              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
+            >
+              <Camera className="w-5 h-5" />
+              <span>Create Post</span>
+            </button>
+
             {userPosts.length === 0 ? (
               <div className="text-center py-12">
                 <Camera className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
@@ -327,6 +342,15 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
 
         {activeView === 'checkins' && (
           <div>
+            {/* Check In Button - Always Visible */}
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
+            >
+              <MapPin className="w-5 h-5" />
+              <span>Check In</span>
+            </button>
+
             {checkIns.length === 0 ? (
               <div className="text-center py-12">
                 <MapPin className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
@@ -334,35 +358,38 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
                 <p className="text-primary-400/60 text-sm mt-1 font-light">Check in at your favorite venues!</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 {checkIns.map((checkIn) => (
                   <div
                     key={checkIn._id}
-                    className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm"
+                    className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm cursor-pointer hover:bg-black/50 hover:border-primary-500/30 transition-all"
+                    onClick={() => setActiveTab?.('map')}
                   >
-                    <div className="flex items-start space-x-3">
-                      <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-2 flex-shrink-0">
                         <CheckCircle2 className="w-5 h-5 text-primary-500" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <MapPin className="w-4 h-4 text-primary-500" />
-                          <h3 className="font-semibold text-primary-500 text-sm tracking-tight">
-                            {checkIn.checkIn?.venue?.name || checkIn.location?.venue?.name}
+                          <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                          <h3 className="font-semibold text-primary-500 text-sm tracking-tight truncate">
+                            {checkIn.checkIn?.venue?.name || checkIn.location?.venue?.name || 'Unknown Venue'}
                           </h3>
                         </div>
                         {checkIn.content && (
-                          <p className="text-primary-400/80 text-sm font-light mb-2">{checkIn.content}</p>
+                          <p className="text-primary-400/80 text-sm font-light mb-2 line-clamp-2">{checkIn.content}</p>
                         )}
                         <div className="flex items-center space-x-4 text-xs text-primary-400/70 font-light">
                           <div className="flex items-center space-x-1">
                             <Clock className="w-3 h-3" />
                             <span>{formatTimeAgo(checkIn.checkIn?.checkedInAt || checkIn.createdAt)}</span>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Heart className="w-3 h-3" />
-                            <span>{checkIn.likes.length} likes</span>
-                          </div>
+                          {checkIn.likes.length > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <Heart className="w-3 h-3" />
+                              <span>{checkIn.likes.length}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -375,6 +402,17 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
 
         {activeView === 'friends' && (
           <div>
+            {/* Find Friends Button - Always Visible */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-find-friends'))
+              }}
+              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
+            >
+              <Users className="w-5 h-5" />
+              <span>Find Friends</span>
+            </button>
+
             {friends.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
@@ -386,11 +424,11 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
                 {friends.map((friend) => (
                   <div
                     key={friend._id || friend.id}
-                    className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm cursor-pointer hover:bg-black/50 transition-all"
+                    className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm cursor-pointer hover:bg-black/50 hover:border-primary-500/30 transition-all"
                     onClick={() => onViewProfile?.(friend._id || friend.id)}
                   >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="w-16 h-16 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0 mb-3">
                         {friend.profilePicture ? (
                           <img
                             src={friend.profilePicture}
@@ -399,20 +437,18 @@ export default function ProfileTab({ onViewProfile }: ProfileTabProps) {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                            <span className="text-primary-500 font-medium text-xs">
+                            <span className="text-primary-500 font-semibold text-lg">
                               {friend.firstName?.[0]}{friend.lastName?.[0]}
                             </span>
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-primary-500 text-sm truncate tracking-tight">
-                          {friend.firstName} {friend.lastName}
-                        </p>
-                        {friend.username && (
-                          <p className="text-xs text-primary-400/70 font-light truncate">@{friend.username}</p>
-                        )}
-                      </div>
+                      <p className="font-semibold text-primary-500 text-sm tracking-tight mb-1">
+                        {friend.firstName} {friend.lastName}
+                      </p>
+                      {friend.username && (
+                        <p className="text-xs text-primary-400/70 font-light">@{friend.username}</p>
+                      )}
                     </div>
                   </div>
                 ))}

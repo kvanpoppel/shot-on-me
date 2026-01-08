@@ -691,13 +691,13 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           </div>
         </div>
       ) : (
-        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-0 z-20 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-2xl font-bold text-primary-500 tracking-tight">Venues</h1>
+        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-20 z-20 p-4">
+          <div className="flex items-center justify-center relative mb-3">
+            <h1 className="text-2xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
+              className="absolute right-0 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
               title="Refresh venues"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />

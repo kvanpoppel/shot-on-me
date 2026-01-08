@@ -78,10 +78,27 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       status.camera = 'prompt' // Assume prompt if available
     }
 
-    // Check Contacts (Contacts API is only available on Android Chrome and some mobile browsers)
-    if ('contacts' in navigator && 'ContactsManager' in window) {
-      status.contacts = 'prompt'
-    } else {
+    // Check Contacts - Multiple API support
+    try {
+      // Check if permission was previously granted
+      const contactsPermission = localStorage.getItem('contacts-permission')
+      if (contactsPermission === 'granted') {
+        status.contacts = 'granted'
+      } else if ('contacts' in navigator) {
+        // Android Chrome ContactsManager API
+        if ('ContactsManager' in window) {
+          status.contacts = 'prompt'
+        }
+        // iOS Safari and newer browsers Contact Picker API
+        else if ('getContacts' in navigator.contacts) {
+          status.contacts = 'prompt'
+        } else {
+          status.contacts = 'unavailable'
+        }
+      } else {
+        status.contacts = 'unavailable'
+      }
+    } catch (e) {
       status.contacts = 'unavailable'
     }
 
@@ -143,21 +160,66 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
   const requestContacts = async () => {
     setRequesting('contacts')
     try {
+      // Check for Contacts API (Android Chrome and some mobile browsers)
       if ('contacts' in navigator && 'ContactsManager' in window) {
-        const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
-        if (contacts && contacts.length > 0) {
-          setPermissions(prev => ({ ...prev, contacts: 'granted' }))
-          return true
-        } else {
-          setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+        try {
+          const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
+          if (contacts && contacts.length > 0) {
+            setPermissions(prev => ({ ...prev, contacts: 'granted' }))
+            // Store permission granted in localStorage
+            try {
+              localStorage.setItem('contacts-permission', 'granted')
+            } catch (e) {
+              // Ignore localStorage errors
+            }
+            return true
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            return false
+          }
+        } catch (selectError: any) {
+          // If select fails, try to check permission status
+          if (selectError.name === 'NotAllowedError' || selectError.name === 'AbortError') {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            return false
+          }
+          throw selectError
+        }
+      } 
+      // Check for Contact Picker API (iOS Safari and newer browsers)
+      else if ('contacts' in navigator && 'getContacts' in navigator.contacts) {
+        try {
+          const contacts = await (navigator as any).contacts.getContacts({
+            properties: ['name', 'tel', 'email']
+          })
+          if (contacts && contacts.length > 0) {
+            setPermissions(prev => ({ ...prev, contacts: 'granted' }))
+            try {
+              localStorage.setItem('contacts-permission', 'granted')
+            } catch (e) {}
+            return true
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            return false
+          }
+        } catch (getError: any) {
+          if (getError.name === 'NotAllowedError' || getError.name === 'AbortError') {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
+          }
           return false
         }
-      } else {
-        alert('Contacts API is not available on this device/browser. You can still find friends by searching for their name, username, or email in the Find Friends section.')
+      }
+      // Fallback: Try to access contacts via file input (for manual contact import)
+      else {
+        // For iOS and other browsers, we'll use a workaround
+        alert('Contacts API is not directly available on this device. You can:\n\n1. Use the "Import from Contacts" button in Find Friends\n2. Manually search for friends by name or phone number\n3. Enable contacts access in your device settings if available')
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
         return false
       }
     } catch (error: any) {
+      console.error('Contacts permission error:', error)
       if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
         setPermissions(prev => ({ ...prev, contacts: 'denied' }))
       } else {
@@ -247,6 +309,18 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
   ]
 
+  // Close on Escape key - MUST be before early return to follow Rules of Hooks
+  useEffect(() => {
+    if (!showModal) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showModal) {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [showModal])
+
   if (!showModal) return null
 
   const getStatusIcon = (status: string) => {
@@ -273,17 +347,6 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     if (status === 'denied') return 'text-red-400'
     return 'text-primary-400'
   }
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showModal) {
-        handleClose()
-      }
-    }
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [showModal])
 
   return (
     <div 

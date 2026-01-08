@@ -31,6 +31,7 @@ function Home() {
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
   const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
+  const [autoOpenPostForm, setAutoOpenPostForm] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -121,6 +122,19 @@ function Home() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setActiveTab, user, loading])
 
+  // Listen for open-post-form event
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleOpenPostForm = () => {
+      setAutoOpenPostForm(true)
+      setActiveTab('feed')
+    }
+    
+    window.addEventListener('open-post-form', handleOpenPostForm)
+    return () => window.removeEventListener('open-post-form', handleOpenPostForm)
+  }, [])
+
   // CRITICAL: NEVER render anything during SSR - completely client-only
   // This is the nuclear option to prevent ALL hydration mismatches
   if (typeof window === 'undefined') {
@@ -162,7 +176,7 @@ function Home() {
         onOpenAddFunds={() => setAutoOpenAddFunds(true)}
       />
       <ProximityNotifications />
-      <main className="pt-0 min-h-screen bg-black pb-20 overflow-y-auto">
+      <main className="pt-20 min-h-screen bg-black pb-20 overflow-y-auto">
         {activeTab === 'home' && (
           <HomeTab 
             setActiveTab={setActiveTab} 
@@ -181,7 +195,11 @@ function Home() {
         />}
         {activeTab === 'feed' && (
           <ErrorBoundary>
-            <FeedTab onViewProfile={setViewingProfile} />
+            <FeedTab 
+              onViewProfile={setViewingProfile} 
+              autoOpenPostForm={autoOpenPostForm}
+              onPostFormOpened={() => setAutoOpenPostForm(false)}
+            />
           </ErrorBoundary>
         )}
         {activeTab === 'map' && (
@@ -198,7 +216,7 @@ function Home() {
         )}
         {/* Messages are now in header modal, not a tab */}
         {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
-        {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} />}
+        {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} setActiveTab={setActiveTab} />}
         {/* Menu items from hamburger menu */}
         {activeTab === 'tonight' && <TonightTab />}
         {activeTab === 'badges' && <BadgesScreen />}
@@ -223,5 +241,6 @@ function Home() {
   )
 }
 
-export default dynamic(() => Promise.resolve(Home), { ssr: false })
+// Export Home component directly - dynamic import can cause 404 issues
+export default Home
 

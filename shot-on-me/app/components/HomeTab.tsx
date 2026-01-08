@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
@@ -31,6 +31,7 @@ import {
 import { useApiUrl } from '../utils/api'
 import { Tab } from '@/app/types'
 import InviteFriendsModal from './InviteFriendsModal'
+import FindFriends from './FindFriends'
 import GoogleMapComponent from './GoogleMap'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
@@ -74,6 +75,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [trendingFriendActivity, setTrendingFriendActivity] = useState<any[]>([]) // Aggregated friend activity
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
   const [showFriendsMap, setShowFriendsMap] = useState(false) // Toggle between list and map view for friends
+  const [showFindFriends, setShowFindFriends] = useState(false) // Control FindFriends modal
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const { isLoaded: mapsLoaded } = useGoogleMaps()
 
@@ -458,7 +460,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     }
   }
 
-  const fetchHomeData = async () => {
+  const fetchHomeData = useCallback(async () => {
     if (!token) {
       setLoading(false)
       return
@@ -493,16 +495,54 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
       // Get current active promotions
       const now = new Date()
+      const currentDay = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
       const deals: QuickDeal[] = []
+
+      // Helper function to check if promotion is active based on schedule
+      const isPromotionActive = (promo: any): boolean => {
+        if (!promo.isActive) return false
+
+        // Check if promotion has a schedule (recurring promotions)
+        if (promo.schedule && promo.schedule.length > 0) {
+          // Check if current day matches any schedule entry
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+          const currentDayName = dayNames[currentDay].toLowerCase()
+          
+          const matchingSchedule = promo.schedule.find((sched: any) => {
+            const scheduleDays = (sched.days || '').toLowerCase().split(',').map((d: string) => d.trim())
+            const dayMatches = scheduleDays.includes(currentDayName) || scheduleDays.includes('all')
+            
+            if (!dayMatches) return false
+            
+            // Check if current time is within schedule time window
+            if (sched.start && sched.end) {
+              return currentTime >= sched.start && currentTime <= sched.end
+            }
+            
+            return true
+          })
+          
+          if (matchingSchedule) {
+            return true
+          }
+        }
+
+        // Fallback to startTime/endTime check for one-time promotions
+        if (promo.startTime && promo.endTime) {
+          const startTime = new Date(promo.startTime)
+          const endTime = new Date(promo.endTime)
+          return now >= startTime && now <= endTime
+        }
+
+        // If no schedule or time window, check if it's marked as active
+        return promo.isActive === true
+      }
 
       venues.forEach((venue: any) => {
         if (venue.promotions && venue.promotions.length > 0) {
           venue.promotions.forEach((promo: any) => {
-            const startTime = new Date(promo.startTime)
-            const endTime = new Date(promo.endTime)
-            
-            // Check if promotion is currently active
-            if (promo.isActive && now >= startTime && now <= endTime) {
+            if (isPromotionActive(promo)) {
               deals.push({
                 venue: {
                   _id: venue._id,
@@ -513,8 +553,9 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                   title: promo.title,
                   description: promo.description,
                   type: promo.type,
-                  endTime: promo.endTime
-                }
+                  endTime: promo.endTime || promo.flashDealEndsAt || promo.validUntil
+                },
+                distance: venue.distance
               })
             }
           })
@@ -577,7 +618,56 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       setLoading(false)
       console.log('HomeTab: Finished loading, loading state:', false)
     }
-  }
+  }, [token, API_URL])
+
+  // Real-time promotion updates - Watch venue-portal for new/updated promotions
+  useEffect(() => {
+    if (!socket || !token || !fetchHomeData) return
+
+    const handleNewPromotion = (data: { venueId: string; promotion: any }) => {
+      // Refresh deals when a new promotion is created
+      fetchHomeData()
+    }
+
+    const handlePromotionUpdated = (data: { venueId: string; promotion: any }) => {
+      // Refresh deals when a promotion is updated
+      fetchHomeData()
+    }
+
+    const handlePromotionDeleted = (data: { venueId: string; promotionId: string }) => {
+      // Refresh deals when a promotion is deleted
+      fetchHomeData()
+    }
+
+    const handleVenueUpdated = (data: { venueId: string; venue: any }) => {
+      // Refresh deals when venue is updated (might affect promotions)
+      fetchHomeData()
+    }
+
+    socket.on('new-promotion', handleNewPromotion)
+    socket.on('promotion-updated', handlePromotionUpdated)
+    socket.on('promotion-deleted', handlePromotionDeleted)
+    socket.on('venue-updated', handleVenueUpdated)
+
+    return () => {
+      socket.off('new-promotion', handleNewPromotion)
+      socket.off('promotion-updated', handlePromotionUpdated)
+      socket.off('promotion-deleted', handlePromotionDeleted)
+      socket.off('venue-updated', handleVenueUpdated)
+    }
+  }, [socket, token, fetchHomeData])
+
+  // Periodic refresh of deals to catch promotions that become active
+  useEffect(() => {
+    if (!token || !fetchHomeData) return
+
+    // Refresh deals every 30 seconds to catch promotions that just became active
+    const interval = setInterval(() => {
+      fetchHomeData()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [token, fetchHomeData])
 
   const [showInviteModal, setShowInviteModal] = useState(false)
 
@@ -662,8 +752,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
   return (
     <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible" suppressHydrationWarning>
-      {/* Enhanced Hero Section - Extends behind header */}
-      <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8 pt-24 -mt-16">
+      {/* Enhanced Hero Section - Positioned below header */}
+      <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8">
         {/* Centered "Shot on me" title */}
         <div className="text-center mb-6">
           <h1 className="text-5xl md:text-6xl logo-script text-primary-500 mb-3 tracking-wide drop-shadow-lg">
@@ -739,37 +829,19 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             </div>
           </button>
 
-          {/* Find Friends on Map - Quick Access */}
+          {/* Find Friends - Opens Friend Search (includes invite option) */}
           <button
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              setActiveTab?.('map')
+              setShowFindFriends(true)
             }}
             className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-5 hover:border-primary-500/50 hover:bg-black/70 transition-all shadow-lg shadow-primary-500/10 hover:shadow-primary-500/20 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
           >
             <div className="absolute top-0 right-0 w-20 h-20 bg-primary-500/5 rounded-full blur-2xl"></div>
             <div className="relative z-10 flex items-center justify-center space-x-2">
-              <MapPin className="w-5 h-5" />
+              <Users className="w-5 h-5" />
               <h3 className="text-sm font-bold tracking-tight">Find Friends</h3>
-            </div>
-          </button>
-        </div>
-        
-        {/* Invite Friends - Secondary Action */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleInviteFriend(e)
-            }}
-            className="w-full group bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all backdrop-blur-sm hover:scale-[1.01] active:scale-[0.99] pointer-events-auto z-10"
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <UserPlus className="w-5 h-5" />
-              <h3 className="text-sm font-bold tracking-tight">Invite</h3>
             </div>
           </button>
         </div>
@@ -986,12 +1058,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       {filteredTrending.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
+            >
+              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
                 <Users className="w-4 h-4 text-primary-500" />
               </div>
-              <h2 className="text-lg font-bold text-primary-500 tracking-tight">🔥 Trending Now</h2>
-            </div>
+              <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">🔥 Trending Now</h2>
+            </button>
             <button
               onClick={() => setActiveTab?.('map')}
               className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
@@ -1062,12 +1137,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       {nearbyFriends.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
+            >
+              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
                 <Users className="w-4 h-4 text-primary-500" />
               </div>
-              <h2 className="text-lg font-bold text-primary-500 tracking-tight">What's Happening</h2>
-            </div>
+              <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">What's Happening</h2>
+            </button>
             <button
               onClick={() => setShowFriendsMap(!showFriendsMap)}
               className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
@@ -1191,6 +1269,16 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       <InviteFriendsModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
+      />
+
+      {/* Find Friends Modal */}
+      <FindFriends
+        isOpen={showFindFriends}
+        onClose={() => setShowFindFriends(false)}
+        onViewProfile={(userId) => {
+          setShowFindFriends(false)
+          onViewProfile?.(userId)
+        }}
       />
     </div>
   )

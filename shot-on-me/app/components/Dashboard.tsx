@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { useRouter } from 'next/navigation'
-import { Menu, X, User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users, Trophy, Calendar, Gift, Share2, Sparkles, Building2, MessageSquare, ArrowRight, ChevronDown, Mail, Phone, Search } from 'lucide-react'
+import { User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users, Trophy, Calendar, Gift, Share2, Sparkles, Building2, MessageSquare, ArrowRight, ChevronDown, Mail, Phone, Search } from 'lucide-react'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import LocationFinder from './LocationFinder'
@@ -27,7 +27,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const { user, logout, updateUser } = useAuth()
   const { socket } = useSocket()
   const router = useRouter()
-  const [showMenu, setShowMenu] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   
   // Ensure component is mounted before accessing browser APIs
@@ -44,13 +43,22 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     window.addEventListener('open-settings', handleOpenSettings)
     return () => window.removeEventListener('open-settings', handleOpenSettings)
   }, [isMounted])
+
+  // Listen for find friends event
+  useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return
+    const handleOpenFindFriends = () => {
+      setShowFindFriends(true)
+    }
+    window.addEventListener('open-find-friends', handleOpenFindFriends)
+    return () => window.removeEventListener('open-find-friends', handleOpenFindFriends)
+  }, [isMounted])
   
   // Ensure menu closes on escape key
   useEffect(() => {
     if (!isMounted || typeof window === 'undefined') return
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowMenu(false)
         setShowProfileDropdown(false)
       }
     }
@@ -143,7 +151,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   // Ensure menu closes on component unmount or route change
   useEffect(() => {
     return () => {
-      setShowMenu(false)
       setShowProfileDropdown(false)
     }
   }, [])
@@ -184,35 +191,34 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   // Organized menu items by category for better UX
   const menuCategories = [
     {
-      title: 'Discover',
+      title: 'Settings',
       items: [
-        { icon: Calendar, label: 'Tonight', action: () => { setShowMenu(false); setActiveTab('tonight'); }, description: 'See what\'s happening tonight' },
-        { icon: Building2, label: 'My Venues', action: () => { setShowMenu(false); setActiveTab('venues'); }, description: 'Your favorite venues' },
-        { icon: Users, label: 'Find Friends', action: () => { setShowMenu(false); setShowFindFriends(true); }, description: 'Discover new connections' },
-        { icon: MapPin, label: 'Friend Locations', action: () => { setShowMenu(false); setShowLocationFinder(true); }, description: 'See where friends are' },
-      ]
-    },
-    {
-      title: 'Rewards & Achievements',
-      items: [
-        { icon: Trophy, label: 'Achievements', action: () => { setShowMenu(false); setActiveTab('badges'); }, description: 'Badges & leaderboards' },
-        { icon: Gift, label: 'Rewards', action: () => { setShowMenu(false); setActiveTab('rewards'); }, description: 'Redeem points & referrals' },
+        { icon: Settings, label: 'Settings', action: () => { setShowSettings(true); }, description: 'Preferences & privacy' },
       ]
     },
     {
       title: 'Account',
       items: [
-        { icon: Bell, label: 'Notifications', action: () => { setShowMenu(false); setShowActivityFeed(true); }, description: 'Activity & updates', badge: notificationCount > 0 ? notificationCount : undefined },
-        { icon: Settings, label: 'Settings', action: () => { setShowMenu(false); setShowSettings(true); }, description: 'Preferences & privacy' },
-        { icon: LogOut, label: 'Log Out', action: handleLogout, description: 'Sign out of your account', isDestructive: true },
+        { icon: Bell, label: 'Notifications', action: () => { setShowActivityFeed(true); }, description: 'Activity & updates', badge: notificationCount > 0 ? notificationCount : undefined },
+      ]
+    },
+    {
+      title: 'Discover',
+      items: [
+        { icon: Calendar, label: 'Tonight', action: () => { setActiveTab('tonight'); }, description: 'See what\'s happening tonight' },
+        { icon: Building2, label: 'My Venues', action: () => { setActiveTab('venues'); }, description: 'Your favorite venues' },
+        { icon: Users, label: 'Find Friends', action: () => { setShowFindFriends(true); }, description: 'Discover new connections' },
+        { icon: MapPin, label: 'Friend Locations', action: () => { setShowLocationFinder(true); }, description: 'See where friends are' },
+      ]
+    },
+    {
+      title: 'Rewards & Achievements',
+      items: [
+        { icon: Trophy, label: 'Achievements', action: () => { setActiveTab('badges'); }, description: 'Badges & leaderboards' },
+        { icon: Gift, label: 'Rewards', action: () => { setActiveTab('rewards'); }, description: 'Redeem points & referrals' },
       ]
     }
   ]
-
-  function handleMenuAction(action: string) {
-    setShowMenu(false)
-    // All menu actions are handled directly in menuItems array
-  }
 
   function handleLogout() {
     logout()
@@ -226,9 +232,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
 
   return (
     <>
-      {/* Header with Hamburger Menu */}
-      <header className="fixed top-0 left-0 right-0 z-30 bg-transparent backdrop-blur-none border-0 outline-none shadow-none pointer-events-none" suppressHydrationWarning>
-        <div className="flex items-center justify-between px-4 py-3 border-0 outline-none pointer-events-auto">
+      {/* Header - Opaque to prevent overlap */}
+      <header className="fixed top-0 left-0 right-0 z-30 bg-black/95 backdrop-blur-md border-b border-primary-500/10 shadow-lg pointer-events-none" suppressHydrationWarning>
+        <div className="flex items-center justify-between px-4 py-3 pointer-events-auto">
           {/* Left Side: Profile Picture/Name - Interactive */}
           <div className="flex items-center gap-3 pointer-events-auto">
             {/* Profile Dropdown - Top Left */}
@@ -261,7 +267,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowProfileDropdown(!showProfileDropdown)
-                  setShowMenu(false) // Close hamburger menu if open
                 }}
               className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-primary-500/10 transition-all group pointer-events-auto"
               aria-label="Account"
@@ -287,10 +292,10 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
               </button>
               
 
-              {/* Profile Dropdown Menu */}
+              {/* Profile Dropdown Menu - Now includes all menu items */}
               {showProfileDropdown && (
                 <div 
-                  className="absolute left-0 top-full mt-2 w-80 bg-black/95 backdrop-blur-md border-2 border-primary-500/30 rounded-2xl shadow-2xl shadow-black/50 z-[60] overflow-hidden"
+                  className="absolute left-0 top-full mt-2 w-80 bg-black/95 backdrop-blur-md border-2 border-primary-500/30 rounded-2xl shadow-2xl shadow-black/50 z-[60] overflow-y-auto max-h-[85vh]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Account Header */}
@@ -330,21 +335,55 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                       </div>
                       <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
+                  </div>
 
-                    <button
-                      onClick={() => {
-                        setShowProfileDropdown(false)
-                        setShowSettings(true)
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-left text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500 rounded-xl transition-all group"
-                    >
-                      <Settings className="w-5 h-5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-medium">Settings</p>
-                        <p className="text-xs text-primary-400/60">Preferences & privacy</p>
+                  {/* Divider */}
+                  <div className="border-t border-primary-500/10 my-2"></div>
+
+                  {/* All Menu Items from Hamburger Menu */}
+                  <div className="p-3 space-y-4">
+                    {menuCategories.map((category, categoryIndex) => (
+                      <div key={categoryIndex}>
+                        <h3 className="text-xs uppercase tracking-wider text-primary-400/60 font-semibold mb-2 px-2">
+                          {category.title}
+                        </h3>
+                        <div className="space-y-1">
+                          {category.items.map((item, itemIndex) => {
+                            const Icon = item.icon
+                            return (
+                              <button
+                                key={itemIndex}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setShowProfileDropdown(false)
+                                  item.action()
+                                }}
+                                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-left rounded-xl transition-all group ${
+                                  item.isDestructive
+                                    ? 'text-red-400/80 hover:bg-red-500/10 active:bg-red-500/20 hover:text-red-400'
+                                    : 'text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500'
+                                }`}
+                              >
+                                <Icon className={`w-5 h-5 flex-shrink-0 ${
+                                  item.isDestructive ? 'text-red-400' : 'text-primary-500'
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm">{item.label}</p>
+                                  <p className="text-xs text-primary-400/60">{item.description}</p>
+                                </div>
+                                {item.badge && item.badge > 0 && (
+                                  <span className="bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                    {item.badge > 9 ? '9+' : item.badge}
+                                  </span>
+                                )}
+                                <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
+                    ))}
                   </div>
 
                   {/* Divider */}
@@ -366,21 +405,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                 </div>
               )}
             </div>
-
-            {/* Hamburger Menu Button - Moved next to profile */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowMenu(!showMenu)
-                if (showProfileDropdown) {
-                  setShowProfileDropdown(false) // Close profile dropdown when opening menu
-                }
-              }}
-              className="p-2 text-primary-500 hover:bg-primary-500/10 active:bg-primary-500/20 rounded-lg transition-all touch-manipulation pointer-events-auto"
-              aria-label="Menu"
-            >
-              <Menu className="w-6 h-6 sm:w-5 sm:h-5" />
-            </button>
           </div>
 
           <div className="flex items-center gap-2 pointer-events-auto">
@@ -443,109 +467,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
         </div>
       </header>
 
-      {/* Hamburger Menu Sidebar */}
-      {showMenu && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/80 z-50 transition-opacity duration-300"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowMenu(false)
-              setShowProfileDropdown(false) // Also close profile dropdown
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowMenu(false)
-              setShowProfileDropdown(false) // Also close profile dropdown
-            }}
-            role="button"
-            tabIndex={-1}
-            aria-label="Close menu"
-          />
-          
-          {/* Sidebar */}
-          <div className="fixed left-0 top-0 bottom-0 w-72 sm:w-80 bg-black/95 backdrop-blur-md border-r border-primary-500/10 z-50 overflow-y-auto transform transition-transform duration-300 ease-out">
-            <div className="p-4 sm:p-6">
-              {/* Close button */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg sm:text-xl font-bold text-primary-500">Menu</h2>
-                <button
-                  onClick={() => setShowMenu(false)}
-                  className="p-2 text-primary-400 hover:text-primary-500 active:bg-primary-500/10 rounded-lg transition-all touch-manipulation"
-                  aria-label="Close menu"
-                >
-                  <X className="w-6 h-6 sm:w-5 sm:h-5" />
-                </button>
-              </div>
-
-              {/* User Info */}
-              <div className="flex items-center space-x-3 mb-6 pb-6 border-b border-primary-500/10">
-                <div className="w-14 h-14 border border-primary-500/30 rounded-full flex items-center justify-center overflow-hidden">
-                  {user?.profilePicture ? (
-                    <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-primary-500 font-medium text-base">
-                      {user?.firstName?.[0]}{user?.lastName?.[0]}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <p className="text-primary-500 font-medium tracking-tight">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-primary-400/70 text-xs font-light">{user?.email}</p>
-                </div>
-              </div>
-
-              {/* Menu Items - Organized by Category */}
-              <div className="space-y-4">
-                {menuCategories.map((category, categoryIndex) => (
-                  <div key={categoryIndex}>
-                    <h3 className="text-xs uppercase tracking-wider text-primary-400/60 font-semibold mb-2 px-4">
-                      {category.title}
-                    </h3>
-                    <div className="space-y-0.5">
-                      {category.items.map((item, itemIndex) => {
-                        const Icon = item.icon
-                        return (
-                          <button
-                            key={itemIndex}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              item.action()
-                            }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-left rounded-lg transition-all touch-manipulation group ${
-                              item.isDestructive
-                                ? 'text-red-400/80 hover:bg-red-500/10 active:bg-red-500/20 hover:text-red-400'
-                                : 'text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3 flex-1 min-w-0">
-                              <Icon className={`w-5 h-5 flex-shrink-0 ${
-                                item.isDestructive ? 'text-red-400' : 'text-primary-500'
-                              }`} />
-                              <span className="text-sm sm:text-base font-medium flex-1">{item.label}</span>
-                              {item.badge && item.badge > 0 && (
-                                <span className="bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                  {item.badge > 9 ? '9+' : item.badge}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Location Finder - Snapchat Style */}
       <LocationFinder 

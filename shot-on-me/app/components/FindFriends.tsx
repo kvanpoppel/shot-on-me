@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone } from 'lucide-react'
+import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
 import InviteFriendsModal from './InviteFriendsModal'
@@ -142,10 +142,20 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
       {/* Header */}
       <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-primary-500 tracking-tight">Find Friends</h1>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onClose}
+              className="p-2 text-primary-400/70 hover:text-primary-500 rounded-lg transition-all"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl font-semibold text-primary-500 tracking-tight">Find Friends</h1>
+          </div>
           <button
             onClick={onClose}
             className="p-2 text-primary-400/70 hover:text-primary-500 rounded-lg transition-all"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>

@@ -1,0 +1,78 @@
+Subject: Urgent: Legal Consultation Needed for Fintech Payment Platform Launch
+
+Dear [Attorney's Name],
+
+I am the founder of Shot On Me, a social payment platform that I'm preparing to launch. I need immediate legal guidance to ensure my business model is compliant before I begin operations.
+
+ABOUT MY BUSINESS:
+Shot On Me allows users to send money to friends for use at participating venues (bars, restaurants, clubs). Key aspects:
+- Users send money via phone number
+- Funds are held in escrow until redeemed at venues
+- Recipients receive virtual cards (tap-and-pay) that can only be used at approved venues
+- No bank withdrawal option for recipients
+- Platform acts as intermediary, holding funds until venue redemption
+
+MY IMMEDIATE LEGAL CONCERNS:
+
+1. MONEY TRANSMITTER LICENSE REQUIREMENTS
+   - Do I need a money transmitter license?
+   - Which states require licenses? (I live in Indianapolis, plan to bank in Texas)
+   - Does my escrow model change licensing requirements?
+   - What's the fastest legal path to launch?
+
+2. BUSINESS ENTITY FORMATION
+   - Should I form LLC in Texas or Indiana?
+   - I live in Indianapolis but can bank in Texas - what's best?
+   - Do I need Foreign LLC registration?
+
+3. ESCROW ACCOUNT LEGALITY
+   - Is it legal to hold user funds indefinitely?
+   - Can I prevent users from withdrawing to bank accounts?
+   - What are the regulatory requirements?
+
+4. VIRTUAL CARD ISSUANCE
+   - Do I need licenses to issue virtual cards via Stripe Issuing?
+   - Can I restrict where cards can be used (only approved venues)?
+
+5. TERMS OF SERVICE & PRIVACY POLICY
+   - What must be disclosed to users?
+   - Required legal language for my business model?
+
+6. COMPLIANCE REQUIREMENTS
+   - AML/KYC requirements?
+   - FinCEN registration?
+   - State-specific requirements?
+
+WHAT I NEED FROM YOU:
+
+1. Legal opinion on whether my business model is legal
+2. Step-by-step compliance roadmap
+3. Cost estimates for licenses and legal setup
+4. Timeline to legal launch
+5. Risk assessment
+6. Draft Terms of Service and Privacy Policy
+
+TIMELINE:
+I am ready to move forward immediately and need to understand legal requirements before accepting any payments or launching.
+
+I have prepared a detailed consultation document (ATTORNEY_CONSULTATION_GUIDE.md) that explains my business model, payment flows, and specific legal questions.
+
+I would like to schedule a consultation as soon as possible. Please let me know:
+- Your availability (this week if possible)
+- Your consultation fee
+- Any additional information you need before our meeting
+
+I understand this is urgent as I cannot proceed without proper legal guidance. I look forward to working with you to ensure Shot On Me is fully compliant.
+
+Thank you for your time and consideration.
+
+Best regards,
+
+[Your Name]
+Founder, Shot On Me
+[Your Phone Number]
+[Your Email Address]
+[Your Address - Indianapolis, IN]
+
+P.S. If you are not available or do not handle this type of work, I would greatly appreciate a referral to another attorney who specializes in fintech/money transmission law.
+

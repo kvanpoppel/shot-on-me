@@ -81,9 +81,11 @@ interface FriendActivity {
 
 interface FeedTabProps {
   onViewProfile?: (userId: string) => void
+  autoOpenPostForm?: boolean
+  onPostFormOpened?: () => void
 }
 
-export default function FeedTab({ onViewProfile }: FeedTabProps) {
+export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPostFormOpened }: FeedTabProps) {
   const { token, user } = useAuth()
   const { socket } = useSocket()
   const API_URL = useApiUrl()
@@ -148,6 +150,25 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
   const postMenuRef = useRef<HTMLDivElement | null>(null)
   const commentMenuRef = useRef<HTMLDivElement | null>(null)
+
+  // Auto-open post form when navigating from ProfileTab
+  useEffect(() => {
+    if (autoOpenPostForm) {
+      setShowPostForm(true)
+      if (onPostFormOpened) {
+        onPostFormOpened()
+      }
+    }
+  }, [autoOpenPostForm, onPostFormOpened])
+
+  // Listen for custom event to open post form
+  useEffect(() => {
+    const handleOpenPostForm = () => {
+      setShowPostForm(true)
+    }
+    window.addEventListener('open-post-form', handleOpenPostForm)
+    return () => window.removeEventListener('open-post-form', handleOpenPostForm)
+  }, [])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -1454,7 +1475,7 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
       />
 
       {/* Simplified Header */}
-      <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm sticky top-16 z-30">
+      <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm sticky top-0 z-30">
         <div className="p-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 flex-1 min-w-0">

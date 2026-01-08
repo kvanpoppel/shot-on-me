@@ -29,8 +29,9 @@ Both **Vercel** and **Render** are connected to your GitHub repository and will 
 
 **Render (Backend):**
 - **Dashboard:** https://dashboard.render.com
-- **Status:** Should be deploying automatically
-- **Expected Time:** 5-10 minutes
+- **Status:** ⚠️ **Manual deployment may be required** (see RENDER_MANUAL_DEPLOY.md)
+- **Action Needed:** Go to Render dashboard → Your service → Click "Manual Deploy"
+- **Expected Time:** 5-10 minutes after manual trigger
 
 ## 🔍 How to Verify Deployment
 
