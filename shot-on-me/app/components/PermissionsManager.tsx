@@ -187,7 +187,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         }
       } 
       // Check for Contact Picker API (iOS Safari and newer browsers)
-      else if ('contacts' in navigator && 'getContacts' in navigator.contacts) {
+      else if ('contacts' in navigator && navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
         try {
           const contacts = await (navigator as any).contacts.getContacts({
             properties: ['name', 'tel', 'email']
