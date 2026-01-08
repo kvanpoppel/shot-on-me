@@ -372,9 +372,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                                   <p className="font-medium text-sm">{item.label}</p>
                                   <p className="text-xs text-primary-400/60">{item.description}</p>
                                 </div>
-                                {item.badge && item.badge > 0 && (
+                                {(item as any).badge && (item as any).badge > 0 && (
                                   <span className="bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                    {item.badge > 9 ? '9+' : item.badge}
+                                    {(item as any).badge > 9 ? '9+' : (item as any).badge}
                                   </span>
                                 )}
                                 <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
