@@ -90,7 +90,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           status.contacts = 'prompt'
         }
         // iOS Safari and newer browsers Contact Picker API
-        else if ('getContacts' in navigator.contacts) {
+        else if (navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
           status.contacts = 'prompt'
         } else {
           status.contacts = 'unavailable'
