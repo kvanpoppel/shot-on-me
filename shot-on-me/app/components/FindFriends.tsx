@@ -336,40 +336,42 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex mt-4 border-b border-primary-500/10">
+        {/* Tabs - Mobile Optimized */}
+        <div className="flex mt-4 border-b border-primary-500/10 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('suggestions')}
-            className={`flex-1 py-2 text-sm font-medium transition-all ${
+            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'suggestions'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
             }`}
           >
-            <Sparkles className="w-4 h-4 inline mr-1.5" />
-            Suggestions
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1.5" />
+            <span className="hidden sm:inline">Suggestions</span>
+            <span className="sm:hidden">Suggest</span>
           </button>
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 py-2 text-sm font-medium transition-all ${
+            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'friends'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
             }`}
           >
-            <Users className="w-4 h-4 inline mr-1.5" />
-            My Friends ({currentFriends.length})
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1.5" />
+            <span className="hidden sm:inline">My Friends ({currentFriends.length})</span>
+            <span className="sm:hidden">Friends ({currentFriends.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 py-2 text-sm font-medium transition-all ${
+            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'invite'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
             }`}
           >
-            <Share2 className="w-4 h-4 inline mr-1.5" />
-            Invite
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1.5" />
+            <span>Invite</span>
           </button>
         </div>
       </div>

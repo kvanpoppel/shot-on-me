@@ -82,6 +82,24 @@ button.text-primary-500 {
   border-color: #B8945A !important;
 }
 
+/* Mobile optimizations */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 .border-primary-500\/30,
 .border-primary-500\/20,
 .border-primary-500\/50 {
