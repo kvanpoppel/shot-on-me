@@ -360,13 +360,13 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
                                   item.action()
                                 }}
                                 className={`w-full flex items-center space-x-3 px-3 py-2.5 text-left rounded-xl transition-all group ${
-                                  item.isDestructive
+                                  (item as any).isDestructive
                                     ? 'text-red-400/80 hover:bg-red-500/10 active:bg-red-500/20 hover:text-red-400'
                                     : 'text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500'
                                 }`}
                               >
                                 <Icon className={`w-5 h-5 flex-shrink-0 ${
-                                  item.isDestructive ? 'text-red-400' : 'text-primary-500'
+                                  (item as any).isDestructive ? 'text-red-400' : 'text-primary-500'
                                 }`} />
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm">{item.label}</p>
