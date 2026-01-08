@@ -119,8 +119,10 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
   }
 
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [invitePhoneNumber, setInvitePhoneNumber] = useState<string>('')
+  const [inviteEmail, setInviteEmail] = useState<string>('')
 
-  const handleInviteFriend = async (e?: React.MouseEvent) => {
+  const handleInviteFriend = async (e?: React.MouseEvent, phoneNumber?: string, email?: string) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
@@ -130,6 +132,10 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
       alert('Please wait for your account to load, then try again.')
       return
     }
+    
+    // Store phone/email if provided for pre-filling invite form
+    if (phoneNumber) setInvitePhoneNumber(phoneNumber)
+    if (email) setInviteEmail(email)
     
     // Open invite modal for better UX
     setShowInviteModal(true)
@@ -195,22 +201,121 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                       .map((c: any) => c.tel?.[0] || c.tel)
                       .filter(Boolean)
                     
-                    if (phoneNumbers.length > 0) {
-                      // Search for users by phone numbers
-                      for (const phone of phoneNumbers.slice(0, 5)) {
-                        try {
-                          const response = await axios.get(`${API_URL}/users/search/${phone}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          })
-                          if (response.data.users && response.data.users.length > 0) {
-                            setSearchResults(prev => [...prev, ...response.data.users])
-                            setActiveTab('search')
+                    const emails = contacts
+                      .map((c: any) => c.email?.[0] || c.email)
+                      .filter(Boolean)
+                    
+                    let foundCount = 0
+                    let notFoundContacts: Array<{phone?: string, email?: string, name?: string}> = []
+                    
+                    if (phoneNumbers.length > 0 || emails.length > 0) {
+                      // Search for users by phone numbers and emails
+                      for (let i = 0; i < Math.max(phoneNumbers.length, emails.length); i++) {
+                        const phone = phoneNumbers[i]
+                        const email = emails[i]
+                        const contact = contacts[i]
+                        
+                        let found = false
+                        
+                        // Try phone number search
+                        if (phone) {
+                          try {
+                            const response = await axios.get(`${API_URL}/users/search/${phone}`, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            })
+                            if (response.data.users && response.data.users.length > 0) {
+                              setSearchResults(prev => [...prev, ...response.data.users])
+                              setActiveTab('search')
+                              found = true
+                              foundCount++
+                            }
+                          } catch (error) {
+                            // Continue searching
                           }
-                        } catch (error) {
-                          // Continue searching other contacts
+                        }
+                        
+                        // Try email search if not found
+                        if (!found && email) {
+                          try {
+                            const response = await axios.get(`${API_URL}/users/search/${email}`, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            })
+                            if (response.data.users && response.data.users.length > 0) {
+                              setSearchResults(prev => [...prev, ...response.data.users])
+                              setActiveTab('search')
+                              found = true
+                              foundCount++
+                            }
+                          } catch (error) {
+                            // Continue searching
+                          }
+                        }
+                        
+                        // If not found, add to invite list
+                        if (!found && (phone || email)) {
+                          notFoundContacts.push({
+                            phone: phone,
+                            email: email,
+                            name: contact?.name || `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim()
+                          })
                         }
                       }
-                      alert(`Found ${phoneNumbers.length} contacts. Searching for matches...`)
+                      
+                      // Show results
+                      if (foundCount > 0) {
+                        setActiveTab('search')
+                      }
+                      
+                      // If we have contacts not in the app, offer to invite them
+                      if (notFoundContacts.length > 0) {
+                        const inviteMessage = `Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!\n\n${notFoundContacts.length} contact${notFoundContacts.length !== 1 ? 's' : ''} not in the app. Would you like to invite them?`
+                        if (confirm(inviteMessage)) {
+                          // Open invite modal - user can invite from there
+                          handleInviteFriend(undefined, notFoundContacts[0]?.phone, notFoundContacts[0]?.email)
+                        }
+                      } else if (foundCount > 0) {
+                        alert(`Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!`)
+                      } else {
+                        // No matches - offer to invite
+                        if (confirm(`None of your contacts are on Shot On Me yet. Would you like to invite them?`)) {
+                          handleInviteFriend()
+                        }
+                      }
+                    }
+                  }
+                } else if ('contacts' in navigator && typeof (navigator as any).contacts.getContacts === 'function') {
+                  // iOS Safari Contact Picker API
+                  const contacts = await (navigator as any).contacts.getContacts({
+                    properties: ['name', 'tel', 'email']
+                  })
+                  if (contacts && contacts.length > 0) {
+                    // Similar logic as above for iOS
+                    const phoneNumbers = contacts
+                      .map((c: any) => c.tel?.[0])
+                      .filter(Boolean)
+                    
+                    let foundCount = 0
+                    for (const phone of phoneNumbers.slice(0, 5)) {
+                      try {
+                        const response = await axios.get(`${API_URL}/users/search/${phone}`, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        })
+                        if (response.data.users && response.data.users.length > 0) {
+                          setSearchResults(prev => [...prev, ...response.data.users])
+                          setActiveTab('search')
+                          foundCount++
+                        }
+                      } catch (error) {
+                        // Continue
+                      }
+                    }
+                    
+                    if (foundCount === 0) {
+                      if (confirm(`None of your contacts are on Shot On Me yet. Would you like to invite them?`)) {
+                        handleInviteFriend()
+                      }
+                    } else {
+                      alert(`Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!`)
                     }
                   }
                 } else {
@@ -326,6 +431,22 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : searchQuery.trim().length >= 2 ? (
+              <div className="text-center py-12">
+                <UserPlus className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/80 font-light mb-2">No users found</p>
+                <p className="text-primary-400/60 text-sm mb-4 font-light">Invite them to join Shot On Me!</p>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleInviteFriend(e)
+                  }}
+                  className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
+                >
+                  Invite Friends
+                </button>
               </div>
             ) : (
               <div className="text-center py-12">
@@ -494,7 +615,13 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
       {/* Invite Friends Modal */}
       <InviteFriendsModal
         isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
+        onClose={() => {
+          setShowInviteModal(false)
+          setInvitePhoneNumber('')
+          setInviteEmail('')
+        }}
+        initialPhoneNumber={invitePhoneNumber}
+        initialEmail={inviteEmail}
       />
     </div>
   )

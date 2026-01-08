@@ -10,9 +10,11 @@ import { useApiUrl } from '../utils/api'
 interface InviteFriendsModalProps {
   isOpen: boolean
   onClose: () => void
+  initialPhoneNumber?: string
+  initialEmail?: string
 }
 
-export default function InviteFriendsModal({ isOpen, onClose }: InviteFriendsModalProps) {
+export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber = '', initialEmail = '' }: InviteFriendsModalProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
   const [referralCode, setReferralCode] = useState<string>('')
@@ -21,14 +23,17 @@ export default function InviteFriendsModal({ isOpen, onClose }: InviteFriendsMod
   const [sharing, setSharing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [smsNumber, setSmsNumber] = useState('')
-  const [emailAddress, setEmailAddress] = useState('')
+  const [smsNumber, setSmsNumber] = useState(initialPhoneNumber)
+  const [emailAddress, setEmailAddress] = useState(initialEmail)
 
   useEffect(() => {
     if (isOpen && token && user) {
       fetchReferralCode()
+      // Pre-fill phone/email if provided
+      if (initialPhoneNumber) setSmsNumber(initialPhoneNumber)
+      if (initialEmail) setEmailAddress(initialEmail)
     }
-  }, [isOpen, token, user])
+  }, [isOpen, token, user, initialPhoneNumber, initialEmail])
 
   const fetchReferralCode = async () => {
     if (!token) return
