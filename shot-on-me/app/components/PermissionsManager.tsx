@@ -86,7 +86,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
 
     // Check Camera - Actually check permission status
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       try {
         if ('permissions' in navigator) {
           try {
@@ -99,9 +99,13 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           } catch {
             // Fallback: check by trying to enumerate devices
             try {
-              const devices = await navigator.mediaDevices.enumerateDevices()
-              const hasVideo = devices.some(device => device.kind === 'videoinput')
-              status.camera = hasVideo ? 'prompt' : 'unavailable'
+              if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+                const devices = await navigator.mediaDevices.enumerateDevices()
+                const hasVideo = devices.some(device => device.kind === 'videoinput')
+                status.camera = hasVideo ? 'prompt' : 'unavailable'
+              } else {
+                status.camera = 'prompt'
+              }
             } catch {
               status.camera = 'prompt'
             }
@@ -109,9 +113,13 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         } else {
           // No permissions API, check if camera devices exist
           try {
-            const devices = await navigator.mediaDevices.enumerateDevices()
-            const hasVideo = devices.some(device => device.kind === 'videoinput')
-            status.camera = hasVideo ? 'prompt' : 'unavailable'
+            if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+              const devices = await navigator.mediaDevices.enumerateDevices()
+              const hasVideo = devices.some(device => device.kind === 'videoinput')
+              status.camera = hasVideo ? 'prompt' : 'unavailable'
+            } else {
+              status.camera = 'prompt'
+            }
           } catch {
             status.camera = 'prompt'
           }
