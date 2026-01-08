@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapPin, Camera, Users, Bell, X, CheckCircle2, AlertCircle } from 'lucide-react'
+import { MapPin, Camera, Users, Bell, X } from 'lucide-react'
 
 interface PermissionStatus {
   location: 'granted' | 'denied' | 'prompt' | 'unavailable'
@@ -32,7 +32,6 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       try {
         permissionsShown = localStorage.getItem('permissions-shown')
       } catch (err) {
-        // Tracking prevention or localStorage blocked - show modal anyway
         permissionsShown = null
       }
       if (!permissionsShown) {
@@ -40,11 +39,19 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         setShowModal(true)
       }
     } else {
-      // If showOnMount is false, always show when component mounts (called from Settings)
       checkPermissions()
       setShowModal(true)
     }
   }, [showOnMount])
+
+  // Re-check permissions periodically
+  useEffect(() => {
+    if (!showModal) return
+    const interval = setInterval(() => {
+      checkPermissions()
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [showModal])
 
   const checkPermissions = async () => {
     const status: PermissionStatus = {
@@ -54,33 +61,68 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       notifications: 'unavailable'
     }
 
-    // Check Location
+    // Check Location - More thorough check
     if ('geolocation' in navigator) {
-      if ('permissions' in navigator) {
-        try {
-          const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
-          status.location = result.state as 'granted' | 'denied' | 'prompt'
-          
-          // Listen for permission changes
-          result.onchange = () => {
-            setPermissions(prev => ({ ...prev, location: result.state as 'granted' | 'denied' | 'prompt' }))
+      try {
+        if ('permissions' in navigator) {
+          try {
+            const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+            status.location = result.state as 'granted' | 'denied' | 'prompt'
+            
+            result.onchange = () => {
+              setPermissions(prev => ({ ...prev, location: result.state as 'granted' | 'denied' | 'prompt' }))
+            }
+          } catch {
+            // Fallback: try to get location to determine status
+            status.location = 'prompt'
           }
-        } catch {
+        } else {
+          // No permissions API, assume prompt
           status.location = 'prompt'
         }
-      } else {
+      } catch (e) {
         status.location = 'prompt'
       }
     }
 
-    // Check Camera - don't request, just check if available
+    // Check Camera - Actually check permission status
     if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-      status.camera = 'prompt' // Assume prompt if available
+      try {
+        if ('permissions' in navigator) {
+          try {
+            const result = await navigator.permissions.query({ name: 'camera' as PermissionName })
+            status.camera = result.state as 'granted' | 'denied' | 'prompt'
+            
+            result.onchange = () => {
+              setPermissions(prev => ({ ...prev, camera: result.state as 'granted' | 'denied' | 'prompt' }))
+            }
+          } catch {
+            // Fallback: check by trying to enumerate devices
+            try {
+              const devices = await navigator.mediaDevices.enumerateDevices()
+              const hasVideo = devices.some(device => device.kind === 'videoinput')
+              status.camera = hasVideo ? 'prompt' : 'unavailable'
+            } catch {
+              status.camera = 'prompt'
+            }
+          }
+        } else {
+          // No permissions API, check if camera devices exist
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices()
+            const hasVideo = devices.some(device => device.kind === 'videoinput')
+            status.camera = hasVideo ? 'prompt' : 'unavailable'
+          } catch {
+            status.camera = 'prompt'
+          }
+        }
+      } catch (e) {
+        status.camera = 'prompt'
+      }
     }
 
-    // Check Contacts - Multiple API support
+    // Check Contacts - Multiple API support with better detection
     try {
-      // Check if permission was previously granted
       const contactsPermission = localStorage.getItem('contacts-permission')
       if (contactsPermission === 'granted') {
         status.contacts = 'granted'
@@ -96,7 +138,12 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           status.contacts = 'unavailable'
         }
       } else {
-        status.contacts = 'unavailable'
+        // Check for iOS Contact Picker (different API)
+        if (typeof (window as any).ContactsPicker !== 'undefined') {
+          status.contacts = 'prompt'
+        } else {
+          status.contacts = 'unavailable'
+        }
       }
     } catch (e) {
       status.contacts = 'unavailable'
@@ -104,13 +151,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
 
     // Check Notifications
     if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        status.notifications = 'granted'
-      } else if (Notification.permission === 'denied') {
-        status.notifications = 'denied'
-      } else {
-        status.notifications = 'prompt'
-      }
+      status.notifications = Notification.permission as 'granted' | 'denied' | 'prompt'
     }
 
     setPermissions(status)
@@ -125,17 +166,24 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     setRequesting('location')
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { 
-          timeout: 5000,
-          enableHighAccuracy: true,
-          maximumAge: 60000
-        })
+        navigator.geolocation.getCurrentPosition(
+          resolve, 
+          reject, 
+          { 
+            timeout: 10000,
+            enableHighAccuracy: false,
+            maximumAge: 60000
+          }
+        )
       })
       setPermissions(prev => ({ ...prev, location: 'granted' }))
+      setTimeout(() => checkPermissions(), 500)
       return true
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Location permission request failed:', error)
-      setPermissions(prev => ({ ...prev, location: 'denied' }))
+      const newStatus = error.code === 1 ? 'denied' : 'prompt'
+      setPermissions(prev => ({ ...prev, location: newStatus }))
+      setTimeout(() => checkPermissions(), 500)
       return false
     } finally {
       setRequesting(null)
@@ -148,9 +196,13 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       stream.getTracks().forEach(track => track.stop())
       setPermissions(prev => ({ ...prev, camera: 'granted' }))
+      setTimeout(() => checkPermissions(), 500)
       return true
     } catch (error: any) {
-      setPermissions(prev => ({ ...prev, camera: 'denied' }))
+      console.warn('Camera permission request failed:', error)
+      const newStatus = error.name === 'NotAllowedError' ? 'denied' : 'prompt'
+      setPermissions(prev => ({ ...prev, camera: newStatus }))
+      setTimeout(() => checkPermissions(), 500)
       return false
     } finally {
       setRequesting(null)
@@ -160,33 +212,33 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
   const requestContacts = async () => {
     setRequesting('contacts')
     try {
-      // Check for Contacts API (Android Chrome and some mobile browsers)
+      // Android Chrome ContactsManager API
       if ('contacts' in navigator && 'ContactsManager' in window) {
         try {
           const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
           if (contacts && contacts.length > 0) {
             setPermissions(prev => ({ ...prev, contacts: 'granted' }))
-            // Store permission granted in localStorage
             try {
               localStorage.setItem('contacts-permission', 'granted')
-            } catch (e) {
-              // Ignore localStorage errors
-            }
+            } catch (e) {}
+            setTimeout(() => checkPermissions(), 500)
             return true
           } else {
             setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            setTimeout(() => checkPermissions(), 500)
             return false
           }
         } catch (selectError: any) {
-          // If select fails, try to check permission status
           if (selectError.name === 'NotAllowedError' || selectError.name === 'AbortError') {
             setPermissions(prev => ({ ...prev, contacts: 'denied' }))
-            return false
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
           }
-          throw selectError
+          setTimeout(() => checkPermissions(), 500)
+          return false
         }
       } 
-      // Check for Contact Picker API (iOS Safari and newer browsers)
+      // iOS Safari and newer browsers Contact Picker API
       else if ('contacts' in navigator && navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
         try {
           const contacts = await (navigator as any).contacts.getContacts({
@@ -197,9 +249,11 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
             try {
               localStorage.setItem('contacts-permission', 'granted')
             } catch (e) {}
+            setTimeout(() => checkPermissions(), 500)
             return true
           } else {
             setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            setTimeout(() => checkPermissions(), 500)
             return false
           }
         } catch (getError: any) {
@@ -208,13 +262,38 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           } else {
             setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
           }
+          setTimeout(() => checkPermissions(), 500)
           return false
         }
       }
-      // Fallback: Try to access contacts via file input (for manual contact import)
+      // iOS Contact Picker (alternative)
+      else if (typeof (window as any).ContactsPicker !== 'undefined') {
+        try {
+          const contacts = await (window as any).ContactsPicker.pick()
+          if (contacts && contacts.length > 0) {
+            setPermissions(prev => ({ ...prev, contacts: 'granted' }))
+            try {
+              localStorage.setItem('contacts-permission', 'granted')
+            } catch (e) {}
+            setTimeout(() => checkPermissions(), 500)
+            return true
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+            setTimeout(() => checkPermissions(), 500)
+            return false
+          }
+        } catch (pickerError: any) {
+          if (pickerError.name === 'NotAllowedError' || pickerError.name === 'AbortError') {
+            setPermissions(prev => ({ ...prev, contacts: 'denied' }))
+          } else {
+            setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
+          }
+          setTimeout(() => checkPermissions(), 500)
+          return false
+        }
+      }
       else {
-        // For iOS and other browsers, we'll use a workaround
-        alert('Contacts API is not directly available on this device. You can:\n\n1. Use the "Import from Contacts" button in Find Friends\n2. Manually search for friends by name or phone number\n3. Enable contacts access in your device settings if available')
+        alert('Contacts API is not directly available on this device. You can use the "Import from Contacts" button in Find Friends or manually search for friends.')
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
         return false
       }
@@ -225,6 +304,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       } else {
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
       }
+      setTimeout(() => checkPermissions(), 500)
       return false
     } finally {
       setRequesting(null)
@@ -237,18 +317,41 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       if ('Notification' in window) {
         const permission = await Notification.requestPermission()
         setPermissions(prev => ({ ...prev, notifications: permission as 'granted' | 'denied' | 'prompt' }))
+        setTimeout(() => checkPermissions(), 500)
         return permission === 'granted'
       }
       return false
     } catch (error) {
       setPermissions(prev => ({ ...prev, notifications: 'denied' }))
+      setTimeout(() => checkPermissions(), 500)
       return false
     } finally {
       setRequesting(null)
     }
   }
 
-  const handleRequestPermission = async (type: keyof PermissionStatus) => {
+  const handleToggle = async (type: keyof PermissionStatus) => {
+    const currentStatus = permissions[type]
+    
+    // If already granted, we can't toggle off (user would need to change in browser settings)
+    if (currentStatus === 'granted') {
+      alert(`To disable ${type} permission, please go to your browser settings.`)
+      return
+    }
+    
+    // If denied, try to request again
+    if (currentStatus === 'denied') {
+      alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
+      return
+    }
+    
+    // If unavailable, show message
+    if (currentStatus === 'unavailable') {
+      alert(`${type} permission is not available on this device or browser.`)
+      return
+    }
+    
+    // Request permission
     switch (type) {
       case 'location':
         await requestLocation()
@@ -263,13 +366,10 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         await requestNotifications()
         break
     }
-    // Refresh permissions after request
-    setTimeout(() => checkPermissions(), 500)
   }
 
   const handleClose = () => {
     setShowModal(false)
-    // Mark permissions as shown so it doesn't show again on next load
     try {
       localStorage.setItem('permissions-shown', 'true')
     } catch (err) {
@@ -282,38 +382,34 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     {
       icon: MapPin,
       title: 'Location Access',
-      description: 'Find nearby venues, see friend locations, and get proximity notifications for special deals.',
+      description: 'Find nearby venues, see friend locations, and get proximity notifications.',
       permission: 'location' as keyof PermissionStatus,
-      why: 'We use your location to show you nearby venues with active promotions and help you find friends nearby.'
     },
     {
       icon: Camera,
       title: 'Camera Access',
-      description: 'Take photos and videos to share moments with friends on your feed.',
+      description: 'Take photos and videos to share moments with friends.',
       permission: 'camera' as keyof PermissionStatus,
-      why: 'Capture and share your experiences at venues with photos and videos.'
     },
     {
       icon: Users,
       title: 'Contacts Access',
-      description: 'Find friends who are already on Shot On Me from your contacts. (Available on mobile browsers)',
+      description: 'Find friends who are already on Shot On Me from your contacts.',
       permission: 'contacts' as keyof PermissionStatus,
-      why: 'We match phone numbers to help you quickly find and connect with friends.'
     },
     {
       icon: Bell,
       title: 'Notifications',
       description: 'Get notified about nearby deals, friend activity, and messages.',
       permission: 'notifications' as keyof PermissionStatus,
-      why: 'Stay updated on promotions, friend check-ins, and important updates.'
     }
   ]
 
-  // Close on Escape key - MUST be before early return to follow Rules of Hooks
+  // Close on Escape key
   useEffect(() => {
     if (!showModal) return
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showModal) {
+      if (e.key === 'Escape') {
         handleClose()
       }
     }
@@ -323,36 +419,14 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
 
   if (!showModal) return null
 
-  const getStatusIcon = (status: string) => {
-    if (status === 'granted') {
-      return <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-    } else if (status === 'unavailable') {
-      return <AlertCircle className="w-5 h-5 text-primary-400" />
-    } else if (status === 'denied') {
-      return <AlertCircle className="w-5 h-5 text-red-400" />
-    }
-    return null
-  }
-
-  const getStatusText = (status: string) => {
-    if (status === 'granted') return 'Granted'
-    if (status === 'unavailable') return 'Not Available'
-    if (status === 'denied') return 'Denied'
-    return 'Not Set'
-  }
-
-  const getStatusColor = (status: string) => {
-    if (status === 'granted') return 'text-emerald-400'
-    if (status === 'unavailable') return 'text-primary-400'
-    if (status === 'denied') return 'text-red-400'
-    return 'text-primary-400'
-  }
+  const isEnabled = (status: string) => status === 'granted'
+  const isDisabled = (status: string) => status === 'denied' || status === 'unavailable'
+  const canToggle = (status: string) => status === 'prompt' || status === 'granted'
 
   return (
     <div 
       className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       onClick={(e) => {
-        // Close modal when clicking outside the content area
         if (e.target === e.currentTarget) {
           e.preventDefault()
           e.stopPropagation()
@@ -364,7 +438,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       aria-labelledby="permissions-title"
     >
       <div 
-        className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto"
+        className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-lg w-full backdrop-blur-md my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -379,75 +453,95 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
           </button>
         </div>
 
-        {/* All Permissions List */}
-        <div className="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+        {/* Permissions List with Toggles */}
+        <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
           {permissionList.map((perm) => {
             const Icon = perm.icon
             const status = permissions[perm.permission]
             const isRequesting = requesting === perm.permission
-            const canRequest = status === 'prompt' && !isRequesting
+            const enabled = isEnabled(status)
+            const disabled = isDisabled(status)
+            const canInteract = canToggle(status) && !isRequesting
 
             return (
               <div
                 key={perm.permission}
                 className="bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/30 transition-all"
               >
-                <div className="flex items-start gap-4">
-                  {/* Icon */}
-                  <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full flex items-center justify-center bg-primary-500/10 flex-shrink-0">
-                    <Icon className="w-6 h-6 text-primary-500" />
+                <div className="flex items-center justify-between gap-4">
+                  {/* Left: Icon and Info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-10 h-10 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      enabled 
+                        ? 'border-emerald-500/50 bg-emerald-500/10' 
+                        : disabled
+                        ? 'border-red-500/50 bg-red-500/10'
+                        : 'border-primary-500/30 bg-primary-500/10'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${
+                        enabled 
+                          ? 'text-emerald-400' 
+                          : disabled
+                          ? 'text-red-400'
+                          : 'text-primary-500'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-primary-500 mb-0.5">{perm.title}</h3>
+                      <p className="text-xs text-primary-400/70 font-light line-clamp-2">{perm.description}</p>
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-primary-500">{perm.title}</h3>
-                      {getStatusIcon(status) && (
-                        <div className={`flex items-center gap-2 ${getStatusColor(status)}`}>
-                          {getStatusIcon(status)}
-                          <span className="text-sm font-medium">{getStatusText(status)}</span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-sm text-primary-400/80 mb-2 font-light">{perm.description}</p>
-                    <div className="bg-black/40 border border-primary-500/10 rounded p-2 mb-3">
-                      <p className="text-xs text-primary-400/70 font-light">
-                        <span className="text-primary-500 font-medium">Why:</span> {perm.why}
-                      </p>
-                    </div>
-
-                    {/* Status and Action */}
-                    <div className="flex items-center justify-between">
-                      <div className={`text-sm font-medium ${getStatusColor(status)}`}>
-                        Status: {getStatusText(status)}
+                  {/* Right: Toggle Switch */}
+                  <div className="flex-shrink-0">
+                    {disabled ? (
+                      <div className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium">
+                        {status === 'denied' ? 'Denied' : 'N/A'}
                       </div>
-                      {canRequest && (
-                        <button
-                          onClick={() => handleRequestPermission(perm.permission)}
-                          disabled={isRequesting}
-                          className="px-4 py-2 bg-primary-500 text-black rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                        >
-                          {isRequesting ? 'Requesting...' : 'Allow'}
-                        </button>
-                      )}
-                      {status === 'granted' && (
-                        <div className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium">
-                          ✓ Enabled
-                        </div>
-                      )}
-                      {status === 'denied' && (
-                        <div className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium">
-                          Blocked
-                        </div>
-                      )}
-                      {status === 'unavailable' && (
-                        <div className="px-4 py-2 bg-primary-500/20 text-primary-400 rounded-lg text-sm font-medium">
-                          Not Available
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <button
+                        onClick={() => canInteract && handleToggle(perm.permission)}
+                        disabled={!canInteract || isRequesting}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black ${
+                          enabled
+                            ? 'bg-emerald-500'
+                            : 'bg-primary-500/30'
+                        } ${!canInteract || isRequesting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        role="switch"
+                        aria-checked={enabled}
+                        aria-label={`Toggle ${perm.title}`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            enabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Status Text */}
+                {isRequesting && (
+                  <div className="mt-2 text-xs text-primary-400/60 font-light">
+                    Requesting permission...
+                  </div>
+                )}
+                {enabled && !isRequesting && (
+                  <div className="mt-2 text-xs text-emerald-400 font-light">
+                    ✓ Enabled
+                  </div>
+                )}
+                {status === 'denied' && (
+                  <div className="mt-2 text-xs text-red-400/70 font-light">
+                    Permission denied. Enable in browser settings.
+                  </div>
+                )}
+                {status === 'unavailable' && (
+                  <div className="mt-2 text-xs text-primary-400/60 font-light">
+                    Not available on this device
+                  </div>
+                )}
               </div>
             )
           })}
