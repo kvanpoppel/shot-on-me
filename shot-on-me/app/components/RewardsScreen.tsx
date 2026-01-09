@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
-import { Gift, Sparkles, CheckCircle, Clock, MapPin } from 'lucide-react'
+import { Gift, Sparkles, CheckCircle, Clock, MapPin, Bell } from 'lucide-react'
 
 interface Reward {
   _id: string
