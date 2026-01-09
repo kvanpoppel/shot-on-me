@@ -11,6 +11,7 @@ import PaymentMethodsManager from './PaymentMethodsManager'
 import VirtualCardManager from './VirtualCardManager'
 import CardPaymentModal from './CardPaymentModal'
 import TapAndPayModal from './TapAndPayModal'
+import PointsBooster from './PointsBooster'
 import { useApiUrl } from '../utils/api'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -45,6 +46,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [cardPaymentAmount, setCardPaymentAmount] = useState(0)
   const [cardPaymentRecipient, setCardPaymentRecipient] = useState<{ phone?: string; id?: string; message?: string } | null>(null)
   const [points, setPoints] = useState(0)
+  const [previousPoints, setPreviousPoints] = useState(0)
+  const [showPointsBooster, setShowPointsBooster] = useState(false)
+  const [pointsEarned, setPointsEarned] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [insufficientBalanceData, setInsufficientBalanceData] = useState<{ shortfall: number; recipientPhone: string; amount: number; message?: string } | null>(null)
@@ -209,7 +213,17 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       const response = await axios.get(`${API_URL}/gamification/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setPoints(response.data.points || 0)
+      const newPoints = response.data.points || 0
+      
+      // Check if points increased (user earned points)
+      if (previousPoints > 0 && newPoints > previousPoints) {
+        const earned = newPoints - previousPoints
+        setPointsEarned(earned)
+        setShowPointsBooster(true)
+      }
+      
+      setPreviousPoints(newPoints)
+      setPoints(newPoints)
     } catch (error) {
       console.error('Failed to fetch points:', error)
     }
@@ -236,12 +250,13 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }, [updateUser, token])
 
-  // Listen for real-time payment updates
+  // Listen for real-time payment updates and points updates
   useEffect(() => {
     if (!socket) return
 
     const handlePaymentRedeemed = (data: any) => {
       fetchPayments()
+      fetchPoints() // Refresh points in case they were earned
       if (updateUser) {
         updateUser({})
       }
@@ -251,6 +266,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
 
     const handlePaymentProcessed = (data: any) => {
       fetchPayments()
+      fetchPoints() // Refresh points in case they were earned
       if (updateUser) {
         updateUser({})
       }
@@ -258,14 +274,23 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setTimeout(() => setSuccess(null), 5000)
     }
 
+    // Listen for points updates
+    const handlePointsUpdated = (data: any) => {
+      if (data.userId === user?.id || data.userId === (user as any)?._id) {
+        fetchPoints()
+      }
+    }
+
     socket.on('payment-redeemed', handlePaymentRedeemed)
     socket.on('payment-processed', handlePaymentProcessed)
+    socket.on('points-updated', handlePointsUpdated)
 
     return () => {
       socket.off('payment-redeemed', handlePaymentRedeemed)
       socket.off('payment-processed', handlePaymentProcessed)
+      socket.off('points-updated', handlePointsUpdated)
     }
-  }, [socket, updateUser])
+  }, [socket, updateUser, user, previousPoints])
 
   const fetchPayments = async () => {
     try {
@@ -608,14 +633,76 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               )}
             </div>
             
-            {/* Points Display */}
-            <div className="flex items-center gap-2.5 pt-3 border-t border-primary-500/20">
-              <div className="w-7 h-7 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/30 flex-shrink-0">
-                <Sparkles className="w-3.5 h-3.5 text-primary-500" />
+            {/* Points Display with Redemption */}
+            <div className="pt-3 border-t border-primary-500/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 flex-1">
+                  <div className="w-7 h-7 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/30 flex-shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-primary-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-primary-400/60 text-xs uppercase tracking-wider font-semibold">Reward Points</p>
+                    <p className="text-primary-500 font-bold text-lg">{points.toLocaleString()}</p>
+                  </div>
+                </div>
+                {points >= 100 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        setRedeeming(true)
+                        const response = await axios.post(
+                          `${API_URL}/rewards/redeem-cash`,
+                          { pointsToRedeem: 100 },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        )
+                        await fetchPoints()
+                        if (updateUser) {
+                          await updateUser({})
+                        }
+                        setSuccess(`🎉 $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
+                        setTimeout(() => setSuccess(null), 5000)
+                      } catch (error: any) {
+                        setError(error.response?.data?.message || 'Failed to redeem cash reward')
+                        setTimeout(() => setError(null), 5000)
+                      } finally {
+                        setRedeeming(false)
+                      }
+                    }}
+                    disabled={redeeming || points < 100}
+                    className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-yellow-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Redeem $5</span>
+                  </button>
+                )}
               </div>
-              <div>
-                <p className="text-primary-400/60 text-xs uppercase tracking-wider font-semibold">Reward Points</p>
-                <p className="text-primary-500 font-bold text-lg">{points.toLocaleString()}</p>
+              
+              {/* Progress to $5 */}
+              {points < 100 && (
+                <div className="bg-black/40 rounded-lg p-2.5 border border-primary-500/20">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-primary-400/70 font-medium">Progress to $5 Cash</p>
+                    <p className="text-xs text-yellow-500 font-bold">{points}/100 pts</p>
+                  </div>
+                  <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-yellow-500 to-primary-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min((points / 100) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-primary-400/60 mt-1.5 text-center">
+                    {100 - points} more points needed for $5 cash reward
+                  </p>
+                </div>
+              )}
+              
+              {/* Info Text */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
+                <p className="text-xs text-primary-400/80 leading-relaxed">
+                  <span className="text-yellow-500 font-semibold">⭐ Earn 2 points</span> per Tap n Pay, <span className="text-yellow-500 font-semibold">1 point</span> per check-in. 
+                  <span className="text-yellow-500 font-semibold"> 100 points = $5 cash</span> added to wallet. 
+                  Different from <span className="text-primary-500 font-semibold">Badges</span> (non-monetary achievements).
+                </p>
               </div>
             </div>
           </div>
@@ -1123,6 +1210,16 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           )}
         </div>
       </div>
+
+      {/* Points Booster Animation */}
+      <PointsBooster
+        points={pointsEarned}
+        show={showPointsBooster}
+        onComplete={() => {
+          setShowPointsBooster(false)
+          setPointsEarned(0)
+        }}
+      />
 
       {/* Modals */}
       <AddFundsModal

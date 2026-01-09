@@ -109,12 +109,67 @@ export default function RewardsScreen() {
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-black/95 backdrop-blur-md border-b border-primary-500/10 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-primary-500">Rewards</h1>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-primary-500">Rewards Program</h1>
+            <p className="text-xs text-primary-400/70 mt-1">Earn cash rewards with your points</p>
+          </div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-500" />
             <span className="text-lg font-semibold text-yellow-500">{userPoints}</span>
             <span className="text-sm text-primary-400">pts</span>
+          </div>
+        </div>
+        
+        {/* Cash Redemption Banner */}
+        {userPoints >= 100 && (
+          <div className="bg-gradient-to-r from-yellow-500/20 to-primary-500/20 border-2 border-yellow-500/40 rounded-lg p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-yellow-500" />
+                <div>
+                  <p className="text-sm font-bold text-yellow-500">Redeem 100 Points = $5 Cash</p>
+                  <p className="text-xs text-primary-400/80">Add cash directly to your wallet</p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    setRedeeming('cash')
+                    const response = await axios.post(
+                      `${API_URL}/rewards/redeem-cash`,
+                      { pointsToRedeem: 100 },
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    )
+                    await fetchRewards()
+                    await fetchMyRewards()
+                    alert(`Success! $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
+                  } catch (error: any) {
+                    alert(error.response?.data?.message || 'Failed to redeem cash reward')
+                  } finally {
+                    setRedeeming(null)
+                  }
+                }}
+                disabled={redeeming === 'cash' || userPoints < 100}
+                className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {redeeming === 'cash' ? 'Redeeming...' : 'Redeem $5'}
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Info Banner */}
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2.5 mb-4">
+          <div className="flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-primary-400 font-medium">
+                <span className="text-yellow-500 font-semibold">Rewards = Cash Money!</span> Earn 2 points per Tap n Pay transaction, 1 point per check-in. 
+                Redeem 100 points for <span className="text-yellow-500 font-semibold">$5 cash</span> added to your wallet. 
+                This is different from <span className="text-primary-500 font-semibold">Badges</span> which are non-monetary achievements.
+              </p>
+            </div>
           </div>
         </div>
 

@@ -211,13 +211,13 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
         { icon: MapPin, label: 'Friend Locations', action: () => { setShowLocationFinder(true); }, description: 'See where friends are' },
       ]
     },
-    {
-      title: 'Rewards & Achievements',
-      items: [
-        { icon: Trophy, label: 'Achievements', action: () => { setActiveTab('badges'); }, description: 'Badges & leaderboards' },
-        { icon: Gift, label: 'Rewards', action: () => { setActiveTab('rewards'); }, description: 'Redeem points & referrals' },
-      ]
-    }
+         {
+           title: 'Rewards & Achievements',
+           items: [
+             { icon: Trophy, label: 'Badges & Achievements', action: () => { setActiveTab('badges'); }, description: 'Non-monetary achievements & milestones' },
+             { icon: Gift, label: 'Rewards Program', action: () => { setActiveTab('rewards'); }, description: 'Earn cash: 100 points = $5' },
+           ]
+         }
   ]
 
   function handleLogout() {

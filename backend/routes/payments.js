@@ -542,6 +542,63 @@ router.post('/redeem', auth, async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
+      // Award points for Tap n Pay transaction (2 points)
+      if (payment.type === 'tap_and_pay') {
+        try {
+          const DailyVenuePoints = require('../models/DailyVenuePoints');
+          const startOfDay = DailyVenuePoints.getStartOfDay();
+          
+          // Get or create daily venue points record
+          let dailyPoints = await DailyVenuePoints.findOne({
+            user: userId,
+            venue: venue._id,
+            date: startOfDay
+          });
+
+          if (!dailyPoints) {
+            dailyPoints = new DailyVenuePoints({
+              user: userId,
+              venue: venue._id,
+              date: startOfDay,
+              tapAndPayPoints: 0,
+              checkInPoints: 0,
+              totalPoints: 0
+            });
+          }
+
+          // Award 2 points for Tap n Pay
+          const result = dailyPoints.awardPoints('tap_and_pay', 2, payment._id);
+          
+          if (result.awarded > 0) {
+            await dailyPoints.save();
+            
+            // Update user's total points
+            user.points = (user.points || 0) + result.awarded;
+            user.totalPointsEarned = (user.totalPointsEarned || 0) + result.awarded;
+            await user.save();
+            
+            console.log(`⭐ Awarded ${result.awarded} points for Tap n Pay at ${venue.name}`);
+            
+            // Emit points update event
+            const io = req.app.get('io');
+            if (io) {
+              io.to(`user-${userId.toString()}`).emit('points-updated', {
+                userId: userId.toString(),
+                points: user.points,
+                pointsEarned: result.awarded,
+                source: 'tap_and_pay',
+                venueId: venue._id.toString()
+              });
+            }
+          } else {
+            console.log(`ℹ️ Points not awarded: ${result.reason}`);
+          }
+        } catch (pointsError) {
+          console.error('Error awarding points for Tap n Pay:', pointsError);
+          // Don't fail redemption if points awarding fails
+        }
+      }
+
       // Create notification for successful redemption
       try {
         const Notification = require('../models/Notification');

@@ -236,5 +236,170 @@ router.post('/use', auth, async (req, res) => {
   }
 });
 
+// Redeem 100 points for $5 cash reward
+router.post('/redeem-cash', auth, async (req, res) => {
+  try {
+    const { pointsToRedeem = 100 } = req.body;
+    const cashValue = 5; // $5 per 100 points
+
+    if (pointsToRedeem < 100) {
+      return res.status(400).json({ 
+        message: 'Minimum 100 points required for cash redemption',
+        error: 'You need at least 100 points to redeem $5 cash'
+      });
+    }
+
+    if (pointsToRedeem % 100 !== 0) {
+      return res.status(400).json({ 
+        message: 'Points must be in multiples of 100',
+        error: 'You can only redeem in increments of 100 points ($5 each)'
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has enough points
+    if (user.points < pointsToRedeem) {
+      return res.status(400).json({ 
+        message: 'Insufficient points',
+        error: `You have ${user.points} points, but need ${pointsToRedeem} points`,
+        currentPoints: user.points,
+        requiredPoints: pointsToRedeem
+      });
+    }
+
+    // Calculate cash value
+    const cashAmount = (pointsToRedeem / 100) * cashValue;
+
+    // Deduct points and add cash to wallet
+    user.points = user.points - pointsToRedeem;
+    user.totalPointsRedeemed = (user.totalPointsRedeemed || 0) + pointsToRedeem;
+    user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
+    user.wallet.balance = (user.wallet.balance || 0) + cashAmount;
+    user.rewardCashBalance = (user.rewardCashBalance || 0) + cashAmount;
+
+    await user.save();
+
+    // Create reward redemption record
+    const Reward = require('../models/Reward');
+    const RewardRedemption = require('../models/RewardRedemption');
+    
+    // Find or create the default cash reward
+    let cashReward = await Reward.findOne({ 
+      type: 'cash_credit',
+      pointsCost: 100,
+      venue: null // Platform-wide
+    });
+
+    if (!cashReward) {
+      cashReward = new Reward({
+        name: '100 Points = $5 Cash',
+        description: 'Redeem 100 points for $5 cash credit to your wallet',
+        type: 'cash_credit',
+        pointsCost: 100,
+        value: 5,
+        venue: null,
+        category: 'credit',
+        isActive: true
+      });
+      await cashReward.save();
+    }
+
+    // Create redemption record
+    const redemption = new RewardRedemption({
+      user: user._id,
+      reward: cashReward._id,
+      pointsSpent: pointsToRedeem,
+      status: 'active'
+    });
+    await redemption.save();
+
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user-${user._id.toString()}`).emit('wallet-updated', {
+        userId: user._id.toString(),
+        balance: user.wallet.balance
+      });
+      io.to(`user-${user._id.toString()}`).emit('points-updated', {
+        userId: user._id.toString(),
+        points: user.points,
+        totalPointsEarned: user.totalPointsEarned,
+        totalPointsRedeemed: user.totalPointsRedeemed
+      });
+    }
+
+    res.json({
+      message: `Successfully redeemed ${pointsToRedeem} points for $${cashAmount.toFixed(2)} cash`,
+      redemption: {
+        id: redemption._id,
+        pointsRedeemed: pointsToRedeem,
+        cashAmount: cashAmount,
+        newPointsBalance: user.points,
+        newWalletBalance: user.wallet.balance
+      }
+    });
+  } catch (error) {
+    console.error('Error redeeming points for cash:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get daily points stats per venue
+router.get('/daily-stats', auth, async (req, res) => {
+  try {
+    const DailyVenuePoints = require('../models/DailyVenuePoints');
+    const { venueId, date } = req.query;
+
+    const query = { user: req.user.userId };
+    
+    if (venueId) {
+      query.venue = venueId;
+    }
+
+    if (date) {
+      const startOfDay = DailyVenuePoints.getStartOfDay(new Date(date));
+      query.date = startOfDay;
+    } else {
+      // Default to today
+      const startOfDay = DailyVenuePoints.getStartOfDay();
+      query.date = startOfDay;
+    }
+
+    const dailyPoints = await DailyVenuePoints.find(query)
+      .populate('venue', 'name address')
+      .sort({ date: -1 });
+
+    res.json({ dailyPoints });
+  } catch (error) {
+    console.error('Error fetching daily points stats:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get points history for a specific venue
+router.get('/venue-history/:venueId', auth, async (req, res) => {
+  try {
+    const DailyVenuePoints = require('../models/DailyVenuePoints');
+    const { venueId } = req.params;
+    const { limit = 30 } = req.query;
+
+    const dailyPoints = await DailyVenuePoints.find({
+      user: req.user.userId,
+      venue: venueId
+    })
+      .sort({ date: -1 })
+      .limit(parseInt(limit));
+
+    res.json({ dailyPoints });
+  } catch (error) {
+    console.error('Error fetching venue points history:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;
 

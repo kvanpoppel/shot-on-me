@@ -54,12 +54,12 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    // Calculate points (base 10, bonus for streaks)
+    // Calculate points using new rewards system (1 point for check-in)
     const user = await User.findById(req.user.userId);
-    let points = 10;
+    let points = 0;
     let reward = '';
     
-    // Check for streak
+    // Check for streak (for display purposes, not for points)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const lastCheckInDate = user.checkInStreak?.lastCheckInDate 
@@ -74,8 +74,8 @@ router.post('/', auth, async (req, res) => {
       if (lastCheckInDate.getTime() === yesterday.getTime()) {
         // Continuing streak
         const newStreak = (user.checkInStreak?.current || 0) + 1;
-        points += Math.min(newStreak * 2, 50); // Bonus points for streak, max 50
         reward = `Streak bonus! ${newStreak} day streak!`;
+        user.checkInStreak.current = newStreak;
       } else if (lastCheckInDate.getTime() === today.getTime()) {
         // Already checked in today
         return res.status(400).json({ message: 'You already checked in today' });
@@ -90,19 +90,15 @@ router.post('/', auth, async (req, res) => {
 
     // Update streak
     user.checkInStreak.lastCheckInDate = today;
-    if ((user.checkInStreak.current || 1) > (user.checkInStreak.longest || 0)) {
+    if ((user.checkInStreak?.current || 1) > (user.checkInStreak?.longest || 0)) {
       user.checkInStreak.longest = user.checkInStreak.current;
     }
 
-    // Add points
-    user.points = (user.points || 0) + points;
-    await user.save();
-
-    // Create check-in
+    // Create check-in first (needed for reference ID)
     const checkIn = new CheckIn({
       user: req.user.userId,
       venue: venueId,
-      points: points,
+      points: 0, // Will be updated after points are awarded
       reward: reward,
       location: latitude && longitude ? { latitude, longitude } : undefined,
       notes: notes?.trim() || '',
@@ -111,6 +107,71 @@ router.post('/', auth, async (req, res) => {
     });
 
     await checkIn.save();
+
+    // Award points using new rewards system (1 point for check-in)
+    // Check if user already used Tap n Pay today at this venue
+    try {
+      const DailyVenuePoints = require('../models/DailyVenuePoints');
+      const startOfDay = DailyVenuePoints.getStartOfDay();
+      
+      // Get or create daily venue points record
+      let dailyPoints = await DailyVenuePoints.findOne({
+        user: req.user.userId,
+        venue: venueId,
+        date: startOfDay
+      });
+
+      if (!dailyPoints) {
+        dailyPoints = new DailyVenuePoints({
+          user: req.user.userId,
+          venue: venueId,
+          date: startOfDay,
+          tapAndPayPoints: 0,
+          checkInPoints: 0,
+          totalPoints: 0
+        });
+      }
+
+      // Award 1 point for check-in (max 3 points per venue per day)
+      const result = dailyPoints.awardPoints('check_in', 1, checkIn._id);
+      
+      if (result.awarded > 0) {
+        await dailyPoints.save();
+        
+        // Update user's total points
+        user.points = (user.points || 0) + result.awarded;
+        user.totalPointsEarned = (user.totalPointsEarned || 0) + result.awarded;
+        
+        // Update points variable for response and check-in record
+        points = result.awarded;
+        checkIn.points = points;
+        await checkIn.save();
+        
+        console.log(`⭐ Awarded ${result.awarded} point(s) for check-in at ${venue.name}`);
+        
+        // Emit points update event
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user-${req.user.userId.toString()}`).emit('points-updated', {
+            userId: req.user.userId.toString(),
+            points: user.points,
+            pointsEarned: result.awarded,
+            source: 'check_in',
+            venueId: venueId.toString()
+          });
+        }
+      } else {
+        console.log(`ℹ️ Check-in points not awarded: ${result.reason}`);
+        // Still allow check-in, just no points
+        points = 0;
+      }
+    } catch (pointsError) {
+      console.error('Error awarding points for check-in:', pointsError);
+      // Points awarding failed, but check-in still succeeds
+      points = 0;
+    }
+    
+    await user.save();
     await checkIn.populate('venue', 'name address location');
     await checkIn.populate('user', 'name firstName lastName profilePicture');
 

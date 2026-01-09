@@ -80,6 +80,21 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  totalPointsEarned: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalPointsRedeemed: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  rewardCashBalance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   checkInStreak: {
     current: {
       type: Number,

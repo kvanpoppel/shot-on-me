@@ -82,13 +82,29 @@ export default function BadgesScreen() {
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-black/95 backdrop-blur-md border-b border-primary-500/10 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-primary-500">Badges</h1>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-primary-500">Badges & Achievements</h1>
+            <p className="text-xs text-primary-400/70 mt-1">Non-monetary achievements & milestones</p>
+          </div>
           <div className="flex items-center gap-2 text-sm">
             <Trophy className="w-5 h-5 text-yellow-500" />
             <span className="text-primary-400">
               {stats.unlockedCount}/{stats.totalCount}
             </span>
+          </div>
+        </div>
+        
+        {/* Info Banner */}
+        <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-2.5 mb-4">
+          <div className="flex items-start gap-2">
+            <Trophy className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-primary-400 font-medium">
+                <span className="text-primary-500 font-semibold">Badges are achievements</span> - Show off your milestones and accomplishments. 
+                For <span className="text-yellow-500 font-semibold">monetary rewards</span>, check out the <span className="text-yellow-500 font-semibold">Rewards</span> section.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -167,11 +183,11 @@ export default function BadgesScreen() {
               </div>
             )}
 
-            {/* Points Reward */}
+            {/* Points Reward - Note: This is a bonus, not the main reward */}
             {badge.pointsReward > 0 && (
-              <div className="flex items-center justify-center gap-1 mt-2 text-xs text-yellow-500">
+              <div className="flex items-center justify-center gap-1 mt-2 text-xs text-yellow-500/80">
                 <Sparkles className="w-3 h-3" />
-                <span>+{badge.pointsReward} pts</span>
+                <span>Bonus: +{badge.pointsReward} reward points</span>
               </div>
             )}
 
