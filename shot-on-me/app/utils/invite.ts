@@ -28,11 +28,12 @@ export async function getInviteLink(userId: string, referralCode?: string, venue
   }
   
   // Use referral code if available, otherwise use userId
+  // Use root path (/) instead of /signup since that route doesn't exist
   if (referralCode) {
-    return `${baseUrl}/signup?ref=${referralCode}`
+    return `${baseUrl}/?ref=${referralCode}`
   }
   
-  return `${baseUrl}/signup?ref=${userId}`
+  return `${baseUrl}/?ref=${userId}`
 }
 
 /**
