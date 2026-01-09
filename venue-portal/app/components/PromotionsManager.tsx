@@ -494,6 +494,103 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           </div>
         </div>
 
+        {/* Promotions List - Show First, Most Important */}
+        {promotions.length === 0 ? (
+          <div className="text-center py-8 text-primary-400/80">
+            <p className="mb-3 font-light text-base">No promotions yet. Create your first promotion!</p>
+            <button
+              onClick={() => setShowTemplates(true)}
+              className="mt-2 bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-600 transition-all"
+            >
+              + Create Promotion
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2 mb-6">
+            {promotions.map((promo) => {
+              const isActive = promo.isActive
+              const now = new Date()
+              const startTime = new Date(promo.startTime)
+              const endTime = new Date(promo.endTime)
+              const isCurrentlyActive = isActive && now >= startTime && now <= endTime
+              
+              return (
+                <div 
+                  key={promo._id} 
+                  onClick={() => handleEdit(promo)}
+                  className={`bg-gradient-to-br ${isCurrentlyActive ? 'from-primary-500/20 via-primary-500/10 to-black/40' : 'from-black/50 to-black/40'} border-2 ${isCurrentlyActive ? 'border-primary-500/40' : 'border-primary-500/20'} rounded-xl p-4 hover:border-primary-500/50 hover:from-primary-500/25 hover:via-primary-500/15 hover:to-black/50 transition-all backdrop-blur-sm cursor-pointer group shadow-lg`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-primary-500 text-base tracking-tight">{promo.title}</h3>
+                        {isCurrentlyActive && (
+                          <span className="bg-primary-500/30 border border-primary-500/50 text-primary-500 px-2 py-0.5 rounded-lg text-xs font-bold animate-pulse">
+                            LIVE
+                          </span>
+                        )}
+                        {promo.isFlashDeal && (
+                          <span className="bg-red-500/20 border border-red-500/40 text-red-400 px-2 py-0.5 rounded-lg text-xs font-bold">
+                            FLASH
+                          </span>
+                        )}
+                      </div>
+                      {promo.description && (
+                        <p className="text-sm text-primary-400/90 mt-1 mb-2 line-clamp-2 font-light">{promo.description}</p>
+                      )}
+                      <div className="flex items-center space-x-3 mt-2 text-xs text-primary-400/80">
+                        <span className="capitalize bg-primary-500/15 border border-primary-500/30 text-primary-500 px-2.5 py-1 rounded-lg font-medium">
+                          {promo.type.replace('-', ' ')}
+                        </span>
+                        <span className="text-primary-400/70 font-light">
+                          {new Date(promo.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {promo.startTime && promo.endTime && (
+                          <span className="text-primary-400/70 font-light">
+                            {new Date(promo.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(promo.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex space-x-1 ml-3 flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setViewingAnalytics({ promotionId: promo._id, title: promo.title })
+                        }}
+                        className="p-2 text-primary-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
+                        title="View analytics"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEdit(promo)
+                        }}
+                        className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors"
+                        title="Edit promotion"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(promo._id)
+                        }}
+                        className="p-2 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Delete promotion"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {/* Push Notification Banner - Key Feature Highlight */}
         <div className="mb-3 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-3">
           <div className="flex items-start gap-2.5">
@@ -526,86 +623,6 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               onWeekendSpecial={() => handleQuickAction('weekend')}
               onVipExclusive={() => handleQuickAction('vip')}
             />
-          </div>
-        )}
-
-        {/* Promotions List */}
-        {promotions.length === 0 ? (
-          <div className="text-center py-4 text-primary-400/80 text-sm">
-            <p className="mb-2 font-light">No promotions yet. Create your first promotion!</p>
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="mt-2 bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
-            >
-              + Create Promotion
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {promotions.map((promo) => (
-              <div 
-                key={promo._id} 
-                onClick={() => handleEdit(promo)}
-                className="bg-black/40 border border-primary-500/15 rounded p-2 hover:border-primary-500/25 hover:bg-black/50 transition-all backdrop-blur-sm cursor-pointer group"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-primary-500 text-xs truncate tracking-tight">{promo.title}</h3>
-                    {promo.description && (
-                      <p className="text-xs text-primary-400/80 mt-0.5 line-clamp-1 font-light">{promo.description}</p>
-                    )}
-                    <div className="flex items-center space-x-2 mt-1.5 text-xs text-primary-400/70">
-                      <span className="capitalize bg-primary-500/10 border border-primary-500/20 text-primary-500 px-1.5 py-0.5 rounded text-xs font-medium">
-                        {promo.type.replace('-', ' ')}
-                      </span>
-                      <span className="truncate text-xs font-light">{new Date(promo.startTime).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="flex space-x-1 ml-2 flex-shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setViewingAnalytics({ promotionId: promo._id, title: promo.title })
-                      }}
-                      className="p-1 text-primary-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded transition-colors"
-                      title="View analytics"
-                    >
-                      <BarChart3 className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSavingToLibrary(promo._id)
-                      }}
-                      className="p-1 text-primary-400 hover:text-yellow-400 hover:bg-yellow-500/10 rounded transition-colors"
-                      title="Save to library"
-                    >
-                      <Save className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleEdit(promo)
-                      }}
-                      className="p-1 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded transition-colors"
-                      title="Edit promotion"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(promo._id)
-                      }}
-                      className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                      title="Delete promotion"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>
