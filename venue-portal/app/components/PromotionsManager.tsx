@@ -520,47 +520,81 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               const isExpiringSoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 24 // Expiring within 24 hours
               const isExpiringVerySoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 4 // Expiring within 4 hours
               
-              // Color scheme based on status
+              // Enhanced color scheme based on status with more vibrant gradients
               let gradientClass = 'from-black/50 to-black/40'
               let borderClass = 'border-primary-500/20'
+              let accentGlow = ''
+              let leftAccent = ''
               
               if (isCurrentlyActive) {
                 if (isExpiringVerySoon) {
-                  // Red gradient for expiring very soon (urgent)
-                  gradientClass = 'from-red-500/25 via-orange-500/15 to-black/40'
-                  borderClass = 'border-red-500/50'
+                  // Red gradient for expiring very soon (urgent) - More vibrant
+                  gradientClass = 'from-red-600/30 via-red-500/20 via-orange-500/15 to-black/50'
+                  borderClass = 'border-red-500/60'
+                  accentGlow = 'shadow-red-500/20'
+                  leftAccent = 'border-l-4 border-l-red-500'
                 } else if (isExpiringSoon) {
-                  // Orange gradient for expiring soon (warning)
-                  gradientClass = 'from-orange-500/20 via-yellow-500/10 to-black/40'
-                  borderClass = 'border-orange-500/40'
+                  // Orange gradient for expiring soon (warning) - More prominent
+                  gradientClass = 'from-orange-500/30 via-orange-400/20 via-yellow-500/15 to-black/50'
+                  borderClass = 'border-orange-500/50'
+                  accentGlow = 'shadow-orange-500/20'
+                  leftAccent = 'border-l-4 border-l-orange-500'
                 } else {
-                  // Green gradient for active and healthy
-                  gradientClass = 'from-green-500/20 via-primary-500/10 to-black/40'
-                  borderClass = 'border-green-500/40'
+                  // Green gradient for active and healthy - More vibrant
+                  gradientClass = 'from-emerald-500/25 via-green-500/20 via-primary-500/10 to-black/50'
+                  borderClass = 'border-emerald-500/50'
+                  accentGlow = 'shadow-emerald-500/15'
+                  leftAccent = 'border-l-4 border-l-emerald-500'
                 }
               } else if (now < startTime) {
-                // Blue gradient for upcoming promotions
-                gradientClass = 'from-blue-500/20 via-cyan-500/10 to-black/40'
-                borderClass = 'border-blue-500/30'
+                // Blue gradient for upcoming promotions - More vibrant
+                gradientClass = 'from-blue-500/25 via-cyan-500/20 via-blue-400/10 to-black/50'
+                borderClass = 'border-blue-500/40'
+                accentGlow = 'shadow-blue-500/15'
+                leftAccent = 'border-l-4 border-l-blue-500'
               } else {
                 // Gray for inactive/expired
-                gradientClass = 'from-gray-500/10 to-black/40'
-                borderClass = 'border-gray-500/20'
+                gradientClass = 'from-gray-600/15 via-gray-500/10 to-black/50'
+                borderClass = 'border-gray-500/30'
+                accentGlow = ''
+                leftAccent = ''
               }
               
               return (
                 <div 
                   key={promo._id} 
                   onClick={() => handleEdit(promo)}
-                  className={`bg-gradient-to-br ${gradientClass} border-2 ${borderClass} rounded-xl p-4 hover:border-primary-500/60 hover:shadow-xl transition-all backdrop-blur-sm cursor-pointer group shadow-lg`}
+                  className={`bg-gradient-to-br ${gradientClass} border-2 ${borderClass} ${leftAccent} rounded-xl p-4 hover:border-primary-500/70 hover:shadow-2xl ${accentGlow} transition-all backdrop-blur-sm cursor-pointer group shadow-lg relative overflow-hidden`}
                 >
-                  <div className="flex justify-between items-start">
+                  {/* Subtle animated gradient overlay for active promotions */}
+                  {isCurrentlyActive && !isExpiringSoon && !isExpiringVerySoon && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent animate-pulse-slow pointer-events-none"></div>
+                  )}
+                  {isExpiringSoon && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-transparent animate-pulse pointer-events-none"></div>
+                  )}
+                  {isExpiringVerySoon && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/15 via-transparent to-transparent animate-pulse pointer-events-none"></div>
+                  )}
+                  <div className="flex justify-between items-start relative z-10">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-primary-500 text-base tracking-tight">{promo.title}</h3>
+                        <h3 className={`font-bold text-base tracking-tight ${
+                          isCurrentlyActive 
+                            ? (isExpiringVerySoon ? 'text-red-300' : isExpiringSoon ? 'text-orange-300' : 'text-emerald-300')
+                            : (now < startTime ? 'text-blue-300' : 'text-primary-500')
+                        }`}>
+                          {promo.title}
+                        </h3>
                         {isCurrentlyActive && (
-                          <span className={`${isExpiringVerySoon ? 'bg-red-500/40 border-red-500/60 text-red-300' : isExpiringSoon ? 'bg-orange-500/30 border-orange-500/50 text-orange-300' : 'bg-green-500/30 border-green-500/50 text-green-300'} border px-2 py-0.5 rounded-lg text-xs font-bold ${isExpiringVerySoon ? 'animate-pulse' : ''}`}>
-                            {isExpiringVerySoon ? 'EXPIRING SOON' : isExpiringSoon ? 'EXPIRING TODAY' : 'LIVE'}
+                          <span className={`${
+                            isExpiringVerySoon 
+                              ? 'bg-red-500/50 border-red-400/70 text-red-100 shadow-red-500/30' 
+                              : isExpiringSoon 
+                                ? 'bg-orange-500/40 border-orange-400/60 text-orange-100 shadow-orange-500/30'
+                                : 'bg-emerald-500/40 border-emerald-400/60 text-emerald-100 shadow-emerald-500/30'
+                          } border-2 px-2.5 py-1 rounded-lg text-xs font-bold shadow-lg ${isExpiringVerySoon ? 'animate-pulse' : ''}`}>
+                            {isExpiringVerySoon ? '⚠️ EXPIRING SOON' : isExpiringSoon ? '⏰ EXPIRING TODAY' : '✓ LIVE'}
                           </span>
                         )}
                         {now < startTime && (
