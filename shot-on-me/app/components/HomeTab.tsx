@@ -806,7 +806,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Quick Actions - Enhanced - Moved Above "What's Happening Now" */}
+      {/* Quick Actions - Enhanced */}
       <div className="px-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           {/* Send Money - Primary Action */}
@@ -846,6 +846,118 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           </button>
         </div>
       </div>
+
+      {/* Live Deals - ACTIVE PROMOTIONS - Moved to Top for Maximum Visibility */}
+      {filteredDeals.length > 0 && (
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
+                <Gift className="w-4 h-4 text-primary-500" />
+              </div>
+              <h2 className="text-xl font-bold text-primary-500 tracking-tight">Active Promotions</h2>
+              <span className="bg-primary-500/20 text-primary-500 px-2 py-0.5 rounded-full text-xs font-bold">
+                {filteredDeals.length}
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
+            >
+              View All
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </button>
+          </div>
+          
+          {/* Real-Time Promotions Highlight */}
+          <div className="bg-gradient-to-r from-primary-500/15 to-yellow-500/10 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
+            <div className="flex items-start gap-2">
+              <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs text-primary-400 font-medium leading-relaxed">
+                  <span className="text-primary-500 font-bold">🎯 Real-Time Promotions</span> - Venues send instant push notifications when they launch promotions! 
+                  Get exclusive, time-sensitive deals delivered in real-time to drive spending at your favorite spots.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {filteredDeals.map((deal, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  setActiveTab?.('map')
+                  // Store venue info for MapTab to highlight
+                  if (deal.venue._id) {
+                    localStorage.setItem('highlightVenue', deal.venue._id)
+                  }
+                  // Track click analytics
+                  if (deal.venue._id) {
+                    axios.post(`${API_URL}/venues/${deal.venue._id}/promotions/track`, {
+                      promotionTitle: deal.promotion.title,
+                      type: 'click'
+                    }, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    }).catch(() => {})
+                  }
+                }}
+                className="bg-gradient-to-br from-primary-500/15 via-primary-500/5 to-black/50 border-2 border-primary-500/30 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:from-primary-500/20 hover:via-primary-500/10 hover:to-black/60 transition-all backdrop-blur-sm group shadow-lg shadow-primary-500/20 active:scale-[0.98]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                      <h3 className="font-bold text-primary-500 text-lg">{deal.venue.name}</h3>
+                    </div>
+                    <p className="text-primary-400 text-base font-bold mb-1">
+                      {deal.promotion.title}
+                    </p>
+                    {deal.promotion.description && (
+                      <p className="text-primary-300/80 text-sm mb-2 line-clamp-2">
+                        {deal.promotion.description}
+                      </p>
+                    )}
+                    {deal.distance && (
+                      <p className="text-xs text-primary-400/70 mb-2">{deal.distance} away</p>
+                    )}
+                  </div>
+                  {deal.promotion.type === 'happy-hour' && (
+                    <span className="bg-primary-500/30 border-2 border-primary-500/50 text-primary-500 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center flex-shrink-0 animate-pulse">
+                      <Clock className="w-3.5 h-3.5 mr-1" />
+                      LIVE
+                    </span>
+                  )}
+                  {deal.promotion.type === 'flash-deal' && (
+                    <span className="bg-red-500/30 border-2 border-red-500/50 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center flex-shrink-0 animate-pulse">
+                      <Zap className="w-3.5 h-3.5 mr-1" />
+                      FLASH
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-primary-500/20">
+                  <div className="flex items-center space-x-2 text-xs text-primary-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="font-medium">{getTimeRemaining(deal.promotion.endTime)}</span>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActiveTab?.('map')
+                      if (deal.venue._id) {
+                        localStorage.setItem('highlightVenue', deal.venue._id)
+                      }
+                    }}
+                    className="bg-primary-500 text-black px-5 py-2 rounded-lg text-sm font-bold hover:bg-primary-600 transition-all flex items-center shadow-lg shadow-primary-500/25"
+                  >
+                    View Venue
+                    <ArrowRight className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* What's Happening Now - Venue Promotions & Deals */}
       {liveActivity.length > 0 && !searchQuery && (
@@ -991,81 +1103,6 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Quick Deals / Pop-up Happy Hours - Real-Time Promotions */}
-      {filteredDeals.length > 0 && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-                <Gift className="w-4 h-4 text-primary-500" />
-              </div>
-              <h2 className="text-lg font-bold text-primary-500 tracking-tight">Live Deals</h2>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              View All
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          
-          {/* Real-Time Promotions Highlight */}
-          <div className="bg-gradient-to-r from-primary-500/15 to-yellow-500/10 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
-            <div className="flex items-start gap-2">
-              <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-primary-400 font-medium leading-relaxed">
-                  <span className="text-primary-500 font-bold">🎯 Real-Time Promotions</span> - Venues send instant push notifications when they launch promotions! 
-                  Get exclusive, time-sensitive deals delivered in real-time to drive spending at your favorite spots.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {filteredDeals.map((deal, idx) => (
-              <div
-                key={idx}
-                onClick={() => setActiveTab?.('map')}
-                className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all backdrop-blur-sm group"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                      <h3 className="font-bold text-primary-500">{deal.venue.name}</h3>
-                    </div>
-                    <p className="text-primary-400 text-sm font-semibold mb-1">
-                      {deal.promotion.title}
-                    </p>
-                    {deal.promotion.description && (
-                      <p className="text-primary-300/80 text-xs mb-2">
-                        {deal.promotion.description}
-                      </p>
-                    )}
-                  </div>
-                    {deal.promotion.type === 'happy-hour' && (
-                      <span className="bg-primary-500/20 border border-primary-500/40 text-primary-500 px-2.5 py-1 rounded-lg text-xs font-bold flex items-center flex-shrink-0">
-                        <Clock className="w-3 h-3 mr-1" />
-                        NOW
-                      </span>
-                    )}
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-primary-500/10">
-                  <div className="flex items-center space-x-2 text-xs text-primary-400">
-                    <Clock className="w-3 h-3" />
-                    <span>{getTimeRemaining(deal.promotion.endTime)}</span>
-                  </div>
-                  <button className="text-primary-500 hover:text-primary-400 text-xs font-semibold flex items-center">
-                    View
-                    <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Trending Now - Friend Activity & Social Discovery */}
       {filteredTrending.length > 0 && !searchQuery && (

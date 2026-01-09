@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, ChevronLeft, Check, Calendar, Target, Sparkles, Eye, X, Bell, Zap } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Calendar as CalendarIcon, Target, Sparkles, Eye, X, Bell, Zap } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
 interface PromotionFormData {
   title: string
@@ -44,7 +46,7 @@ interface PromotionWizardProps {
 
 const STEPS = [
   { id: 1, name: 'Basic Info', icon: <Sparkles className="w-4 h-4" /> },
-  { id: 2, name: 'Schedule', icon: <Calendar className="w-4 h-4" /> },
+  { id: 2, name: 'Schedule', icon: <CalendarIcon className="w-4 h-4" /> },
   { id: 3, name: 'Targeting', icon: <Target className="w-4 h-4" /> },
   { id: 4, name: 'Enhancements', icon: <Sparkles className="w-4 h-4" /> },
   { id: 5, name: 'Preview', icon: <Eye className="w-4 h-4" /> }
@@ -389,25 +391,47 @@ function Step2Schedule({ formData, updateFormData }: { formData: PromotionFormDa
 
       {/* One-Time Schedule */}
       {!formData.isRecurring && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-primary-500 mb-2">Start Time *</label>
-            <input
-              type="datetime-local"
-              value={formData.startTime}
-              onChange={(e) => updateFormData({ startTime: e.target.value })}
+            <label className="block text-sm font-medium text-primary-500 mb-2">Start Date & Time *</label>
+            <DatePicker
+              selected={formData.startTime ? new Date(formData.startTime) : null}
+              onChange={(date: Date | null) => {
+                if (date) {
+                  updateFormData({ startTime: date.toISOString().slice(0, 16) })
+                }
+              }}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={15}
+              dateFormat="MMMM d, yyyy h:mm aa"
               className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/30"
+              wrapperClassName="w-full"
+              calendarClassName="bg-black border border-primary-500/30 rounded-lg"
               required
+              minDate={new Date()}
+              placeholderText="Select start date and time"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-primary-500 mb-2">End Time *</label>
-            <input
-              type="datetime-local"
-              value={formData.endTime}
-              onChange={(e) => updateFormData({ endTime: e.target.value })}
+            <label className="block text-sm font-medium text-primary-500 mb-2">End Date & Time *</label>
+            <DatePicker
+              selected={formData.endTime ? new Date(formData.endTime) : null}
+              onChange={(date: Date | null) => {
+                if (date) {
+                  updateFormData({ endTime: date.toISOString().slice(0, 16) })
+                }
+              }}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={15}
+              dateFormat="MMMM d, yyyy h:mm aa"
               className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/30"
+              wrapperClassName="w-full"
+              calendarClassName="bg-black border border-primary-500/30 rounded-lg"
               required
+              minDate={formData.startTime ? new Date(formData.startTime) : new Date()}
+              placeholderText="Select end date and time"
             />
           </div>
         </div>
@@ -417,15 +441,26 @@ function Step2Schedule({ formData, updateFormData }: { formData: PromotionFormDa
       {formData.isRecurring && (
         <div className="space-y-4">
           {/* Start Time (for first occurrence) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary-500 mb-2">First Start Time *</label>
-              <input
-                type="datetime-local"
-                value={formData.startTime}
-                onChange={(e) => updateFormData({ startTime: e.target.value })}
+              <label className="block text-sm font-medium text-primary-500 mb-2">First Start Date & Time *</label>
+              <DatePicker
+                selected={formData.startTime ? new Date(formData.startTime) : null}
+                onChange={(date: Date | null) => {
+                  if (date) {
+                    updateFormData({ startTime: date.toISOString().slice(0, 16) })
+                  }
+                }}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="MMMM d, yyyy h:mm aa"
                 className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/30"
+                wrapperClassName="w-full"
+                calendarClassName="bg-black border border-primary-500/30 rounded-lg"
                 required
+                minDate={new Date()}
+                placeholderText="Select first occurrence date and time"
               />
             </div>
             <div>
@@ -538,19 +573,25 @@ function Step2Schedule({ formData, updateFormData }: { formData: PromotionFormDa
           )}
 
           {/* End Date or Max Occurrences */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-primary-500 mb-2">End Date (optional)</label>
-              <input
-                type="date"
-                value={formData.recurrencePattern.endDate}
-                onChange={(e) => updateFormData({
-                  recurrencePattern: {
-                    ...formData.recurrencePattern,
-                    endDate: e.target.value
-                  }
-                })}
+              <DatePicker
+                selected={formData.recurrencePattern.endDate ? new Date(formData.recurrencePattern.endDate) : null}
+                onChange={(date: Date | null) => {
+                  updateFormData({
+                    recurrencePattern: {
+                      ...formData.recurrencePattern,
+                      endDate: date ? date.toISOString().split('T')[0] : ''
+                    }
+                  })
+                }}
+                dateFormat="MMMM d, yyyy"
                 className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/30"
+                wrapperClassName="w-full"
+                calendarClassName="bg-black border border-primary-500/30 rounded-lg"
+                minDate={formData.startTime ? new Date(formData.startTime) : new Date()}
+                placeholderText="Select end date (optional)"
               />
             </div>
             <div>
@@ -706,11 +747,22 @@ function Step4Enhancements({ formData, updateFormData }: { formData: PromotionFo
       {formData.isFlashDeal && (
         <div>
           <label className="block text-sm font-medium text-primary-500 mb-2">Flash Deal Ends At</label>
-          <input
-            type="datetime-local"
-            value={formData.flashDealEndsAt}
-            onChange={(e) => updateFormData({ flashDealEndsAt: e.target.value })}
-            className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500"
+          <DatePicker
+            selected={formData.flashDealEndsAt ? new Date(formData.flashDealEndsAt) : null}
+            onChange={(date: Date | null) => {
+              if (date) {
+                updateFormData({ flashDealEndsAt: date.toISOString().slice(0, 16) })
+              }
+            }}
+            showTimeSelect
+            timeFormat="HH:mm"
+            timeIntervals={15}
+            dateFormat="MMMM d, yyyy h:mm aa"
+            className="w-full px-4 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/30"
+            wrapperClassName="w-full"
+            calendarClassName="bg-black border border-primary-500/30 rounded-lg"
+            minDate={formData.startTime ? new Date(formData.startTime) : new Date()}
+            placeholderText="Select flash deal end date and time"
           />
         </div>
       )}
