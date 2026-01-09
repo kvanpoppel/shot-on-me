@@ -682,11 +682,11 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                 <div className="bg-black/40 rounded-lg p-2.5 border border-primary-500/20">
                   <div className="flex items-center justify-between mb-1.5">
                     <p className="text-xs text-primary-400/70 font-medium">Progress to $5 Cash</p>
-                    <p className="text-xs text-blue-400 font-bold">{points}/100 pts</p>
+                    <p className="text-xs text-purple-400 font-bold">{points}/100 pts</p>
                   </div>
                   <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min((points / 100) * 100, 100)}%` }}
                     />
                   </div>
