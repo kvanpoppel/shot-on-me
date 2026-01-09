@@ -214,8 +214,8 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
          {
            title: 'Rewards & Achievements',
            items: [
-             { icon: Trophy, label: 'Badges & Achievements', action: () => { setActiveTab('badges'); }, description: 'Non-monetary achievements & milestones' },
-             { icon: Gift, label: 'Rewards Program', action: () => { setActiveTab('rewards'); }, description: 'Earn cash: 100 points = $5' },
+             { icon: Trophy, label: 'Badges & Achievements', action: () => { setActiveTab('badges'); }, description: 'Social accomplishments & showcase' },
+             { icon: Gift, label: 'Rewards Program', action: () => { setActiveTab('rewards'); }, description: 'Engagement incentives: 100 pts = $5' },
            ]
          }
   ]

@@ -112,7 +112,7 @@ export default function RewardsScreen() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-2xl font-bold text-primary-500">Rewards Program</h1>
-            <p className="text-xs text-primary-400/70 mt-1">Earn cash rewards with your points</p>
+            <p className="text-xs text-primary-400/70 mt-1">Incentivize engagement & enhance venue interaction</p>
           </div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-500" />
@@ -165,9 +165,23 @@ export default function RewardsScreen() {
             <Sparkles className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-xs text-primary-400 font-medium">
-                <span className="text-yellow-500 font-semibold">Rewards = Cash Money!</span> Earn 2 points per Tap n Pay transaction, 1 point per check-in. 
-                Redeem 100 points for <span className="text-yellow-500 font-semibold">$5 cash</span> added to your wallet. 
-                This is different from <span className="text-primary-500 font-semibold">Badges</span> which are non-monetary achievements.
+                <span className="text-yellow-500 font-semibold">Engagement Incentives</span> - Rewards enhance your interaction with venues, notifications, and check-ins. 
+                Earn <span className="text-yellow-500 font-semibold">2 points</span> per Tap n Pay, <span className="text-yellow-500 font-semibold">1 point</span> per check-in. 
+                Redeem <span className="text-yellow-500 font-semibold">100 points = $5 cash</span>. 
+                Different from <span className="text-primary-500 font-semibold">Badges</span> which showcase social accomplishments.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Real-time Promotions Highlight */}
+        <div className="bg-gradient-to-r from-primary-500/15 to-yellow-500/15 border-2 border-primary-500/40 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <Bell className="w-5 h-5 text-primary-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-primary-500 mb-1">🎯 Real-Time Venue Promotions</p>
+              <p className="text-xs text-primary-400/80 leading-relaxed">
+                Get instant push notifications when venues launch promotions! Drive spending at your favorite spots with exclusive, time-sensitive deals delivered in real-time.
               </p>
             </div>
           </div>

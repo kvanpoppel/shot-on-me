@@ -85,7 +85,7 @@ export default function BadgesScreen() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-2xl font-bold text-primary-500">Badges & Achievements</h1>
-            <p className="text-xs text-primary-400/70 mt-1">Non-monetary achievements & milestones</p>
+            <p className="text-xs text-primary-400/70 mt-1">Showcase your social accomplishments</p>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Trophy className="w-5 h-5 text-yellow-500" />
@@ -101,8 +101,9 @@ export default function BadgesScreen() {
             <Trophy className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-xs text-primary-400 font-medium">
-                <span className="text-primary-500 font-semibold">Badges are achievements</span> - Show off your milestones and accomplishments. 
-                For <span className="text-yellow-500 font-semibold">monetary rewards</span>, check out the <span className="text-yellow-500 font-semibold">Rewards</span> section.
+                <span className="text-primary-500 font-semibold">Social Achievements</span> - Badges showcase your social networking accomplishments and milestones. 
+                Display your achievements to friends and build your social presence. 
+                For <span className="text-yellow-500 font-semibold">engagement rewards</span> that enhance venue interaction, check out <span className="text-yellow-500 font-semibold">Rewards</span>.
               </p>
             </div>
           </div>

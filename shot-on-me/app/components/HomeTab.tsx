@@ -991,10 +991,10 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Quick Deals / Pop-up Happy Hours */}
+      {/* Quick Deals / Pop-up Happy Hours - Real-Time Promotions */}
       {filteredDeals.length > 0 && (
         <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2.5">
               <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
                 <Gift className="w-4 h-4 text-primary-500" />
@@ -1008,6 +1008,19 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               View All
               <ArrowRight className="w-4 h-4 ml-1" />
             </button>
+          </div>
+          
+          {/* Real-Time Promotions Highlight */}
+          <div className="bg-gradient-to-r from-primary-500/15 to-yellow-500/10 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
+            <div className="flex items-start gap-2">
+              <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs text-primary-400 font-medium leading-relaxed">
+                  <span className="text-primary-500 font-bold">🎯 Real-Time Promotions</span> - Venues send instant push notifications when they launch promotions! 
+                  Get exclusive, time-sensitive deals delivered in real-time to drive spending at your favorite spots.
+                </p>
+              </div>
+            </div>
           </div>
           <div className="space-y-3">
             {filteredDeals.map((deal, idx) => (
