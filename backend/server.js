@@ -456,6 +456,29 @@ server.listen(PORT, HOST, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Socket.io enabled`);
   console.log(`✅ Health check available at http://${HOST}:${PORT}/health`);
+  
+  // Initialize venue promotion notification checks
+  const { checkExpiringPromotions, checkLaunchingPromotions, checkPromotionObjectives } = require('./services/venuePromotionNotifications');
+  
+  // Check for expiring/launching promotions every 30 minutes
+  setInterval(() => {
+    checkExpiringPromotions(io);
+    checkLaunchingPromotions(io);
+  }, 30 * 60 * 1000); // 30 minutes
+  
+  // Check for promotion objectives every hour
+  setInterval(() => {
+    checkPromotionObjectives(io);
+  }, 60 * 60 * 1000); // 1 hour
+  
+  // Run initial checks after 1 minute (give DB time to connect)
+  setTimeout(() => {
+    checkExpiringPromotions(io);
+    checkLaunchingPromotions(io);
+    checkPromotionObjectives(io);
+  }, 60000); // 1 minute
+  
+  console.log('📢 Venue promotion notification checks initialized');
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
   if (err.code === 'EADDRINUSE') {

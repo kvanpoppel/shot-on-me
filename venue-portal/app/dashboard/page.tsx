@@ -133,13 +133,13 @@ export default function Dashboard() {
             className="bg-gradient-to-br from-black/60 to-black/40 border border-primary-500/30 rounded-xl p-5 hover:border-primary-500/50 hover:from-black/70 hover:to-black/50 transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-primary-500/80 uppercase tracking-wider font-medium">Active Promotions</span>
+              <span className="text-xs text-primary-500/80 uppercase tracking-wider font-medium">Total Promotions</span>
               <Sparkles className="w-5 h-5 text-primary-500/60" />
             </div>
             <p className="text-3xl font-bold text-primary-500 group-hover:text-primary-400 transition-colors">
               {loadingStats ? '...' : stats.activePromos}
             </p>
-            <p className="text-xs text-primary-400/60 mt-1">Currently running</p>
+            <p className="text-xs text-primary-400/60 mt-1">All promotions</p>
           </div>
         </div>
 

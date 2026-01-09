@@ -121,7 +121,14 @@ const userSchema = new mongoose.Schema({
     promotionNotifications: { type: Boolean, default: true },
     venueUpdates: { type: Boolean, default: true },
     friendActivity: { type: Boolean, default: true },
-    paymentNotifications: { type: Boolean, default: true }
+    paymentNotifications: { type: Boolean, default: true },
+    // Venue owner specific notifications
+    promotionExpiring: { type: Boolean, default: true }, // Notify when promotion expiring soon
+    promotionLaunching: { type: Boolean, default: true }, // Notify when promotion about to launch
+    promotionObjectives: { type: Boolean, default: true }, // Notify when reaching objectives (views, clicks, revenue)
+    aiRenewalSuggestions: { type: Boolean, default: true }, // Notify about AI renewal suggestions
+    expirationWarningHours: { type: Number, default: 24 }, // Hours before expiration to warn (default 24h)
+    launchWarningHours: { type: Number, default: 1 } // Hours before launch to notify (default 1h)
   },
   favoritePosts: [{
     type: mongoose.Schema.Types.ObjectId,

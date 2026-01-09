@@ -246,6 +246,45 @@ router.put('/me', auth, async (req, res) => {
   }
 });
 
+// Update notification preferences
+router.put('/me/notification-preferences', auth, async (req, res) => {
+  try {
+    const { notificationPreferences } = req.body;
+    
+    if (!notificationPreferences) {
+      return res.status(400).json({ message: 'Notification preferences are required' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Merge with existing preferences (don't overwrite all preferences)
+    const currentPrefs = user.notificationPreferences || {};
+    const updatedPrefs = {
+      ...currentPrefs,
+      ...notificationPreferences
+    };
+
+    user.notificationPreferences = updatedPrefs;
+    await user.save();
+
+    console.log('✅ Notification preferences updated successfully');
+
+    res.json({
+      message: 'Notification preferences updated successfully',
+      notificationPreferences: user.notificationPreferences
+    });
+  } catch (error) {
+    console.error('❌ Error updating notification preferences:', error);
+    res.status(500).json({ 
+      message: 'Failed to update notification preferences',
+      error: error.message 
+    });
+  }
+});
+
 // Get current user (me) - must come after /me/profile-picture and PUT /me
 router.get('/me', auth, async (req, res) => {
   try {
@@ -275,7 +314,8 @@ router.get('/me', auth, async (req, res) => {
         wallet: user.wallet || { balance: 0, pendingBalance: 0 },
         friends: user.friends || [],
         location: user.location || { isVisible: true },
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        notificationPreferences: user.notificationPreferences || {}
       }
     });
   } catch (error) {

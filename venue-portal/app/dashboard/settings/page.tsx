@@ -10,7 +10,7 @@ import CollapsibleSection from '../../components/CollapsibleSection'
 import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Settings, CreditCard, MapPin, Users, Sparkles } from 'lucide-react'
+import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user, loading, token } = useAuth()
@@ -19,6 +19,15 @@ export default function SettingsPage() {
   const [connectStatus, setConnectStatus] = useState<any>(null)
   const [loadingStatus, setLoadingStatus] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    promotionExpiring: true,
+    promotionLaunching: true,
+    promotionObjectives: true,
+    aiRenewalSuggestions: true,
+    expirationWarningHours: 24,
+    launchWarningHours: 1
+  })
+  const [savingPrefs, setSavingPrefs] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,8 +48,49 @@ export default function SettingsPage() {
       }
     } else if (user && token) {
       checkStripeStatus()
+      fetchNotificationPreferences()
     }
   }, [user, token, searchParams])
+
+  const fetchNotificationPreferences = async () => {
+    if (!token || !user) return
+    try {
+      const apiUrl = getApiUrl()
+      const response = await axios.get(`${apiUrl}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.data.notificationPreferences) {
+        setNotificationPrefs({
+          promotionExpiring: response.data.notificationPreferences.promotionExpiring ?? true,
+          promotionLaunching: response.data.notificationPreferences.promotionLaunching ?? true,
+          promotionObjectives: response.data.notificationPreferences.promotionObjectives ?? true,
+          aiRenewalSuggestions: response.data.notificationPreferences.aiRenewalSuggestions ?? true,
+          expirationWarningHours: response.data.notificationPreferences.expirationWarningHours ?? 24,
+          launchWarningHours: response.data.notificationPreferences.launchWarningHours ?? 1
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch notification preferences:', error)
+    }
+  }
+
+  const saveNotificationPreferences = async () => {
+    if (!token) return
+    setSavingPrefs(true)
+    try {
+      const apiUrl = getApiUrl()
+      await axios.put(
+        `${apiUrl}/users/me/notification-preferences`,
+        { notificationPreferences: notificationPrefs },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      alert('Notification preferences saved!')
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to save preferences')
+    } finally {
+      setSavingPrefs(false)
+    }
+  }
 
   const checkStripeStatus = async () => {
     if (!token) {
@@ -203,6 +253,137 @@ export default function SettingsPage() {
           >
             <div className="pt-2">
               <StaffManager />
+            </div>
+          </CollapsibleSection>
+
+          {/* Notification Preferences - Collapsible */}
+          <CollapsibleSection
+            title="Notification Preferences"
+            subtitle="Manage alerts for promotions, objectives, and AI suggestions"
+            defaultOpen={false}
+            icon={<Bell className="w-4 h-4" />}
+          >
+            <div className="pt-2 space-y-4">
+              {/* Promotion Expiring */}
+              <div className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Clock className="w-5 h-5 text-primary-500" />
+                  <div>
+                    <p className="text-sm font-medium text-primary-500">Promotion Expiring Alerts</p>
+                    <p className="text-xs text-primary-400/70">Get notified when promotions are about to expire</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationPrefs.promotionExpiring}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, promotionExpiring: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-black/60 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
+              {notificationPrefs.promotionExpiring && (
+                <div className="ml-8 p-3 bg-black/30 border border-primary-500/10 rounded-lg">
+                  <label className="block text-xs font-medium text-primary-500 mb-2">
+                    Warn me when promotion expires in (hours):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={notificationPrefs.expirationWarningHours}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, expirationWarningHours: parseInt(e.target.value) || 24 })}
+                    className="w-full px-3 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 text-sm focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
+                  />
+                </div>
+              )}
+
+              {/* Promotion Launching */}
+              <div className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Zap className="w-5 h-5 text-primary-500" />
+                  <div>
+                    <p className="text-sm font-medium text-primary-500">Promotion Launching Alerts</p>
+                    <p className="text-xs text-primary-400/70">Get notified when promotions are about to start</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationPrefs.promotionLaunching}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, promotionLaunching: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-black/60 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
+              {notificationPrefs.promotionLaunching && (
+                <div className="ml-8 p-3 bg-black/30 border border-primary-500/10 rounded-lg">
+                  <label className="block text-xs font-medium text-primary-500 mb-2">
+                    Notify me when promotion launches in (hours):
+                  </label>
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="24"
+                    step="0.5"
+                    value={notificationPrefs.launchWarningHours}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, launchWarningHours: parseFloat(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 text-sm focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
+                  />
+                </div>
+              )}
+
+              {/* Promotion Objectives */}
+              <div className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Target className="w-5 h-5 text-primary-500" />
+                  <div>
+                    <p className="text-sm font-medium text-primary-500">Objective Milestones</p>
+                    <p className="text-xs text-primary-400/70">Get notified when reaching views, clicks, redemptions, or revenue goals</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationPrefs.promotionObjectives}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, promotionObjectives: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-black/60 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
+              {/* AI Renewal Suggestions */}
+              <div className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Sparkles className="w-5 h-5 text-primary-500" />
+                  <div>
+                    <p className="text-sm font-medium text-primary-500">AI Renewal Suggestions</p>
+                    <p className="text-xs text-primary-400/70">Receive AI-powered suggestions to extend or adjust promotions</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationPrefs.aiRenewalSuggestions}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, aiRenewalSuggestions: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-black/60 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
+              <button
+                onClick={saveNotificationPreferences}
+                disabled={savingPrefs}
+                className="w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-all shadow-lg hover:shadow-xl"
+              >
+                {savingPrefs ? 'Saving...' : 'Save Preferences'}
+              </button>
             </div>
           </CollapsibleSection>
 

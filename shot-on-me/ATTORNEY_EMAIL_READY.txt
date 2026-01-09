@@ -1,0 +1,70 @@
+Subject: Consultation Request: Money Transmitter License for Social Payment Platform
+
+Dear [Attorney Name],
+
+I hope this email finds you well. I am reaching out to request a consultation regarding regulatory compliance for a fintech startup I am launching called Shot On Me.
+
+ABOUT SHOT ON ME:
+Shot On Me is a social payment platform that allows users to send money to friends for use at participating venues. Our unique business model includes:
+- Peer-to-peer money transfers via phone number
+- Funds held in escrow until redemption at venues
+- Virtual card (tap-and-pay) system for venue redemptions
+- Restricted spending (funds can only be used at approved venues)
+- No bank withdrawal option for recipients
+
+WHY I NEED YOUR EXPERTISE:
+As a fintech platform facilitating money transfers and holding funds in escrow, I need guidance on:
+1. Money transmitter license requirements (federal and state)
+2. Legality of our escrow model (holding funds indefinitely, no withdrawal option)
+3. Virtual card issuance regulations (via Stripe Issuing)
+4. Geographic restrictions on where money can be spent
+5. AML/KYC compliance requirements
+6. Terms of Service and Privacy Policy requirements
+7. Tax and reporting obligations
+
+WHAT I'VE PREPARED:
+I have prepared a comprehensive consultation document that includes:
+- Detailed business model overview
+- Step-by-step payment flow diagrams
+- Technical implementation details
+- Specific legal questions organized by topic
+- State-by-state considerations
+- Risk assessment questions
+
+WHAT I'M LOOKING FOR:
+I would like to schedule a consultation (1-2 hours) to discuss:
+- Whether we need money transmitter licenses and in which states
+- The fastest legal path to launch
+- Cost estimates for compliance
+- Timeline for obtaining necessary licenses
+- Risk assessment and mitigation strategies
+- Alternative business structures that might reduce regulatory burden
+
+ATTACHED DOCUMENT:
+I have attached a detailed consultation guide (ATTORNEY_CONSULTATION_GUIDE.md) that contains all the information about our business model, payment flows, and specific legal questions. This document is designed to help you understand our business quickly and provide targeted legal advice.
+
+TIMELINE:
+We are in the early stages of business formation and would like to understand the legal requirements before proceeding with launch. Ideally, I would like to schedule a consultation within the next 1-2 weeks.
+
+NEXT STEPS:
+Please let me know:
+1. Your availability for a consultation (in-person, phone, or video call)
+2. Your consultation fee structure
+3. Any additional information you need before our meeting
+4. Your experience with money transmitter licenses and fintech compliance
+
+I understand this is a complex regulatory area, and I value your expertise in helping us navigate these requirements properly. I look forward to hearing from you.
+
+Thank you for your time and consideration.
+
+Best regards,
+
+[Your Name]
+[Your Title]
+Shot On Me
+[Your Phone Number]
+[Your Email Address]
+[Your Business Address]
+
+P.S. If you are not available or do not specialize in this area, I would greatly appreciate a referral to another attorney who does.
+

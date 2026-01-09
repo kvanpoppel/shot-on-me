@@ -514,19 +514,58 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               const endTime = new Date(promo.endTime)
               const isCurrentlyActive = isActive && now >= startTime && now <= endTime
               
+              // Calculate time until expiration for color gradient
+              const timeUntilEnd = endTime.getTime() - now.getTime()
+              const hoursUntilEnd = timeUntilEnd / (1000 * 60 * 60)
+              const isExpiringSoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 24 // Expiring within 24 hours
+              const isExpiringVerySoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 4 // Expiring within 4 hours
+              
+              // Color scheme based on status
+              let gradientClass = 'from-black/50 to-black/40'
+              let borderClass = 'border-primary-500/20'
+              
+              if (isCurrentlyActive) {
+                if (isExpiringVerySoon) {
+                  // Red gradient for expiring very soon (urgent)
+                  gradientClass = 'from-red-500/25 via-orange-500/15 to-black/40'
+                  borderClass = 'border-red-500/50'
+                } else if (isExpiringSoon) {
+                  // Orange gradient for expiring soon (warning)
+                  gradientClass = 'from-orange-500/20 via-yellow-500/10 to-black/40'
+                  borderClass = 'border-orange-500/40'
+                } else {
+                  // Green gradient for active and healthy
+                  gradientClass = 'from-green-500/20 via-primary-500/10 to-black/40'
+                  borderClass = 'border-green-500/40'
+                }
+              } else if (now < startTime) {
+                // Blue gradient for upcoming promotions
+                gradientClass = 'from-blue-500/20 via-cyan-500/10 to-black/40'
+                borderClass = 'border-blue-500/30'
+              } else {
+                // Gray for inactive/expired
+                gradientClass = 'from-gray-500/10 to-black/40'
+                borderClass = 'border-gray-500/20'
+              }
+              
               return (
                 <div 
                   key={promo._id} 
                   onClick={() => handleEdit(promo)}
-                  className={`bg-gradient-to-br ${isCurrentlyActive ? 'from-primary-500/20 via-primary-500/10 to-black/40' : 'from-black/50 to-black/40'} border-2 ${isCurrentlyActive ? 'border-primary-500/40' : 'border-primary-500/20'} rounded-xl p-4 hover:border-primary-500/50 hover:from-primary-500/25 hover:via-primary-500/15 hover:to-black/50 transition-all backdrop-blur-sm cursor-pointer group shadow-lg`}
+                  className={`bg-gradient-to-br ${gradientClass} border-2 ${borderClass} rounded-xl p-4 hover:border-primary-500/60 hover:shadow-xl transition-all backdrop-blur-sm cursor-pointer group shadow-lg`}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-bold text-primary-500 text-base tracking-tight">{promo.title}</h3>
                         {isCurrentlyActive && (
-                          <span className="bg-primary-500/30 border border-primary-500/50 text-primary-500 px-2 py-0.5 rounded-lg text-xs font-bold animate-pulse">
-                            LIVE
+                          <span className={`${isExpiringVerySoon ? 'bg-red-500/40 border-red-500/60 text-red-300' : isExpiringSoon ? 'bg-orange-500/30 border-orange-500/50 text-orange-300' : 'bg-green-500/30 border-green-500/50 text-green-300'} border px-2 py-0.5 rounded-lg text-xs font-bold ${isExpiringVerySoon ? 'animate-pulse' : ''}`}>
+                            {isExpiringVerySoon ? 'EXPIRING SOON' : isExpiringSoon ? 'EXPIRING TODAY' : 'LIVE'}
+                          </span>
+                        )}
+                        {now < startTime && (
+                          <span className="bg-blue-500/30 border border-blue-500/50 text-blue-300 px-2 py-0.5 rounded-lg text-xs font-bold">
+                            UPCOMING
                           </span>
                         )}
                         {promo.isFlashDeal && (
@@ -535,6 +574,13 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
                           </span>
                         )}
                       </div>
+                      {isExpiringSoon && isCurrentlyActive && (
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-orange-400">
+                            ⏰ Expires in {Math.floor(hoursUntilEnd)} hour{Math.floor(hoursUntilEnd) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      )}
                       {promo.description && (
                         <p className="text-sm text-primary-400/90 mt-1 mb-2 line-clamp-2 font-light">{promo.description}</p>
                       )}
