@@ -411,6 +411,7 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       isActive
     } = req.body;
 
+    const wasActive = promotion.isActive;
     if (title !== undefined) promotion.title = title;
     if (description !== undefined) promotion.description = description;
     if (type !== undefined) promotion.type = type;
@@ -423,6 +424,15 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
 
     await venue.save();
 
+    // If promotion was just activated, send push notifications
+    const justActivated = !wasActive && promotion.isActive;
+    if (justActivated) {
+      const { pushTargetedPromotionNotification } = require('./venue-notifications');
+      pushTargetedPromotionNotification(venue._id, promotion, io).catch(err => 
+        console.error('Error pushing promotion notification on activation:', err)
+      );
+    }
+
     if (io) {
       io.emit('promotion-updated', {
         venueId: venue._id.toString(),
@@ -434,10 +444,15 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       });
     }
 
+    const responseMessage = justActivated 
+      ? 'Promotion activated and push notifications sent to users!'
+      : 'Promotion updated successfully';
+
     res.json({
-      message: 'Promotion updated successfully',
+      message: responseMessage,
       promotion,
-      venue
+      venue,
+      notificationsSent: justActivated
     });
   } catch (error) {
     console.error('Error updating promotion:', error);

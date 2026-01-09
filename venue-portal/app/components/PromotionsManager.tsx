@@ -4,7 +4,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
-import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Save } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Save, Bell, Zap } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
 import PromotionWizard from './promotions/PromotionWizard'
@@ -222,19 +222,22 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       }
 
       if (editingPromo) {
-        await axios.put(
+        const response = await axios.put(
           `${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`,
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        alert('Promotion updated successfully!')
+        const message = response.data?.notificationsSent 
+          ? '✅ Promotion activated! Push notifications sent to users instantly!'
+          : 'Promotion updated successfully!'
+        alert(message)
       } else {
         await axios.post(
           `${getApiUrl()}/venues/${venueId}/promotions`,
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        alert('Promotion created successfully!')
+        alert('✅ Promotion created! Push notifications sent to users instantly!')
       }
 
       setShowWizard(false)
@@ -488,6 +491,24 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               <Plus className="w-3.5 h-3.5" />
               <span>New</span>
             </button>
+          </div>
+        </div>
+
+        {/* Push Notification Banner - Key Feature Highlight */}
+        <div className="mb-3 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-3">
+          <div className="flex items-start gap-2.5">
+            <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
+              <Bell className="w-4 h-4 text-primary-500" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
+                <Zap className="w-3.5 h-3.5 text-yellow-500" />
+              </div>
+              <p className="text-xs text-primary-400/90 font-light leading-relaxed">
+                When you create or activate a promotion, users instantly receive push notifications on their mobile devices. This drives immediate engagement and spending at your venue. Target followers, nearby users, or specific segments to maximize impact.
+              </p>
+            </div>
           </div>
         </div>
 

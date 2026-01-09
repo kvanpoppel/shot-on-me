@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, ChevronLeft, Check, Calendar, Target, Sparkles, Eye, X } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Calendar, Target, Sparkles, Eye, X, Bell, Zap } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
 
 interface PromotionFormData {
@@ -778,6 +778,24 @@ function Step5Preview({ formData }: { formData: PromotionFormData }) {
                 <li>• Minimum {formData.targeting.minCheckIns} check-ins</li>
               )}
             </ul>
+          </div>
+        </div>
+
+        {/* Push Notification Notice */}
+        <div className="mt-6 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="bg-primary-500/30 rounded-lg p-2 flex-shrink-0">
+              <Bell className="w-5 h-5 text-primary-500" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1.5">
+                <h4 className="text-sm font-bold text-primary-500">Push Notifications Enabled</h4>
+                <Zap className="w-4 h-4 text-yellow-500" />
+              </div>
+              <p className="text-xs text-primary-400/90 font-light leading-relaxed">
+                When you create this promotion, users will instantly receive push notifications on their mobile devices. This drives immediate engagement and spending at your venue. Notifications respect user preferences and targeting settings.
+              </p>
+            </div>
           </div>
         </div>
       </div>
