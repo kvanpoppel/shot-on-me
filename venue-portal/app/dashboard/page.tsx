@@ -5,19 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import DashboardLayout from '../components/DashboardLayout'
 import PromotionsManager from '../components/PromotionsManager'
-import ScheduleManager from '../components/ScheduleManager'
-import NotificationCenter from '../components/NotificationCenter'
-import StatsCard from '../components/StatsCard'
-import StripeStatusIndicator from '../components/StripeStatusIndicator'
-import FollowerCount from '../components/FollowerCount'
-import ActivitySummary from '../components/ActivitySummary'
-import AIAnalyticsSummary from '../components/AIAnalyticsSummary'
-import AIAutomationDashboard from '../components/AIAutomationDashboard'
-import AIAssistant from '../components/AIAssistant'
-import CollapsibleSection from '../components/CollapsibleSection'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
-import { Loader, Sparkles, TrendingUp, Users, Clock, Settings, Bell } from 'lucide-react'
+import { Sparkles, TrendingUp, Users, Settings } from 'lucide-react'
 
 export default function Dashboard() {
   const { user, loading, token } = useAuth()
@@ -113,180 +103,91 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-5 w-full max-w-full">
-        {/* Clean Header */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="space-y-6 w-full max-w-full">
+        {/* Simplified Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-primary-400 mb-1">Dashboard</h1>
-            <p className="text-sm text-primary-500/70">Your venue at a glance</p>
+            <h1 className="text-3xl font-bold text-primary-500 mb-1">Promotions</h1>
+            <p className="text-sm text-primary-400/70">Create and manage promotions that drive customers to your venue</p>
           </div>
-          <button
-            onClick={handleNewPromotion}
-            className="px-5 py-2.5 bg-primary-500 text-black rounded-lg font-semibold hover:bg-primary-400 transition-all text-sm shadow-lg hover:shadow-xl"
-          >
-            + New Promotion
-          </button>
         </div>
 
-        {/* Key Metrics - Clean & Focused */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
+        {/* Key Metrics - Simplified to 2 most important */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <div 
             onClick={() => router.push('/dashboard/analytics')}
-            className="bg-gradient-to-br from-black/50 to-black/40 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 hover:from-black/60 hover:to-black/50 transition-all cursor-pointer group"
+            className="bg-gradient-to-br from-black/60 to-black/40 border border-primary-500/30 rounded-xl p-5 hover:border-primary-500/50 hover:from-black/70 hover:to-black/50 transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-primary-500/70 uppercase tracking-wider font-medium">Revenue</span>
-              <span className="text-xl">💰</span>
+              <span className="text-xs text-primary-500/80 uppercase tracking-wider font-medium">Revenue</span>
+              <TrendingUp className="w-5 h-5 text-primary-500/60" />
             </div>
-            <p className="text-2xl font-bold text-primary-400 group-hover:text-primary-300 transition-colors">
+            <p className="text-3xl font-bold text-primary-500 group-hover:text-primary-400 transition-colors">
               {loadingStats ? '...' : stats.totalRevenue}
             </p>
-            <p className="text-[10px] text-primary-500/60 mt-1">Last 30 days</p>
-          </div>
-
-          <div 
-            onClick={() => router.push('/dashboard/redemptions')}
-            className="bg-gradient-to-br from-black/50 to-black/40 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 hover:from-black/60 hover:to-black/50 transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-primary-500/70 uppercase tracking-wider font-medium">Redemptions</span>
-              <span className="text-xl">🎫</span>
-            </div>
-            <p className="text-2xl font-bold text-primary-400 group-hover:text-primary-300 transition-colors">
-              {loadingStats ? '...' : stats.totalRedemptions}
-            </p>
-            <p className="text-[10px] text-primary-500/60 mt-1">Last 30 days</p>
-          </div>
-
-          <div 
-            onClick={() => router.push('/dashboard/analytics')}
-            className="bg-gradient-to-br from-black/50 to-black/40 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 hover:from-black/60 hover:to-black/50 transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-primary-500/70 uppercase tracking-wider font-medium">Pending</span>
-              <span className="text-xl">🏦</span>
-            </div>
-            <p className="text-2xl font-bold text-primary-400 group-hover:text-primary-300 transition-colors">
-              {loadingStats ? '...' : stats.pendingPayouts}
-            </p>
-            <p className="text-[10px] text-primary-500/60 mt-1">Processing</p>
+            <p className="text-xs text-primary-400/60 mt-1">Last 30 days</p>
           </div>
 
           <div 
             onClick={() => router.push('/dashboard/promotions')}
-            className="bg-gradient-to-br from-black/50 to-black/40 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 hover:from-black/60 hover:to-black/50 transition-all cursor-pointer group"
+            className="bg-gradient-to-br from-black/60 to-black/40 border border-primary-500/30 rounded-xl p-5 hover:border-primary-500/50 hover:from-black/70 hover:to-black/50 transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-primary-500/70 uppercase tracking-wider font-medium">Active</span>
-              <span className="text-xl">🏷️</span>
+              <span className="text-xs text-primary-500/80 uppercase tracking-wider font-medium">Active Promotions</span>
+              <Sparkles className="w-5 h-5 text-primary-500/60" />
             </div>
-            <p className="text-2xl font-bold text-primary-400 group-hover:text-primary-300 transition-colors">
+            <p className="text-3xl font-bold text-primary-500 group-hover:text-primary-400 transition-colors">
               {loadingStats ? '...' : stats.activePromos}
             </p>
-            <p className="text-[10px] text-primary-500/60 mt-1">Promotions</p>
+            <p className="text-xs text-primary-400/60 mt-1">Currently running</p>
           </div>
         </div>
 
-        {/* Main Content - Promotions (Always Visible) */}
-        <div className="mb-5">
+        {/* Hero Section - Promotions Manager (Primary Focus) */}
+        <div className="mb-6">
           <PromotionsManager 
             ref={promotionsManagerRef}
-            hideQuickActions={true}
+            hideQuickActions={false}
           />
         </div>
 
-        {/* Collapsible Sections - Organized & Clean */}
-        <div className="space-y-3">
-          {/* AI Automation - Collapsible */}
-          <CollapsibleSection
-            title="AI Automation"
-            subtitle="Let AI handle your promotions automatically"
-            defaultOpen={false}
-            icon={<Sparkles className="w-4 h-4" />}
-            actionButton={
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push('/dashboard/analytics?tab=ai-analytics')
-                }}
-                className="text-xs text-primary-500/70 hover:text-primary-500 px-2 py-1 rounded hover:bg-primary-500/10 transition-colors"
-              >
-                Manage →
-              </button>
-            }
-          >
-            <div className="pt-2">
-              <AIAutomationDashboard />
-            </div>
-          </CollapsibleSection>
-
-          {/* Quick Tools - Collapsible */}
-          <CollapsibleSection
-            title="Quick Tools"
-            subtitle="Essential venue management tools"
-            defaultOpen={false}
-            icon={<Settings className="w-4 h-4" />}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 pt-2">
-              <StripeStatusIndicator />
-              <FollowerCount />
-              <div className="md:col-span-2">
-                <ScheduleManager />
-              </div>
-            </div>
-          </CollapsibleSection>
-
-          {/* Activity & Insights - Collapsible */}
-          <CollapsibleSection
-            title="Activity & Insights"
-            subtitle="Recent activity and AI-powered insights"
-            defaultOpen={false}
-            icon={<TrendingUp className="w-4 h-4" />}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 pt-2">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-primary-500">Recent Activity</h4>
-                  <button
-                    onClick={() => router.push('/dashboard/analytics?tab=activity')}
-                    className="text-xs text-primary-500/70 hover:text-primary-500 transition-colors"
-                  >
-                    View All →
-                  </button>
-                </div>
-                <ActivitySummary />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-primary-500">AI Insights</h4>
-                  <button
-                    onClick={() => router.push('/dashboard/analytics?tab=ai-analytics')}
-                    className="text-xs text-primary-500/70 hover:text-primary-500 transition-colors"
-                  >
-                    View All →
-                  </button>
-                </div>
-                <AIAnalyticsSummary />
-              </div>
-            </div>
-          </CollapsibleSection>
-
-          {/* Notifications - Collapsible */}
-          <CollapsibleSection
-            title="Notifications"
-            subtitle="Stay updated with venue notifications"
-            defaultOpen={false}
-            icon={<Bell className="w-4 h-4" />}
-          >
-            <div className="pt-2">
-              <NotificationCenter />
-            </div>
-          </CollapsibleSection>
+        {/* Quick Links - Minimal, Clean */}
+        <div className="border-t border-primary-500/10 pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-primary-500">Quick Links</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button
+              onClick={() => router.push('/dashboard/analytics')}
+              className="flex flex-col items-center justify-center p-4 bg-black/40 border border-primary-500/20 rounded-lg hover:border-primary-500/40 hover:bg-black/60 transition-all group"
+            >
+              <TrendingUp className="w-5 h-5 text-primary-500/70 group-hover:text-primary-500 mb-2" />
+              <span className="text-sm text-primary-400/80 group-hover:text-primary-400 font-medium">Analytics</span>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/redemptions')}
+              className="flex flex-col items-center justify-center p-4 bg-black/40 border border-primary-500/20 rounded-lg hover:border-primary-500/40 hover:bg-black/60 transition-all group"
+            >
+              <Users className="w-5 h-5 text-primary-500/70 group-hover:text-primary-500 mb-2" />
+              <span className="text-sm text-primary-400/80 group-hover:text-primary-400 font-medium">Redemptions</span>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/settings')}
+              className="flex flex-col items-center justify-center p-4 bg-black/40 border border-primary-500/20 rounded-lg hover:border-primary-500/40 hover:bg-black/60 transition-all group"
+            >
+              <Settings className="w-5 h-5 text-primary-500/70 group-hover:text-primary-500 mb-2" />
+              <span className="text-sm text-primary-400/80 group-hover:text-primary-400 font-medium">Settings</span>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/automation')}
+              className="flex flex-col items-center justify-center p-4 bg-black/40 border border-primary-500/20 rounded-lg hover:border-primary-500/40 hover:bg-black/60 transition-all group"
+            >
+              <Sparkles className="w-5 h-5 text-primary-500/70 group-hover:text-primary-500 mb-2" />
+              <span className="text-sm text-primary-400/80 group-hover:text-primary-400 font-medium">AI Tools</span>
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* AI Assistant - Floating */}
-      <AIAssistant />
     </DashboardLayout>
   )
 }
