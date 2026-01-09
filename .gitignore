@@ -44,3 +44,11 @@ public/workbox-*.js.map
 public/fallback-*.js
 public/fallback-*.js.map
 
+# Documentation files with secrets (should not be committed)
+RENDER_CONFIG_FIX.md
+RENDER_DEPLOY_EXACT_STEPS.md
+RENDER_ENV_VARS_EXACT.md
+RENDER_FIX_STEPS.md
+TWILIO_CONFIGURATION_GUIDE.md
+backend/TWILIO_SETUP.md
+
