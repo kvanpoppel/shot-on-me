@@ -679,21 +679,18 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               
               {/* Progress to $5 */}
               {points < 100 && (
-                <div className="bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-blue-500/10 rounded-lg p-3 border-2 border-cyan-500/30 shadow-lg shadow-cyan-500/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-cyan-400 font-semibold">Progress to $5 Cash</p>
-                    <p className="text-xs text-cyan-300 font-bold">{points}/100 pts</p>
+                <div className="bg-black/40 rounded-lg p-2.5 border border-primary-500/20">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-primary-400/70 font-medium">Progress to $5 Cash</p>
+                    <p className="text-xs text-blue-400 font-bold">{points}/100 pts</p>
                   </div>
-                  <div className="w-full bg-black/60 rounded-full h-2.5 overflow-hidden shadow-inner">
+                  <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-500 h-2.5 rounded-full transition-all duration-500 shadow-lg shadow-cyan-500/50 relative"
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min((points / 100) * 100, 100)}%` }}
-                    >
-                      {/* Shimmer effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-                    </div>
+                    />
                   </div>
-                  <p className="text-xs text-cyan-400/70 mt-2 text-center font-medium">
+                  <p className="text-xs text-primary-400/60 mt-1.5 text-center">
                     {100 - points} more points needed for $5 cash reward
                   </p>
                 </div>
