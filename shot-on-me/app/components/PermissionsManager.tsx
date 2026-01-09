@@ -62,7 +62,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     }
 
     // Check Location - More thorough check
-    if ('geolocation' in navigator) {
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       try {
         if ('permissions' in navigator) {
           try {
@@ -73,14 +73,15 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
               setPermissions(prev => ({ ...prev, location: result.state as 'granted' | 'denied' | 'prompt' }))
             }
           } catch {
-            // Fallback: try to get location to determine status
+            // Fallback: geolocation exists, so it's at least prompt
             status.location = 'prompt'
           }
         } else {
-          // No permissions API, assume prompt
+          // No permissions API, but geolocation exists - assume prompt
           status.location = 'prompt'
         }
       } catch (e) {
+        // If geolocation exists, default to prompt
         status.location = 'prompt'
       }
     }
@@ -135,32 +136,49 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       const contactsPermission = localStorage.getItem('contacts-permission')
       if (contactsPermission === 'granted') {
         status.contacts = 'granted'
-      } else if ('contacts' in navigator) {
+      } else if (typeof navigator !== 'undefined' && 'contacts' in navigator) {
         // Android Chrome ContactsManager API
-        if ('ContactsManager' in window) {
+        if (typeof window !== 'undefined' && 'ContactsManager' in window) {
           status.contacts = 'prompt'
         }
         // iOS Safari and newer browsers Contact Picker API
         else if (navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
           status.contacts = 'prompt'
         } else {
-          status.contacts = 'unavailable'
+          // On mobile devices, contacts might be available even if not detected
+          // Check if we're on a mobile device
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          status.contacts = isMobile ? 'prompt' : 'unavailable'
         }
       } else {
         // Check for iOS Contact Picker (different API)
-        if (typeof (window as any).ContactsPicker !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof (window as any).ContactsPicker !== 'undefined') {
           status.contacts = 'prompt'
         } else {
-          status.contacts = 'unavailable'
+          // On mobile devices, assume contacts might be available
+          const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          status.contacts = isMobile ? 'prompt' : 'unavailable'
         }
       }
     } catch (e) {
-      status.contacts = 'unavailable'
+      // On mobile, default to prompt for contacts
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      status.contacts = isMobile ? 'prompt' : 'unavailable'
     }
 
     // Check Notifications
-    if ('Notification' in window) {
-      status.notifications = Notification.permission as 'granted' | 'denied' | 'prompt'
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      const notificationPermission = Notification.permission
+      if (notificationPermission === 'granted') {
+        status.notifications = 'granted'
+      } else if (notificationPermission === 'denied') {
+        status.notifications = 'denied'
+      } else {
+        status.notifications = 'prompt'
+      }
+    } else {
+      // Notifications not supported
+      status.notifications = 'unavailable'
     }
 
     setPermissions(status)
@@ -348,16 +366,26 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       return
     }
     
-    // If denied, try to request again
+    // If denied, try to request again (some browsers allow re-prompting)
     if (currentStatus === 'denied') {
-      alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
-      return
+      // For location and notifications, we can still try to request
+      if (type === 'location' || type === 'notifications') {
+        // Continue to request - browser might allow it
+      } else {
+        alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
+        return
+      }
     }
     
-    // If unavailable, show message
+    // If unavailable, still try to request (might work on some devices)
     if (currentStatus === 'unavailable') {
-      alert(`${type} permission is not available on this device or browser.`)
-      return
+      // For mobile devices, still try to request
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      if (!isMobile && type !== 'location' && type !== 'notifications') {
+        alert(`${type} permission is not available on this device or browser.`)
+        return
+      }
+      // Continue to request anyway
     }
     
     // Request permission
