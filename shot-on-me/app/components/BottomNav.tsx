@@ -32,8 +32,8 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-primary-500/10 z-50">
-      <div className="flex justify-center items-center h-20 px-2 pointer-events-auto">
-        <div className="flex items-center space-x-1 bg-black/40 border border-primary-500/15 rounded-full px-1 py-1 pointer-events-auto max-w-full overflow-x-auto scrollbar-hide backdrop-blur-sm">
+      <div className="flex justify-center items-center h-14 px-2 pointer-events-auto">
+        <div className="flex items-center space-x-0.5 bg-black/40 border border-primary-500/15 rounded-full px-0.5 py-0.5 pointer-events-auto max-w-full overflow-x-auto scrollbar-hide backdrop-blur-sm">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -57,19 +57,19 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                   }
                 }}
                 type="button"
-                className={`relative flex flex-col items-center justify-center px-3 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 min-w-[60px] ${
+                className={`relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all cursor-pointer flex-shrink-0 min-w-[50px] ${
                   isActive
                     ? 'bg-primary-500 text-black' 
                     : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
                 }`}
               >
-                <Icon className="w-5 h-5 mb-0.5" />
+                <Icon className="w-4 h-4 mb-0.5" />
                 {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 bg-primary-500 text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {tab.badge > 9 ? '9+' : tab.badge}
                   </span>
                 )}
-                <span className="text-[10px] font-medium leading-tight">
+                <span className="text-[9px] font-medium leading-tight">
                   {tab.label}
                 </span>
               </button>

@@ -1426,7 +1426,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   // Improved loading state with skeleton screens for better UX
   if (loading) {
     return (
-      <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto">
+      <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
         {/* Stories skeleton */}
         <div className="p-4 border-b border-primary-500/10">
           <div className="flex gap-3 overflow-x-auto">
@@ -1465,7 +1465,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   return (
     <div 
       ref={feedContainerRef}
-      className="min-h-screen pb-20 bg-black max-w-2xl mx-auto"
+      className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16"
     >
       {/* Stories Carousel */}
       <StoriesCarousel

@@ -173,7 +173,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto">
+    <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
       {/* Profile Header - Instagram Style */}
       <div className="px-4 py-6 border-b border-primary-500/10">
         <div className="flex items-center space-x-6 mb-4">

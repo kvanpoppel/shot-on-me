@@ -176,7 +176,7 @@ function Home() {
         onOpenAddFunds={() => setAutoOpenAddFunds(true)}
       />
       <ProximityNotifications />
-      <main className="pt-20 min-h-screen bg-black pb-20 overflow-y-auto">
+      <main className="min-h-screen bg-black overflow-y-auto">
         {activeTab === 'home' && (
           <HomeTab 
             setActiveTab={setActiveTab} 

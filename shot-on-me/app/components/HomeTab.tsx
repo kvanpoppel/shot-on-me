@@ -772,7 +772,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-2xl mx-auto overflow-visible" suppressHydrationWarning>
+    <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-visible pt-16" suppressHydrationWarning>
       {/* Enhanced Hero Section - Positioned below header */}
       <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8">
         {/* Centered "Shot on me" title */}
@@ -786,7 +786,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
       {/* Search Modal - Shown when search icon is clicked */}
       {showSearchModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center p-4 pt-20">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center p-4 pt-16">
           <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-primary-500">Search</h2>

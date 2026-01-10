@@ -1032,12 +1032,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   }, [fetchVenues, fetchTrendingVenues, fetchFriends, getCurrentLocation])
 
   return (
-    <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto pt-20">
+    <div className="min-h-screen pb-14 bg-black max-w-4xl mx-auto pt-16">
       {/* Header - Optimized Compact Design */}
       {viewMode === 'map' ? (
-        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-20 z-20 p-2 sm:p-3">
+        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 p-2 sm:p-2.5">
           {/* Top Row: Back Button, Location, Temperature, Settings - Compact */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
             {/* Back Button */}
             <button
               onClick={() => setActiveTab?.('home')}
@@ -1108,9 +1108,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           </div>
         </div>
       ) : (
-        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-20 z-20 px-4 py-3">
-          <div className="flex items-center justify-center relative mb-3">
-            <h1 className="text-2xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
+        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 px-4 py-2">
+          <div className="flex items-center justify-center relative mb-2">
+            <h1 className="text-xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -1122,7 +1122,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           </div>
           
           {/* Search Bar - Only for List View */}
-          <div className="relative mb-3">
+          <div className="relative mb-2">
             <PlacesAutocomplete
               value={searchQuery}
               onChange={(value) => {
@@ -1139,7 +1139,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           </div>
           
           {/* Horizontal Scrollable Filter Tabs - Chase Offers Style */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
               <button
                 onClick={() => setFilter('all')}
@@ -1220,28 +1220,28 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             </div>
           </div>
           
-          {/* View Toggle */}
-          <div className="flex items-center justify-end gap-2">
+          {/* View Toggle - Compact */}
+          <div className="flex items-center justify-end gap-1.5">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 viewMode === 'list'
                   ? 'bg-primary-500 text-black shadow-lg'
                   : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
               }`}
             >
-              <List className="w-4 h-4 inline mr-1.5" />
+              <List className="w-3.5 h-3.5 inline mr-1" />
               List
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 (viewMode as string) === 'map'
                   ? 'bg-primary-500 text-black shadow-lg'
                   : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
               }`}
             >
-              <MapIcon className="w-4 h-4 inline mr-1.5" />
+              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
               Map
             </button>
           </div>
@@ -1266,7 +1266,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
       {/* Map View */}
       {viewMode === 'map' && (
-        <div className="h-[calc(100vh-14rem)] sm:h-[calc(100vh-15rem)] relative">
+        <div className="h-[calc(100vh-12rem)] sm:h-[calc(100vh-13rem)] relative">
           {!mapsLoaded ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
               <div className="text-center text-primary-400">
@@ -1469,23 +1469,23 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         </div>
       )}
 
-      {/* List View - Stamp/Tablet Style */}
+      {/* List View - Compact Style */}
       {viewMode === 'list' && (
-      <div className="p-4">
+      <div className="p-3">
           {loading ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-primary-500 mx-auto mb-4" />
-                <p className="text-primary-400">Loading venues...</p>
+                <Loader2 className="w-10 h-10 animate-spin text-primary-500 mx-auto mb-3" />
+                <p className="text-primary-400 text-sm">Loading venues...</p>
           </div>
             </div>
           ) : getFilteredVenues.length === 0 ? (
-            <div className="text-center py-20">
-              <MapPin className="w-16 h-16 mx-auto mb-4 text-primary-500/30" />
-              <p className="text-lg font-semibold text-primary-400 mb-2">
+            <div className="text-center py-12">
+              <MapPin className="w-12 h-12 mx-auto mb-3 text-primary-500/30" />
+              <p className="text-base font-semibold text-primary-400 mb-2">
               {searchQuery ? `No venues found matching "${searchQuery}"` : 'No venues found'}
             </p>
-              <p className="text-sm text-primary-400/70 mb-4">
+              <p className="text-xs text-primary-400/70 mb-3">
               {searchQuery ? 'Try a different search term' : 'Check back soon for special offers!'}
             </p>
             {searchQuery && (
@@ -1501,7 +1501,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             )}
           </div>
         ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
             {getFilteredVenues.map((venue: any) => {
               if (!venue || !venue._id) return null
               
@@ -1635,8 +1635,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                     </div>
                   )}
 
-                  {/* Business Icon/Logo Area */}
-                  <div className="relative h-32 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden group/image">
+                  {/* Business Icon/Logo Area - Reduced height */}
+                  <div className="relative h-24 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden group/image">
                     {venue.image || venue.logo ? (
                       <img 
                         src={venue.image || venue.logo} 
@@ -1680,9 +1680,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                     )}
                   </div>
 
-                  {/* Venue Info */}
-                  <div className="p-3">
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                  {/* Venue Info - Compact */}
+                  <div className="p-2.5">
+                    <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
                           <div className="text-primary-500/70 flex-shrink-0">
@@ -1706,68 +1706,43 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                       )}
                     </div>
                     
-                    {/* Distance & Social Info Row */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
+                    {/* Distance & Social Info Row - Compact */}
+                    <div className="flex items-center justify-between gap-2 mb-1">
                       {distance !== null && (
-                        <p className="text-xs text-primary-400/70 font-medium">
-                          {distance < 0.1 ? `${Math.round(distance * 5280)}ft away` : `${distance.toFixed(1)}mi away`}
+                        <p className="text-[10px] text-primary-400/70 font-medium">
+                          {distance < 0.1 ? `${Math.round(distance * 5280)}ft` : `${distance.toFixed(1)}mi`}
                         </p>
                       )}
                       {friendsAtVenue > 0 && (
-                        <div className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
-                          <Users className="w-3 h-3" />
-                          <span>{friendsAtVenue} here</span>
+                        <div className="flex items-center gap-1 text-[9px] text-green-400 font-medium">
+                          <Users className="w-2.5 h-2.5" />
+                          <span>{friendsAtVenue}</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Active Promotion */}
+                    {/* Active Promotion - Compact */}
                     {activePromos.length > 0 ? (
-                      <div className="mt-2 pt-2 border-t border-primary-500/10">
-                        <p className="text-xs text-primary-400/90 line-clamp-1 font-semibold mb-2">
+                      <div className="mt-1 pt-1.5 border-t border-primary-500/10">
+                        <p className="text-[10px] text-primary-400/90 line-clamp-1 font-semibold mb-1">
                           {activePromos[0].title}
                         </p>
-                        {/* Enlarged Date & Time Display - Mobile Optimized */}
+                        {/* Compact Date & Time Display */}
                         {formatPromotionDate(activePromos[0]) && (
-                          <div className="bg-primary-500/15 border border-primary-500/30 rounded-lg p-2 sm:p-2.5 mb-2">
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-500 flex-shrink-0" />
-                              <p className="text-[11px] sm:text-xs font-bold text-primary-500 leading-tight break-words">
+                          <div className="bg-primary-500/15 border border-primary-500/30 rounded-lg p-1.5 mb-1">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-primary-500 flex-shrink-0" />
+                              <p className="text-[9px] font-bold text-primary-500 leading-tight break-words">
                                 {formatPromotionDate(activePromos[0])}
                               </p>
                             </div>
                           </div>
                         )}
-                        {/* Description preview if available */}
-                        {activePromos[0].description && (
-                          <p className="text-[10px] text-primary-400/60 line-clamp-2 mt-1">
-                            {activePromos[0].description}
-                          </p>
-                        )}
                       </div>
-                    ) : (
-                      /* No Current Specials Message - Mobile Optimized */
-                      <div className="mt-2 pt-2 border-t border-primary-500/10">
-                        <div className="bg-black/40 border border-primary-500/20 rounded-lg p-2 sm:p-2.5">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-400/60 flex-shrink-0" />
-                            <p className="text-[11px] sm:text-xs text-primary-400/70 font-medium leading-tight">
-                              No current specials available
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Venue Description Preview - Only show if no promotions */}
-                    {venue.description && activePromos.length === 0 && (
-                      <p className="text-[10px] text-primary-400/60 line-clamp-2 mt-2">
-                        {venue.description}
-                      </p>
-                    )}
+                    ) : null
 
-                    {/* Quick Actions - Show on Hover */}
-                    <div className="mt-2 pt-2 border-t border-primary-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                    {/* Quick Actions - Always visible but compact */}
+                    <div className="mt-1.5 pt-1.5 border-t border-primary-500/10 flex items-center gap-1.5">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1776,10 +1751,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                             window.open(url, '_blank')
                           }
                         }}
-                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all flex items-center justify-center gap-1"
+                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-1.5 py-1 rounded-lg text-[9px] font-semibold transition-all flex items-center justify-center gap-1"
                       >
-                        <Navigation className="w-3 h-3" />
-                        Directions
+                        <Navigation className="w-2.5 h-2.5" />
+                        <span className="hidden sm:inline">Directions</span>
                       </button>
                       <button
                         onClick={(e) => {
@@ -1792,10 +1767,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                             }).catch(() => {})
                           }
                         }}
-                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all flex items-center justify-center gap-1"
+                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-1.5 py-1 rounded-lg text-[9px] font-semibold transition-all flex items-center justify-center gap-1"
                       >
-                        <Share2 className="w-3 h-3" />
-                        Share
+                        <Share2 className="w-2.5 h-2.5" />
+                        <span className="hidden sm:inline">Share</span>
                       </button>
                     </div>
                   </div>

@@ -96,7 +96,7 @@ export default function LeaderboardsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
+    <div className="min-h-screen bg-black text-white pb-14 pt-16">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-black/95 backdrop-blur-md border-b border-primary-500/10 p-4">
         <h1 className="text-2xl font-bold text-primary-500 mb-4">Leaderboards</h1>

@@ -232,9 +232,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
 
   return (
     <>
-      {/* Header - Opaque to prevent overlap */}
+      {/* Header - Opaque to prevent overlap - Compact */}
       <header className="fixed top-0 left-0 right-0 z-30 bg-black/95 backdrop-blur-md border-b border-primary-500/10 shadow-lg pointer-events-none" suppressHydrationWarning>
-        <div className="flex items-center justify-between px-4 py-3 pointer-events-auto">
+        <div className="flex items-center justify-between px-3 py-2 pointer-events-auto">
           {/* Left Side: Profile Picture/Name - Interactive */}
           <div className="flex items-center gap-3 pointer-events-auto">
             {/* Profile Dropdown - Top Left */}

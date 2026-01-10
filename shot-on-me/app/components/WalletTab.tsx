@@ -580,7 +580,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const pendingBalance = user?.wallet?.pendingBalance || 0
 
   return (
-    <div className="min-h-screen pb-20 bg-black max-w-4xl mx-auto pt-20">
+    <div className="min-h-screen pb-14 bg-black max-w-4xl mx-auto pt-16">
       {/* Success/Error Messages */}
       {success && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3 text-green-400 text-sm max-w-md mx-4 shadow-lg backdrop-blur-sm">
