@@ -269,7 +269,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-3 md:p-6 flex-1 overflow-y-auto overflow-x-hidden w-full">
           <div className="w-full max-w-full">
             {children}
-          </div>
+          </div>ow I c
         </div>
       </main>
     </div>

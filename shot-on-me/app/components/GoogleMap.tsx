@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef, useEffect } from 'react'
 import { GoogleMap, Marker } from '@react-google-maps/api'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
@@ -141,6 +141,7 @@ export default function GoogleMapComponent({
   mapContainerClassName = ''
 }: GoogleMapComponentProps) {
   const { isLoaded, loadError } = useGoogleMaps()
+  const mapRef = useRef<google.maps.Map | null>(null)
 
   const mapOptions = useMemo<google.maps.MapOptions>(
     () => ({
@@ -169,9 +170,31 @@ export default function GoogleMapComponent({
   )
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
-    // Optional: Add any map initialization logic here
-    console.log('Google Map loaded successfully')
+    mapRef.current = map
   }, [])
+
+  // Listen for center-map events
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    const handleCenterMap = (event: CustomEvent) => {
+      if (mapRef.current && event.detail) {
+        mapRef.current.setCenter(event.detail)
+        mapRef.current.setZoom(15)
+      }
+    }
+    window.addEventListener('center-map', handleCenterMap as EventListener)
+    return () => {
+      window.removeEventListener('center-map', handleCenterMap as EventListener)
+    }
+  }, [mapRef.current])
+
+  // Update map center when center prop changes
+  useEffect(() => {
+    if (mapRef.current && center) {
+      mapRef.current.setCenter(center)
+    }
+  }, [center])
 
   if (loadError) {
     return (

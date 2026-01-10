@@ -15,7 +15,7 @@ interface NearbyVenue {
     address?: any
     location?: any
   }
-  distance: string
+  distance: string | number
   promotions: Array<{
     title: string
     description?: string
@@ -63,8 +63,19 @@ export default function ProximityNotifications() {
           // Show browser notification if permission granted
           if ('Notification' in window && Notification.permission === 'granted' && closest.promotions && closest.promotions.length > 0) {
             const promo = closest.promotions[0]
+            const distanceStr = (() => {
+              const dist = typeof closest.distance === 'string' ? parseFloat(closest.distance) : closest.distance
+              if (typeof dist === 'number' && !isNaN(dist)) {
+                return dist < 0.1 
+                  ? `${Math.round(dist * 5280)}ft` 
+                  : `${dist.toFixed(1)}mi`
+              }
+              return typeof closest.distance === 'string' 
+                ? closest.distance.replace(' km', 'mi').replace('km', 'mi').replace(' miles', 'mi')
+                : 'nearby'
+            })()
             new Notification(`🎉 Special at ${closest.venue.name}!`, {
-              body: `${promo.title} - ${closest.distance} km away`,
+              body: `${promo.title} - ${distanceStr} away`,
               icon: '/icon-192x192.png',
               tag: `venue-${closest.venue._id}`,
               requireInteraction: false
@@ -172,7 +183,11 @@ export default function ProximityNotifications() {
                   if ('Notification' in window && Notification.permission === 'granted' && closest.promotions && closest.promotions.length > 0) {
                     const promo = closest.promotions[0]
                     new Notification(`🎉 Special at ${closest.venue.name}!`, {
-                      body: `${promo.title} - ${closest.distance} km away`,
+                      body: `${promo.title} - ${typeof closest.distance === 'number' 
+                        ? closest.distance < 0.1 
+                          ? `${Math.round(closest.distance * 5280)}ft` 
+                          : `${closest.distance.toFixed(1)}mi`
+                        : closest.distance.replace(' km', 'mi').replace('km', 'mi')} away`,
                       icon: '/icon-192x192.png',
                       tag: `venue-${closest.venue._id}`
                     })
@@ -227,7 +242,20 @@ export default function ProximityNotifications() {
             </div>
             <div>
               <h3 className="font-semibold text-primary-500 text-base tracking-tight">Nearby Special</h3>
-              <p className="text-xs text-primary-400/70 font-light">{currentNotification.distance} km away</p>
+              <p className="text-xs text-primary-400/70 font-light">
+                {(() => {
+                  const dist: string | number = currentNotification.distance
+                  if (typeof dist === 'number') {
+                    return dist < 0.1 
+                      ? `${Math.round(dist * 5280)}ft away` 
+                      : `${dist.toFixed(1)}mi away`
+                  }
+                  if (typeof dist === 'string') {
+                    return dist.replace(' km', 'mi').replace('km', 'mi').replace(' miles', 'mi') + ' away'
+                  }
+                  return 'nearby'
+                })()}
+              </p>
             </div>
           </div>
           <button

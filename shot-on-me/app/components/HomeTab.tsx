@@ -503,6 +503,27 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       const isPromotionActive = (promo: any): boolean => {
         if (!promo.isActive) return false
 
+        // Check if promotion has expired based on endTime, flashDealEndsAt, or validUntil
+        const endTime = promo.endTime ? new Date(promo.endTime) : null
+        const flashDealEndsAt = promo.flashDealEndsAt ? new Date(promo.flashDealEndsAt) : null
+        const validUntil = promo.validUntil ? new Date(promo.validUntil) : null
+        
+        // Determine the actual expiration time
+        const expirationTime = endTime || flashDealEndsAt || validUntil
+        
+        // If there's an expiration time and it's in the past, the promotion is expired
+        if (expirationTime && expirationTime < now) {
+          return false
+        }
+
+        // Check if promotion has a startTime and hasn't started yet
+        if (promo.startTime) {
+          const startTime = new Date(promo.startTime)
+          if (startTime > now) {
+            return false // Promotion hasn't started yet
+          }
+        }
+
         // Check if promotion has a schedule (recurring promotions)
         if (promo.schedule && promo.schedule.length > 0) {
           // Check if current day matches any schedule entry
@@ -535,8 +556,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           return now >= startTime && now <= endTime
         }
 
-        // If no schedule or time window, check if it's marked as active
-        return promo.isActive === true
+        // If no schedule or time window, check if it's marked as active and not expired
+        return promo.isActive === true && (!expirationTime || expirationTime >= now)
       }
 
       venues.forEach((venue: any) => {
@@ -1275,7 +1296,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                         {friend.firstName} {friend.lastName}
                       </p>
                       {friend.distance && (
-                        <p className="text-xs text-primary-400/70 font-light">{friend.distance} km away</p>
+                        <p className="text-xs text-primary-400/70 font-light">
+                          {typeof friend.distance === 'string' && friend.distance.includes('miles')
+                            ? friend.distance.replace('miles', 'mi')
+                            : typeof friend.distance === 'number'
+                            ? friend.distance < 0.1
+                              ? `${Math.round(friend.distance * 5280)}ft away`
+                              : `${friend.distance.toFixed(1)}mi away`
+                            : friend.distance}
+                        </p>
                       )}
                     </div>
                   </div>
