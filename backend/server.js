@@ -15,7 +15,8 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:3002', // Owner Portal
     'https://www.shotonme.com', // Primary production domain (www only)
-    'https://shot-on-me.onrender.com', // Render backend URL
+    'https://shotonme.com', // Production domain (without www)
+    /^https:\/\/.*\.vercel\.app$/, // All Vercel deployment URLs (preview and production)
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
     /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
     /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/ // Local network
