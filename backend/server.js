@@ -455,7 +455,10 @@ server.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on ${HOST}:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Socket.io enabled`);
-  console.log(`✅ Health check available at http://${HOST}:${PORT}/health`);
+  // Show localhost URL for local development (0.0.0.0 can't be accessed in browser)
+  const accessUrl = HOST === '0.0.0.0' ? 'http://localhost' : `http://${HOST}`;
+  console.log(`✅ Health check available at ${accessUrl}:${PORT}/health`);
+  console.log(`   Also accessible at ${accessUrl}:${PORT}/api/health`);
   
   // Initialize venue promotion notification checks
   const { checkExpiringPromotions, checkLaunchingPromotions, checkPromotionObjectives } = require('./services/venuePromotionNotifications');
