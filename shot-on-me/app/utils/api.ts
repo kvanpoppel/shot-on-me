@@ -9,10 +9,13 @@
 /**
  * Gets the base API URL (includes /api suffix)
  * This must be called at runtime in the browser, not at module load time
+ * 
+ * IMPORTANT: Environment variables take absolute priority. 
+ * Only use fallback logic if environment variables are not set.
  */
 export const getApiUrl = (): string => {
   // PRIORITY 1: Environment variable (set in Vercel for production)
-  // This is the most reliable way and should be used in production
+  // This MUST be used when set - do not override with hostname detection
   if (process.env.NEXT_PUBLIC_API_URL) {
     let url = process.env.NEXT_PUBLIC_API_URL.trim()
     // Ensure it ends with /api
@@ -22,38 +25,10 @@ export const getApiUrl = (): string => {
     return url
   }
   
-  // PRIORITY 2: If running in browser, detect from current location
+  // PRIORITY 2: Fallback logic - only used when NEXT_PUBLIC_API_URL is NOT set
+  // This is for local development when environment variable is not configured
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    const protocol = window.location.protocol
-    
-    // For production domains (shotonme.com) OR Vercel deployments, use Render backend
-    // Vercel preview URLs look like: shotonme-665zqvmre-kate-vanpoppels-projects.vercel.app
-    // Production domain: www.shotonme.com or shotonme.com
-    // BUT: If using http (not https) or port 3001, assume local development
-    if (hostname.includes('shotonme.com') || 
-        hostname.includes('shot-on-me') || 
-        hostname.includes('vercel.app')) {
-      // Check if this is local development (http:// or port 3001)
-      const isLocalDev = protocol === 'http:' || window.location.port === '3001' || window.location.port === '3000'
-      if (isLocalDev) {
-        // Local development with domain override
-        // When DNS override is set up on mobile, window.location.hostname will be the IP address
-        // If hostname is an IP, use it (mobile device with DNS override)
-        if (/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname)) {
-          // Mobile device - DNS override resolved domain to IP
-          return `http://${window.location.hostname}:5000/api`
-        }
-        // Desktop local development - use localhost
-        // (When accessing www.shotonme.com on desktop with hosts file, hostname will be the domain,
-        // but we want localhost for backend since desktop can access localhost)
-        return 'http://localhost:5000/api'
-      }
-      // Production - Try custom domain first, fallback to Render URL
-      // Custom domain might not be configured or service might be sleeping
-      // Fallback to direct Render URL ensures connection works
-      return 'https://shot-on-me.onrender.com/api'
-    }
     
     // For localhost, use local backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -69,68 +44,43 @@ export const getApiUrl = (): string => {
       return apiUrl
     }
     
-    // Fallback for any other hostname - use Render URL directly
-    // This ensures connection works even if custom domain isn't configured
+    // For any other hostname in production (should not happen if env var is set),
+    // fallback to Render URL
     return 'https://shot-on-me.onrender.com/api'
   }
   
-  // Default for server-side rendering
+  // Default for server-side rendering when env var is not set
   return 'http://localhost:5000/api'
 }
 
 /**
  * Gets the Socket.io URL (no /api suffix)
+ * 
+ * IMPORTANT: Environment variables take absolute priority.
+ * Socket.io client will handle protocol conversion (https -> wss) automatically.
  */
 export const getSocketUrl = (): string => {
-  const isProd = typeof window !== 'undefined' && 
-    (window.location.protocol === 'https:' || 
-     window.location.hostname.includes('shotonme.com') ||
-     window.location.hostname.includes('vercel.app'))
-  
-  // If environment variable is set, use it (remove /api if present)
+  // PRIORITY 1: NEXT_PUBLIC_SOCKET_URL environment variable (use as-is)
+  // Socket.io client library will automatically convert https:// to wss:// for WebSocket
   if (process.env.NEXT_PUBLIC_SOCKET_URL) {
     return process.env.NEXT_PUBLIC_SOCKET_URL.trim()
   }
   
+  // PRIORITY 2: Derive from NEXT_PUBLIC_API_URL if SOCKET_URL is not set
   if (process.env.NEXT_PUBLIC_API_URL) {
+    // Remove /api suffix if present, Socket.io doesn't use /api path
     let url = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/?$/, '')
-    // Use wss:// in production if protocol is https
-    if (isProd && url.startsWith('http://')) {
-      url = url.replace('http://', 'wss://')
-    } else if (isProd && url.startsWith('https://')) {
-      url = url.replace('https://', 'wss://')
-    }
+    // Socket.io client will handle https:// to wss:// conversion automatically
+    // Do NOT manually convert here - keep it as https://
     return url
   }
   
-  // If running in browser, use current hostname
+  // PRIORITY 3: Fallback logic - only used when environment variables are NOT set
+  // This is for local development when environment variable is not configured
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    const protocol = window.location.protocol
     
-    // For production domains OR Vercel deployments, use Render backend with wss
-    // BUT: If using http (not https) or port 3001, assume local development
-    if (hostname.includes('shotonme.com') || 
-        hostname.includes('shot-on-me') || 
-        hostname.includes('vercel.app')) {
-      // Check if this is local development (http:// or port 3001)
-      const isLocalDev = protocol === 'http:' || window.location.port === '3001' || window.location.port === '3000'
-      if (isLocalDev) {
-        // Local development with domain override
-        // When DNS override is set up on mobile, window.location.hostname will be the IP address
-        // If hostname is an IP, use it (mobile device with DNS override)
-        if (/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname)) {
-          // Mobile device - DNS override resolved domain to IP
-          return `http://${window.location.hostname}:5000`
-        }
-        // Desktop local development - use localhost
-        return 'http://localhost:5000'
-      }
-      // Production - Use Render URL for WebSocket (wss://)
-      // Use direct Render URL to ensure connection works even when service is sleeping
-      return 'wss://shot-on-me.onrender.com'
-    }
-    
+    // For localhost, use local backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:5000'
     }
@@ -140,10 +90,12 @@ export const getSocketUrl = (): string => {
       return `http://${hostname}:5000`
     }
     
-    // Fallback for any other hostname - use Render URL directly
-    return isProd ? 'wss://shot-on-me.onrender.com' : 'http://localhost:5000'
+    // For any other hostname in production (should not happen if env var is set),
+    // fallback to Render URL - Socket.io will convert https:// to wss:// automatically
+    return 'https://shot-on-me.onrender.com'
   }
   
+  // Default for server-side rendering when env var is not set
   return 'http://localhost:5000'
 }
 
@@ -153,20 +105,16 @@ export const getSOCKET_URL = () => getSocketUrl()
 
 /**
  * React hook to get API URL at runtime (use in components)
- * This ensures the URL is correct when accessed from mobile devices via IP
+ * Always prioritizes NEXT_PUBLIC_API_URL environment variable when set
  */
 export const useApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    return getApiUrl()
-  }
-  return 'http://localhost:5000/api'
+  // Always use getApiUrl() which prioritizes environment variables
+  return getApiUrl()
 }
 
 export const useSocketUrl = () => {
-  if (typeof window !== 'undefined') {
-    return getSocketUrl()
-  }
-  return 'http://localhost:5000'
+  // Always use getSocketUrl() which prioritizes environment variables
+  return getSocketUrl()
 }
 
 /**
