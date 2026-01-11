@@ -368,11 +368,19 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     
     // If denied, try to request again (some browsers allow re-prompting)
     if (currentStatus === 'denied') {
-      // For location and notifications, we can still try to request
+      // For location and notifications, we can still try to request (iOS Safari may allow it)
       if (type === 'location' || type === 'notifications') {
-        // Continue to request - browser might allow it
+        // Continue to request - browser might allow it on second try
+      } else if (type === 'camera') {
+        // Camera can sometimes be re-requested, try it
       } else {
-        alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
+        // Contacts denied - show helpful message
+        const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        if (isIOS) {
+          alert('Contacts access is not supported in Safari on iOS. Use "Find Friends" to search manually.')
+        } else {
+          alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
+        }
         return
       }
     }
@@ -529,11 +537,28 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
                     </div>
                   </div>
 
-                  {/* Right: Toggle Switch */}
+                  {/* Right: Toggle Switch or Action Button */}
                   <div className="flex-shrink-0">
-                    {disabled ? (
-                      <div className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium">
-                        {status === 'denied' ? 'Denied' : 'N/A'}
+                    {status === 'denied' ? (
+                      <button
+                        onClick={() => {
+                          // For location and notifications, try to re-request even if denied
+                          if (perm.permission === 'location' || perm.permission === 'notifications') {
+                            handleToggle(perm.permission)
+                          } else {
+                            // For camera and contacts, show instructions
+                            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+                            const browserName = isIOS ? 'Safari' : 'your browser'
+                            alert(`To enable ${perm.title.toLowerCase()}, please:\n\n1. Open ${browserName} Settings\n2. Find "${perm.title}" permissions\n3. Allow access for shotonme.com\n\n${isIOS ? 'On iOS: Settings → Safari → Website Settings → shotonme.com' : ''}`)
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Enable
+                      </button>
+                    ) : status === 'unavailable' ? (
+                      <div className="px-3 py-1.5 bg-primary-500/20 text-primary-400 rounded-lg text-xs font-medium">
+                        N/A
                       </div>
                     ) : (
                       <button
@@ -571,10 +596,17 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
                 )}
                 {status === 'denied' && (
                   <div className="mt-2 text-xs text-red-400/70 font-light">
-                    Permission denied. Enable in browser settings.
+                    {perm.permission === 'location' || perm.permission === 'notifications' 
+                      ? 'Click "Enable" to request permission again'
+                      : 'Tap "Enable" button above for instructions'}
                   </div>
                 )}
-                {status === 'unavailable' && (
+                {status === 'unavailable' && perm.permission === 'contacts' && (
+                  <div className="mt-2 text-xs text-primary-400/60 font-light">
+                    Contacts API not supported. Use "Find Friends" to search manually.
+                  </div>
+                )}
+                {status === 'unavailable' && perm.permission !== 'contacts' && (
                   <div className="mt-2 text-xs text-primary-400/60 font-light">
                     Not available on this device
                   </div>
