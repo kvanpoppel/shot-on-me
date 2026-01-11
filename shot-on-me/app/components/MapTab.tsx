@@ -1739,7 +1739,14 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                           </div>
                         )}
                       </div>
-                    ) : null
+                    ) : (
+                      /* No Current Specials - Subtle/Incognito */
+                      <div className="mt-1 pt-1 border-t border-primary-500/5">
+                        <p className="text-[8px] text-primary-400/30 text-center">
+                          No current specials
+                        </p>
+                      </div>
+                    )}
 
                     {/* Quick Actions - Always visible but compact */}
                     <div className="mt-1.5 pt-1.5 border-t border-primary-500/10 flex items-center gap-1.5">
