@@ -1134,7 +1134,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
             >
               <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
-                <Users className="w-4 h-4 text-primary-500" />
+                <TrendingUp className="w-4 h-4 text-primary-500" />
               </div>
               <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">🔥 Trending Now</h2>
             </button>

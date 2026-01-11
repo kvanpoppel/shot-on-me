@@ -33,6 +33,7 @@ function Home() {
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
   const [autoOpenPostForm, setAutoOpenPostForm] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -135,6 +136,25 @@ function Home() {
     return () => window.removeEventListener('open-post-form', handleOpenPostForm)
   }, [])
 
+  // Listen for search modal open/close events
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleOpenSearch = () => {
+      setIsSearchOpen(true)
+    }
+    const handleCloseSearch = () => {
+      setIsSearchOpen(false)
+    }
+    
+    window.addEventListener('open-search', handleOpenSearch)
+    window.addEventListener('close-search', handleCloseSearch)
+    return () => {
+      window.removeEventListener('open-search', handleOpenSearch)
+      window.removeEventListener('close-search', handleCloseSearch)
+    }
+  }, [])
+
   // CRITICAL: NEVER render anything during SSR - completely client-only
   // This is the nuclear option to prevent ALL hydration mismatches
   if (typeof window === 'undefined') {
@@ -225,7 +245,7 @@ function Home() {
         {activeTab === 'referrals' && <ReferralScreen />}
         {activeTab === 'venues' && <MyVenuesTab />}
       </main>
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
       {viewingProfile && (
         <FriendProfile
           userId={viewingProfile}

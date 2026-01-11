@@ -10,9 +10,10 @@ import { Tab } from '@/app/types'
 interface BottomNavProps {
   activeTab: Tab
   setActiveTab: (tab: Tab) => void
+  isSearchOpen?: boolean
 }
 
-export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
+export default function BottomNav({ activeTab, setActiveTab, isSearchOpen = false }: BottomNavProps) {
 
   const tabs: Array<{ id: Tab | 'search'; icon: any; label: string; badge?: number; action?: () => void }> = [
     { id: 'home' as Tab, icon: Home, label: 'Home' },
@@ -31,13 +32,16 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-primary-500/10 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-primary-500/10 z-[60]">
       <div className="flex justify-center items-center h-14 px-2 pointer-events-auto">
         <div className="flex items-center space-x-0.5 bg-black/40 border border-primary-500/15 rounded-full px-0.5 py-0.5 pointer-events-auto max-w-full overflow-x-auto scrollbar-hide backdrop-blur-sm">
           {tabs.map((tab) => {
             const Icon = tab.icon
-            const isActive = activeTab === tab.id
             const isSearch = tab.id === 'search'
+            // When search is open, only search tab is active. Otherwise, match by activeTab
+            const isActive = isSearch 
+              ? isSearchOpen 
+              : !isSearchOpen && activeTab === tab.id
             
             return (
               <button
@@ -45,6 +49,11 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  
+                  // Close search modal if open when clicking any tab
+                  if (tab.id !== 'search') {
+                    window.dispatchEvent(new CustomEvent('close-search'))
+                  }
                   
                   if (tab.action) {
                     tab.action()

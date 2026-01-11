@@ -13,6 +13,7 @@ import FindFriends from './FindFriends'
 import ActivityFeed from './ActivityFeed'
 import NotificationCenter from './NotificationCenter'
 import MessagesModal from './MessagesModal'
+import SearchModal from './SearchModal'
 import { Tab } from '@/app/types'
 
 interface DashboardProps {
@@ -28,11 +29,35 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const { socket } = useSocket()
   const router = useRouter()
   const [isMounted, setIsMounted] = useState(false)
+  const [showLocationFinder, setShowLocationFinder] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showFindFriends, setShowFindFriends] = useState(false)
+  const [showActivityFeed, setShowActivityFeed] = useState(false)
+  const [showMessages, setShowMessages] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [notificationCount, setNotificationCount] = useState(0)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const prevActiveTabRef = useRef<Tab>(activeTab)
+  const { token } = useAuth()
+  const API_URL = useApiUrl()
   
   // Ensure component is mounted before accessing browser APIs
   useEffect(() => {
     setIsMounted(true)
   }, [])
+  
+  // Close search modal when switching tabs (but allow search to stay open)
+  useEffect(() => {
+    // Only close if we actually switched to a different tab (not just opening search)
+    if (showSearchModal && prevActiveTabRef.current !== activeTab && activeTab !== 'home') {
+      setShowSearchModal(false)
+      window.dispatchEvent(new CustomEvent('close-search'))
+    }
+    prevActiveTabRef.current = activeTab
+  }, [activeTab, showSearchModal])
   
   // Listen for settings open event
   useEffect(() => {
@@ -53,6 +78,23 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     window.addEventListener('open-find-friends', handleOpenFindFriends)
     return () => window.removeEventListener('open-find-friends', handleOpenFindFriends)
   }, [isMounted])
+
+  // Listen for search modal open event
+  useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return
+    const handleOpenSearch = () => {
+      setShowSearchModal(true)
+    }
+    const handleCloseSearch = () => {
+      setShowSearchModal(false)
+    }
+    window.addEventListener('open-search', handleOpenSearch)
+    window.addEventListener('close-search', handleCloseSearch)
+    return () => {
+      window.removeEventListener('open-search', handleOpenSearch)
+      window.removeEventListener('close-search', handleCloseSearch)
+    }
+  }, [isMounted])
   
   // Ensure menu closes on escape key
   useEffect(() => {
@@ -65,18 +107,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [isMounted])
-  const [showLocationFinder, setShowLocationFinder] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showFindFriends, setShowFindFriends] = useState(false)
-  const [showActivityFeed, setShowActivityFeed] = useState(false)
-  const [showMessages, setShowMessages] = useState(false)
-  const [notificationCount, setNotificationCount] = useState(0)
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
-  const profileDropdownRef = useRef<HTMLDivElement>(null)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const { token } = useAuth()
-  const API_URL = useApiUrl()
 
   // Real-time wallet balance updates
   useEffect(() => {
@@ -509,6 +539,25 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
           fetchUnreadMessageCount()
         }}
         onViewProfile={setViewingProfile}
+      />
+
+      {/* Global Search Modal */}
+      <SearchModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onViewProfile={(userId) => {
+          setShowSearchModal(false)
+          setViewingProfile?.(userId)
+        }}
+        onViewVenue={(venueId) => {
+          setShowSearchModal(false)
+          setActiveTab('map')
+        }}
+        onViewPost={(postId) => {
+          setShowSearchModal(false)
+          setActiveTab('feed')
+        }}
+        setActiveTab={setActiveTab}
       />
     </>
   )

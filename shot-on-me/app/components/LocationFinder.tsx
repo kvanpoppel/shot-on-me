@@ -92,7 +92,7 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
   const getCurrentLocation = async () => {
     // Check if geolocation is available
     if (!('geolocation' in navigator)) {
-      console.warn('Geolocation is not available in this browser')
+      // Geolocation not available - continue without location
       return
     }
 
@@ -107,9 +107,8 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
       }
     }
 
-    // If denied, inform user but don't block
+    // If denied, continue without location
     if (permissionStatus === 'denied') {
-      console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
       return
     }
 
@@ -147,7 +146,6 @@ export default function LocationFinder({ isOpen, onClose, onViewProfile }: Locat
       )
     } catch (error) {
       // Catch any unexpected errors (e.g., tracking prevention)
-      console.warn('Geolocation request failed:', error)
       // Continue without location - don't block app
     }
   }

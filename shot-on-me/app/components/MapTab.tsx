@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
@@ -26,6 +26,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const { socket } = useSocket()
   const { isLoaded: mapsLoaded } = useGoogleMaps()
   const [venues, setVenues] = useState<any[]>([])
+  const [venuesPage, setVenuesPage] = useState(1)
+  const [venuesHasMore, setVenuesHasMore] = useState(true)
+  const [loadingMoreVenues, setLoadingMoreVenues] = useState(false)
+  const venuesContainerRef = useRef<HTMLDivElement>(null)
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'favorites' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight'>('all')
@@ -38,6 +42,17 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Check for venue from SearchModal or other sources
+  useEffect(() => {
+    if (activeTab === 'map' && token) {
+      const storedVenueId = localStorage.getItem('selectedVenueId')
+      if (storedVenueId) {
+        setViewingVenueId(storedVenueId)
+        localStorage.removeItem('selectedVenueId')
+      }
+    }
+  }, [activeTab, token])
   
   // Don't auto-switch to map - let user choose their preferred view
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
@@ -149,8 +164,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
   const getCurrentLocation = useCallback(async () => {
     if (!('geolocation' in navigator)) {
-      console.warn('Geolocation is not available in this browser')
-      // Fetch weather for default location
+      // Geolocation not available - use default location
       fetchWeatherData(39.7684, -86.1581)
       return
     }
@@ -179,27 +193,27 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           const { latitude, longitude } = position.coords
           setUserLocation({ lat: latitude, lng: longitude })
           
-          // Reverse geocode to get city name
+          // Reverse geocode to get city name (gracefully handle if API not enabled)
           if (mapsLoaded && typeof google !== 'undefined' && google.maps) {
-            const geocoder = new google.maps.Geocoder()
-            geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-              if (status === 'OK' && results && results[0]) {
-                const city = results[0].address_components?.find(c => c.types.includes('locality'))?.long_name
-                if (city) setCurrentCity(city)
-              }
-            })
+            try {
+              const geocoder = new google.maps.Geocoder()
+              geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                  const city = results[0].address_components?.find(c => c.types.includes('locality'))?.long_name
+                  if (city) setCurrentCity(city)
+                }
+                // Silently ignore geocoding errors (API not enabled, quota exceeded, etc.)
+              })
+            } catch (error) {
+              // Geocoding API not available - continue without city name
+            }
           }
           
           // Fetch weather data for current location
           fetchWeatherData(latitude, longitude)
         },
         (error) => {
-          console.warn('Geolocation error:', error.message || error)
-          if (error.code === error.PERMISSION_DENIED) {
-            console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
-          } else if (error.code === error.TIMEOUT) {
-            console.warn('Location request timed out. This is normal if location services are slow.')
-          }
+          // Handle errors silently - timeouts and permission denials are expected
           // Fetch weather for default location on error
           fetchWeatherData(39.7684, -86.1581)
         },
@@ -210,36 +224,45 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         }
       )
     } catch (error) {
-      console.warn('Geolocation request failed:', error)
-      // Fetch weather for default location on error
+      // Geolocation failed - use default location silently
       fetchWeatherData(39.7684, -86.1581)
     }
   }, [mapsLoaded, fetchWeatherData])
 
-  const fetchVenues = useCallback(async () => {
+  const fetchVenues = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token || !API_URL) {
       console.warn('Cannot fetch venues: missing token or API_URL', { token: !!token, API_URL })
       return
     }
     try {
-      setError(null)
-      console.log('🔍 Fetching venues from:', `${API_URL}/venues`)
+      if (reset) {
+        setError(null)
+        setLoading(true)
+      } else {
+        setLoadingMoreVenues(true)
+      }
+      
+      const limit = 20
+      const skip = (pageNum - 1) * limit
+      
+      console.log('🔍 Fetching venues from:', `${API_URL}/venues`, { skip, limit, pageNum })
       console.log('🔍 User info:', { userId: (user as any)?.id || (user as any)?._id, userType: (user as any)?.userType })
       
       const response = await axios.get(`${API_URL}/venues`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: { skip, limit },
         timeout: 10000
       })
       
       console.log('📦 API Response:', {
         status: response.status,
-        dataType: typeof response.data,
-        isArray: Array.isArray(response.data),
         hasVenues: !!response.data.venues,
-        venuesCount: response.data.venues?.length || (Array.isArray(response.data) ? response.data.length : 0)
+        venuesCount: response.data.venues?.length || 0,
+        hasMore: response.data.hasMore,
+        total: response.data.total
       })
       
-      const fetchedVenues = Array.isArray(response.data) ? response.data : (response.data.venues || [])
+      const fetchedVenues = response.data.venues || []
       console.log('📋 Fetched venues count:', fetchedVenues.length)
       
       // Normalize venue names for comparison
@@ -291,10 +314,20 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       })
       
       console.log('✅ Normalized venues count:', normalizedVenues.length)
-      if (normalizedVenues.length > 0) {
-        console.log('📍 Venue names:', normalizedVenues.map((v: any) => v.name))
+      
+      if (reset || pageNum === 1) {
+        setVenues(normalizedVenues)
+      } else {
+        // Filter out duplicates when appending venues
+        setVenues(prev => {
+          const existingIds = new Set(prev.map(v => v._id))
+          const uniqueNewVenues = normalizedVenues.filter((v: any) => !existingIds.has(v._id))
+          return [...prev, ...uniqueNewVenues]
+        })
       }
-      setVenues(normalizedVenues)
+      
+      setVenuesHasMore(response.data.hasMore !== false && normalizedVenues.length === limit)
+      setError(null)
     } catch (error: any) {
       console.error('❌ Failed to fetch venues:', error)
       console.error('❌ Error details:', {
@@ -303,13 +336,16 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         status: error.response?.status,
         url: error.config?.url
       })
-      setError('Failed to load venues. Please try again.')
-      setVenues([])
+      if (reset || pageNum === 1) {
+        setError('Failed to load venues. Please try again.')
+        setVenues([])
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
+      setLoadingMoreVenues(false)
     }
-  }, [token, API_URL])
+  }, [token, API_URL, user])
 
   const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 3959 // Earth's radius in miles
@@ -842,7 +878,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   // Fetch data on mount
   useEffect(() => {
     if (token && API_URL) {
-      fetchVenues()
+      setVenuesPage(1)
+      setVenuesHasMore(true)
+      fetchVenues(1, true)
       fetchTrendingVenues()
       fetchFriends()
       fetchFavoriteVenues()
@@ -852,6 +890,29 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       fetchWeatherData(39.7684, -86.1581) // Default to Indianapolis
     }
   }, [token, API_URL, fetchVenues, fetchTrendingVenues, fetchFriends, fetchFavoriteVenues, getCurrentLocation, fetchWeatherData])
+
+  // Infinite scroll for venues
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!loadingMoreVenues && venuesHasMore && venuesContainerRef.current) {
+        const scrollHeight = document.documentElement.scrollHeight
+        const scrollTop = window.innerHeight + window.scrollY
+        const threshold = 500 // Load when 500px from bottom
+        
+        if (scrollTop >= scrollHeight - threshold) {
+          setLoadingMoreVenues(true)
+          setVenuesPage(prev => {
+            const nextPage = prev + 1
+            fetchVenues(nextPage, false)
+            return nextPage
+          })
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loadingMoreVenues, venuesHasMore, fetchVenues])
 
   // Create friend avatar markers (like Snapchat Bitmojis) - Circular profile pictures
   const friendMarkers = useMemo(() => {
@@ -1501,7 +1562,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             )}
           </div>
         ) : (
-            <div className="grid grid-cols-2 gap-2.5">
+            <>
+            <div ref={venuesContainerRef} className="grid grid-cols-2 gap-2.5">
             {getFilteredVenues.map((venue: any) => {
               if (!venue || !venue._id) return null
               
@@ -1748,43 +1810,25 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                       </div>
                     )}
 
-                    {/* Quick Actions - Always visible but compact */}
-                    <div className="mt-1.5 pt-1.5 border-t border-primary-500/10 flex items-center gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (venue.location?.latitude && venue.location?.longitude) {
-                            const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`
-                            window.open(url, '_blank')
-                          }
-                        }}
-                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-1.5 py-1 rounded-lg text-[9px] font-semibold transition-all flex items-center justify-center gap-1"
-                      >
-                        <Navigation className="w-2.5 h-2.5" />
-                        <span className="hidden sm:inline">Directions</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (navigator.share && venue.name) {
-                            navigator.share({
-                              title: venue.name,
-                              text: `Check out ${venue.name} on Shot On Me!`,
-                              url: window.location.href
-                            }).catch(() => {})
-                          }
-                        }}
-                        className="flex-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-1.5 py-1 rounded-lg text-[9px] font-semibold transition-all flex items-center justify-center gap-1"
-                      >
-                        <Share2 className="w-2.5 h-2.5" />
-                        <span className="hidden sm:inline">Share</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               )
             })}
             </div>
+            {/* Loading More Indicator */}
+            {loadingMoreVenues && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+                <span className="ml-3 text-primary-400">Loading more venues...</span>
+              </div>
+            )}
+            {/* End of List Indicator */}
+            {!venuesHasMore && getFilteredVenues.length > 0 && (
+              <div className="text-center py-8 text-primary-400/50 text-sm">
+                No more venues
+              </div>
+            )}
+            </>
         )}
       </div>
       )}

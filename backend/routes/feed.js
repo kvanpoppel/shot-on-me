@@ -33,17 +33,35 @@ const upload = multer({
 });
 
 // Get feed posts - show posts from friends and user's own posts
+// Supports pagination with skip and limit query parameters
+// Supports filtering by userId to get posts from a specific user
 router.get('/', auth, async (req, res) => {
   try {
+    const { skip = 0, limit = 20, userId } = req.query;
+    const skipNum = parseInt(skip);
+    const limitNum = parseInt(limit);
+    
     const User = require('../models/User');
+    const FeedPost = require('../models/FeedPost');
     const currentUser = await User.findById(req.user.userId).select('friends');
     
-    // Build query: show posts from friends OR user's own posts
-    // If user has no friends, show all posts (for discovery)
-    const friendIds = currentUser?.friends || [];
-    const query = friendIds.length > 0 
-      ? { author: { $in: [...friendIds, req.user.userId] } }
-      : {}; // Show all posts if no friends (for new users)
+    // Build query
+    let query = {};
+    
+    // If userId is provided, filter to only that user's posts (for profile pages)
+    if (userId) {
+      query = { author: userId };
+    } else {
+      // Default: show posts from friends OR user's own posts
+      // If user has no friends, show all posts (for discovery)
+      const friendIds = currentUser?.friends || [];
+      query = friendIds.length > 0 
+        ? { author: { $in: [...friendIds, req.user.userId] } }
+        : {}; // Show all posts if no friends (for new users)
+    }
+    
+    // Get total count for pagination
+    const totalCount = await FeedPost.countDocuments(query);
     
     const posts = await FeedPost.find(query)
       .populate('author', 'name firstName lastName profilePicture')
@@ -52,7 +70,8 @@ router.get('/', auth, async (req, res) => {
       .populate('likes.user', 'name firstName lastName profilePicture')
       .populate('reactions.user', 'name firstName lastName profilePicture')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .skip(skipNum)
+      .limit(limitNum);
     
     // Transform posts to include firstName/lastName from name if needed
     const transformedPosts = posts.map(post => {
@@ -138,7 +157,14 @@ router.get('/', auth, async (req, res) => {
       };
     });
     
-    res.json({ posts: transformedPosts });
+    const hasMore = skipNum + transformedPosts.length < totalCount;
+    
+    res.json({ 
+      posts: transformedPosts,
+      count: transformedPosts.length,
+      hasMore,
+      total: totalCount
+    });
   } catch (error) {
     console.error('Error fetching feed posts:', error);
     res.status(500).json({ message: 'Server error' });
@@ -152,7 +178,7 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
     console.log('Files received:', req.files ? req.files.length : 0);
     console.log('Content:', req.body.content);
     
-    const { content, location, venueId, checkIn } = req.body;
+    const { content, location, venueId, checkIn, notes } = req.body;
     const mediaUrls = [];
 
     // Upload media files to Cloudinary if present
@@ -235,6 +261,15 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
 
     await newPost.save();
     await newPost.populate('author', 'name firstName lastName profilePicture');
+    
+    // Process mentions in post content (async, don't wait)
+    if (content) {
+      const { processMentions } = require('../utils/mentions');
+      const mentionType = checkIn ? 'checkin' : 'post';
+      processMentions(content, req.user.userId, mentionType, newPost._id.toString()).catch(err => {
+        console.error('Error processing mentions:', err);
+      });
+    }
     
     // Update user stats (async, don't wait)
     const { updateUserStats, awardPoints } = require('../utils/gamification');
@@ -593,6 +628,14 @@ router.post('/:postId/comment', auth, async (req, res) => {
     
     // Get the last comment (the one we just added)
     const newComment = post.comments[post.comments.length - 1];
+    
+    // Process mentions in comment content (async, don't wait)
+    if (content) {
+      const { processMentions } = require('../utils/mentions');
+      processMentions(content, req.user.userId, 'comment', post._id.toString()).catch(err => {
+        console.error('Error processing mentions in comment:', err);
+      });
+    }
     
     // Emit real-time update to all connected clients
     const socketIO = io || req.app.get('io');

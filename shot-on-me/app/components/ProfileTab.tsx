@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { 
@@ -15,7 +15,8 @@ import {
   Clock,
   TrendingUp,
   Flame,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -52,6 +53,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
+  const [postsPage, setPostsPage] = useState(1)
+  const [postsHasMore, setPostsHasMore] = useState(true)
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false)
+  const postsContainerRef = useRef<HTMLDivElement>(null)
   const [friends, setFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends'>('posts')
@@ -68,46 +73,104 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     badgesUnlocked: 0
   })
 
+  const fetchPosts = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
+    if (!token || !user || !API_URL) return
+    
+    try {
+      if (reset) {
+        setLoading(true)
+      } else {
+        setLoadingMorePosts(true)
+      }
+      
+      const limit = 20
+      const skip = (pageNum - 1) * limit
+      const userId = user.id || (user as any)._id
+      
+      const feedResponse = await axios.get(`${API_URL}/feed`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { skip, limit, userId },
+        timeout: 10000
+      })
+      
+      const fetchedPosts = feedResponse.data.posts || []
+      
+      if (reset || pageNum === 1) {
+        setPosts(fetchedPosts)
+      } else {
+        // Filter out duplicates when appending posts
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p._id))
+          const uniqueNewPosts = fetchedPosts.filter((p: FeedPost) => !existingIds.has(p._id))
+          return [...prev, ...uniqueNewPosts]
+        })
+      }
+      
+      setPostsHasMore(feedResponse.data.hasMore !== false && fetchedPosts.length === limit)
+    } catch (error) {
+      console.error('Failed to fetch posts:', error)
+      if (reset || pageNum === 1) {
+        setPosts([])
+      }
+    } finally {
+      setLoading(false)
+      setLoadingMorePosts(false)
+    }
+  }, [token, user, API_URL])
+
   useEffect(() => {
     if (token && user) {
+      setPostsPage(1)
+      setPostsHasMore(true)
+      fetchPosts(1, true)
       fetchProfileData()
     }
-  }, [token, user])
+  }, [token, user, fetchPosts])
+
+  // Infinite scroll for posts
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!loadingMorePosts && postsHasMore && postsContainerRef.current) {
+        const scrollHeight = document.documentElement.scrollHeight
+        const scrollTop = window.innerHeight + window.scrollY
+        const threshold = 500 // Load when 500px from bottom
+        
+        if (scrollTop >= scrollHeight - threshold) {
+          setLoadingMorePosts(true)
+          setPostsPage(prev => {
+            const nextPage = prev + 1
+            fetchPosts(nextPage, false)
+            return nextPage
+          })
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loadingMorePosts, postsHasMore, fetchPosts])
+
+  // Update stats when posts change
+  useEffect(() => {
+    const checkIns = posts.filter((p: FeedPost) => p.checkIn)
+    const uniqueVenues = new Set(
+      posts
+        .filter((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
+        .map((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
+    )
+
+    setStats({
+      postsCount: posts.length,
+      checkInsCount: checkIns.length,
+      friendsCount: (user as any)?.friends?.length || 0,
+      venuesVisited: uniqueVenues.size
+    })
+  }, [posts, user])
 
   const fetchProfileData = async () => {
     if (!token || !user) return
-    setLoading(true)
 
     try {
-      // Fetch user's posts
-      const feedResponse = await axios.get(`${API_URL}/feed`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const allPosts = feedResponse.data.posts || []
-      
-      // Filter to only user's posts
-      const userId = user.id || (user as any)._id
-      const userPosts = allPosts.filter((post: FeedPost) => {
-        const postAuthorId = post.author._id || post.author.id
-        return postAuthorId === userId
-      })
-      
-      setPosts(userPosts)
-      
-      // Calculate stats
-      const checkIns = userPosts.filter((p: FeedPost) => p.checkIn)
-      const uniqueVenues = new Set(
-        userPosts
-          .filter((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
-          .map((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
-      )
-
-      setStats({
-        postsCount: userPosts.length,
-        checkInsCount: checkIns.length,
-        friendsCount: (user as any).friends?.length || 0,
-        venuesVisited: uniqueVenues.size
-      })
 
       // Fetch gamification stats
       try {
@@ -141,8 +204,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
       }
     } catch (error) {
       console.error('Failed to fetch profile data:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -306,7 +367,8 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
                 <p className="text-primary-400/60 text-sm mt-1 font-light">Share your first moment!</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-1">
+              <>
+              <div ref={postsContainerRef} className="grid grid-cols-3 gap-1">
                 {userPosts.map((post) => (
                   <div
                     key={post._id}
@@ -336,6 +398,20 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
                   </div>
                 ))}
               </div>
+              {/* Loading More Indicator */}
+              {loadingMorePosts && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+                  <span className="ml-3 text-primary-400">Loading more posts...</span>
+                </div>
+              )}
+              {/* End of List Indicator */}
+              {!postsHasMore && userPosts.length > 0 && (
+                <div className="text-center py-8 text-primary-400/50 text-sm">
+                  No more posts
+                </div>
+              )}
+              </>
             )}
           </div>
         )}

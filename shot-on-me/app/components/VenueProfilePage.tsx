@@ -15,7 +15,9 @@ import {
   CheckCircle,
   X,
   Loader,
-  MapPin as CheckInIcon
+  MapPin as CheckInIcon,
+  Navigation,
+  Share2
 } from 'lucide-react'
 import BackButton from './BackButton'
 import CheckInSuccessModal from './CheckInSuccessModal'
@@ -291,7 +293,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black z-50 overflow-y-auto pb-14">
       {/* Header */}
       <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-primary-500/20 z-10">
         <div className="flex items-center justify-between p-4">
@@ -361,31 +363,82 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         )}
 
         {/* Check-in Button */}
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <button
             onClick={handleCheckIn}
             disabled={checkingIn}
-            className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 bg-primary-500 text-black py-2.5 sm:py-3 rounded-lg font-semibold active:bg-primary-600 hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
           >
             {checkingIn ? (
               <>
-                <Loader className="w-5 h-5 animate-spin" />
-                <span>Checking in...</span>
+                <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                <span className="text-sm sm:text-base">Checking in...</span>
               </>
             ) : (
               <>
-                <CheckInIcon className="w-5 h-5" />
-                <span>Check In</span>
+                <CheckInIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="text-sm sm:text-base">Check In</span>
               </>
             )}
           </button>
           <button
             onClick={() => setShowReferralInvite(true)}
-            className="bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            className="bg-primary-500/20 active:bg-primary-500/40 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 touch-manipulation"
             title="Invite friends to check in"
           >
-            <Users className="w-5 h-5" />
-            <span className="hidden sm:inline">Invite</span>
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline text-sm sm:text-base">Invite</span>
+          </button>
+        </div>
+
+        {/* Directions & Share */}
+        <div className="flex gap-2 sm:gap-3">
+          <button
+            onClick={() => {
+              if (venue.location?.latitude && venue.location?.longitude) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`
+                window.open(url, '_blank')
+              }
+            }}
+            className="flex-1 bg-primary-500/20 active:bg-primary-500/40 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 touch-manipulation"
+          >
+            <Navigation className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-sm sm:text-base">Directions</span>
+          </button>
+          <button
+            onClick={async () => {
+              if (navigator.share && venue.name) {
+                try {
+                  await navigator.share({
+                    title: venue.name,
+                    text: `Check out ${venue.name} on Shot On Me!`,
+                    url: window.location.href
+                  })
+                } catch (error) {
+                  // User cancelled or error - fallback to clipboard
+                  if ((error as any).name !== 'AbortError') {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href)
+                      alert('Link copied to clipboard!')
+                    } catch (clipboardError) {
+                      console.error('Failed to copy:', clipboardError)
+                    }
+                  }
+                }
+              } else {
+                // Fallback for browsers without share API
+                try {
+                  await navigator.clipboard.writeText(window.location.href)
+                  alert('Link copied to clipboard!')
+                } catch (clipboardError) {
+                  console.error('Failed to copy:', clipboardError)
+                }
+              }
+            }}
+            className="flex-1 bg-primary-500/20 active:bg-primary-500/40 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 touch-manipulation"
+          >
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-sm sm:text-base">Share</span>
           </button>
         </div>
         

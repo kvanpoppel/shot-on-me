@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 // Removed Inter font import to prevent hydration mismatches - using CSS font instead
 import './globals.css'
 import AppWrapper from './components/AppWrapper'
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="en" suppressHydrationWarning>

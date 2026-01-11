@@ -131,7 +131,7 @@ export default function ProximityNotifications() {
     const checkProximity = async () => {
       try {
         if (!('geolocation' in navigator)) {
-          console.warn('Geolocation not available')
+          // Geolocation not available - continue without proximity notifications
           return
         }
         
@@ -196,11 +196,16 @@ export default function ProximityNotifications() {
               }
             },
             (error) => {
-              // Handle errors gracefully - don't block app
-              console.warn('Geolocation error:', error.message || error)
+              // Handle errors gracefully - don't block app or spam console
+              // Only log if it's a permission issue (user needs to know)
+              if (error.code === error.PERMISSION_DENIED) {
+                // Permission denied - user needs to enable location
+              } else {
+                // Timeout or other errors - expected in some scenarios
+              }
               // Continue without location - don't block app
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
           )
       } catch (error) {
         console.error('Proximity check error:', error)

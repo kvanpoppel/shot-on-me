@@ -15,38 +15,60 @@ router.setIO = (socketIO) => {
 // GET /api/venues
 // - For venue owners: only their own venues
 // - For regular users: all active venues
+// Supports pagination with skip and limit query parameters
 router.get('/', auth, async (req, res) => {
   try {
-    let venues;
+    const { skip = 0, limit = 20 } = req.query;
+    const skipNum = parseInt(skip);
+    const limitNum = parseInt(limit);
 
-    console.log(`[Venues API] User ID: ${req.user.userId}, User Type: ${req.user.userType}`);
+    let venues;
+    let totalCount;
+
+    console.log(`[Venues API] User ID: ${req.user.userId}, User Type: ${req.user.userType}, Skip: ${skipNum}, Limit: ${limitNum}`);
 
     if (req.user.userType === 'venue') {
       // For venue owners, return their own venues PLUS all active test venues (for testing)
       // This allows venue owners to see test venues during development
-      const ownVenues = await Venue.find({ owner: req.user.userId })
-        .populate('owner', 'email firstName lastName')
-        .lean();
-      
-      // Also get test venues (Kate's Pub and Paige's Pub) for testing
+      const ownVenuesQuery = Venue.find({ owner: req.user.userId });
       const testVenueNames = ["Kate's Pub", "Paige's Pub"];
-      const testVenues = await Venue.find({ 
+      const testVenuesQuery = Venue.find({ 
         isActive: true, 
         name: { $in: testVenueNames } 
-      }).lean();
+      });
+      
+      // Get total count for pagination
+      const [ownVenuesCount, testVenuesCount] = await Promise.all([
+        Venue.countDocuments({ owner: req.user.userId }),
+        Venue.countDocuments({ isActive: true, name: { $in: testVenueNames } })
+      ]);
+      
+      // Since we're combining queries, we need to fetch all and then paginate
+      // For now, we'll fetch all and paginate in memory (can be optimized later)
+      const [ownVenues, testVenues] = await Promise.all([
+        ownVenuesQuery.populate('owner', 'email firstName lastName').lean(),
+        testVenuesQuery.lean()
+      ]);
       
       // Combine and deduplicate by _id
       const venueMap = new Map();
       [...ownVenues, ...testVenues].forEach(venue => {
         venueMap.set(venue._id.toString(), venue);
       });
-      venues = Array.from(venueMap.values());
+      const allVenues = Array.from(venueMap.values());
       
-      console.log(`[Venues API] Venue owner query returned ${venues.length} venue(s) (${ownVenues.length} own + ${testVenues.length} test venues)`);
+      totalCount = allVenues.length;
+      venues = allVenues.slice(skipNum, skipNum + limitNum);
+      
+      console.log(`[Venues API] Venue owner query returned ${venues.length} venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
     } else {
-      // For regular users, return all active venues
-      venues = await Venue.find({ isActive: true }).lean();
-      console.log(`[Venues API] Regular user query returned ${venues.length} active venue(s)`);
+      // For regular users, return all active venues with pagination
+      totalCount = await Venue.countDocuments({ isActive: true });
+      venues = await Venue.find({ isActive: true })
+        .skip(skipNum)
+        .limit(limitNum)
+        .lean();
+      console.log(`[Venues API] Regular user query returned ${venues.length} active venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
     }
 
     // Transform venues to match frontend expectations
@@ -69,8 +91,13 @@ router.get('/', auth, async (req, res) => {
       return transformed;
     });
 
-    // Return consistent format: { venues: [...] }
-    res.json({ venues: transformedVenues });
+    // Return consistent format with pagination info
+    res.json({ 
+      venues: transformedVenues,
+      count: transformedVenues.length,
+      hasMore: skipNum + transformedVenues.length < totalCount,
+      total: totalCount
+    });
   } catch (error) {
     console.error('Error fetching venues:', error);
     res.status(500).json({ message: 'Server error' });

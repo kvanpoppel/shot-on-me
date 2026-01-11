@@ -232,7 +232,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
 // Get payment history
 router.get('/history', auth, async (req, res) => {
   try {
-    const { type, limit = 50 } = req.query;
+    const { type, filter, limit = 20, skip = 0 } = req.query;
     
     const query = {
       $or: [
@@ -245,16 +245,34 @@ router.get('/history', auth, async (req, res) => {
       query.type = type;
     }
 
+    // Filter by sent/received
+    if (filter === 'sent') {
+      query.senderId = req.user.userId;
+      delete query.$or;
+    } else if (filter === 'received') {
+      query.recipientId = req.user.userId;
+      delete query.$or;
+    }
+
+    const limitNum = parseInt(limit);
+    const skipNum = parseInt(skip);
+
     const payments = await Payment.find(query)
       .populate('senderId', 'firstName lastName profilePicture phoneNumber')
       .populate('recipientId', 'firstName lastName profilePicture phoneNumber')
       .populate('venueId', 'name address')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .skip(skipNum)
+      .limit(limitNum);
+
+    // Get total count for pagination
+    const totalCount = await Payment.countDocuments(query);
 
     res.json({ 
       payments: payments,
-      count: payments.length
+      count: payments.length,
+      hasMore: skipNum + payments.length < totalCount,
+      total: totalCount
     });
   } catch (error) {
     console.error('Error fetching payment history:', error);

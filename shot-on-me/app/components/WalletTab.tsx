@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone, Calculator } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -39,6 +39,10 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [redeeming, setRedeeming] = useState(false)
   const [payments, setPayments] = useState<any[]>([])
   const [loadingPayments, setLoadingPayments] = useState(true)
+  const [paymentsPage, setPaymentsPage] = useState(1)
+  const [paymentsHasMore, setPaymentsHasMore] = useState(true)
+  const [loadingMorePayments, setLoadingMorePayments] = useState(false)
+  const paymentsContainerRef = useRef<HTMLDivElement>(null)
   const [showAddFunds, setShowAddFunds] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
   const [showTapAndPay, setShowTapAndPay] = useState(false)
@@ -68,45 +72,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [showQRCode, setShowQRCode] = useState(false)
   const [qrCodeData, setQrCodeData] = useState('')
 
-  useEffect(() => {
-    if (token) {
-      fetchPayments()
-      fetchPoints()
-      fetchDefaultPaymentMethod()
-      fetchRecentRecipients()
-      fetchFavoriteVenues()
-      
-      // Check for pre-selected venue from MapTab or other components
-      const storedVenue = localStorage.getItem('selectedVenue')
-      const profileAction = localStorage.getItem('profileAction')
-      
-      if (storedVenue && (profileAction === 'send-shot' || profileAction === 'send-money')) {
-        try {
-          const venue = JSON.parse(storedVenue)
-          setSelectedVenue(venue)
-          // Clear the stored data after reading
-          localStorage.removeItem('selectedVenue')
-          localStorage.removeItem('profileAction')
-        } catch (error) {
-          console.error('Failed to parse stored venue:', error)
-        }
-      }
-    }
-  }, [token])
-
-  // Auto-open add funds modal if requested
-  useEffect(() => {
-    if (autoOpenAddFunds && !hasAutoOpenedAddFundsRef.current) {
-      hasAutoOpenedAddFundsRef.current = true
-      setShowAddFunds(true)
-      if (onAddFundsOpened) {
-        onAddFundsOpened()
-      }
-    } else if (!autoOpenAddFunds) {
-      hasAutoOpenedAddFundsRef.current = false
-    }
-  }, [autoOpenAddFunds, onAddFundsOpened])
-
+  // Define functions BEFORE useEffects that use them
   const fetchDefaultPaymentMethod = async () => {
     try {
       const response = await axios.get(`${API_URL}/payment-methods`, {
@@ -143,6 +109,27 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }
 
+  const fetchPoints = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/gamification/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const newPoints = response.data.points || 0
+      
+      // Check if points increased (user earned points)
+      if (previousPoints > 0 && newPoints > previousPoints) {
+        const earned = newPoints - previousPoints
+        setPointsEarned(earned)
+        setShowPointsBooster(true)
+      }
+      
+      setPreviousPoints(newPoints)
+      setPoints(newPoints)
+    } catch (error) {
+      console.error('Failed to fetch points:', error)
+    }
+  }
+
   const searchUsers = async (query: string) => {
     if (!query.trim() || !token) {
       setSearchResults([])
@@ -159,18 +146,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }
 
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (searchQuery) {
-        searchUsers(searchQuery)
-      } else {
-        setSearchResults([])
-      }
-    }, 300)
-
-    return () => clearTimeout(debounceTimer)
-  }, [searchQuery])
-
   const handleSelectRecipient = (recipient: any) => {
     setRecipientPhone(recipient.phoneNumber || '')
     setRecipientName(`${recipient.firstName} ${recipient.lastName}`)
@@ -183,6 +158,112 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     setAmount(value)
     setShowSendForm(true)
   }
+
+  const fetchPayments = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
+    if (!token) return
+    try {
+      if (reset) {
+        setLoadingPayments(true)
+      } else {
+        setLoadingMorePayments(true)
+      }
+      
+      const limit = 20
+      const skip = (pageNum - 1) * limit
+      
+      // Convert filter to backend filter parameter
+      const filterParam = activeFilter === 'all' || !activeFilter ? null : activeFilter
+      
+      const response = await axios.get(`${API_URL}/payments/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { 
+          limit, 
+          skip,
+          ...(filterParam && { filter: filterParam })
+        },
+        timeout: 10000
+      })
+      
+      const newPayments = response.data.payments || []
+      
+      if (reset || pageNum === 1) {
+        setPayments(newPayments)
+      } else {
+        // Filter out duplicates when appending payments
+        setPayments(prev => {
+          const existingIds = new Set(prev.map(p => p._id))
+          const uniqueNewPayments = newPayments.filter((p: any) => !existingIds.has(p._id))
+          return [...prev, ...uniqueNewPayments]
+        })
+      }
+      
+      setPaymentsHasMore(response.data.hasMore !== false && newPayments.length === limit)
+      setError(null)
+    } catch (error: any) {
+      console.error('Failed to fetch payments:', error)
+      if (reset || pageNum === 1) {
+        setError('Failed to load transaction history')
+        setPayments([])
+      }
+    } finally {
+      setLoadingPayments(false)
+      setLoadingMorePayments(false)
+    }
+  }, [token, activeFilter, API_URL])
+
+  // Main useEffect - load data when token is available
+  useEffect(() => {
+    if (token) {
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
+      fetchPoints()
+      fetchDefaultPaymentMethod()
+      fetchRecentRecipients()
+      fetchFavoriteVenues()
+      
+      // Check for pre-selected venue from MapTab or other components
+      const storedVenue = localStorage.getItem('selectedVenue')
+      const profileAction = localStorage.getItem('profileAction')
+      
+      if (storedVenue && (profileAction === 'send-shot' || profileAction === 'send-money')) {
+        try {
+          const venue = JSON.parse(storedVenue)
+          setSelectedVenue(venue)
+          // Clear the stored data after reading
+          localStorage.removeItem('selectedVenue')
+          localStorage.removeItem('profileAction')
+        } catch (error) {
+          console.error('Failed to parse stored venue:', error)
+        }
+      }
+    }
+  }, [token, fetchPayments])
+
+  // Auto-open add funds modal if requested
+  useEffect(() => {
+    if (autoOpenAddFunds && !hasAutoOpenedAddFundsRef.current) {
+      hasAutoOpenedAddFundsRef.current = true
+      setShowAddFunds(true)
+      if (onAddFundsOpened) {
+        onAddFundsOpened()
+      }
+    } else if (!autoOpenAddFunds) {
+      hasAutoOpenedAddFundsRef.current = false
+    }
+  }, [autoOpenAddFunds, onAddFundsOpened])
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery) {
+        searchUsers(searchQuery)
+      } else {
+        setSearchResults([])
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchQuery])
 
   // Auto-open send form if requested (e.g., from Home tab)
   useEffect(() => {
@@ -208,27 +289,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }, [autoOpenSendForm, onSendFormOpened])
 
-  const fetchPoints = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/gamification/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const newPoints = response.data.points || 0
-      
-      // Check if points increased (user earned points)
-      if (previousPoints > 0 && newPoints > previousPoints) {
-        const earned = newPoints - previousPoints
-        setPointsEarned(earned)
-        setShowPointsBooster(true)
-      }
-      
-      setPreviousPoints(newPoints)
-      setPoints(newPoints)
-    } catch (error) {
-      console.error('Failed to fetch points:', error)
-    }
-  }
-
   // Listen for wallet updates from Socket.io
   useEffect(() => {
     const handleWalletUpdate = (event: CustomEvent) => {
@@ -237,7 +297,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       if (updateUser) {
         updateUser({})
       }
-      fetchPayments()
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
       // Refresh default payment method in case it changed
       fetchDefaultPaymentMethod()
     }
@@ -248,14 +310,49 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         window.removeEventListener('wallet-updated', handleWalletUpdate as EventListener)
       }
     }
-  }, [updateUser, token])
+  }, [updateUser, token, fetchPayments, fetchDefaultPaymentMethod])
+
+  // Refetch payments when filter changes
+  useEffect(() => {
+    if (token && activeFilter !== null) {
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
+    }
+  }, [activeFilter, token, fetchPayments])
+
+  // Infinite scroll for payments
+  useEffect(() => {
+    const handleScroll = () => {
+      // Infinite scroll - load more when near bottom
+      if (!loadingMorePayments && paymentsHasMore && paymentsContainerRef.current) {
+        const scrollHeight = document.documentElement.scrollHeight
+        const scrollTop = window.innerHeight + window.scrollY
+        const threshold = 500 // Load when 500px from bottom
+        
+        if (scrollTop >= scrollHeight - threshold) {
+          setLoadingMorePayments(true)
+          setPaymentsPage(prev => {
+            const nextPage = prev + 1
+            fetchPayments(nextPage, false)
+            return nextPage
+          })
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loadingMorePayments, paymentsHasMore, fetchPayments])
 
   // Listen for real-time payment updates and points updates
   useEffect(() => {
     if (!socket) return
 
     const handlePaymentRedeemed = (data: any) => {
-      fetchPayments()
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
       fetchPoints() // Refresh points in case they were earned
       if (updateUser) {
         updateUser({})
@@ -265,7 +362,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
 
     const handlePaymentProcessed = (data: any) => {
-      fetchPayments()
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
       fetchPoints() // Refresh points in case they were earned
       if (updateUser) {
         updateUser({})
@@ -290,23 +389,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       socket.off('payment-processed', handlePaymentProcessed)
       socket.off('points-updated', handlePointsUpdated)
     }
-  }, [socket, updateUser, user, previousPoints])
-
-  const fetchPayments = async () => {
-    try {
-      setLoadingPayments(true)
-      const response = await axios.get(`${API_URL}/payments/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setPayments(response.data.payments || [])
-      setError(null)
-    } catch (error: any) {
-      console.error('Failed to fetch payments:', error)
-      setError('Failed to load transaction history')
-    } finally {
-      setLoadingPayments(false)
-    }
-  }
+  }, [socket, updateUser, user, previousPoints, fetchPayments, fetchPoints])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -356,7 +439,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setAmount('')
       setMessage('')
       setSelectedVenue(null)
-      fetchPayments()
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
       fetchRecentRecipients()
       if (updateUser) {
         updateUser({})
@@ -522,7 +607,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setSuccess(`Payment redeemed! Amount: $${response.data.payment.amount.toFixed(2)}`)
       setShowRedeemForm(false)
       setRedemptionCode('')
-      fetchPayments()
+      setPaymentsPage(1)
+      setPaymentsHasMore(true)
+      fetchPayments(1, true)
       if (updateUser) {
         updateUser({})
       }
@@ -535,15 +622,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }
 
-  const filteredPayments = payments.filter((payment) => {
-    if (!activeFilter || activeFilter === 'all') return true
-    if (activeFilter === 'sent') {
-      return payment.senderId?._id === user?.id || payment.senderId === user?.id || payment.sender?._id === user?.id || payment.sender === user?.id
-    } else if (activeFilter === 'received') {
-      return payment.recipientId?._id === user?.id || payment.recipientId === user?.id || payment.recipient?._id === user?.id || payment.recipient === user?.id
-    }
-    return true
-  })
+  // Payments are already filtered by backend, no need for client-side filtering
+  const filteredPayments = payments
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -1009,6 +1089,20 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             <span>Tap & Pay</span>
           </button>
         </div>
+        {/* Calculator - Small Utility Button */}
+        <div className="mt-2">
+          <button
+            onClick={() => {
+              // Open calculator in new tab (similar to weather link)
+              window.open('https://www.google.com/search?q=calculator', '_blank', 'noopener,noreferrer')
+            }}
+            className="w-full bg-black/40 border border-primary-500/20 text-primary-400 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/40 hover:text-primary-500 transition-all"
+            title="Open Calculator"
+          >
+            <Calculator className="w-4 h-4" />
+            <span>Calculator</span>
+          </button>
+        </div>
       </div>
 
       {/* Virtual Card Manager */}
@@ -1030,7 +1124,12 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           {(['all', 'sent', 'received'] as const).map((filter) => (
             <button
               key={filter}
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => {
+                setActiveFilter(filter)
+                setPaymentsPage(1)
+                setPaymentsHasMore(true)
+                fetchPayments(1, true)
+              }}
               className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${
                 activeFilter === filter
                   ? 'bg-primary-500 text-black shadow-lg'
@@ -1062,7 +1161,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             <p className="text-primary-400/60 text-sm">No {activeFilter === 'all' ? '' : activeFilter} transactions yet</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+          <div ref={paymentsContainerRef} className="space-y-2">
             {filteredPayments.map((payment) => {
               const isSent = payment.senderId?._id === user?.id || payment.senderId === user?.id || payment.sender?._id === user?.id || payment.sender === user?.id
               const otherUser = isSent 
@@ -1126,6 +1225,19 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                 </div>
               )
             })}
+            {/* Loading More Indicator */}
+            {loadingMorePayments && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+                <span className="ml-3 text-primary-400">Loading more transactions...</span>
+              </div>
+            )}
+            {/* End of List Indicator */}
+            {!paymentsHasMore && filteredPayments.length > 0 && (
+              <div className="text-center py-8 text-primary-400/50 text-sm">
+                No more transactions
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1254,7 +1366,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           if (updateUser) {
             updateUser({})
           }
-          fetchPayments()
+          setPaymentsPage(1)
+          setPaymentsHasMore(true)
+          fetchPayments(1, true)
           setSuccess(`Payment successful! $${payment.payment?.amount?.toFixed(2) || '0.00'} paid to ${payment.venue?.name || 'venue'}`)
           setTimeout(() => setSuccess(null), 5000)
         }}

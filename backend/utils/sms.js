@@ -175,9 +175,58 @@ const isTwilioConfigured = () => {
          !!process.env.TWILIO_PHONE_NUMBER;
 };
 
+/**
+ * Send SMS notification for mention in post/comment
+ * @param {string} recipientPhone - Recipient's phone number
+ * @param {string} mentionerName - Name of person who mentioned them
+ * @param {string} contentPreview - Preview of post/comment content
+ * @param {string} type - Type: 'post', 'comment', or 'checkin'
+ * @param {string} postId - Post ID (optional, for app link)
+ * @returns {Promise<boolean>}
+ */
+const sendMentionSMS = async (recipientPhone, mentionerName, contentPreview, type = 'post', postId = null) => {
+  // Re-initialize if client is null
+  if (!twilioClient) {
+    twilioClient = initializeTwilio();
+    if (!twilioClient) {
+      console.warn('⚠️ Twilio not configured. SMS not sent.');
+      return false;
+    }
+  }
+
+  if (!recipientPhone) {
+    return false;
+  }
+
+  let formattedPhone = recipientPhone.trim();
+  if (!formattedPhone.startsWith('+')) {
+    formattedPhone = formattedPhone.replace(/^1/, '');
+    formattedPhone = `+1${formattedPhone.replace(/\D/g, '')}`;
+  }
+
+  const typeLabel = type === 'comment' ? 'a comment' : type === 'checkin' ? 'a check-in' : 'a post';
+  const smsBody = `📬 ${mentionerName} mentioned you in ${typeLabel}:\n\n"${contentPreview}"\n\nShot On Me`;
+
+  try {
+    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+    const result = await twilioClient.messages.create({
+      body: smsBody,
+      from: twilioPhone,
+      to: formattedPhone
+    });
+
+    console.log(`✅ Mention SMS sent to ${formattedPhone}. SID: ${result.sid}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error sending mention SMS:`, error.message);
+    return false;
+  }
+};
+
 module.exports = {
   sendPaymentSMS,
   sendFriendInviteSMS,
+  sendMentionSMS,
   isTwilioConfigured,
   initializeTwilio,
   reinitializeTwilio

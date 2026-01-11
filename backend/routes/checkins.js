@@ -94,6 +94,16 @@ router.post('/', auth, async (req, res) => {
       user.checkInStreak.longest = user.checkInStreak.current;
     }
 
+    // Process mentions in check-in notes (if present) - async, don't wait
+    if (notes && typeof notes === 'string') {
+      const { processMentions } = require('../utils/mentions');
+      // Check-ins create posts, so we'll process mentions after post is created
+      // For now, process mentions in notes directly
+      processMentions(notes, req.user.userId, 'checkin', null).catch(err => {
+        console.error('Error processing mentions in check-in:', err);
+      });
+    }
+
     // Create check-in first (needed for reference ID)
     const checkIn = new CheckIn({
       user: req.user.userId,

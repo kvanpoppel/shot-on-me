@@ -269,6 +269,7 @@ app.use('/api/ai-analytics', require('./routes/aiAnalytics'));
 app.use('/api/personalized-promotions', require('./routes/personalizedPromotions'));
 app.use('/api/predictive-analytics', require('./routes/predictiveAnalytics'));
 app.use('/api/ai-automation', require('./routes/aiAutomation'));
+app.use('/api/search', require('./routes/search'));
 const tapAndPayRouter = require('./routes/tap-and-pay');
 app.use('/api/owner', require('./routes/owner'));
 tapAndPayRouter.setIO(io); // Pass Socket.io instance
