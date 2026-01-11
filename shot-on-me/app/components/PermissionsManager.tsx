@@ -131,39 +131,41 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       }
     }
 
-    // Check Contacts - Multiple API support with better detection
+    // Check Contacts - iOS Safari does NOT support Contacts API
     try {
       const contactsPermission = localStorage.getItem('contacts-permission')
       if (contactsPermission === 'granted') {
         status.contacts = 'granted'
-      } else if (typeof navigator !== 'undefined' && 'contacts' in navigator) {
-        // Android Chrome ContactsManager API
-        if (typeof window !== 'undefined' && 'ContactsManager' in window) {
-          status.contacts = 'prompt'
-        }
-        // iOS Safari and newer browsers Contact Picker API
-        else if (navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
-          status.contacts = 'prompt'
-        } else {
-          // On mobile devices, contacts might be available even if not detected
-          // Check if we're on a mobile device
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-          status.contacts = isMobile ? 'prompt' : 'unavailable'
-        }
       } else {
-        // Check for iOS Contact Picker (different API)
-        if (typeof window !== 'undefined' && typeof (window as any).ContactsPicker !== 'undefined') {
-          status.contacts = 'prompt'
+        // Check if iOS Safari (Contacts API NOT supported)
+        const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        if (isIOS) {
+          // iOS Safari does NOT support Contacts API - this is a platform limitation
+          status.contacts = 'unavailable'
+        } else if (typeof navigator !== 'undefined' && 'contacts' in navigator) {
+          // Android Chrome ContactsManager API
+          if (typeof window !== 'undefined' && 'ContactsManager' in window) {
+            status.contacts = 'prompt'
+          }
+          // Contact Picker API (non-iOS browsers)
+          else if (navigator.contacts && typeof (navigator.contacts as any).getContacts === 'function') {
+            status.contacts = 'prompt'
+          } else {
+            status.contacts = 'unavailable'
+          }
         } else {
-          // On mobile devices, assume contacts might be available
-          const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-          status.contacts = isMobile ? 'prompt' : 'unavailable'
+          // Check for Contact Picker (non-iOS browsers)
+          if (typeof window !== 'undefined' && typeof (window as any).ContactsPicker !== 'undefined') {
+            status.contacts = 'prompt'
+          } else {
+            status.contacts = 'unavailable'
+          }
         }
       }
     } catch (e) {
-      // On mobile, default to prompt for contacts
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-      status.contacts = isMobile ? 'prompt' : 'unavailable'
+      // On error, check if iOS - if so, unavailable; otherwise unknown
+      const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      status.contacts = isIOS ? 'unavailable' : 'unavailable'
     }
 
     // Check Notifications
