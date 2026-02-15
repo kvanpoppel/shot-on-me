@@ -8,7 +8,7 @@ import FeatureDetailModal from './components/FeatureDetailModal'
 import FAQ from './components/FAQ'
 import axios from 'axios'
 import { getApiUrl } from './utils/api'
-import { Sparkles, TrendingUp, Users, BarChart3, Zap, Shield, WandSparkles, Bot, CalendarClock, ArrowRight } from 'lucide-react'
+import { Sparkles, TrendingUp, Users, BarChart3, Zap, Shield, Bot, CalendarClock, ArrowRight } from 'lucide-react'
 
 type PortalRole = 'owner' | 'manager' | 'staff'
 
@@ -113,7 +113,7 @@ function HomeContent() {
 
   const aiOptions = useMemo(() => [
     {
-      icon: WandSparkles,
+      icon: Sparkles,
       title: 'Generate Smart Promotions',
       description: 'Create high-converting promotions in under a minute using AI templates built for bars and venues.',
       bestFor: 'Last-minute slow nights and quick campaign launches',
