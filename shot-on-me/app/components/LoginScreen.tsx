@@ -196,14 +196,14 @@ export default function LoginScreen() {
         </div>
 
         {/* Form */}
-        <div className="relative w-full max-w-md">
-          <div className="bg-black border-2 border-primary-500 rounded-lg shadow-2xl p-8">
+        <div className="relative w-full max-w-sm">
+          <div className="bg-black/95 border border-primary-500/70 rounded-lg shadow-xl p-5 md:p-6">
             {/* Toggle between Sign In and Sign Up */}
             <div className="flex mb-6 border-b border-primary-500/20">
               <button
                 type="button"
                 onClick={() => setIsLogin(true)}
-                className={`flex-1 py-3 text-center font-semibold transition-colors ${
+                className={`flex-1 py-2 text-center text-sm font-semibold transition-colors ${
                   isLogin
                     ? 'text-primary-500 border-b-2 border-primary-500'
                     : 'text-primary-400 hover:text-primary-500'
@@ -214,7 +214,7 @@ export default function LoginScreen() {
               <button
                 type="button"
                 onClick={() => setIsLogin(false)}
-                className={`flex-1 py-3 text-center font-semibold transition-colors ${
+                className={`flex-1 py-2 text-center text-sm font-semibold transition-colors ${
                   !isLogin
                     ? 'text-primary-500 border-b-2 border-primary-500'
                     : 'text-primary-400 hover:text-primary-500'
@@ -224,11 +224,7 @@ export default function LoginScreen() {
               </button>
             </div>
 
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-primary-500">{isLogin ? 'Sign In' : 'Create Account'}</h2>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {!isLogin && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
@@ -240,7 +236,7 @@ export default function LoginScreen() {
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="First Name"
                         required
-                        className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -251,7 +247,7 @@ export default function LoginScreen() {
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Last Name"
                         required
-                        className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                   </div>
@@ -263,7 +259,7 @@ export default function LoginScreen() {
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="+1234567890"
                       required
-                      className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                 </>
@@ -277,7 +273,7 @@ export default function LoginScreen() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email"
                     required
-                    className="login-form-input w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="login-form-input w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
               </div>
 
@@ -292,7 +288,7 @@ export default function LoginScreen() {
                     required
                     minLength={6}
                     autoComplete="current-password"
-                    className="login-form-input w-full px-4 py-3 pr-12 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="login-form-input w-full px-3 py-2.5 pr-11 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                   <button
                     type="button"
