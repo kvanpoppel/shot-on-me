@@ -17,32 +17,22 @@ export interface InviteResult {
 }
 
 /**
- * Get user's invite link with referral code
+ * Get user's invite link. Uses userId only – referral is tied to user ID on backend.
  */
-export async function getInviteLink(userId: string, referralCode?: string, venueId?: string): Promise<string> {
+export async function getInviteLink(userId: string, _referralCode?: string, venueId?: string): Promise<string> {
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  
-  // Venue-specific referral link
   if (venueId) {
     return `${baseUrl}/venue/${venueId}/checkin?ref=${userId}`
   }
-  
-  // Use referral code if available, otherwise use userId
-  // Use root path (/) instead of /signup since that route doesn't exist
-  if (referralCode) {
-    return `${baseUrl}/?ref=${referralCode}`
-  }
-  
   return `${baseUrl}/?ref=${userId}`
 }
 
 /**
- * Get invite message text
+ * Get invite message text. No referral code – backend attributes by user ID.
  */
-export function getInviteMessage(userName?: string, referralCode?: string): string {
+export function getInviteMessage(userName?: string): string {
   const name = userName ? `${userName} ` : ''
-  const codeText = referralCode ? ` Use my referral code: ${referralCode}` : ''
-  return `${name}invited you to join Shot On Me! Send drinks to friends at any bar or coffee shop.${codeText} Join now and get started!`
+  return `${name}invited you to join Shot On Me! Send drinks to friends at any bar or coffee shop. Join now and get started!`
 }
 
 /**
@@ -84,19 +74,7 @@ export async function shareInvite(
 
   // Method 2: SMS (if phone number provided)
   if (options?.method === 'sms' && options.phoneNumber) {
-    // Extract referral code from link if present
-    const urlParams = new URLSearchParams(inviteLink.split('?')[1] || '')
-    const refCode = urlParams.get('ref') || ''
-    
-    // Create message with referral code prominently displayed
-    let smsMessage = shareMessage
-    if (refCode && !smsMessage.includes(refCode)) {
-      // Add referral code to message if not already included
-      smsMessage = `${shareMessage}\n\nReferral Code: ${refCode}\n\nJoin here: ${inviteLink}`
-    } else {
-      smsMessage = `${shareMessage}\n\n${inviteLink}`
-    }
-    
+    const smsMessage = `${shareMessage}\n\n${inviteLink}`
     const smsLink = `sms:${options.phoneNumber}?body=${encodeURIComponent(smsMessage)}`
     window.location.href = smsLink
     return {
@@ -108,10 +86,6 @@ export async function shareInvite(
 
   // Method 3: Email (if email provided) - Send via backend API
   if (options?.method === 'email' && options.email) {
-    // Extract referral code from link if present
-    const urlParams = new URLSearchParams(inviteLink.split('?')[1] || '')
-    const refCode = urlParams.get('ref') || ''
-    
     // Get API URL - use centralized getApiUrl function
     const { getApiUrl } = await import('./api')
     const API_URL = getApiUrl()
@@ -148,8 +122,7 @@ export async function shareInvite(
         },
         body: JSON.stringify({
           email: options.email,
-          inviteLink: inviteLink,
-          referralCode: refCode || undefined
+          inviteLink: inviteLink
         })
       })
       
@@ -205,6 +178,57 @@ export async function shareInvite(
  */
 export function supportsNativeShare(): boolean {
   return typeof navigator !== 'undefined' && 'share' in navigator
+}
+
+/**
+ * Open native share sheet (Facebook, Messenger, Email, Signal, etc. – OS‑dependent).
+ * Use this when user taps "Share"; they pick app from the system picker.
+ */
+export async function openNativeShare(inviteLink: string, message?: string): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.share) return false
+  const shareMessage = message || getInviteMessage()
+  try {
+    await navigator.share({
+      title: 'Join me on Shot On Me!',
+      text: shareMessage,
+      url: inviteLink
+    })
+    return true
+  } catch (e: any) {
+    if (e?.name === 'AbortError') return false
+    throw e
+  }
+}
+
+export type AppShareTarget = 'facebook' | 'whatsapp' | 'twitter' | 'email' | 'copy'
+
+/**
+ * Get share URLs or actions for app-specific buttons (Facebook, WhatsApp, Email, Copy).
+ * Use when native share isn't available or user wants a specific app.
+ */
+export function getAppShareTargets(inviteLink: string, message?: string): Record<AppShareTarget, { url?: string; type: 'url' | 'copy' }> {
+  const text = (message || getInviteMessage()) + '\n\n' + inviteLink
+  const encodedUrl = encodeURIComponent(inviteLink)
+  const encodedText = encodeURIComponent(text)
+  return {
+    facebook: {
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      type: 'url'
+    },
+    whatsapp: {
+      url: `https://wa.me/?text=${encodedText}`,
+      type: 'url'
+    },
+    twitter: {
+      url: `https://twitter.com/intent/tweet?text=${encodedText}`,
+      type: 'url'
+    },
+    email: {
+      url: `mailto:?subject=${encodeURIComponent('Join me on Shot On Me!')}&body=${encodedText}`,
+      type: 'url'
+    },
+    copy: { type: 'copy' }
+  }
 }
 
 /**

@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Filter, RefreshCw, Flame, Compass, UserCheck, Eye, MoreVertical, Flag, Trash2 } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, RefreshCw, Flame, Compass, UserCheck, Eye, MoreVertical, Flag, Trash2, ThumbsUp } from 'lucide-react'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
 import StoryEditor from './StoryEditor'
+import AIFeedSuggestions from './AIFeedSuggestions'
 import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
 
@@ -87,6 +88,7 @@ interface FeedTabProps {
 
 export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPostFormOpened }: FeedTabProps) {
   const { token, user } = useAuth()
+  const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
@@ -136,9 +138,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [loadingMore, setLoadingMore] = useState(false)
   const [pullToRefresh, setPullToRefresh] = useState(false)
   const [pullStartY, setPullStartY] = useState(0)
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
   const [postViews, setPostViews] = useState<Map<string, number>>(new Map())
-  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [aiSignals, setAiSignals] = useState<{ viewedProfileIds: string[]; addedFriendIds: string[] }>({
+    viewedProfileIds: [],
+    addedFriendIds: []
+  })
   const [showTrendingVenues, setShowTrendingVenues] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('showTrendingVenues')
@@ -146,9 +150,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
     return false // Hidden by default
   })
-  const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null)
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
-  const postMenuRef = useRef<HTMLDivElement | null>(null)
+  const [activePostReactionPicker, setActivePostReactionPicker] = useState<string | null>(null)
   const commentMenuRef = useRef<HTMLDivElement | null>(null)
 
   // Auto-open post form when navigating from ProfileTab
@@ -173,19 +176,20 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (postMenuOpen && postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) {
-        setPostMenuOpen(null)
-      }
       if (commentMenuOpen && commentMenuRef.current && !commentMenuRef.current.contains(event.target as Node)) {
         setCommentMenuOpen(null)
       }
+      const target = event.target as HTMLElement
+      if (activePostReactionPicker && !target.closest('[data-post-reaction-picker]')) {
+        setActivePostReactionPicker(null)
+      }
     }
 
-    if (postMenuOpen || commentMenuOpen) {
+    if (commentMenuOpen || activePostReactionPicker) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [postMenuOpen, commentMenuOpen])
+  }, [commentMenuOpen, activePostReactionPicker])
 
   // Scroll restoration - remember scroll position when switching tabs
   useEffect(() => {
@@ -244,6 +248,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       
       // Fetch non-critical data in parallel (don't block UI)
       Promise.all([
+        fetchAISignals(),
         fetchNearbyFriends(),
         fetchTrendingVenues(),
         fetchFriendSuggestions()
@@ -251,7 +256,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         console.error('Error fetching feed data:', error)
       })
     }
-  }, [token, feedFilter])
+  }, [token, feedFilter, aiEnabled])
 
   // Real-time updates with granular Socket.io events for optimal performance
   useEffect(() => {
@@ -402,7 +407,35 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         timeout: 10000
       })
       
-      const newPosts = response.data.posts || []
+      let newPosts = response.data.posts || []
+
+      // AI ranking for "For You" feed
+      if (aiEnabled && currentFilter === 'foryou') {
+        const viewedSet = new Set(aiSignals.viewedProfileIds || [])
+        const addedSet = new Set(aiSignals.addedFriendIds || [])
+        const nearbyNames = new Set((nearbyFriends || []).map((f: any) => (f.firstName || '').toLowerCase()))
+
+        const scorePost = (post: FeedPost) => {
+          const authorId = (post.author?._id || post.author?.id || '').toString()
+          let score = 0
+
+          if (authorId && viewedSet.has(authorId)) score += 24
+          if (authorId && addedSet.has(authorId)) score += 20
+          if (nearbyNames.has((post.author?.firstName || '').toLowerCase())) score += 14
+          if (post.checkIn?.venue?._id) score += 8
+          if ((post.comments?.length || 0) > 0) score += Math.min(10, post.comments.length * 2)
+          const totalReactions: number = Number(post.totalReactions || 0)
+          if (totalReactions > 0) score += Math.min(12, totalReactions)
+
+          // Slight recency boost
+          const ageHours = Math.max(0, (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60))
+          score += Math.max(0, 10 - ageHours * 0.5)
+
+          return score
+        }
+
+        newPosts = [...newPosts].sort((a, b) => scorePost(b) - scorePost(a))
+      }
       
       if (pageNum === 1) {
         setPosts(newPosts)
@@ -502,6 +535,59 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }
 
+  const fetchAISignals = async () => {
+    if (!token || !aiEnabled) {
+      setAiSignals({ viewedProfileIds: [], addedFriendIds: [] })
+      return
+    }
+    try {
+      const response = await axios.get(`${API_URL}/users/me/ai-signals`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
+      })
+      const signals = response.data?.aiSignals || {}
+      setAiSignals({
+        viewedProfileIds: Array.isArray(signals.viewedProfileIds) ? signals.viewedProfileIds : [],
+        addedFriendIds: Array.isArray(signals.addedFriendIds) ? signals.addedFriendIds : []
+      })
+    } catch (error) {
+      console.error('Failed to fetch AI signals:', error)
+    }
+  }
+
+  const persistAISignals = async (nextSignals: { viewedProfileIds: string[]; addedFriendIds: string[] }) => {
+    if (!token || !aiEnabled) return
+    try {
+      await axios.put(
+        `${API_URL}/users/me/ai-signals`,
+        nextSignals,
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+      )
+    } catch (error) {
+      console.error('Failed to persist AI signals:', error)
+    }
+  }
+
+  const trackProfileViewForAI = (userId: string) => {
+    if (!userId || !aiEnabled) return
+    const nextSignals = {
+      viewedProfileIds: [userId, ...aiSignals.viewedProfileIds.filter((id) => id !== userId)].slice(0, 30),
+      addedFriendIds: aiSignals.addedFriendIds
+    }
+    setAiSignals(nextSignals)
+    void persistAISignals(nextSignals)
+  }
+
+  const trackFriendAddForAI = (userId: string) => {
+    if (!userId || !aiEnabled) return
+    const nextSignals = {
+      viewedProfileIds: aiSignals.viewedProfileIds,
+      addedFriendIds: [userId, ...aiSignals.addedFriendIds.filter((id) => id !== userId)].slice(0, 30)
+    }
+    setAiSignals(nextSignals)
+    void persistAISignals(nextSignals)
+  }
+
   const handleAddFriend = async (friendId: string) => {
     if (!token) {
       alert('Please log in to add friends')
@@ -543,6 +629,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         }
       )
       
+      trackFriendAddForAI(friendId)
+
       // Success - refresh data
       await Promise.all([
         fetchFriendSuggestions(),
@@ -1281,22 +1369,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     setInviting(true)
 
     try {
-      // Get referral code if available
-      let referralCode = ''
-      try {
-        const referralResponse = await axios.get(`${API_URL}/referrals/code`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        referralCode = referralResponse.data.code || ''
-      } catch (err) {
-        console.log('No referral code available, using user ID')
-      }
-
-      // Generate invite link
       const userId = user?.id || (user as any)?._id
-      const inviteLink = await getInviteLink(userId, referralCode)
+      const inviteLink = await getInviteLink(userId)
       const userName = user?.firstName || user?.name || ''
-      const message = getInviteMessage(userName, referralCode)
+      const message = getInviteMessage(userName)
 
       // Format phone number for SMS (ensure it has + prefix)
       let phoneNumber = invitePhone.trim()
@@ -1474,62 +1550,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         onViewProfile={onViewProfile}
       />
 
-      {/* Simplified Header */}
+      {/* Simplified Header - Filter banner + actions */}
       <div className="bg-black border-b border-primary-500/10 backdrop-blur-sm sticky top-0 z-30">
         <div className="p-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {/* Active Filter Display */}
-              {(() => {
-                const filterConfig = {
-                  following: { label: 'Following', icon: UserCheck },
-                  trending: { label: 'Trending', icon: Flame },
-                  nearby: { label: 'Nearby', icon: Compass },
-                  foryou: { label: 'For You', icon: Sparkles },
-                  discover: { label: 'Discover', icon: Eye }
-                }[feedFilter]
-                const Icon = filterConfig?.icon || UserCheck
-                return (
-                  <button
-                    onClick={() => setShowFilterMenu(!showFilterMenu)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-500/10 text-primary-500 hover:bg-primary-500/20 transition-all"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{filterConfig?.label || 'Following'}</span>
-                    <Filter className="w-3 h-3 ml-1" />
-                  </button>
-                )
-              })()}
-            </div>
-            
-            {/* Actions Menu */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setPage(1)
-                  setHasMore(true)
-                  setLoading(true)
-                  fetchFeed(1, feedFilter)
-                }}
-                disabled={loading || pullToRefresh}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all disabled:opacity-50"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => setShowPostForm(!showPostForm)}
-                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
-              >
-                Post
-              </button>
-            </div>
-          </div>
-          
-          {/* Filter Menu Dropdown */}
-          {showFilterMenu && (
-            <div className="mt-2 p-2 bg-black/90 border border-primary-500/20 rounded-lg backdrop-blur-md">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="flex justify-between items-center gap-2">
+            {/* Horizontal scrollable filter banner */}
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2 pb-1 pt-0.5 flex-nowrap">
                 {[
                   { id: 'following', label: 'Following', icon: UserCheck },
                   { id: 'trending', label: 'Trending', icon: Flame },
@@ -1544,9 +1571,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       setPage(1)
                       setHasMore(true)
                       setLoading(true)
-                      setShowFilterMenu(false)
                     }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex-shrink-0 ${
                       feedFilter === id
                         ? 'bg-primary-500 text-black'
                         : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20'
@@ -1557,19 +1583,68 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   </button>
                 ))}
               </div>
-              <div className="mt-2 pt-2 border-t border-primary-500/10">
-                <button
-                  onClick={() => setShowFriendInvite(true)}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm bg-primary-500/10 text-primary-500 hover:bg-primary-500/20 transition-all"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Invite Friends</span>
-                </button>
-              </div>
             </div>
-          )}
+            {/* Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => {
+                  setPage(1)
+                  setHasMore(true)
+                  setLoading(true)
+                  fetchFeed(1, feedFilter)
+                }}
+                disabled={loading || pullToRefresh}
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setShowFriendInvite(true)}
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
+                title="Invite Friends"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="hidden sm:inline">Invite</span>
+              </button>
+              <button
+                onClick={() => setShowPostForm(!showPostForm)}
+                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
+              >
+                Post
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* AI Suggestions */}
+      {aiEnabled && (
+        <AIFeedSuggestions
+          nearbyVenues={trendingVenues}
+          recentFriendActivity={friendActivity}
+          onSuggestionClick={(suggestion: any) => {
+            if (suggestion?.type === 'checkin' && suggestion?.venueId) {
+              const matchedVenue = trendingVenues.find((v: any) => v._id === suggestion.venueId)
+              if (matchedVenue) {
+                setSelectedVenue(matchedVenue)
+              }
+              setShowPostForm(true)
+              return
+            }
+            setShowPostForm(true)
+          }}
+        />
+      )}
+      {!aiEnabled && (
+        <div className="px-4 py-2 border-b border-primary-500/10">
+          <div className="bg-black/40 border border-primary-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-primary-400/80">
+              AI feed suggestions are off. Turn them on in `Settings {'>'} AI Personalization`.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Friend Suggestions - Collapsible */}
       {friendSuggestions.length > 0 && (
@@ -1615,7 +1690,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   >
                     <div 
                       className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden cursor-pointer hover:border-primary-500 transition-all"
-                      onClick={() => onViewProfile?.(suggestion._id || suggestion.id)}
+                      onClick={() => {
+                        const profileId = suggestion._id || suggestion.id
+                        if (profileId) trackProfileViewForAI(profileId)
+                        onViewProfile?.(profileId)
+                      }}
                     >
                       {suggestion.profilePicture ? (
                         <img src={suggestion.profilePicture} alt={suggestion.firstName} className="w-full h-full object-cover" />
@@ -1629,7 +1708,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     </div>
                     <p 
                       className="text-xs font-semibold text-primary-500 text-center cursor-pointer hover:text-primary-400 transition-all"
-                      onClick={() => onViewProfile?.(suggestion._id || suggestion.id)}
+                      onClick={() => {
+                        const profileId = suggestion._id || suggestion.id
+                        if (profileId) trackProfileViewForAI(profileId)
+                        onViewProfile?.(profileId)
+                      }}
                     >
                       {suggestion.firstName}
                     </p>
@@ -2188,214 +2271,113 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   </div>
                 )}
 
-                {/* Reactions Display with Hover Tooltips */}
-                {post.reactionCounts && Object.keys(post.reactionCounts).length > 0 && (
-                  <div className="flex items-center gap-2 pt-2 pb-1 flex-wrap">
-                    {Object.entries(post.reactionCounts).map(([emoji, data]) => {
-                      const userHasReacted = post.userReactions?.includes(emoji) || post.userReaction === emoji;
-                      const userNames = data.users?.slice(0, 5).map((u: any) => 
-                        u.firstName || u.name || 'Someone'
-                      ).join(', ') || '';
-                      const moreCount = (data.users?.length || 0) - 5;
-                      const tooltipText = data.users?.length > 0 
-                        ? `${userNames}${moreCount > 0 ? ` and ${moreCount} more` : ''} reacted ${emoji}`
-                        : `${data.count} reaction${data.count !== 1 ? 's' : ''}`;
-                      
-                      return (
-                        <div key={emoji} className="relative group">
-                          <button
-                            onClick={() => handleReaction(post._id, emoji)}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm transition-all ${
-                              userHasReacted
-                                ? 'bg-primary-500/20 border border-primary-500/50'
-                                : 'bg-primary-500/5 border border-primary-500/10 hover:bg-primary-500/10'
-                            }`}
-                            title={tooltipText}
-                          >
-                            <span className="text-base">{emoji}</span>
-                            <span className="text-primary-400 font-medium">{data.count}</span>
-                          </button>
-                          {/* Hover Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black/95 border border-primary-500/30 rounded-lg text-xs text-primary-300 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 shadow-lg">
-                            {tooltipText}
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                              <div className="w-2 h-2 bg-black/95 border-r border-b border-primary-500/30 transform rotate-45"></div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Cleaner UI: reaction breakdown shown in picker only */}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-primary-500/20">
-                  <div className="flex items-center space-x-4">
-                    {/* Quick Reaction Buttons with Hover Picker */}
-                    <div className="relative flex items-center space-x-1 group/reactions">
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => handleReaction(post._id, '❤️')}
-                          className={`p-2 rounded-full transition-all ${
-                            post.userReactions?.includes('❤️') || post.userReaction === '❤️'
-                              ? 'bg-primary-500/20 text-primary-500'
-                              : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
-                          }`}
-                          title="Love"
-                        >
-                          <span className="text-xl">❤️</span>
-                        </button>
-                        <button
-                          onClick={() => handleReaction(post._id, '👍')}
-                          className={`p-2 rounded-full transition-all ${
-                            post.userReactions?.includes('👍') || post.userReaction === '👍'
-                              ? 'bg-primary-500/20 text-primary-500'
-                              : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
-                          }`}
-                          title="Like"
-                        >
-                          <span className="text-xl">👍</span>
-                        </button>
-                        <button
-                          onClick={() => handleReaction(post._id, '😂')}
-                          className={`p-2 rounded-full transition-all ${
-                            post.userReactions?.includes('😂') || post.userReaction === '😂'
-                              ? 'bg-primary-500/20 text-primary-500'
-                              : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
-                          }`}
-                          title="Laugh"
-                        >
-                          <span className="text-xl">😂</span>
-                        </button>
-                        <button
-                          onClick={() => handleReaction(post._id, '🔥')}
-                          className={`p-2 rounded-full transition-all ${
-                            post.userReactions?.includes('🔥') || post.userReaction === '🔥'
-                              ? 'bg-primary-500/20 text-primary-500'
-                              : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
-                          }`}
-                          title="Fire"
-                        >
-                          <span className="text-xl">🔥</span>
-                        </button>
-                      </div>
-                      {/* Extended Reaction Picker on Hover */}
-                      <div className="absolute bottom-full left-0 mb-2 bg-black/95 border border-primary-500/30 rounded-full px-2 py-1.5 flex items-center gap-1.5 opacity-0 group-hover/reactions:opacity-100 pointer-events-none group-hover/reactions:pointer-events-auto transition-all duration-200 z-50 shadow-lg">
-                        {['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleReaction(post._id, emoji)}
-                            className={`text-lg hover:scale-125 transition-transform ${
-                              post.userReactions?.includes(emoji) || post.userReaction === emoji ? 'scale-125' : ''
-                            }`}
-                            title={emoji}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedPostId(selectedPostId === post._id ? null : post._id)}
-                      className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
+                <div className="flex items-center justify-between pt-2.5 border-t border-primary-500/20">
+                  <div className="flex items-center gap-1.5">
+                    {/* Cleaner reaction action */}
+                    <div
+                      className="relative min-w-0"
+                      data-post-reaction-picker={post._id}
+                      onMouseEnter={() => setActivePostReactionPicker(post._id)}
+                      onMouseLeave={() => setActivePostReactionPicker(null)}
                     >
-                      <MessageCircle className="w-5 h-5" />
-                      <span className="font-semibold">{post.comments.length}</span>
-                    </button>
-                    {/* Share & More Menu - Dropdown */}
-                    <div className="relative group/post-menu" ref={postMenuRef}>
-                      <button 
+                      {(() => {
+                        const totalPostReactions = post.totalReactions
+                          ?? (post.reactionCounts
+                            ? Object.values(post.reactionCounts).reduce((sum, data) => sum + (data.count || 0), 0)
+                            : 0)
+                        return (
+                      <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setPostMenuOpen(postMenuOpen === post._id ? null : post._id)
+                          setActivePostReactionPicker(activePostReactionPicker === post._id ? null : post._id)
                         }}
-                        className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
+                        className={`inline-flex items-center justify-start gap-1.5 px-2.5 py-1.5 rounded-full transition-all ${
+                          post.userReactions?.includes('❤️') || post.userReaction === '❤️'
+                            ? 'bg-primary-500/20 text-primary-500 border border-primary-500/40'
+                            : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 border border-transparent'
+                        }`}
+                        title="React"
                       >
-                        <MoreVertical className="w-5 h-5" />
+                        <ThumbsUp className="w-4 h-4" />
+                        <span className="text-xs font-semibold">Like</span>
+                        {totalPostReactions > 0 && (
+                          <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full leading-none">
+                            {totalPostReactions}
+                          </span>
+                        )}
                       </button>
-                      
-                      {/* Dropdown Menu */}
-                      {postMenuOpen === post._id && (
-                        <div 
-                          className="absolute right-0 bottom-full mb-2 bg-black/95 border border-primary-500/30 rounded-lg shadow-lg z-50 min-w-[180px]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  handleShare(post._id)
-                                  setPostMenuOpen(null)
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
-                              >
-                                <Share2 className="w-4 h-4" />
-                                <span className="text-sm">Share</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const newSaved = new Set(savedPosts)
-                                  if (savedPosts.has(post._id)) {
-                                    newSaved.delete(post._id)
-                                  } else {
-                                    newSaved.add(post._id)
-                                  }
-                                  setSavedPosts(newSaved)
-                                  try {
-                                    localStorage.setItem('savedPosts', JSON.stringify(Array.from(newSaved)))
-                                  } catch (err) {
-                                    console.error('Failed to save post:', err)
-                                  }
-                                  setPostMenuOpen(null)
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
-                              >
-                                {savedPosts.has(post._id) ? (
-                                  <BookmarkCheck className="w-4 h-4" />
-                                ) : (
-                                  <Bookmark className="w-4 h-4" />
-                                )}
-                                <span className="text-sm">{savedPosts.has(post._id) ? 'Unsave' : 'Save'}</span>
-                              </button>
-                              {authorId === (user?.id || (user as any)?._id) && (
-                                <button
-                                  onClick={() => {
-                                    setPostMenuOpen(null)
-                                    handleDeletePost(post._id)
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  <span className="text-sm">Delete</span>
-                                </button>
-                              )}
-                              {authorId !== (user?.id || (user as any)?._id) && (
-                                <button
-                                  onClick={() => {
-                                    setPostMenuOpen(null)
-                                    handleReportPost(post._id)
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors"
-                                >
-                                  <Flag className="w-4 h-4" />
-                                  <span className="text-sm">Report</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                        )
+                      })()}
+                      {activePostReactionPicker === post._id && (
+                        <div className="absolute bottom-full left-0 mb-2 bg-black/95 border border-primary-500/30 rounded-full px-2 py-1.5 flex items-center gap-1.5 z-50 shadow-lg">
+                          {['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'].map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                handleReaction(post._id, emoji)
+                                setActivePostReactionPicker(null)
+                              }}
+                              className={`text-lg hover:scale-125 transition-transform ${
+                                post.userReactions?.includes(emoji) || post.userReaction === emoji ? 'scale-125' : ''
+                              }`}
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  {post.checkIn && (
                     <button
-                      onClick={() => handleCheckIn(
-                        post.checkIn!.venue!._id,
-                        post.checkIn!.venue!.name
-                      )}
-                      className="text-xs bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-1 rounded-full hover:bg-primary-500/20 font-medium"
+                      onClick={() => setSelectedPostId(selectedPostId === post._id ? null : post._id)}
+                      className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                     >
-                      Check in too
+                      <MessageCircle className="w-4 h-4" />
+                      <span className="text-xs font-semibold">Comment</span>
+                      {post.comments.length > 0 && (
+                        <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full leading-none">
+                          {post.comments.length}
+                        </span>
+                      )}
                     </button>
-                  )}
+                    <button
+                      onClick={() => handleShare(post._id)}
+                      className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="text-xs font-semibold">Share</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {post.reactionCounts && Object.keys(post.reactionCounts).length > 0 && (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary-500/5 border border-primary-500/15">
+                        {Object.keys(post.reactionCounts).slice(0, 4).map((emoji) => (
+                          <span key={emoji} className="text-sm leading-none" title={emoji}>
+                            {emoji}
+                          </span>
+                        ))}
+                        {Object.keys(post.reactionCounts).length > 4 && (
+                          <span className="text-[11px] text-primary-400/80 font-semibold ml-0.5">
+                            +{Object.keys(post.reactionCounts).length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {post.checkIn && (
+                      <button
+                        onClick={() => handleCheckIn(
+                          post.checkIn!.venue!._id,
+                          post.checkIn!.venue!.name
+                        )}
+                        className="text-xs bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-1 rounded-full hover:bg-primary-500/20 font-medium"
+                      >
+                        Check in too
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Comment Form */}
@@ -2497,15 +2479,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                     }}
                                   >
                                     <button
-                                      onClick={() => {
-                                        const userReaction = getUserCommentReaction(comment)
-                                        if (userReaction) {
-                                          // Remove reaction if clicking on current reaction
-                                          handleCommentReaction(post._id, comment._id || '', userReaction)
-                                        } else {
-                                          // Default to like if no reaction
-                                          handleCommentReaction(post._id, comment._id || '', '❤️')
-                                        }
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setShowingReactionPicker(
+                                          showingReactionPicker?.postId === post._id && showingReactionPicker?.commentId === (comment._id || '')
+                                            ? null
+                                            : { postId: post._id, commentId: comment._id || '' }
+                                        )
                                       }}
                                       className={`text-xs flex items-center gap-1.5 px-2 py-1 rounded-full transition-all ${
                                         getUserCommentReaction(comment)
@@ -2514,33 +2494,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                       }`}
                                     >
                                       {(() => {
-                                        const userReaction = getUserCommentReaction(comment)
                                         const counts = getCommentReactionCounts(comment)
                                         const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0)
-                                        
-                                        if (totalCount === 0) {
-                                          return <span>❤️</span>
-                                        }
-                                        
-                                        // Show user's reaction if they reacted
-                                        if (userReaction) {
-                                          return (
-                                            <span className="flex items-center gap-1">
-                                              <span>{userReaction}</span>
-                                              {totalCount > 1 && <span className="text-[10px] font-medium">{totalCount}</span>}
-                                            </span>
-                                          )
-                                        }
-                                        
-                                        // Show most common reaction
-                                        const emojis = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'] as const
-                                        const primaryEmoji = emojis.reduce((max, emoji) => 
-                                          counts[emoji] > counts[max] ? emoji : max, '❤️'
-                                        )
                                         return (
                                           <span className="flex items-center gap-1">
-                                            <span>{primaryEmoji}</span>
-                                            <span className="text-[10px] font-medium">{totalCount}</span>
+                                            <ThumbsUp className="w-3 h-3" />
+                                            {totalCount > 0 && <span className="text-[10px] font-medium">{totalCount}</span>}
                                           </span>
                                         )
                                       })()}
@@ -2676,13 +2635,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                               }}
                                             >
                                               <button
-                                                onClick={() => {
-                                                  const userReaction = getUserCommentReaction(reply)
-                                                  if (userReaction) {
-                                                    handleCommentReaction(post._id, reply._id || comment._id || '', userReaction)
-                                                  } else {
-                                                    handleCommentReaction(post._id, reply._id || comment._id || '', '❤️')
-                                                  }
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  setShowingReactionPicker(
+                                                    showingReactionPicker?.postId === post._id && showingReactionPicker?.commentId === (reply._id || comment._id || '')
+                                                      ? null
+                                                      : { postId: post._id, commentId: reply._id || comment._id || '' }
+                                                  )
                                                 }}
                                                 className={`text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-all ${
                                                   getUserCommentReaction(reply)
@@ -2691,31 +2650,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                                 }`}
                                               >
                                                 {(() => {
-                                                  const userReaction = getUserCommentReaction(reply)
                                                   const counts = getCommentReactionCounts(reply)
                                                   const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0)
-                                                  
-                                                  if (totalCount === 0) {
-                                                    return <span className="text-xs">❤️</span>
-                                                  }
-                                                  
-                                                  if (userReaction) {
-                                                    return (
-                                                      <span className="flex items-center gap-0.5">
-                                                        <span className="text-xs">{userReaction}</span>
-                                                        {totalCount > 1 && <span className="text-[9px] font-medium">{totalCount}</span>}
-                                                      </span>
-                                                    )
-                                                  }
-                                                  
-                                                  const emojis = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'] as const
-                                                  const primaryEmoji = emojis.reduce((max, emoji) => 
-                                                    counts[emoji] > counts[max] ? emoji : max, '❤️'
-                                                  )
                                                   return (
                                                     <span className="flex items-center gap-0.5">
-                                                      <span className="text-xs">{primaryEmoji}</span>
-                                                      <span className="text-[9px] font-medium">{totalCount}</span>
+                                                      <ThumbsUp className="w-3 h-3" />
+                                                      {totalCount > 0 && <span className="text-[9px] font-medium">{totalCount}</span>}
                                                     </span>
                                                   )
                                                 })()}

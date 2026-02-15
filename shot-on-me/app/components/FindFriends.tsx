@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft, Share2 } from 'lucide-react'
@@ -14,8 +14,15 @@ interface FindFriendsProps {
   onViewProfile?: (userId: string) => void
 }
 
+interface AIFriendPick {
+  user: any
+  score: number
+  reason: string
+}
+
 export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFriendsProps) {
   const { token, user } = useAuth()
+  const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const API_URL = useApiUrl()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -23,11 +30,16 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
   const [currentFriends, setCurrentFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'search' | 'suggestions' | 'friends' | 'invite'>('suggestions')
+  const [aiSignals, setAiSignals] = useState<{ viewedProfileIds: string[]; addedFriendIds: string[] }>({
+    viewedProfileIds: [],
+    addedFriendIds: []
+  })
 
   useEffect(() => {
     if (isOpen && token) {
       fetchSuggestions()
       fetchCurrentFriends()
+      fetchAISignals()
     }
   }, [isOpen, token])
 
@@ -41,6 +53,91 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
       setSearchResults([])
     }
   }, [searchQuery])
+
+  const fetchAISignals = async () => {
+    if (!token) return
+    try {
+      const response = await axios.get(`${API_URL}/users/me/ai-signals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const nextSignals = response.data?.aiSignals || { viewedProfileIds: [], addedFriendIds: [] }
+      setAiSignals({
+        viewedProfileIds: Array.isArray(nextSignals.viewedProfileIds) ? nextSignals.viewedProfileIds : [],
+        addedFriendIds: Array.isArray(nextSignals.addedFriendIds) ? nextSignals.addedFriendIds : []
+      })
+    } catch (error) {
+      console.error('Failed to fetch AI signals:', error)
+    }
+  }
+
+  const persistAISignals = async (next: { viewedProfileIds: string[]; addedFriendIds: string[] }) => {
+    if (!token) return
+    try {
+      await axios.put(
+        `${API_URL}/users/me/ai-signals`,
+        next,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    } catch (error) {
+      console.error('Failed to persist AI signals:', error)
+    }
+  }
+
+  const trackProfileView = (userId: string) => {
+    const nextSignals = {
+      viewedProfileIds: [userId, ...aiSignals.viewedProfileIds.filter((id) => id !== userId)].slice(0, 20),
+      addedFriendIds: aiSignals.addedFriendIds
+    }
+    setAiSignals(nextSignals)
+    void persistAISignals(nextSignals)
+  }
+
+  const trackFriendAdd = (userId: string) => {
+    const nextSignals = {
+      viewedProfileIds: aiSignals.viewedProfileIds,
+      addedFriendIds: [userId, ...aiSignals.addedFriendIds.filter((id) => id !== userId)].slice(0, 20)
+    }
+    setAiSignals(nextSignals)
+    void persistAISignals(nextSignals)
+  }
+
+  const aiFriendPicks = useMemo<AIFriendPick[]>(() => {
+    if (!aiEnabled) return []
+    if (!suggestions.length) return []
+    const signals = aiSignals
+
+    const picks = suggestions.map((candidate: any) => {
+      const candidateId = candidate._id || candidate.id
+      const mutualCount = Array.isArray(candidate.mutualFriends) ? candidate.mutualFriends.length : 0
+      const hasViewed = signals.viewedProfileIds.includes(candidateId)
+      const isSimilarToAccepted = signals.addedFriendIds.length > 0 && mutualCount > 0
+
+      let score = typeof candidate.aiScore === 'number' ? candidate.aiScore : 50
+      let reason = candidate.aiReason || 'Good network fit based on your activity'
+
+      if (mutualCount > 0) {
+        score += Math.min(30, mutualCount * 6)
+        reason = `${mutualCount} mutual friend${mutualCount !== 1 ? 's' : ''}`
+      }
+      if (hasViewed) {
+        score += 10
+        reason = 'You viewed this profile recently'
+      }
+      if (isSimilarToAccepted) {
+        score += 6
+      }
+
+      return {
+        user: candidate,
+        score: Math.min(98, score),
+        reason
+      }
+    })
+
+    return picks
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+  }, [suggestions, aiSignals, aiEnabled])
 
   const fetchSuggestions = async () => {
     if (!token) return
@@ -103,6 +200,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
         { headers: { Authorization: `Bearer ${token}` } }
       )
       alert('Friend added!')
+      trackFriendAdd(friendId)
       fetchSuggestions()
       fetchCurrentFriends()
       if (activeTab === 'search') {
@@ -188,153 +286,6 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
           )}
         </div>
 
-        {/* Import Contacts Button */}
-        <div className="mt-4">
-          <button
-            onClick={async () => {
-              try {
-                if ('contacts' in navigator && 'ContactsManager' in window) {
-                  const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
-                  if (contacts && contacts.length > 0) {
-                    // Search for contacts in the app
-                    const phoneNumbers = contacts
-                      .map((c: any) => c.tel?.[0] || c.tel)
-                      .filter(Boolean)
-                    
-                    const emails = contacts
-                      .map((c: any) => c.email?.[0] || c.email)
-                      .filter(Boolean)
-                    
-                    let foundCount = 0
-                    let notFoundContacts: Array<{phone?: string, email?: string, name?: string}> = []
-                    
-                    if (phoneNumbers.length > 0 || emails.length > 0) {
-                      // Search for users by phone numbers and emails
-                      for (let i = 0; i < Math.max(phoneNumbers.length, emails.length); i++) {
-                        const phone = phoneNumbers[i]
-                        const email = emails[i]
-                        const contact = contacts[i]
-                        
-                        let found = false
-                        
-                        // Try phone number search
-                        if (phone) {
-                          try {
-                            const response = await axios.get(`${API_URL}/users/search/${phone}`, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            })
-                            if (response.data.users && response.data.users.length > 0) {
-                              setSearchResults(prev => [...prev, ...response.data.users])
-                              setActiveTab('search')
-                              found = true
-                              foundCount++
-                            }
-                          } catch (error) {
-                            // Continue searching
-                          }
-                        }
-                        
-                        // Try email search if not found
-                        if (!found && email) {
-                          try {
-                            const response = await axios.get(`${API_URL}/users/search/${email}`, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            })
-                            if (response.data.users && response.data.users.length > 0) {
-                              setSearchResults(prev => [...prev, ...response.data.users])
-                              setActiveTab('search')
-                              found = true
-                              foundCount++
-                            }
-                          } catch (error) {
-                            // Continue searching
-                          }
-                        }
-                        
-                        // If not found, add to invite list
-                        if (!found && (phone || email)) {
-                          notFoundContacts.push({
-                            phone: phone,
-                            email: email,
-                            name: contact?.name || `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim()
-                          })
-                        }
-                      }
-                      
-                      // Show results
-                      if (foundCount > 0) {
-                        setActiveTab('search')
-                      }
-                      
-                      // If we have contacts not in the app, offer to invite them
-                      if (notFoundContacts.length > 0) {
-                        const inviteMessage = `Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!\n\n${notFoundContacts.length} contact${notFoundContacts.length !== 1 ? 's' : ''} not in the app. Would you like to invite them?`
-                        if (confirm(inviteMessage)) {
-                          // Open invite modal - user can invite from there
-                          handleInviteFriend(undefined, notFoundContacts[0]?.phone, notFoundContacts[0]?.email)
-                        }
-                      } else if (foundCount > 0) {
-                        alert(`Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!`)
-                      } else {
-                        // No matches - offer to invite
-                        if (confirm(`None of your contacts are on Shot On Me yet. Would you like to invite them?`)) {
-                          handleInviteFriend()
-                        }
-                      }
-                    }
-                  }
-                } else if ('contacts' in navigator && typeof (navigator as any).contacts.getContacts === 'function') {
-                  // iOS Safari Contact Picker API
-                  const contacts = await (navigator as any).contacts.getContacts({
-                    properties: ['name', 'tel', 'email']
-                  })
-                  if (contacts && contacts.length > 0) {
-                    // Similar logic as above for iOS
-                    const phoneNumbers = contacts
-                      .map((c: any) => c.tel?.[0])
-                      .filter(Boolean)
-                    
-                    let foundCount = 0
-                    for (const phone of phoneNumbers.slice(0, 5)) {
-                      try {
-                        const response = await axios.get(`${API_URL}/users/search/${phone}`, {
-                          headers: { Authorization: `Bearer ${token}` }
-                        })
-                        if (response.data.users && response.data.users.length > 0) {
-                          setSearchResults(prev => [...prev, ...response.data.users])
-                          setActiveTab('search')
-                          foundCount++
-                        }
-                      } catch (error) {
-                        // Continue
-                      }
-                    }
-                    
-                    if (foundCount === 0) {
-                      if (confirm(`None of your contacts are on Shot On Me yet. Would you like to invite them?`)) {
-                        handleInviteFriend()
-                      }
-                    } else {
-                      alert(`Found ${foundCount} friend${foundCount !== 1 ? 's' : ''} on Shot On Me!`)
-                    }
-                  }
-                } else {
-                  alert('Contacts API not available. Please search for friends manually or use the invite link.')
-                }
-              } catch (error: any) {
-                if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                  alert('Contacts permission denied. Please enable contacts access in Settings → App Permissions.')
-                } else {
-                  alert('Unable to access contacts. Please search for friends manually.')
-                }
-              }
-            }}
-            className="w-full flex items-center justify-center space-x-2 bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all backdrop-blur-sm"
-          >
-            <Phone className="w-4 h-4" />
-            <span>Import from Contacts</span>
-          </button>
-        </div>
 
         {/* Tabs - Mobile Optimized */}
         <div className="flex mt-4 border-b border-primary-500/10 overflow-x-auto scrollbar-hide">
@@ -447,46 +398,93 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
               </div>
             ) : searchQuery.trim().length >= 2 ? (
               <div className="text-center py-12">
-                <UserPlus className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light mb-2">No users found</p>
-                <p className="text-primary-400/60 text-sm mb-4 font-light">Invite them to join Shot On Me!</p>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleInviteFriend(e)
-                  }}
-                  className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
-                >
-                  Invite Friends
-                </button>
-              </div>
-            ) : (
-              <div className="text-center py-12">
                 <Search className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
                 <p className="text-primary-400/80 font-light">Start typing to search</p>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
         {activeTab === 'suggestions' && (
           <div>
+            {!aiEnabled && (
+              <div className="mb-4 bg-black/40 border border-primary-500/20 rounded-lg p-3">
+                <p className="text-xs text-primary-400/80">
+                  AI friend picks are off. Enable in `Settings {'>'} AI Personalization`.
+                </p>
+              </div>
+            )}
+            {aiEnabled && aiFriendPicks.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-primary-500" />
+                  <h3 className="text-sm font-semibold text-primary-500">AI Friend Picks</h3>
+                </div>
+                <div className="space-y-2">
+                  {aiFriendPicks.map((pick) => {
+                    const pickId = pick.user._id || pick.user.id
+                    return (
+                      <div
+                        key={`ai-${pickId}`}
+                        className="bg-gradient-to-r from-primary-500/10 to-transparent border border-primary-500/25 rounded-lg p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div
+                            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                            onClick={() => {
+                              trackProfileView(pickId)
+                              onViewProfile?.(pickId)
+                            }}
+                          >
+                            <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                              {pick.user.profilePicture ? (
+                                <img src={pick.user.profilePicture} alt={pick.user.firstName} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                                  <span className="text-primary-500 text-xs font-semibold">
+                                    {pick.user.firstName?.[0]}{pick.user.lastName?.[0]}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-primary-500 truncate">
+                                {pick.user.firstName} {pick.user.lastName}
+                              </p>
+                              <p className="text-[11px] text-primary-400/70 truncate">Why: {pick.reason}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full text-primary-500">
+                              {pick.score}%
+                            </span>
+                            {isFriend(pickId) ? (
+                              <div className="flex items-center space-x-1 text-primary-500/60 text-xs">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span className="font-medium">Friends</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleAddFriend(pickId)}
+                                className="bg-primary-500 text-black px-3 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-xs flex items-center space-x-1"
+                              >
+                                <UserPlus className="w-3.5 h-3.5" />
+                                <span>Add</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             {suggestions.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light mb-4">No suggestions available</p>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleInviteFriend(e)
-                  }}
-                  className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
-                >
-                  Invite Friends
-                </button>
+                <p className="text-primary-400/80 font-light">No suggestions yet</p>
+                <p className="text-primary-400/60 text-sm mt-1 font-light">Keep using the app to get friend suggestions</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -498,7 +496,10 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                     <div className="flex items-center justify-between">
                       <div 
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
-                        onClick={() => onViewProfile?.(suggestion._id || suggestion.id)}
+                        onClick={() => {
+                          trackProfileView(suggestion._id || suggestion.id)
+                          onViewProfile?.(suggestion._id || suggestion.id)
+                        }}
                       >
                         <div className="w-12 h-12 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
                           {suggestion.profilePicture ? (
@@ -522,15 +523,27 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                           {suggestion.username && (
                             <p className="text-xs text-primary-400/70 font-light truncate">@{suggestion.username}</p>
                           )}
+                          {suggestion.mutualFriends && suggestion.mutualFriends.length > 0 && (
+                            <p className="text-xs text-primary-400/60 font-light mt-0.5">
+                              {suggestion.mutualFriends.length} mutual friend{suggestion.mutualFriends.length !== 1 ? 's' : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleAddFriend(suggestion._id || suggestion.id)}
-                        className="bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-xs flex items-center space-x-1"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>Add</span>
-                      </button>
+                      {isFriend(suggestion._id || suggestion.id) ? (
+                        <div className="flex items-center space-x-1 text-primary-500/60 text-xs">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="font-medium">Friends</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleAddFriend(suggestion._id || suggestion.id)}
+                          className="bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-xs flex items-center space-x-1"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>Add</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -544,167 +557,76 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
             {currentFriends.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light mb-2">No friends yet</p>
-                <p className="text-primary-400/60 text-sm mb-4 font-light">Start adding friends to connect!</p>
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => setActiveTab('suggestions')}
-                    className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all"
-                  >
-                    Find Friends
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleInviteFriend(e)
-                    }}
-                    className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-6 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all"
-                  >
-                    Invite Friends
-                  </button>
-                </div>
+                <p className="text-primary-400/80 font-light">No friends yet</p>
+                <p className="text-primary-400/60 text-sm mt-1 font-light">Start connecting with people!</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {currentFriends.map((friend) => (
                   <div
                     key={friend._id || friend.id}
-                    className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm cursor-pointer hover:bg-black/50 transition-all"
-                    onClick={() => onViewProfile?.(friend._id || friend.id)}
+                    className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                        {friend.profilePicture ? (
-                          <img
-                            src={friend.profilePicture}
-                            alt={friend.firstName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                            <span className="text-primary-500 font-medium">
-                              {friend.firstName?.[0]}{friend.lastName?.[0]}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-primary-500 text-sm truncate tracking-tight">
-                          {friend.firstName} {friend.lastName}
-                        </p>
-                        {friend.username && (
-                          <p className="text-xs text-primary-400/70 font-light truncate">@{friend.username}</p>
-                        )}
-                        {friend.location && (
-                          <div className="flex items-center space-x-1 mt-1">
-                            <MapPin className="w-3 h-3 text-primary-500/60" />
-                            <p className="text-xs text-primary-400/60 font-light">Location shared</p>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onViewProfile?.(friend._id || friend.id)
-                        }}
-                        className="text-primary-400/70 hover:text-primary-500"
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => onViewProfile?.(friend._id || friend.id)}
                       >
-                        View Profile
-                      </button>
+                        <div className="w-12 h-12 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                          {friend.profilePicture ? (
+                            <img
+                              src={friend.profilePicture}
+                              alt={friend.firstName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                              <span className="text-primary-500 font-medium">
+                                {friend.firstName?.[0]}{friend.lastName?.[0]}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-primary-500 text-sm truncate tracking-tight">
+                            {friend.firstName} {friend.lastName}
+                          </p>
+                          {friend.username && (
+                            <p className="text-xs text-primary-400/70 font-light truncate">@{friend.username}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1 text-primary-500/60 text-xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="font-medium">Friends</span>
+                      </div>
                     </div>
                   </div>
                 ))}
-                <div className="mt-4 pt-4 border-t border-primary-500/10">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleInviteFriend(e)
-                    }}
-                    className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center justify-center space-x-2"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>Invite More Friends</span>
-                  </button>
-                </div>
               </div>
             )}
           </div>
         )}
 
         {activeTab === 'invite' && (
-          <div className="py-6">
-            <div className="text-center mb-6">
-              <Share2 className="w-16 h-16 text-primary-500/40 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-primary-500 mb-2">Invite Friends to Shot On Me</h3>
-              <p className="text-primary-400/70 text-sm font-light mb-6">
-                Share your referral link and earn rewards when friends join!
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleInviteFriend(e)
-                }}
-                className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary-500/25"
-              >
-                <Share2 className="w-5 h-5" />
-                <span>Open Invite Options</span>
-              </button>
-
-              <div className="bg-black/40 border border-primary-500/15 rounded-lg p-4">
-                <h4 className="text-primary-500 font-semibold mb-2 text-sm">Ways to Invite:</h4>
-                <ul className="space-y-2 text-primary-400/70 text-xs font-light">
-                  <li className="flex items-start space-x-2">
-                    <span className="text-primary-500 mt-0.5">•</span>
-                    <span>Share via SMS, Email, or Social Media</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-primary-500 mt-0.5">•</span>
-                    <span>Copy your referral link to share anywhere</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-primary-500 mt-0.5">•</span>
-                    <span>Use your referral code for easy sign-ups</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="text-primary-500 mt-0.5">•</span>
-                    <span>Earn rewards when friends join and use the app</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-gradient-to-r from-primary-500/10 to-primary-400/10 border border-primary-500/20 rounded-lg p-4">
-                <p className="text-primary-400/80 text-xs font-light text-center">
-                  💰 <span className="font-medium">Pro Tip:</span> The more friends you invite, the more rewards you earn!
-                </p>
-              </div>
-            </div>
+          <div className="text-center py-12">
+            <Share2 className="w-16 h-16 text-primary-500/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-primary-500 mb-2">Invite Friends</h3>
+            <p className="text-primary-400/80 font-light mb-6">
+              Share Shot On Me with your friends and earn rewards!
+            </p>
+            <button
+              onClick={(e) => handleInviteFriend(e)}
+              className="bg-primary-500 text-black px-6 py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all inline-flex items-center space-x-2"
+            >
+              <Share2 className="w-5 h-5" />
+              <span>Get Invite Link</span>
+            </button>
           </div>
         )}
       </div>
 
-      {/* Invite Button */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/95 backdrop-blur-sm border-t border-primary-500/10 p-4">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            handleInviteFriend(e)
-          }}
-          className="w-full bg-primary-500 text-black py-2.5 rounded-lg font-medium hover:bg-primary-600 transition-all flex items-center justify-center space-x-2"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Invite Friends</span>
-        </button>
-      </div>
-
-      {/* Invite Friends Modal */}
+      {/* Invite Modal */}
       <InviteFriendsModal
         isOpen={showInviteModal}
         onClose={() => {
@@ -718,4 +640,3 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
     </div>
   )
 }
-

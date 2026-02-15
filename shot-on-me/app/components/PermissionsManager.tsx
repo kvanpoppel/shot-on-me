@@ -604,8 +604,19 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
                   </div>
                 )}
                 {status === 'unavailable' && perm.permission === 'contacts' && (
-                  <div className="mt-2 text-xs text-primary-400/60 font-light">
-                    Contacts API not supported. Use "Find Friends" to search manually.
+                  <div className="mt-2">
+                    <p className="text-xs text-primary-400/60 font-light mb-2">
+                      iOS Safari doesn't support contacts. Use "Find Friends" to search or invite.
+                    </p>
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('open-find-friends'))
+                        handleClose()
+                      }}
+                      className="w-full bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    >
+                      Open Find Friends
+                    </button>
                   </div>
                 )}
                 {status === 'unavailable' && perm.permission !== 'contacts' && (

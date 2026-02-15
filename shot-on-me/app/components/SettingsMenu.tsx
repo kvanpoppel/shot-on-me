@@ -39,6 +39,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   const [lastName, setLastName] = useState(user?.lastName || '')
   const [saving, setSaving] = useState(false)
   const [locationVisible, setLocationVisible] = useState((user as any)?.location?.isVisible ?? true)
+  const [aiPersonalizationEnabled, setAiPersonalizationEnabled] = useState((user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true)
   const [stripeAvailable, setStripeAvailable] = useState<boolean>(false)
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null)
   
@@ -49,6 +50,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       setFirstName(user.firstName || '')
       setLastName(user.lastName || '')
       setLocationVisible((user as any).location?.isVisible ?? true)
+      setAiPersonalizationEnabled((user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true)
     }
   }, [user])
 
@@ -672,6 +674,49 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                     } catch (error) {
                       console.error('Failed to update location visibility:', error)
                       setLocationVisible(!newVisibility) // Revert on error
+                    }
+                  }}
+                  className="w-5 h-5 border-primary-500/30 text-primary-500 focus:ring-primary-500 bg-black/40 rounded"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* AI Personalization Toggle */}
+          <div className="mt-6 pt-6 border-t border-primary-500/10">
+            <h3 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">AI Personalization</h3>
+            <div className="space-y-2">
+              <label className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg backdrop-blur-sm cursor-pointer hover:bg-black/50 transition-all">
+                <div>
+                  <p className="text-sm font-medium text-primary-500">Enable AI Suggestions</p>
+                  <p className="text-xs text-primary-400/70 font-light">Friends, venues, and feed recommendations</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={aiPersonalizationEnabled}
+                  onChange={async (e) => {
+                    if (!token) return
+                    const newValue = e.target.checked
+                    setAiPersonalizationEnabled(newValue)
+                    try {
+                      await axios.put(
+                        `${API_URL}/users/me/notification-preferences`,
+                        { notificationPreferences: { aiPersonalizationEnabled: newValue } },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      )
+                      if (updateUser) {
+                        await updateUser({
+                          id: (user as any)?.id || (user as any)?._id,
+                          _id: (user as any)?._id || (user as any)?.id,
+                          notificationPreferences: {
+                            ...((user as any)?.notificationPreferences || {}),
+                            aiPersonalizationEnabled: newValue
+                          }
+                        } as any)
+                      }
+                    } catch (error) {
+                      console.error('Failed to update AI personalization setting:', error)
+                      setAiPersonalizationEnabled(!newValue) // Revert on error
                     }
                   }}
                   className="w-5 h-5 border-primary-500/30 text-primary-500 focus:ring-primary-500 bg-black/40 rounded"

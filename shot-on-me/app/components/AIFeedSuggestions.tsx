@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, memo } from 'react'
-import { Sparkles, MapPin, Users, Clock, X } from 'lucide-react'
+import { Sparkles, MapPin, Clock, X, ThumbsUp, ThumbsDown } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
@@ -25,6 +25,7 @@ const AIFeedSuggestions = memo(({ nearbyVenues, recentFriendActivity, onSuggesti
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loading, setLoading] = useState(false)
   const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+  const [feedbackGiven, setFeedbackGiven] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!token) return
@@ -85,6 +86,23 @@ const AIFeedSuggestions = memo(({ nearbyVenues, recentFriendActivity, onSuggesti
     setDismissed(prev => new Set([...prev, index]))
   }
 
+  const sendFeedback = async (index: number, feedbackType: 'helpful' | 'less_like_this') => {
+    if (!token) return
+    try {
+      await axios.post(
+        `${API_URL}/users/me/ai-feedback`,
+        { feedbackType },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setFeedbackGiven(prev => new Set([...prev, index]))
+      if (feedbackType === 'less_like_this') {
+        handleDismiss(index)
+      }
+    } catch (error) {
+      console.error('Failed to submit AI feedback:', error)
+    }
+  }
+
   const visibleSuggestions = suggestions.filter((_, index) => !dismissed.has(index))
 
   if (loading || visibleSuggestions.length === 0) return null
@@ -117,6 +135,24 @@ const AIFeedSuggestions = memo(({ nearbyVenues, recentFriendActivity, onSuggesti
                 className="px-3 py-1.5 bg-primary-500 text-black rounded-lg text-xs font-semibold hover:bg-primary-400 transition-all"
               >
                 Use
+              </button>
+              <button
+                onClick={() => sendFeedback(index, 'helpful')}
+                className={`p-1.5 rounded transition-colors ${
+                  feedbackGiven.has(index)
+                    ? 'text-primary-500 bg-primary-500/10'
+                    : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
+                }`}
+                title="Helpful"
+              >
+                <ThumbsUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => sendFeedback(index, 'less_like_this')}
+                className="p-1.5 rounded text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                title="Show less like this"
+              >
+                <ThumbsDown className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => handleDismiss(index)}

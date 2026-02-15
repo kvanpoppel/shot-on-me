@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
-import { Share2, Copy, CheckCircle, Users, Gift, Sparkles } from 'lucide-react'
+import { getInviteLink, getInviteMessage, shareInvite } from '../utils/invite'
+import { Share2, Users, Sparkles } from 'lucide-react'
 
 interface Referral {
   id: string
@@ -28,9 +29,8 @@ interface Referral {
 }
 
 export default function ReferralScreen() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const API_URL = useApiUrl()
-  const [referralCode, setReferralCode] = useState<string>('')
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [stats, setStats] = useState({
     totalReferrals: 0,
@@ -38,34 +38,27 @@ export default function ReferralScreen() {
     pending: 0,
     totalEarned: 0
   })
-  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
-    if (token) {
-      fetchReferralData()
-    }
+    if (token) fetchReferralData()
   }, [token])
 
   const fetchReferralData = async () => {
     try {
       setLoading(true)
-      const [codeResponse, historyResponse] = await Promise.all([
-        axios.get(`${API_URL}/referrals/code`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/referrals/history`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      ])
-      setReferralCode(codeResponse.data.code || '')
-      setStats({
-        totalReferrals: codeResponse.data.totalReferrals || 0,
-        completed: codeResponse.data.completed || 0,
-        pending: codeResponse.data.pending || 0,
-        totalEarned: codeResponse.data.rewards?.totalEarned || 0
+      const historyResponse = await axios.get(`${API_URL}/referrals/history`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
-      setReferrals(historyResponse.data.referrals || [])
+      const list = historyResponse.data.referrals || []
+      setReferrals(list)
+      setStats({
+        totalReferrals: list.length,
+        completed: list.filter((r: Referral) => r.status === 'completed').length,
+        pending: list.filter((r: Referral) => r.status === 'pending').length,
+        totalEarned: list.reduce((sum: number, r: Referral) => sum + (r.rewards?.referrerReward || 0), 0)
+      })
     } catch (error) {
       console.error('Failed to fetch referral data:', error)
     } finally {
@@ -73,59 +66,23 @@ export default function ReferralScreen() {
     }
   }
 
-  const copyToClipboard = async () => {
-    if (referralCode) {
-      await navigator.clipboard.writeText(referralCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  const shareReferral = async () => {
-    if (!referralCode) {
-      alert('Referral code not available. Please try again.')
-      return
-    }
-
-    const shareText = `Join me on Shot On Me! Use my referral code: ${referralCode}\n\nSend money to friends, discover venues, and earn rewards!`
-    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}?ref=${referralCode}` : ''
-    const fullShareText = `${shareText}\n\nSign up here: ${shareUrl}`
-
-    // Try Web Share API first (works on mobile and some desktop browsers)
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join Shot On Me',
-          text: shareText,
-          url: shareUrl
-        })
-        return // Successfully shared
-      } catch (error: any) {
-        // User cancelled or error occurred - fall through to clipboard
-        if (error.name === 'AbortError') {
-          return // User cancelled, don't show error
-        }
-        console.error('Error sharing:', error)
-        // Fall through to clipboard fallback
-      }
-    }
-
-    // Fallback: copy to clipboard
+  const shareInviteLink = async () => {
+    const userId = user?.id || (user as any)?._id
+    if (!userId) return
+    setSharing(true)
     try {
-      await navigator.clipboard.writeText(fullShareText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 3000)
-      
-      // Show success message
-      const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
-      toast.textContent = 'Referral link copied to clipboard!'
-      document.body.appendChild(toast)
-      setTimeout(() => toast.remove(), 3000)
-    } catch (clipboardError) {
-      console.error('Error copying to clipboard:', clipboardError)
-      // Last resort: show the text in an alert
-      alert(`Share this referral code:\n\n${referralCode}\n\n${shareUrl}`)
+      const link = await getInviteLink(userId)
+      const message = getInviteMessage(user?.firstName || user?.name || '')
+      const result = await shareInvite(link, message)
+      if (result.success && result.method === 'clipboard') {
+        const toast = document.createElement('div')
+        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+        toast.textContent = 'Invite link copied!'
+        document.body.appendChild(toast)
+        setTimeout(() => toast.remove(), 3000)
+      }
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -159,34 +116,19 @@ export default function ReferralScreen() {
           </div>
         </div>
 
-        {/* Referral Code */}
+        {/* Share invite link – no visible code; backend ties referral to user ID */}
         <div className="bg-gradient-to-r from-primary-500/20 to-primary-400/20 border border-primary-500/30 rounded-lg p-4">
-          <p className="text-sm text-primary-400 mb-2">Your Referral Code</p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 bg-black/60 rounded-lg p-3 border border-primary-500/20">
-              <p className="font-mono text-2xl font-bold text-primary-500 text-center">
-                {referralCode}
-              </p>
-            </div>
-            <button
-              onClick={copyToClipboard}
-              className="p-3 bg-primary-500 text-black rounded-lg hover:bg-primary-400 transition-all"
-            >
-              {copied ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                <Copy className="w-5 h-5" />
-              )}
-            </button>
-            <button
-              onClick={shareReferral}
-              className="p-3 bg-primary-500 text-black rounded-lg hover:bg-primary-400 transition-all"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
-          </div>
+          <p className="text-sm text-primary-400 mb-2">Invite friends</p>
+          <button
+            onClick={shareInviteLink}
+            disabled={sharing}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-primary-500 text-black rounded-lg hover:bg-primary-400 transition-all font-semibold disabled:opacity-50"
+          >
+            <Share2 className="w-5 h-5" />
+            {sharing ? 'Sharing…' : 'Share invite link'}
+          </button>
           <p className="text-xs text-primary-400/70 mt-2 text-center">
-            Share your code and earn rewards when friends join!
+            When friends join via your link, you both earn rewards!
           </p>
         </div>
       </div>
@@ -198,7 +140,7 @@ export default function ReferralScreen() {
           <div className="text-center py-12 text-primary-400">
             <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p>No referrals yet</p>
-            <p className="text-sm mt-2">Share your code to start earning!</p>
+            <p className="text-sm mt-2">Share your invite link to start earning!</p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -141,6 +141,15 @@ input, textarea, select {
   font-weight: 400;
 }
 
+/* Keep login form inputs dark – override browser autofill (white/yellow) on password field */
+.login-form-input:-webkit-autofill,
+.login-form-input:-webkit-autofill:hover,
+.login-form-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+  -webkit-text-fill-color: #B8945A !important;
+  caret-color: #B8945A;
+}
+
 /* Mobile-first styles */
 @media (max-width: 768px) {
   body {

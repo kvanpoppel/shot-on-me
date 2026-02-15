@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { X, Share2, Copy, Mail, MessageSquare, Link as LinkIcon, CheckCircle, AlertCircle } from 'lucide-react'
-import { getInviteLink, shareInvite, getInviteMessage, getBestInviteMethod, supportsNativeShare, supportsSMS } from '../utils/invite'
-import axios from 'axios'
-import { useApiUrl } from '../utils/api'
+import { X, Share2, Copy, Mail, MessageSquare, Link as LinkIcon, CheckCircle, AlertCircle, Facebook, MessageCircle } from 'lucide-react'
+import { getInviteLink, shareInvite, getInviteMessage, supportsNativeShare, openNativeShare, getAppShareTargets, getBestInviteMethod, type AppShareTarget } from '../utils/invite'
 
 interface InviteFriendsModalProps {
   isOpen: boolean
@@ -15,9 +13,7 @@ interface InviteFriendsModalProps {
 }
 
 export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber = '', initialEmail = '' }: InviteFriendsModalProps) {
-  const { user, token } = useAuth()
-  const API_URL = useApiUrl()
-  const [referralCode, setReferralCode] = useState<string>('')
+  const { user } = useAuth()
   const [inviteLink, setInviteLink] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [sharing, setSharing] = useState(false)
@@ -27,104 +23,114 @@ export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber
   const [emailAddress, setEmailAddress] = useState(initialEmail)
 
   useEffect(() => {
-    if (isOpen && token && user) {
-      fetchReferralCode()
-      // Pre-fill phone/email if provided
+    if (isOpen && user) {
+      const userId = user?.id || (user as any)?._id
+      if (userId) {
+        setLoading(true)
+        getInviteLink(userId).then((link) => {
+          setInviteLink(link)
+          setLoading(false)
+        })
+      }
       if (initialPhoneNumber) setSmsNumber(initialPhoneNumber)
       if (initialEmail) setEmailAddress(initialEmail)
     }
-  }, [isOpen, token, user, initialPhoneNumber, initialEmail])
+  }, [isOpen, user, initialPhoneNumber, initialEmail])
 
-  const fetchReferralCode = async () => {
-    if (!token) return
-    
-    try {
-      setLoading(true)
-      const response = await axios.get(`${API_URL}/referrals/code`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      const code = response.data.code
-      setReferralCode(code)
-      
-      // Generate invite link with referral code
-      const userId = user?.id || (user as any)?._id
-      const link = await getInviteLink(userId, code)
-      setInviteLink(link)
-    } catch (error: any) {
-      console.error('Failed to fetch referral code:', error)
-      // Fallback to userId-based link
-      const userId = user?.id || (user as any)?._id
-      if (userId) {
-        const link = await getInviteLink(userId)
-        setInviteLink(link)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  const userName = user?.firstName || user?.name || ''
+  const shareMessage = getInviteMessage(userName)
+  const appTargets = inviteLink ? getAppShareTargets(inviteLink, shareMessage) : null
 
-  const handleShare = async (method: 'share' | 'clipboard' | 'sms' | 'email') => {
+  const handleNativeShare = async () => {
     if (!inviteLink) {
       setError('Invite link not ready. Please try again.')
       return
     }
-
     setSharing(true)
     setError(null)
-
     try {
-      const userName = user?.firstName || user?.name || ''
-      // Include referral code in message for SMS/Email
-      const message = getInviteMessage(userName, referralCode || undefined)
-
-      let result
-      if (method === 'sms' && smsNumber) {
-        result = await shareInvite(inviteLink, message, { method: 'sms', phoneNumber: smsNumber })
-      } else if (method === 'email' && emailAddress) {
-        result = await shareInvite(inviteLink, message, { method: 'email', email: emailAddress })
-        // Show success message for email
-        if (result.success) {
-          const toast = document.createElement('div')
-          toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
-          toast.textContent = 'Invite email sent successfully!'
-          document.body.appendChild(toast)
-          setTimeout(() => {
-            toast.remove()
-          }, 3000)
-          // Clear email field
-          setEmailAddress('')
-        }
-      } else {
-        result = await shareInvite(inviteLink, message, { method })
-      }
-
-      if (result.success) {
-        if (result.method === 'clipboard') {
-          setCopied(true)
-          setTimeout(() => setCopied(false), 3000)
-        }
-        // For native share and SMS, the system handles it
-      } else {
-        setError(result.error || 'Failed to share invite')
-      }
-    } catch (error: any) {
-      console.error('Error sharing invite:', error)
-      setError('Failed to share invite. Please try again.')
+      const ok = await openNativeShare(inviteLink, shareMessage)
+      if (ok) showToast('Shared!')
+    } catch (e: any) {
+      setError(e?.message || 'Share failed. Try an option below.')
     } finally {
       setSharing(false)
     }
   }
 
+  const handleAppShare = async (target: AppShareTarget) => {
+    if (!inviteLink || !appTargets) return
+    setSharing(true)
+    setError(null)
+    try {
+      const t = appTargets[target]
+      if (t.type === 'copy') {
+        const full = `${shareMessage}\n\n${inviteLink}`
+        await navigator.clipboard.writeText(full)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 3000)
+        showToast('Link copied!')
+      } else if (t.url) {
+        window.open(t.url, '_blank', 'noopener,noreferrer')
+        showToast('Opening…')
+      }
+    } catch (e: any) {
+      setError('Failed to share. Please try again.')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const handleShare = async (method: 'clipboard' | 'sms' | 'email') => {
+    if (!inviteLink) {
+      setError('Invite link not ready. Please try again.')
+      return
+    }
+    setSharing(true)
+    setError(null)
+    try {
+      let result
+      if (method === 'sms' && smsNumber) {
+        result = await shareInvite(inviteLink, shareMessage, { method: 'sms', phoneNumber: smsNumber })
+      } else if (method === 'email' && emailAddress) {
+        result = await shareInvite(inviteLink, shareMessage, { method: 'email', email: emailAddress })
+        if (result.success) {
+          showToast('Invite email sent!')
+          setEmailAddress('')
+        }
+      } else {
+        result = await shareInvite(inviteLink, shareMessage, { method: 'clipboard' })
+        if (result.success) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 3000)
+          showToast('Link copied!')
+        }
+      }
+      if (!result!.success) setError(result!.error || 'Failed to share')
+    } catch (e: any) {
+      setError('Failed to share. Please try again.')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const showToast = (msg: string) => {
+    const toast = document.createElement('div')
+    toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[200] bg-primary-500 text-black px-5 py-2.5 rounded-lg shadow-lg font-semibold text-sm'
+    toast.textContent = msg
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), 2500)
+  }
+
   const copyLink = async () => {
     if (!inviteLink) return
-
     try {
       await navigator.clipboard.writeText(inviteLink)
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
-    } catch (error) {
-      setError('Failed to copy link. Please try again.')
+      showToast('Link copied!')
+    } catch {
+      setError('Failed to copy link.')
     }
   }
 
@@ -132,7 +138,6 @@ export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber
 
   const bestMethod = getBestInviteMethod()
   const canNativeShare = supportsNativeShare()
-  const canSMS = supportsSMS()
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
@@ -154,31 +159,6 @@ export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber
           </div>
         ) : (
           <>
-            {/* Referral Code Display */}
-            {referralCode && (
-              <div className="bg-gradient-to-r from-primary-500/10 to-primary-400/10 border border-primary-500/20 rounded-lg p-4 mb-4">
-                <p className="text-sm text-primary-400 mb-2 font-light">Your Referral Code</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-black/60 rounded-lg p-3 border border-primary-500/20">
-                    <p className="font-mono text-xl font-bold text-primary-500 text-center">
-                      {referralCode}
-                    </p>
-                  </div>
-                  <button
-                    onClick={copyLink}
-                    className="p-3 bg-primary-500 text-black rounded-lg hover:bg-primary-400 transition-all"
-                    title="Copy code"
-                  >
-                    {copied ? (
-                      <CheckCircle className="w-5 h-5" />
-                    ) : (
-                      <Copy className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Invite Link */}
             <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 mb-4">
               <p className="text-sm text-primary-400 mb-2 font-light">Invite Link</p>
@@ -216,7 +196,7 @@ export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber
               {/* Native Share (Mobile) */}
               {canNativeShare && (
                 <button
-                  onClick={() => handleShare('share')}
+                  onClick={handleNativeShare}
                   disabled={sharing}
                   className="w-full flex items-center justify-center gap-3 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
