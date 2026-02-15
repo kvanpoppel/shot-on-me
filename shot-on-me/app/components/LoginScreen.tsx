@@ -6,6 +6,7 @@ import { Wallet, MapPin, Users, Eye, EyeOff } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
+import { getVenuePortalLoginUrl } from '../utils/api'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -46,6 +47,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
+  const [venuePortalLoginUrl, setVenuePortalLoginUrl] = useState('')
 
   // Capture ?ref= (user ID) from invite link – backend attributes referral by user ID, no visible code
   useEffect(() => {
@@ -57,6 +59,10 @@ export default function LoginScreen() {
         window.history.replaceState({}, '', window.location.pathname)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    setVenuePortalLoginUrl(getVenuePortalLoginUrl())
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,6 +132,31 @@ export default function LoginScreen() {
         <div className="text-center mb-8">
           <h1 className="text-5xl logo-script text-primary-500 mb-2">Shot On Me</h1>
           <p className="text-primary-400 text-lg mt-4">Buy someone a drink at any bar or coffee shop—send instantly by email or text. Your friend will get a secure link to claim their treat!</p>
+        </div>
+
+        <div className="w-full max-w-md mb-4">
+          <div className="rounded-lg border border-primary-500/30 bg-black/60 p-3 text-center">
+            <p className="text-xs uppercase tracking-wide text-primary-400/80 mb-2">Choose your portal</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="rounded-md bg-primary-500 px-3 py-2 text-xs font-semibold text-black"
+              >
+                App User
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (venuePortalLoginUrl) {
+                    window.location.href = venuePortalLoginUrl
+                  }
+                }}
+                className="rounded-md border border-primary-500/60 px-3 py-2 text-xs font-semibold text-primary-400 hover:bg-primary-500/10"
+              >
+                Venue Owner
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Form */}

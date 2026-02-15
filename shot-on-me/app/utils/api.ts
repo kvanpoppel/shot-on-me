@@ -118,6 +118,34 @@ export const useSocketUrl = () => {
 }
 
 /**
+ * Gets the venue portal base URL for venue-owner authentication.
+ * Prefer NEXT_PUBLIC_VENUE_PORTAL_URL in production.
+ */
+export const getVenuePortalUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_VENUE_PORTAL_URL) {
+    return process.env.NEXT_PUBLIC_VENUE_PORTAL_URL.trim().replace(/\/$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    const { origin, hostname } = window.location
+
+    // Local development fallback
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3002'
+    }
+
+    // If venue portal lives on same host, this still works.
+    return origin.replace(/\/$/, '')
+  }
+
+  return 'http://localhost:3002'
+}
+
+export const getVenuePortalLoginUrl = (): string => {
+  return `${getVenuePortalUrl()}/?tab=login`
+}
+
+/**
  * Helper function to build full API endpoint URLs
  * Ensures proper URL construction without double slashes
  */
