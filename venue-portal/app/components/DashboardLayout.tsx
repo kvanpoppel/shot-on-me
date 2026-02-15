@@ -29,6 +29,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     router.push('/')
   }
 
+  const handleSwitchUser = () => {
+    logout()
+    router.push('/?tab=login')
+  }
+
   useEffect(() => {
     fetchVenueName()
   }, [token, user])
@@ -112,6 +117,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return pathname?.startsWith(path)
   }
 
+  const navItems = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/dashboard/promotions', label: 'Promotions' },
+    { href: '/dashboard/analytics', label: 'Earnings' },
+    { href: '/dashboard/redemptions', label: 'Activity' },
+    { href: '/dashboard/profile', label: 'Profile' },
+    { href: '/dashboard/settings', label: 'Settings' }
+  ]
+
   return (
     <div className="min-h-screen bg-black flex overflow-x-hidden">
       {/* Sidebar - Responsive */}
@@ -119,72 +133,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-4 w-full">
           <h1 className="text-lg logo-script text-primary-500 mb-6 tracking-tight">Shot On Me</h1>
           <nav className="space-y-0.5">
-            <Link 
-              href="/dashboard" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link 
-              href="/dashboard/promotions" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard/promotions') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Promotions
-            </Link>
-            <Link 
-              href="/dashboard/analytics" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard/analytics') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Earnings
-            </Link>
-            <Link 
-              href="/dashboard/redemptions" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard/redemptions') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Redemptions
-            </Link>
-            <Link 
-              href="/dashboard/profile" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard/profile') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Profile
-            </Link>
-            <Link 
-              href="/dashboard/settings" 
-              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                isActive('/dashboard/settings') 
-                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-              }`}
-            >
-              Settings
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-3 py-2 text-primary-400/70 hover:bg-primary-500/5 rounded hover:text-primary-500 mt-6 text-sm font-light transition-all"
-            >
-              Logout
-            </button>
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
+                  isActive(item.href)
+                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500'
+                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
       </aside>
@@ -209,81 +170,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
             <nav className="space-y-0.5">
-              <Link 
-                href="/dashboard" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Dashboard
-              </Link>
-              <Link 
-                href="/dashboard/promotions" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard/promotions') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Promotions
-              </Link>
-              <Link 
-                href="/dashboard/analytics" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard/analytics') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Earnings
-              </Link>
-              <Link 
-                href="/dashboard/redemptions" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard/redemptions') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Redemptions
-              </Link>
-              <Link 
-                href="/dashboard/profile" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard/profile') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Profile
-              </Link>
-              <Link 
-                href="/dashboard/settings" 
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
-                  isActive('/dashboard/settings') 
-                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
-                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
-                }`}
-              >
-                Settings
-              </Link>
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  handleLogout()
-                }}
-                className="block w-full text-left px-3 py-2 text-primary-400/70 hover:bg-primary-500/5 rounded hover:text-primary-500 mt-6 text-sm font-light transition-all"
-              >
-                Logout
-              </button>
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded text-sm transition-all font-light ${
+                    isActive(item.href)
+                      ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500'
+                      : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </nav>
           </div>
         </div>
@@ -303,24 +203,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <h2 className="text-base md:text-lg logo-script text-primary-500 tracking-tight truncate">{venueName}</h2>
           </div>
           <div className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0">
-            <Link
-              href="/dashboard/profile"
-              className="px-2 md:px-3 py-1.5 bg-black/40 border border-primary-500/20 text-primary-500 rounded hover:bg-primary-500/10 hover:border-primary-500/30 text-xs transition-all backdrop-blur-sm whitespace-nowrap"
-            >
-              Profile
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="px-2 md:px-3 py-1.5 bg-primary-500 text-black rounded font-medium hover:bg-primary-600 text-xs transition-all whitespace-nowrap"
-            >
-              Notify
-            </Link>
-            <button 
-              onClick={() => router.push('/dashboard/settings')}
-              className="px-2 md:px-3 py-1.5 bg-black/40 border border-primary-500/20 text-primary-500 rounded hover:bg-primary-500/10 hover:border-primary-500/30 text-xs transition-all backdrop-blur-sm whitespace-nowrap"
-            >
-              Settings
-            </button>
             <div className="relative ml-1 md:ml-2" ref={accountMenuRef}>
               <button
                 onClick={() => setAccountMenuOpen((open) => !open)}
@@ -340,20 +222,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <button
                     onClick={() => {
                       setAccountMenuOpen(false)
-                      router.push('/dashboard/profile')
+                      handleSwitchUser()
                     }}
                     className="w-full text-left rounded px-2 py-1.5 text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500"
                   >
-                    Profile
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAccountMenuOpen(false)
-                      router.push('/dashboard/settings')
-                    }}
-                    className="w-full text-left rounded px-2 py-1.5 text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500"
-                  >
-                    Settings
+                    Switch User
                   </button>
                   <button
                     onClick={() => {

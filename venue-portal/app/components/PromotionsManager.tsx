@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Save, Bell, Zap } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
+import { useToast } from './ToastContainer'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
 import PromotionWizard from './promotions/PromotionWizard'
 import QuickActions from './promotions/QuickActions'
@@ -68,18 +69,21 @@ interface PromotionFormData {
 
 interface PromotionsManagerProps {
   hideQuickActions?: boolean
+  compactView?: boolean
 }
 
 export interface PromotionsManagerRef {
   handleQuickAction: (action: string) => void
+  handleInstantQuickAction: (action: string) => void
   handleNewPromotion: () => void
   handleShowTemplates: () => void
 }
 
 const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProps>(
-  ({ hideQuickActions = false }: PromotionsManagerProps, ref) => {
+  ({ hideQuickActions = false, compactView = false }: PromotionsManagerProps, ref) => {
   const { token, user } = useAuth()
   const { socket } = useSocket()
+  const { showSuccess, showError } = useToast()
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
   const [showTemplates, setShowTemplates] = useState(false)
@@ -92,6 +96,9 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   const [viewingAnalytics, setViewingAnalytics] = useState<{ promotionId: string; title: string } | null>(null)
   const [showLibrary, setShowLibrary] = useState(false)
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null)
+  const [aiEnhancingAction, setAiEnhancingAction] = useState<string | null>(null)
+  const [publishingQuickAction, setPublishingQuickAction] = useState<string | null>(null)
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false)
 
   useEffect(() => {
     fetchVenue()
@@ -293,6 +300,161 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   }
 
   // Quick action handlers
+  const formatLocalDateTime = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  const parseTime = (input: unknown, fallbackHour: number, fallbackMinute: number) => {
+    const raw = typeof input === 'string' ? input.trim() : ''
+    const parts = raw.split(':')
+    const hours = Number(parts[0])
+    const minutes = Number(parts[1] || 0)
+    return {
+      hours: Number.isFinite(hours) ? Math.min(Math.max(hours, 0), 23) : fallbackHour,
+      minutes: Number.isFinite(minutes) ? Math.min(Math.max(minutes, 0), 59) : fallbackMinute
+    }
+  }
+
+  const buildDateWithTime = (baseDate: Date, timeValue: unknown, fallbackHour: number, fallbackMinute: number) => {
+    const date = new Date(baseDate)
+    const { hours, minutes } = parseTime(timeValue, fallbackHour, fallbackMinute)
+    date.setHours(hours, minutes, 0, 0)
+    return date
+  }
+
+  const normalizeDaysOfWeek = (days: unknown) => {
+    const dayNameToIndex: Record<string, number> = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6
+    }
+
+    if (!Array.isArray(days)) return undefined
+    const mapped = days
+      .map((day) => dayNameToIndex[String(day).toLowerCase()])
+      .filter((day) => Number.isInteger(day))
+    return mapped.length > 0 ? mapped : undefined
+  }
+
+  const getActionMatcher = (action: string) => (suggestion: any) => {
+    const promo = suggestion?.suggestedPromotion || {}
+    const suggestionType = String(suggestion?.type || '').toLowerCase()
+    const promoType = String(promo?.type || '').toLowerCase()
+    const title = String(promo?.title || suggestion?.title || '').toLowerCase()
+    const description = String(promo?.description || suggestion?.description || '').toLowerCase()
+    const days = Array.isArray(promo?.daysOfWeek) ? promo.daysOfWeek.map((d: string) => String(d).toLowerCase()) : []
+
+    if (action === 'happy-hour') {
+      return promoType === 'happy-hour' || title.includes('happy hour') || suggestionType.includes('peak')
+    }
+    if (action === 'weekend') {
+      return title.includes('weekend') || suggestionType.includes('weekend') || days.some((d: string) => ['friday', 'saturday', 'sunday'].includes(d))
+    }
+    if (action === 'flash-deal') {
+      return promoType === 'flash-deal' || title.includes('flash') || description.includes('limited') || description.includes('urgent')
+    }
+    if (action === 'vip') {
+      return promoType === 'exclusive' || title.includes('vip') || title.includes('exclusive') || suggestionType.includes('retention')
+    }
+    return false
+  }
+
+  const buildAIEnhancedQuickActionData = async (action: string) => {
+    if (!token || !venueId) return null
+
+    try {
+      const apiUrl = getApiUrl()
+      const suggestionsRes = await axios.get(`${apiUrl}/ai-automation/suggestions?venueId=${venueId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const suggestions = suggestionsRes.data?.suggestions || []
+      if (!Array.isArray(suggestions) || suggestions.length === 0) return null
+
+      const matchedSuggestion = suggestions.find(getActionMatcher(action)) || suggestions[0]
+      const promo = matchedSuggestion?.suggestedPromotion || {}
+      const base = getQuickActionData(action)
+      const baseTargeting = {
+        followersOnly: base.targeting?.followersOnly ?? false,
+        locationBased: base.targeting?.locationBased ?? false,
+        radiusMiles: base.targeting?.radiusMiles ?? 5,
+        userSegments: base.targeting?.userSegments ?? ['all'],
+        minCheckIns: base.targeting?.minCheckIns ?? 0,
+        timeBased: base.targeting?.timeBased ?? false,
+        timeWindow: base.targeting?.timeWindow ?? { start: '', end: '' }
+      }
+
+      const now = new Date()
+      const startDate = buildDateWithTime(now, promo.startTime, 17, 0)
+      const endDate = buildDateWithTime(now, promo.endTime, 22, 0)
+      if (endDate <= startDate) {
+        endDate.setHours(endDate.getHours() + 2)
+      }
+
+      if (action === 'flash-deal') {
+        const flashStart = new Date(now)
+        const flashEnd = new Date(now)
+        flashEnd.setHours(flashEnd.getHours() + 1)
+        return {
+          ...base,
+          title: promo.title || 'AI Flash Deal',
+          description: promo.description || 'AI-selected limited time offer based on current venue activity.',
+          type: 'flash-deal',
+          startTime: formatLocalDateTime(flashStart),
+          endTime: formatLocalDateTime(flashEnd),
+          isFlashDeal: true,
+          flashDealEndsAt: formatLocalDateTime(flashEnd),
+          targeting: {
+            ...baseTargeting,
+            followersOnly: true,
+            userSegments: ['all']
+          }
+        }
+      }
+
+      const normalizedDays = normalizeDaysOfWeek(promo.daysOfWeek)
+      const isVip = action === 'vip'
+      const isWeekend = action === 'weekend'
+
+      return {
+        ...base,
+        title: promo.title || base.title,
+        description: promo.description || base.description,
+        type: isVip ? 'exclusive' : (promo.type || base.type),
+        startTime: formatLocalDateTime(startDate),
+        endTime: formatLocalDateTime(endDate),
+        isRecurring: isWeekend,
+        recurrencePattern: isWeekend ? {
+          type: 'weekly' as const,
+          frequency: 1,
+          daysOfWeek: normalizedDays || [5, 6, 0],
+          endDate: '',
+          maxOccurrences: 12
+        } : undefined,
+        targeting: {
+          ...baseTargeting,
+          followersOnly: isVip ? true : baseTargeting.followersOnly,
+          userSegments: isVip ? ['vip'] : baseTargeting.userSegments,
+          minCheckIns: isVip ? Math.max(baseTargeting.minCheckIns, 5) : baseTargeting.minCheckIns
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('AI quick action enhancement failed:', error)
+      }
+      return null
+    }
+  }
+
   const getQuickActionData = (action: string): Partial<PromotionFormData> => {
     const now = new Date()
     const tomorrow = new Date(now)
@@ -402,11 +564,89 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   }
 
   const handleQuickAction = (action: string) => {
-    const quickData = getQuickActionData(action)
-    setQuickActionData(quickData)
-    setSelectedTemplate(null)
-    setEditingPromo(null)
-    setShowWizard(true)
+    if (aiEnhancingAction) return
+
+    const openQuickActionWizard = async () => {
+      const fallbackData = getQuickActionData(action)
+      setAiEnhancingAction(action)
+      const aiEnhancedData = await buildAIEnhancedQuickActionData(action)
+
+      setQuickActionData(aiEnhancedData || fallbackData)
+      setSelectedTemplate(null)
+      setEditingPromo(null)
+      setShowWizard(true)
+
+      if (aiEnhancedData) {
+        showSuccess('AI tuned this promotion with live venue insights.')
+      } else {
+        showError('AI was unavailable, loaded best-practice quick setup.')
+      }
+      setAiEnhancingAction(null)
+    }
+
+    openQuickActionWizard()
+  }
+
+  const handleInstantQuickAction = (action: string) => {
+    if (aiEnhancingAction || publishingQuickAction || !venueId || !token) return
+
+    const publishQuickAction = async () => {
+      setPublishingQuickAction(action)
+
+      const fallbackData = getQuickActionData(action)
+      const aiEnhancedData = await buildAIEnhancedQuickActionData(action)
+      const sourceData = aiEnhancedData || fallbackData
+
+      try {
+        const promotionData = {
+          title: sourceData.title || 'Quick Promotion',
+          description: sourceData.description || '',
+          type: sourceData.type || 'special',
+          startTime: sourceData.startTime
+            ? new Date(sourceData.startTime).toISOString()
+            : new Date().toISOString(),
+          endTime: sourceData.endTime
+            ? new Date(sourceData.endTime).toISOString()
+            : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          isFlashDeal: !!sourceData.isFlashDeal,
+          flashDealEndsAt: sourceData.flashDealEndsAt
+            ? new Date(sourceData.flashDealEndsAt).toISOString()
+            : undefined,
+          pointsReward: sourceData.pointsReward || 0,
+          targeting: sourceData.targeting || {
+            followersOnly: false,
+            locationBased: false,
+            radiusMiles: 5,
+            userSegments: ['all'],
+            minCheckIns: 0,
+            timeBased: false,
+            timeWindow: { start: '', end: '' }
+          },
+          isRecurring: !!sourceData.isRecurring,
+          recurrencePattern: sourceData.isRecurring ? sourceData.recurrencePattern : undefined
+        }
+
+        await axios.post(
+          `${getApiUrl()}/venues/${venueId}/promotions`,
+          promotionData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+
+        fetchPromotions()
+        if (aiEnhancedData) {
+          showSuccess('AI deal published instantly.')
+        } else {
+          showSuccess('Deal published instantly with best-practice defaults.')
+        }
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.error || error.message || 'Failed to publish quick deal'
+        showError(errorMessage)
+      } finally {
+        setPublishingQuickAction(null)
+      }
+    }
+
+    publishQuickAction()
   }
 
   const handleNewPromotion = () => {
@@ -423,6 +663,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     handleQuickAction,
+    handleInstantQuickAction,
     handleNewPromotion,
     handleShowTemplates
   }))
@@ -506,7 +747,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
             </button>
           </div>
         ) : (
-          <div className="space-y-2 mb-6">
+          <div className={`space-y-2 mb-4 ${compactView ? 'max-h-[320px] overflow-y-auto pr-1' : ''}`}>
             {promotions.map((promo) => {
               const isActive = promo.isActive
               const now = new Date()
@@ -671,28 +912,62 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           </div>
         )}
 
-        {/* Push Notification Banner - Key Feature Highlight */}
-        <div className="mb-3 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-3">
-          <div className="flex items-start gap-2.5">
-            <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
-              <Bell className="w-4 h-4 text-primary-500" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
-                <Zap className="w-3.5 h-3.5 text-yellow-500" />
+        {compactView ? (
+          <div className="mb-3 rounded-lg border border-primary-500/20 bg-black/30 p-2">
+            <button
+              onClick={() => setShowAdvancedTools((prev) => !prev)}
+              className="w-full rounded-md border border-primary-500/20 bg-black/40 px-3 py-2 text-left text-xs font-semibold text-primary-400 hover:border-primary-500/35 hover:text-primary-500"
+            >
+              {showAdvancedTools ? 'Hide Advanced AI Tools' : 'Show Advanced AI Tools'}
+            </button>
+            {showAdvancedTools ? (
+              <div className="pt-2 space-y-2">
+                <div className="bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/35 rounded-lg p-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
+                      <Bell className="w-4 h-4 text-primary-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
+                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                      </div>
+                      <p className="text-xs text-primary-400/90 font-light leading-relaxed">
+                        Promotions trigger instant follower notifications for faster conversion.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <SmartPromotionGenerator onGenerated={fetchPromotions} />
               </div>
-              <p className="text-xs text-primary-400/90 font-light leading-relaxed">
-                When you create or activate a promotion, users instantly receive push notifications on their mobile devices. This drives immediate engagement and spending at your venue. Target followers, nearby users, or specific segments to maximize impact.
-              </p>
-            </div>
+            ) : null}
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Push Notification Banner - Key Feature Highlight */}
+            <div className="mb-3 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-3">
+              <div className="flex items-start gap-2.5">
+                <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
+                  <Bell className="w-4 h-4 text-primary-500" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
+                    <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                  </div>
+                  <p className="text-xs text-primary-400/90 font-light leading-relaxed">
+                    When you create or activate a promotion, users instantly receive push notifications on their mobile devices. This drives immediate engagement and spending at your venue. Target followers, nearby users, or specific segments to maximize impact.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-        {/* AI Smart Generator */}
-        <div className="mb-3">
-          <SmartPromotionGenerator onGenerated={fetchPromotions} />
-        </div>
+            {/* AI Smart Generator */}
+            <div className="mb-3">
+              <SmartPromotionGenerator onGenerated={fetchPromotions} />
+            </div>
+          </>
+        )}
 
         {/* Quick Actions - Only show if not hidden */}
         {!hideQuickActions && (

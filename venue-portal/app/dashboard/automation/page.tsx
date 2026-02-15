@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
+import DashboardPageShell from '../../components/DashboardPageShell'
 import AIAutomationDashboard from '../../components/AIAutomationDashboard'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Crown, ArrowRight } from 'lucide-react'
+import { Crown, ArrowRight, Bot } from 'lucide-react'
 
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
@@ -64,13 +65,16 @@ export default function AutomationPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-6xl mx-auto">
-        <div>
-          <h1 className="text-3xl font-bold text-primary-500 mb-2">AI Automation</h1>
-          <p className="text-primary-400">
-            Set up intelligent automation to handle promotions, notifications, and optimizations automatically
-          </p>
-        </div>
+      <DashboardPageShell
+        icon={<Bot className="w-5 h-5 text-primary-500" />}
+        title="AI Automation"
+        subtitle="Automate promotions, notifications, and optimization cycles with less manual work."
+        metrics={[
+          { label: 'Current Plan', value: tier.charAt(0).toUpperCase() + tier.slice(1) },
+          { label: 'Automation Access', value: hasAutomationAccess ? 'Enabled' : 'Upgrade Required', tone: hasAutomationAccess ? 'success' : 'info' },
+          { label: 'Mode', value: hasAutomationAccess ? 'Auto + Assisted' : 'Manual' }
+        ]}
+      >
         {!hasAutomationAccess ? (
           <div className="rounded-xl border border-primary-500/30 bg-black/50 p-5">
             <div className="flex items-start gap-3">
@@ -96,7 +100,7 @@ export default function AutomationPage() {
         ) : (
           <AIAutomationDashboard />
         )}
-      </div>
+      </DashboardPageShell>
     </DashboardLayout>
   )
 }

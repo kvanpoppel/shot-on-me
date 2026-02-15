@@ -31,6 +31,10 @@ function HomeContent() {
     setAuthMode('login')
   }
 
+  const openRegisterPanel = () => {
+    setAuthMode('register')
+  }
+
   useEffect(() => {
     // Auto-redirect to dashboard if user is already logged in
     if (!loading && user) {
@@ -116,11 +120,17 @@ function HomeContent() {
             {mode === null ? (
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={toggleAuthPanel}
+                  onClick={openRegisterPanel}
                   className="inline-flex items-center gap-2 rounded-lg bg-primary-500 px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black"
                 >
-                  Sign In / Create Account
+                  Start Free
                   <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={toggleAuthPanel}
+                  className="text-sm font-medium text-primary-400/85 underline-offset-2 hover:text-primary-500 hover:underline"
+                >
+                  Sign In
                 </button>
               </div>
             ) : null}
@@ -136,15 +146,15 @@ function HomeContent() {
           ) : null}
 
           {mode === null ? (
-            <div className="mx-auto max-w-2xl grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/80">
-                Fast promotion publishing
+            <div className="mx-auto max-w-3xl grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/85">
+                Launch deals in under 60 seconds
               </div>
-              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/80">
-                Team and role management
+              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/85">
+                AI optimization drives repeat traffic
               </div>
-              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/80">
-                AI-powered optimization
+              <div className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-xs text-primary-400/85">
+                Teams onboard in minutes
               </div>
             </div>
           ) : null}

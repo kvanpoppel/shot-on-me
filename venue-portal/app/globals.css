@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
+  --foreground-rgb: 210, 163, 79; /* Rich amber gold */
   --background-rgb: 0, 0, 0; /* Black background */
-  --primary-gold: #B8945A; /* Soft, mature gold */
-  --primary-gold-light: #C9A875; /* Lighter gold for accents */
-  --primary-gold-dark: #9A7A4A; /* Darker gold for hover states */
+  --primary-gold: #D2A34F; /* Main luxury amber */
+  --primary-gold-light: #E5C17A; /* Highlight accents */
+  --primary-gold-dark: #A7782D; /* Hover states */
 }
 
 body {
@@ -22,63 +22,63 @@ body {
 /* Ensure all form elements use the soft gold */
 input[type="checkbox"],
 input[type="radio"] {
-  accent-color: #B8945A;
+  accent-color: var(--primary-gold);
 }
 
 /* Override any browser default yellow colors */
 * {
-  --tw-accent-color: #B8945A;
+  --tw-accent-color: var(--primary-gold);
 }
 
 /* Script font for logo only - keep it elegant */
 .logo-script {
   font-family: 'Dancing Script', cursive;
   font-weight: 600;
-  color: #B8945A !important;
+  color: var(--primary-gold) !important;
   letter-spacing: 0.5px;
 }
 
 /* Force all gold/primary colors to use soft, mature gold */
 button.bg-primary-500,
 .bg-primary-500 {
-  background-color: #B8945A !important;
+  background-color: var(--primary-gold) !important;
 }
 
 button.bg-primary-500:hover,
 .bg-primary-500:hover {
-  background-color: #9A7A4A !important;
+  background-color: var(--primary-gold-dark) !important;
 }
 
 .text-primary-500,
 .logo-script,
 button.text-primary-500 {
-  color: #B8945A !important;
+  color: var(--primary-gold) !important;
 }
 
 .text-primary-400 {
-  color: #C9A875 !important;
+  color: var(--primary-gold-light) !important;
 }
 
 .text-primary-300 {
-  color: #D9C49F !important;
+  color: #f0d7a0 !important;
 }
 
 .border-primary-500 {
-  border-color: #B8945A !important;
+  border-color: var(--primary-gold) !important;
 }
 
 .border-primary-500\/30,
 .border-primary-500\/20,
 .border-primary-500\/50 {
-  border-color: rgba(184, 148, 90, 0.3) !important;
+  border-color: rgba(210, 163, 79, 0.32) !important;
 }
 
 /* Ensure all primary-500 variations are consistent */
 * {
-  --color-primary-500: #B8945A;
-  --color-primary-400: #C9A875;
-  --color-primary-300: #D9C49F;
-  --color-primary-600: #9A7A4A;
+  --color-primary-500: #D2A34F;
+  --color-primary-400: #E5C17A;
+  --color-primary-300: #F0D7A0;
+  --color-primary-600: #A7782D;
 }
 
 /* Professional typography - consistent font usage */

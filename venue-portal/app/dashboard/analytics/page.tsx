@@ -73,31 +73,6 @@ export default function AnalyticsPage() {
         icon={<CircleDollarSign className="w-5 h-5 text-primary-500" />}
         title="Earnings & Analytics"
         subtitle="Track revenue, monitor performance, and act faster with AI insights."
-        actions={(
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <button
-              onClick={() => setActiveTab('earnings')}
-              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
-            >
-              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">Finance</p>
-              <p className="mt-1 text-sm font-semibold text-primary-500">Revenue, payouts, payments</p>
-            </button>
-            <button
-              onClick={() => setActiveTab('ai-analytics')}
-              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
-            >
-              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">AI Layer</p>
-              <p className="mt-1 text-sm font-semibold text-primary-500">Insights, suggestions, targeting</p>
-            </button>
-            <button
-              onClick={() => setActiveTab('activity')}
-              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
-            >
-              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">Operational</p>
-              <p className="mt-1 text-sm font-semibold text-primary-500">Live activity and check-ins</p>
-            </button>
-          </div>
-        )}
         metrics={[
           { label: 'Active View', value: activeTabLabel, detail: 'Current analytics workspace.' },
           { label: 'Finance Modules', value: '3', detail: 'Earnings, payments, payouts.' },

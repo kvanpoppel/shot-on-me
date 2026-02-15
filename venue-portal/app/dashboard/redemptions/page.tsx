@@ -20,6 +20,7 @@ export default function RedemptionsPage() {
   const [followerCount, setFollowerCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState<'all' | 'succeeded' | 'processing' | 'other'>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeSection, setActiveSection] = useState<'checkins' | 'payments'>('checkins')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -115,11 +116,9 @@ export default function RedemptionsPage() {
       const customerName = redemption.senderId?.firstName && redemption.senderId?.lastName
         ? `${redemption.senderId.firstName} ${redemption.senderId.lastName}`
         : redemption.senderId?.name || 'Customer'
-      const code = redemption.redemptionCode || ''
       const searchMatches =
         !searchTerm ||
-        customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        code.toLowerCase().includes(searchTerm.toLowerCase())
+        customerName.toLowerCase().includes(searchTerm.toLowerCase())
 
       return statusMatches && searchMatches
     })
@@ -141,15 +140,41 @@ export default function RedemptionsPage() {
         icon={<Users className="w-5 h-5 text-primary-500" />}
         title="Guest Activity"
         subtitle="Track followers, monitor check-ins, and review venue payment activity."
+        actions={(
+          <div className="inline-flex rounded-lg border border-primary-500/25 bg-black/40 p-1">
+            <button
+              onClick={() => setActiveSection('checkins')}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                activeSection === 'checkins'
+                  ? 'bg-primary-500 text-black'
+                  : 'text-primary-400 hover:text-primary-500'
+              }`}
+            >
+              Check-ins
+            </button>
+            <button
+              onClick={() => setActiveSection('payments')}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                activeSection === 'payments'
+                  ? 'bg-primary-500 text-black'
+                  : 'text-primary-400 hover:text-primary-500'
+              }`}
+            >
+              Payments
+            </button>
+          </div>
+        )}
         metrics={[
           { label: 'Followers', value: `${followerCount}`, detail: 'Current audience following your venue.' },
           { label: 'Payments Today', value: `${stats.todayCount}`, detail: 'Completed events for today.' },
           { label: 'Total Processed', value: `$${stats.totalAmount.toFixed(2)}`, detail: `Avg ticket $${stats.avgAmount.toFixed(2)}` }
         ]}
       >
-        <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
-          <CheckInsHistory />
-        </div>
+        {activeSection === 'checkins' ? (
+          <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
+            <CheckInsHistory />
+          </div>
+        ) : null}
 
         {/* AI Insights - Redemption Patterns */}
         <CollapsibleSection
@@ -163,7 +188,7 @@ export default function RedemptionsPage() {
           </div>
         </CollapsibleSection>
 
-        {/* Redemptions List - Organized */}
+        {activeSection === 'payments' ? (
         <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -253,11 +278,6 @@ export default function RedemptionsPage() {
                            redemption.type === 'transfer' ? 'Transfer' : 
                            redemption.type || 'Payment'}
                         </span>
-                        {redemption.redemptionCode && (
-                          <span className="text-xs text-primary-500/60 font-mono bg-black/40 px-2 py-1 rounded whitespace-nowrap">
-                            {redemption.redemptionCode}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <div className="text-right sm:text-right ml-0 sm:ml-4 flex-shrink-0">
@@ -281,6 +301,7 @@ export default function RedemptionsPage() {
             )}
           </div>
         </div>
+        ) : null}
       </DashboardPageShell>
     </DashboardLayout>
   )

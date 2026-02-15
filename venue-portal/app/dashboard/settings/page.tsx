@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
+import DashboardPageShell from '../../components/DashboardPageShell'
 import VenueManager from '../../components/VenueManager'
 import StaffManager from '../../components/StaffManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
@@ -29,6 +30,7 @@ export default function SettingsPage() {
     launchWarningHours: 1
   })
   const [savingPrefs, setSavingPrefs] = useState(false)
+  const [preferencesMessage, setPreferencesMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -77,6 +79,7 @@ export default function SettingsPage() {
 
   const saveNotificationPreferences = async () => {
     if (!token) return
+    setPreferencesMessage(null)
     setSavingPrefs(true)
     try {
       const apiUrl = getApiUrl()
@@ -85,9 +88,9 @@ export default function SettingsPage() {
         { notificationPreferences: notificationPrefs },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Notification preferences saved!')
+      setPreferencesMessage({ type: 'success', text: 'Notification preferences saved.' })
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to save preferences')
+      setPreferencesMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save preferences' })
     } finally {
       setSavingPrefs(false)
     }
@@ -160,19 +163,16 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-5 w-full max-w-full">
-        {/* Clean Header */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-primary-500/10 rounded-lg border border-primary-500/20">
-              <Settings className="w-5 h-5 text-primary-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-primary-400 mb-1">Settings</h1>
-              <p className="text-sm text-primary-500/70">Manage your venue settings and preferences</p>
-            </div>
-          </div>
-        </div>
+      <DashboardPageShell
+        icon={<Settings className="w-5 h-5 text-primary-500" />}
+        title="Settings"
+        subtitle="Manage payments, team access, venue details, and notifications in one place."
+        metrics={[
+          { label: 'Payments', value: connectStatus?.connected ? 'Connected' : 'Not Connected', tone: connectStatus?.connected ? 'success' : 'info' },
+          { label: 'Team Alerts', value: notificationPrefs.promotionObjectives ? 'Enabled' : 'Disabled' },
+          { label: 'AI Suggestions', value: notificationPrefs.aiRenewalSuggestions ? 'On' : 'Off' }
+        ]}
+      >
 
         {/* Debug info - Only show in development with debug flag */}
         {process.env.NODE_ENV === 'development' && 
@@ -191,7 +191,7 @@ export default function SettingsPage() {
           <CollapsibleSection
             title="Payment Setup"
             subtitle="Connect your bank account to receive payouts"
-            defaultOpen={true}
+            defaultOpen={false}
             icon={<CreditCard className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-2">
@@ -236,7 +236,7 @@ export default function SettingsPage() {
           <CollapsibleSection
             title="Subscription & Growth Plans"
             subtitle="Choose the plan that matches your growth goals and AI automation needs"
-            defaultOpen={true}
+            defaultOpen={false}
             icon={<Crown className="w-4 h-4" />}
           >
             <SubscriptionPlansManager />
@@ -246,7 +246,7 @@ export default function SettingsPage() {
           <CollapsibleSection
             title="Venue Information"
             subtitle="Manage your venue details, hours, and location"
-            defaultOpen={true}
+            defaultOpen={false}
             icon={<MapPin className="w-4 h-4" />}
           >
             <div className="pt-2">
@@ -394,6 +394,17 @@ export default function SettingsPage() {
               >
                 {savingPrefs ? 'Saving...' : 'Save Preferences'}
               </button>
+              {preferencesMessage ? (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    preferencesMessage.type === 'success'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                      : 'border-red-500/30 bg-red-500/10 text-red-300'
+                  }`}
+                >
+                  {preferencesMessage.text}
+                </div>
+              ) : null}
             </div>
           </CollapsibleSection>
 
@@ -409,7 +420,7 @@ export default function SettingsPage() {
             </div>
           </CollapsibleSection>
         </div>
-      </div>
+      </DashboardPageShell>
     </DashboardLayout>
   )
 }
