@@ -8,9 +8,10 @@ import VenueManager from '../../components/VenueManager'
 import StaffManager from '../../components/StaffManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
+import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap } from 'lucide-react'
+import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap, Crown } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user, loading, token } = useAuth()
@@ -230,6 +231,15 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Subscription & Growth Plans"
+            subtitle="Choose the plan that matches your growth goals and AI automation needs"
+            defaultOpen={true}
+            icon={<Crown className="w-4 h-4" />}
+          >
+            <SubscriptionPlansManager />
           </CollapsibleSection>
 
           {/* Venue Management - Collapsible */}

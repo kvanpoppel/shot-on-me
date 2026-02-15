@@ -358,6 +358,47 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     return R * c // Returns distance in miles
   }, [])
 
+  const getTierWeight = useCallback((tier?: string) => {
+    switch (tier) {
+      case 'enterprise': return 4
+      case 'premium': return 3
+      case 'basic': return 1
+      default: return 0
+    }
+  }, [])
+
+  const rankVenues = useCallback((source: any[]) => {
+    return [...source].sort((a: any, b: any) => {
+      const activeA = (a.promotions || []).filter((p: any) => p?.isActive).length
+      const activeB = (b.promotions || []).filter((p: any) => p?.isActive).length
+      const trendingA = trendingVenues.some((tv: any) => tv._id?.toString() === a._id?.toString()) ? 1 : 0
+      const trendingB = trendingVenues.some((tv: any) => tv._id?.toString() === b._id?.toString()) ? 1 : 0
+
+      const scoreA =
+        (a.isFeatured ? 60 : 0) +
+        (getTierWeight(a.subscriptionTier) * 20) +
+        (activeA * 10) +
+        Math.min(a.followerCount || 0, 100) +
+        (trendingA * 15)
+      const scoreB =
+        (b.isFeatured ? 60 : 0) +
+        (getTierWeight(b.subscriptionTier) * 20) +
+        (activeB * 10) +
+        Math.min(b.followerCount || 0, 100) +
+        (trendingB * 15)
+
+      return scoreB - scoreA
+    })
+  }, [getTierWeight, trendingVenues])
+
+  const getVenueBadge = useCallback((venue: any) => {
+    if (!venue) return null
+    if (venue.isFeatured) return { label: 'Featured', className: 'bg-yellow-500/90 text-black' }
+    if (venue.subscriptionTier === 'enterprise') return { label: 'Enterprise', className: 'bg-purple-500/90 text-white' }
+    if (venue.subscriptionTier === 'premium') return { label: 'AI Optimized', className: 'bg-primary-500/90 text-black' }
+    return null
+  }, [])
+
   const getFilteredVenues = useMemo(() => {
     if (!Array.isArray(venues)) return []
     
@@ -425,20 +466,20 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     }
 
     // Apply promotion filter
-    if (filter === 'all') return filtered
+    if (filter === 'all') return rankVenues(filtered)
     if (filter === 'favorites') {
-      return filtered.filter(venue => favoriteVenueIds.has(venue._id?.toString()))
+      return rankVenues(filtered.filter(venue => favoriteVenueIds.has(venue._id?.toString())))
     }
     if (filter === 'trending') {
       const trendingIds = new Set(trendingVenues.map(v => v._id?.toString()))
-      return filtered.filter(venue => trendingIds.has(venue._id?.toString()))
+      return rankVenues(filtered.filter(venue => trendingIds.has(venue._id?.toString())))
     }
     if (filter === 'weekend') {
       const now = new Date()
       const dayOfWeek = now.getDay()
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6 // Sunday or Saturday
       
-      return filtered.filter((venue) => {
+      return rankVenues(filtered.filter((venue) => {
         const promotions = venue.promotions || []
         return promotions.some((p: any) => {
           if (!p.isActive) return false
@@ -454,14 +495,14 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                  title.includes('saturday') || description.includes('saturday') ||
                  title.includes('sunday') || description.includes('sunday')
         })
-      })
+      }))
     }
     if (filter === 'tonight') {
       const now = new Date()
       const currentHour = now.getHours()
       const dayOfWeek = now.getDay()
       
-      return filtered.filter((venue) => {
+      return rankVenues(filtered.filter((venue) => {
         const promotions = venue.promotions || []
         return promotions.some((p: any) => {
           if (p.schedule && Array.isArray(p.schedule)) {
@@ -489,10 +530,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           
           return false
         })
-      })
+      }))
     }
     // Filter for happy-hour or specials with improved logic
-    return filtered.filter((venue) => {
+    return rankVenues(filtered.filter((venue) => {
       const promotions = venue.promotions || []
       if (filter === 'happy-hour') {
         return promotions.some((p: any) => {
@@ -544,8 +585,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         })
       }
       return false
-    })
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance, favoriteVenueIds])
+    }))
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance, favoriteVenueIds, rankVenues])
 
   // Get category icon
   const getCategoryIcon = useCallback((category: string) => {
@@ -1581,7 +1622,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               
               // Check if venue is trending
               const isTrending = trendingVenues.some(tv => tv._id?.toString() === venue._id?.toString())
-              const isFeatured = venue.isFeatured === true
+              const venueBadge = getVenueBadge(venue)
               const venueRating = formatRating(venue.rating)
               const venueOpenStatus = isVenueOpen(venue)
               
@@ -1653,10 +1694,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                           Trending
                         </div>
                       )}
-                      {isFeatured && (
-                        <div className="bg-gradient-to-r from-purple-500/90 to-pink-500/90 px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-lg">
+                      {venueBadge && (
+                        <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-lg ${venueBadge.className}`}>
                           <Award className="w-2.5 h-2.5" />
-                          Featured
+                          {venueBadge.label}
                         </div>
                       )}
                       {activePromos.length > 1 && (

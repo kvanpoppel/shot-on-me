@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import DashboardLayout from '../components/DashboardLayout'
 import PromotionsManager from '../components/PromotionsManager'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
-import { Sparkles, TrendingUp, Users, Settings } from 'lucide-react'
+import { Sparkles, TrendingUp, Users, Settings, CircleDollarSign, ArrowRight } from 'lucide-react'
 
 export default function Dashboard() {
   const { user, loading, token } = useAuth()
@@ -101,6 +101,55 @@ export default function Dashboard() {
     }
   }
 
+  const pendingPayoutAmount = Number(String(stats.pendingPayouts).replace(/[^0-9.]/g, '')) || 0
+
+  const actionCenterItems = useMemo(() => {
+    const items: {
+      title: string
+      description: string
+      cta: string
+      onClick: () => void
+    }[] = []
+
+    if (stats.activePromos === 0) {
+      items.push({
+        title: 'Launch your first promotion',
+        description: 'No active promotions yet. Publish one now to start driving traffic.',
+        cta: 'Create promotion',
+        onClick: handleNewPromotion
+      })
+    }
+
+    if (stats.totalRedemptions === 0) {
+      items.push({
+        title: 'Enable AI recommendations',
+        description: 'Use AI tools to generate better-timed specials and improve redemption rates.',
+        cta: 'Open AI tools',
+        onClick: () => router.push('/dashboard/automation')
+      })
+    }
+
+    if (pendingPayoutAmount > 0) {
+      items.push({
+        title: 'Review pending payouts',
+        description: `You have ${stats.pendingPayouts} pending. Keep payout settings current.`,
+        cta: 'Open settings',
+        onClick: () => router.push('/dashboard/settings')
+      })
+    }
+
+    if (items.length === 0) {
+      items.push({
+        title: 'Keep momentum this week',
+        description: 'Your basics are covered. Launch one new special to maintain growth.',
+        cta: 'Use templates',
+        onClick: handleShowTemplates
+      })
+    }
+
+    return items.slice(0, 3)
+  }, [stats.activePromos, stats.totalRedemptions, pendingPayoutAmount, stats.pendingPayouts, router])
+
   return (
     <DashboardLayout>
       <div className="space-y-6 w-full max-w-full">
@@ -140,6 +189,29 @@ export default function Dashboard() {
               {loadingStats ? '...' : stats.activePromos}
             </p>
             <p className="text-xs text-primary-400/60 mt-1">All promotions</p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CircleDollarSign className="w-5 h-5 text-primary-500" />
+            <h2 className="text-lg font-semibold text-primary-500">Today's Action Center</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {actionCenterItems.map((item) => (
+              <button
+                key={item.title}
+                onClick={item.onClick}
+                className="text-left bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/40 hover:bg-black/60 transition-all"
+              >
+                <p className="text-sm font-semibold text-primary-500">{item.title}</p>
+                <p className="text-xs text-primary-400/75 mt-1">{item.description}</p>
+                <span className="inline-flex items-center text-xs text-primary-500/80 mt-3">
+                  {item.cta}
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 

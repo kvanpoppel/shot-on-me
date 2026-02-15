@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Wallet, MapPin, Users } from 'lucide-react'
+import { Wallet, MapPin, Users, Eye, EyeOff } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
+import Link from 'next/link'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -41,16 +42,18 @@ export default function LoginScreen() {
     return true // Default to true
   })
   const { login, register } = useAuth()
-  const [referralCode, setReferralCode] = useState<string>('')
+  const [referrerId, setReferrerId] = useState<string>('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
 
-  // Check for referral code in URL on mount
+  // Capture ?ref= (user ID) from invite link – backend attributes referral by user ID, no visible code
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const ref = params.get('ref')
       if (ref) {
-        setReferralCode(ref)
-        // Clean URL
+        setReferrerId(ref)
         window.history.replaceState({}, '', window.location.pathname)
       }
     }
@@ -75,7 +78,12 @@ export default function LoginScreen() {
         setJustAuthenticated(true)
         setShowPermissions(true)
       } else {
-        await register({ email, password, phoneNumber, firstName, lastName, referralCode })
+        if (!acceptedTerms || !acceptedPrivacy) {
+          setError('You must accept Terms of Service and Privacy Policy to continue.')
+          setLoading(false)
+          return
+        }
+        await register({ email, password, phoneNumber, firstName, lastName, referrerId, acceptedTerms, acceptedPrivacy })
         // Also save remember me for registration
         try {
           localStorage.setItem('rememberMe', rememberMe.toString())
@@ -196,27 +204,39 @@ export default function LoginScreen() {
 
               <div>
                 <label className="block text-primary-500 text-sm font-medium mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email"
-                  required
-                  className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+<input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email"
+                    required
+                    className="login-form-input w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
               </div>
 
               <div>
                 <label className="block text-primary-500 text-sm font-medium mb-1">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    required
+                    minLength={6}
+                    autoComplete="current-password"
+                    className="login-form-input w-full px-4 py-3 pr-12 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-primary-500 hover:text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -242,6 +262,43 @@ export default function LoginScreen() {
                 </button>
               </div>
 
+              {!isLogin && (
+                <div className="space-y-3 rounded-lg border border-primary-500/20 bg-black/40 p-3">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                      style={{ accentColor: '#D4AF37' }}
+                    />
+                    <span className="text-primary-400 text-xs leading-relaxed">
+                      I agree to the{' '}
+                      <Link href="/terms" target="_blank" className="text-primary-500 hover:underline">
+                        Terms of Service
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedPrivacy}
+                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                      className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                      style={{ accentColor: '#D4AF37' }}
+                    />
+                    <span className="text-primary-400 text-xs leading-relaxed">
+                      I agree to the{' '}
+                      <Link href="/privacy" target="_blank" className="text-primary-500 hover:underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {error && (
                 <div className="bg-red-900/90 border-2 border-red-600 text-red-200 px-4 py-3 rounded-lg text-sm font-medium animate-pulse">
                   ⚠️ {error}
@@ -250,7 +307,7 @@ export default function LoginScreen() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (!isLogin && (!acceptedTerms || !acceptedPrivacy))}
                 className="w-full bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}

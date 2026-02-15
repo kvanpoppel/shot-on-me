@@ -122,6 +122,7 @@ const userSchema = new mongoose.Schema({
     venueUpdates: { type: Boolean, default: true },
     friendActivity: { type: Boolean, default: true },
     paymentNotifications: { type: Boolean, default: true },
+    aiPersonalizationEnabled: { type: Boolean, default: true },
     // Venue owner specific notifications
     promotionExpiring: { type: Boolean, default: true }, // Notify when promotion expiring soon
     promotionLaunching: { type: Boolean, default: true }, // Notify when promotion about to launch
@@ -218,6 +219,37 @@ const userSchema = new mongoose.Schema({
       }
     },
     default: {}
+  },
+  // Lightweight AI personalization signals (persisted across devices)
+  aiSignals: {
+    viewedProfileIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    addedFriendIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    feedback: {
+      helpfulCount: { type: Number, default: 0 },
+      lessLikeThisCount: { type: Number, default: 0 }
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
+  agreements: {
+    termsAcceptedAt: {
+      type: Date
+    },
+    privacyAcceptedAt: {
+      type: Date
+    },
+    acceptedVersion: {
+      type: String,
+      default: 'v1'
+    }
   }
 }, {
   timestamps: true

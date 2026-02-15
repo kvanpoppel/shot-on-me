@@ -7,6 +7,30 @@ const analytics = require('../utils/analytics');
 
 const router = express.Router();
 
+const buildVenueSlugBase = (venueName) => {
+  return String(venueName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'venue';
+};
+
+const buildUniqueVenueSlug = async (VenueModel, venueName) => {
+  const base = buildVenueSlugBase(venueName);
+  let attempt = 0;
+  let candidate = base;
+
+  while (attempt < 100) {
+    // eslint-disable-next-line no-await-in-loop
+    const existing = await VenueModel.findOne({ slug: candidate }).select('_id').lean();
+    if (!existing) return candidate;
+    attempt += 1;
+    candidate = `${base}-${attempt + 1}`;
+  }
+
+  return `${base}-${Date.now().toString().slice(-6)}`;
+};
+
 // Login route
 router.post('/login', async (req, res) => {
   const startTime = Date.now();
@@ -121,13 +145,16 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const { email, password, name, firstName, lastName, phoneNumber, userType } = req.body;
+    const { email, password, name, firstName, lastName, phoneNumber, userType, acceptedTerms, acceptedPrivacy } = req.body;
 
     // Support both name (single field) and firstName/lastName (separate fields)
     const fullName = name || (firstName && lastName ? `${firstName} ${lastName}`.trim() : null);
 
     if (!email || !password || !fullName) {
       return res.status(400).json({ message: 'Email, password, and name (or firstName + lastName) are required' });
+    }
+    if (acceptedTerms !== true || acceptedPrivacy !== true) {
+      return res.status(400).json({ message: 'You must accept Terms of Service and Privacy Policy to create an account' });
     }
 
     // Check if user already exists
@@ -149,7 +176,12 @@ router.post('/register', async (req, res) => {
       userType: userType || 'user',
       wallet: { balance: 0, pendingBalance: 0 }, // Wallet is automatically initialized
       friends: [],
-      location: { isVisible: true }
+      location: { isVisible: true },
+      agreements: {
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        acceptedVersion: 'v1'
+      }
     });
 
     await newUser.save();
@@ -268,12 +300,15 @@ router.post('/register-venue', async (req, res) => {
       });
     }
 
-    const { email, password, firstName, lastName, phoneNumber, venueName, venueAddress, venuePhone } = req.body;
+    const { email, password, firstName, lastName, phoneNumber, venueName, venueAddress, venuePhone, subscriptionTier, acceptedTerms, acceptedPrivacy } = req.body;
 
     if (!email || !password || !firstName || !lastName || !venueName) {
       return res.status(400).json({ 
         message: 'Email, password, first name, last name, and venue name are required' 
       });
+    }
+    if (acceptedTerms !== true || acceptedPrivacy !== true) {
+      return res.status(400).json({ message: 'You must accept Terms of Service and Privacy Policy to create an account' });
     }
 
     // Check if user already exists
@@ -297,15 +332,24 @@ router.post('/register-venue', async (req, res) => {
       userType: 'venue',
       wallet: { balance: 0, pendingBalance: 0 }, // Wallet is automatically initialized
       friends: [],
-      location: { isVisible: true }
+      location: { isVisible: true },
+      agreements: {
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        acceptedVersion: 'v1'
+      }
     });
 
     await newUser.save();
 
     // Create venue for this user
     const Venue = require('../models/Venue');
+    const venueSlug = await buildUniqueVenueSlug(Venue, venueName);
+    const allowedTiers = ['free', 'basic', 'premium', 'enterprise'];
+    const normalizedTier = allowedTiers.includes(subscriptionTier) ? subscriptionTier : 'free';
     const newVenue = new Venue({
       name: venueName,
+      slug: venueSlug,
       owner: newUser._id,
       address: venueAddress ? {
         street: venueAddress.street || venueAddress,
@@ -319,6 +363,7 @@ router.post('/register-venue', async (req, res) => {
         coordinates: [0, 0] // Will be updated when venue sets location
       },
       phone: venuePhone || phoneNumber,
+      subscriptionTier: normalizedTier,
       isActive: true
     });
 
@@ -336,6 +381,9 @@ router.post('/register-venue', async (req, res) => {
     );
 
     // Return user data and token
+    const venuePortalBaseUrl = process.env.VENUE_PORTAL_URL || process.env.VENUE_PORTAL_BASE_URL || 'http://localhost:3002';
+    const venuePortalUrl = `${venuePortalBaseUrl.replace(/\/$/, '')}/v/${newVenue.slug}`;
+
     res.status(201).json({
       token,
       user: {
@@ -353,7 +401,10 @@ router.post('/register-venue', async (req, res) => {
       },
       venue: {
         id: newVenue._id,
-        name: newVenue.name
+        name: newVenue.name,
+        slug: newVenue.slug,
+        subscriptionTier: newVenue.subscriptionTier,
+        portalUrl: venuePortalUrl
       }
     });
 

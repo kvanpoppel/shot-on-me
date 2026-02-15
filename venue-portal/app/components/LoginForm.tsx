@@ -6,14 +6,18 @@ import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import { useToast } from './ToastContainer'
+import Link from 'next/link'
 
 type Mode = 'login' | 'register'
+type PortalRole = 'owner' | 'manager' | 'staff'
+type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
 interface LoginFormProps {
   initialMode: Mode
+  selectedRole?: PortalRole
 }
 
-export default function LoginForm({ initialMode }: LoginFormProps) {
+export default function LoginForm({ initialMode, selectedRole = 'owner' }: LoginFormProps) {
   const [mode, setMode] = useState<Mode>(initialMode)
 
   // Login state
@@ -28,6 +32,9 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
   const [venueName, setVenueName] = useState('')
   const [venueAddress, setVenueAddress] = useState('')
   const [venuePhone, setVenuePhone] = useState('')
+  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>('basic')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -120,6 +127,11 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
     setError('')
     setSuccess('')
 
+    if (!acceptedTerms || !acceptedPrivacy) {
+      setError('You must accept Terms of Service and Privacy Policy to continue.')
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
@@ -137,12 +149,20 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
         lastName,
         venueName,
         venueAddress,
-        venuePhone
+        venuePhone,
+        subscriptionTier,
+        acceptedTerms,
+        acceptedPrivacy
       })
 
+      const portalUrl = response.data?.venue?.portalUrl as string | undefined
+
       // Registration successful - show success message
-      setSuccess('Account created successfully! Logging you in...')
-      showSuccess('Account created successfully! Logging you in...')
+      const successMessage = portalUrl
+        ? `Account created! Your venue portal URL is ${portalUrl}. Logging you in...`
+        : 'Account created successfully! Logging you in...'
+      setSuccess(successMessage)
+      showSuccess(successMessage)
       
       // After successful registration, immediately log them in
       try {
@@ -172,9 +192,20 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
   }
 
   const isLogin = mode === 'login'
+  const roleLabel = selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)
 
   return (
     <div className="space-y-5" role="main" aria-label={isLogin ? 'Sign in form' : 'Registration form'}>
+      <div className="rounded-lg border border-primary-500/25 bg-black/50 px-3 py-2 text-xs text-primary-400/90">
+        <span className="font-semibold text-primary-500">Signing in as:</span> {roleLabel}
+      </div>
+
+      {!isLogin && selectedRole !== 'owner' && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+          New account signup creates an <span className="font-semibold">Owner</span> account. For {roleLabel.toLowerCase()} access,
+          ask your owner to invite you from the dashboard staff section.
+        </div>
+      )}
 
       {/* Error Message - Enhanced with ARIA */}
       {error && (
@@ -323,7 +354,60 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
                     placeholder="(555) 123-4567"
                   />
                 </div>
+
+                <div>
+                  <label htmlFor="subscriptionTier" className="block text-xs font-medium text-primary-500 mb-1.5">
+                    Subscription Plan
+                  </label>
+                  <select
+                    id="subscriptionTier"
+                    value={subscriptionTier}
+                    onChange={(e) => setSubscriptionTier(e.target.value as SubscriptionTier)}
+                    className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                  >
+                    <option value="free" className="bg-black text-primary-500">Starter - $0/mo</option>
+                    <option value="basic" className="bg-black text-primary-500">Growth - $79/mo</option>
+                    <option value="premium" className="bg-black text-primary-500">Performance - $199/mo</option>
+                    <option value="enterprise" className="bg-black text-primary-500">Enterprise - Custom</option>
+                  </select>
+                  <p className="text-[11px] text-primary-400/70 mt-1">
+                    You can change this later from your Profile or Settings page.
+                  </p>
+                </div>
               </div>
+            </div>
+
+            <div className="rounded-lg border border-primary-500/20 bg-black/40 p-3 space-y-2">
+              <label className="flex items-start gap-2 text-xs text-primary-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link href="/terms" target="_blank" className="text-primary-500 hover:underline">
+                    Terms of Service
+                  </Link>
+                  .
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-primary-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                  className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link href="/privacy" target="_blank" className="text-primary-500 hover:underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
             </div>
           </>
         )}
@@ -398,7 +482,7 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (!isLogin && (!acceptedTerms || !acceptedPrivacy))}
           className="w-full bg-primary-500 text-black py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black shadow-md hover:shadow-lg"
           aria-busy={loading}
         >

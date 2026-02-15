@@ -38,7 +38,9 @@ interface RegisterData {
   phoneNumber: string
   firstName: string
   lastName: string
-  referralCode?: string
+  referrerId?: string
+  acceptedTerms: boolean
+  acceptedPrivacy: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -261,18 +263,17 @@ For LOCAL development:
         // Continue even if localStorage fails
       }
       
-      // Apply referral code if provided (after user is created)
-      if (data.referralCode && userData?.id) {
+      // Attribute referral by referrer ID (from invite link ?ref=userId) – backend only, no visible code
+      if (data.referrerId && userData?.id) {
         try {
           await axios.post(`${apiUrl}/referrals/apply`, {
-            code: data.referralCode,
+            referrerId: data.referrerId,
             userId: userData.id
           }, {
             headers: { Authorization: `Bearer ${authToken}` }
           })
         } catch (refError: any) {
-          // Don't fail registration if referral code fails
-          console.warn('Failed to apply referral code:', refError.message)
+          console.warn('Failed to apply referral:', refError.message)
         }
       }
       

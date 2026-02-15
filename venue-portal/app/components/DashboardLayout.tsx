@@ -124,6 +124,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               Redemptions
             </Link>
             <Link 
+              href="/dashboard/profile" 
+              className={`block px-3 py-2 rounded text-sm transition-all font-light ${
+                isActive('/dashboard/profile') 
+                  ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
+                  : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
+              }`}
+            >
+              Profile
+            </Link>
+            <Link 
               href="/dashboard/settings" 
               className={`block px-3 py-2 rounded text-sm transition-all font-light ${
                 isActive('/dashboard/settings') 
@@ -208,6 +218,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 Redemptions
               </Link>
               <Link 
+                href="/dashboard/profile" 
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded text-sm transition-all font-light ${
+                  isActive('/dashboard/profile') 
+                    ? 'text-primary-500 bg-primary-500/10 border-l-2 border-primary-500' 
+                    : 'text-primary-400/80 hover:bg-primary-500/5 hover:text-primary-500'
+                }`}
+              >
+                Profile
+              </Link>
+              <Link 
                 href="/dashboard/settings" 
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded text-sm transition-all font-light ${
@@ -247,6 +268,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
           <div className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0">
             <Link
+              href="/dashboard/profile"
+              className="px-2 md:px-3 py-1.5 bg-black/40 border border-primary-500/20 text-primary-500 rounded hover:bg-primary-500/10 hover:border-primary-500/30 text-xs transition-all backdrop-blur-sm whitespace-nowrap"
+            >
+              Profile
+            </Link>
+            <Link
               href="/dashboard/settings"
               className="px-2 md:px-3 py-1.5 bg-primary-500 text-black rounded font-medium hover:bg-primary-600 text-xs transition-all whitespace-nowrap"
             >
@@ -269,7 +296,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-3 md:p-6 flex-1 overflow-y-auto overflow-x-hidden w-full">
           <div className="w-full max-w-full">
             {children}
-          </div>ow I c
+          </div>
         </div>
       </main>
     </div>

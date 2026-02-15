@@ -11,6 +11,7 @@ import {
   Users, 
   Calendar, 
   Sparkles,
+  Crown,
   ArrowLeft,
   CheckCircle,
   X,
@@ -279,6 +280,14 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
     ? venue.promotions.filter((p: any) => p && p.isActive) 
     : []
 
+  const venueBadge = venue?.isFeatured
+    ? { label: 'Featured Venue', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' }
+    : venue?.subscriptionTier === 'enterprise'
+      ? { label: 'Enterprise Partner', className: 'bg-purple-500/20 text-purple-300 border-purple-500/40' }
+      : venue?.subscriptionTier === 'premium'
+        ? { label: 'AI Optimized Specials', className: 'bg-primary-500/20 text-primary-400 border-primary-500/40' }
+        : null
+
   // Safety check - if venue is null or invalid, show error
   if (!venue || !venue._id) {
     return (
@@ -308,6 +317,11 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         {/* Rating & Followers */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {venueBadge && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${venueBadge.className}`}>
+                {venueBadge.label}
+              </span>
+            )}
             {venue?.rating && typeof venue.rating === 'number' && (
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
@@ -344,6 +358,16 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
             )}
           </button>
         </div>
+
+        {venue?.subscriptionTier === 'premium' || venue?.subscriptionTier === 'enterprise' || venue?.isFeatured ? (
+          <div className="bg-black/40 border border-primary-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
+            <Crown className="w-4 h-4 text-primary-500 mt-0.5" />
+            <p className="text-xs text-primary-400/85 leading-relaxed">
+              This venue is actively managed through the Venue Portal with enhanced optimization.
+              Specials and event timing may update more frequently based on live performance.
+            </p>
+          </div>
+        ) : null}
 
         {/* Address */}
         {venue?.address && (
