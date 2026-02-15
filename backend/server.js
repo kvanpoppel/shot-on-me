@@ -16,6 +16,7 @@ const corsOptions = {
     'http://localhost:3002', // Owner Portal
     'https://www.shotonme.com', // Primary production domain (www only)
     'https://shotonme.com', // Production domain (without www)
+    'https://venue.shotonme.com', // Venue portal production subdomain
     /^https:\/\/.*\.vercel\.app$/, // All Vercel deployment URLs (preview and production)
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
     /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
@@ -464,6 +465,7 @@ server.listen(PORT, HOST, () => {
   
   // Initialize venue promotion notification checks
   const { checkExpiringPromotions, checkLaunchingPromotions, checkPromotionObjectives } = require('./services/venuePromotionNotifications');
+  const { runAiAutomationSchedulerCycle } = require('./services/aiAutomationScheduler');
   
   // Check for expiring/launching promotions every 30 minutes
   setInterval(() => {
@@ -475,6 +477,24 @@ server.listen(PORT, HOST, () => {
   setInterval(() => {
     checkPromotionObjectives(io);
   }, 60 * 60 * 1000); // 1 hour
+
+  // Run AI automation scheduler hourly in backend (no owner login required)
+  const aiSchedulerIntervalMinutes = Math.max(
+    10,
+    Number(process.env.AI_AUTOMATION_SCHEDULER_INTERVAL_MINUTES || 60)
+  );
+  setInterval(async () => {
+    try {
+      const result = await runAiAutomationSchedulerCycle();
+      if (!result?.skipped) {
+        console.log(
+          `🤖 AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`
+        );
+      }
+    } catch (error) {
+      console.error('❌ AI automation scheduler error:', error.message);
+    }
+  }, aiSchedulerIntervalMinutes * 60 * 1000);
   
   // Run initial checks after 1 minute (give DB time to connect)
   setTimeout(() => {
@@ -482,8 +502,23 @@ server.listen(PORT, HOST, () => {
     checkLaunchingPromotions(io);
     checkPromotionObjectives(io);
   }, 60000); // 1 minute
+
+  // Run first AI scheduler cycle shortly after startup
+  setTimeout(async () => {
+    try {
+      const result = await runAiAutomationSchedulerCycle();
+      if (!result?.skipped) {
+        console.log(
+          `🤖 Initial AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`
+        );
+      }
+    } catch (error) {
+      console.error('❌ Initial AI automation scheduler error:', error.message);
+    }
+  }, 120000); // 2 minutes
   
   console.log('📢 Venue promotion notification checks initialized');
+  console.log(`🤖 AI automation scheduler initialized (${aiSchedulerIntervalMinutes} min interval)`);
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
   if (err.code === 'EADDRINUSE') {
