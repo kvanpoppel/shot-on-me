@@ -1,23 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
+import DashboardPageShell from '../../components/DashboardPageShell'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
+import CheckInsHistory from '../../components/CheckInsHistory'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Sparkles, TrendingUp } from 'lucide-react'
+import { Sparkles, RefreshCcw, Search, Users } from 'lucide-react'
 
 export default function RedemptionsPage() {
   const { user, loading, token } = useAuth()
   const router = useRouter()
   const [redemptions, setRedemptions] = useState<any[]>([])
   const [loadingRedemptions, setLoadingRedemptions] = useState(true)
-  const [redemptionCode, setRedemptionCode] = useState('')
-  const [redeeming, setRedeeming] = useState(false)
-  const [myVenueId, setMyVenueId] = useState<string | null>(null)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'succeeded' | 'processing' | 'other'>('all')
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -61,7 +63,7 @@ export default function RedemptionsPage() {
         return
       }
 
-      setMyVenueId(myVenue._id.toString())
+      setFollowerCount(Number(myVenue.followerCount) || 0)
 
       // Get payments redeemed at this venue (type: shot_redeemed or transfer, with venueId)
       const response = await axios.get(`${apiUrl}/payments/history`, {
@@ -87,6 +89,42 @@ export default function RedemptionsPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const totalAmount = redemptions.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+    const today = new Date()
+    const todayCount = redemptions.filter((r) => {
+      const date = new Date(r.createdAt || r.updatedAt || Date.now())
+      return date.toDateString() === today.toDateString()
+    }).length
+    const avgAmount = redemptions.length > 0 ? totalAmount / redemptions.length : 0
+    return {
+      totalAmount,
+      todayCount,
+      avgAmount
+    }
+  }, [redemptions])
+
+  const filteredRedemptions = useMemo(() => {
+    return redemptions.filter((redemption) => {
+      const status = redemption.status || ''
+      const statusMatches =
+        statusFilter === 'all' ||
+        (statusFilter === 'other' && status !== 'succeeded' && status !== 'processing') ||
+        status === statusFilter
+
+      const customerName = redemption.senderId?.firstName && redemption.senderId?.lastName
+        ? `${redemption.senderId.firstName} ${redemption.senderId.lastName}`
+        : redemption.senderId?.name || 'Customer'
+      const code = redemption.redemptionCode || ''
+      const searchMatches =
+        !searchTerm ||
+        customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        code.toLowerCase().includes(searchTerm.toLowerCase())
+
+      return statusMatches && searchMatches
+    })
+  }, [redemptions, statusFilter, searchTerm])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -99,79 +137,24 @@ export default function RedemptionsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-5 w-full max-w-full">
-        {/* Clean Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-primary-400 mb-1">Redemptions</h1>
-          <p className="text-sm text-primary-500/70">Redeem payment codes and track redemption history</p>
-        </div>
-
-        {/* Redeem Code Interface - Prominent */}
-        <div className="bg-gradient-to-br from-black/50 via-black/40 to-black/50 border-2 border-primary-500/30 rounded-xl shadow-xl p-4 md:p-6 overflow-x-hidden">
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="p-2 bg-primary-500/10 rounded-lg">
-              <span className="text-xl">🎫</span>
-            </div>
-            <h2 className="text-lg font-semibold text-primary-500">Redeem Payment Code</h2>
-          </div>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              if (!redemptionCode || !myVenueId || !token) return
-
-              try {
-                setRedeeming(true)
-                const apiUrl = getApiUrl()
-                const response = await axios.post(
-                  `${apiUrl}/payments/redeem`,
-                  {
-                    code: redemptionCode.toUpperCase(),
-                    venueId: myVenueId
-                  },
-                  {
-                    headers: { Authorization: `Bearer ${token}` }
-                  }
-                )
-
-                alert(`✅ Payment redeemed successfully! Amount: $${response.data.amount.toFixed(2)}`)
-                setRedemptionCode('')
-                await fetchRedemptions()
-              } catch (error: any) {
-                alert(`❌ ${error.response?.data?.message || 'Failed to redeem code'}`)
-              } finally {
-                setRedeeming(false)
-              }
-            }}
-            className="space-y-3"
-          >
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={redemptionCode}
-                onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
-                placeholder="Enter 8-character code"
-                className="flex-1 px-4 md:px-5 py-3 md:py-4 bg-black/60 border-2 border-primary-500/30 rounded-xl text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-lg md:text-xl text-center tracking-widest min-w-0"
-                maxLength={8}
-                style={{ letterSpacing: '0.2em' }}
-              />
-              <button
-                type="submit"
-                disabled={!redemptionCode || redeeming || redemptionCode.length < 4}
-                className="px-6 md:px-8 py-3 md:py-4 bg-primary-500 text-black rounded-xl font-bold hover:bg-primary-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg shadow-lg hover:shadow-xl whitespace-nowrap"
-              >
-                {redeeming ? 'Processing...' : 'Redeem'}
-              </button>
-            </div>
-            <p className="text-xs text-primary-500/70 text-center">
-              Enter the code provided by the customer to process their payment
-            </p>
-          </form>
+      <DashboardPageShell
+        icon={<Users className="w-5 h-5 text-primary-500" />}
+        title="Guest Activity"
+        subtitle="Track followers, monitor check-ins, and review venue payment activity."
+        metrics={[
+          { label: 'Followers', value: `${followerCount}`, detail: 'Current audience following your venue.' },
+          { label: 'Payments Today', value: `${stats.todayCount}`, detail: 'Completed events for today.' },
+          { label: 'Total Processed', value: `$${stats.totalAmount.toFixed(2)}`, detail: `Avg ticket $${stats.avgAmount.toFixed(2)}` }
+        ]}
+      >
+        <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
+          <CheckInsHistory />
         </div>
 
         {/* AI Insights - Redemption Patterns */}
         <CollapsibleSection
-          title="AI Redemption Insights"
-          subtitle="AI-powered analysis of your redemption patterns"
+          title="AI Activity Insights"
+          subtitle="AI-powered analysis of follower and check-in behavior"
           defaultOpen={false}
           icon={<Sparkles className="w-4 h-4" />}
         >
@@ -184,15 +167,42 @@ export default function RedemptionsPage() {
         <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-primary-500">Redemption History</h2>
-              <p className="text-xs text-primary-500/70 mt-1">{redemptions.length} total redemptions</p>
+              <h2 className="text-lg font-semibold text-primary-500">Payment Activity History</h2>
+              <p className="text-xs text-primary-500/70 mt-1">
+                {filteredRedemptions.length} shown of {redemptions.length} total payment events
+              </p>
             </div>
             <button
               onClick={fetchRedemptions}
               className="text-xs text-primary-500/70 hover:text-primary-500 transition-colors px-3 py-1.5 bg-black/40 rounded-lg hover:bg-black/60"
             >
-              🔄 Refresh
+              <span className="inline-flex items-center gap-1">
+                <RefreshCcw className="h-3 w-3" />
+                Refresh
+              </span>
             </button>
+          </div>
+          <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="sm:col-span-2 relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary-500/60" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search customer"
+                className="w-full rounded-lg border border-primary-500/25 bg-black/50 py-2 pl-8 pr-3 text-xs text-primary-400 placeholder-primary-500/45 focus:border-primary-500 focus:outline-none"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="rounded-lg border border-primary-500/25 bg-black/50 px-3 py-2 text-xs text-primary-400 focus:border-primary-500 focus:outline-none"
+            >
+              <option value="all">All statuses</option>
+              <option value="succeeded">Succeeded</option>
+              <option value="processing">Processing</option>
+              <option value="other">Other</option>
+            </select>
           </div>
           
           <div className="space-y-2 max-h-[600px] overflow-y-auto">
@@ -201,14 +211,14 @@ export default function RedemptionsPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-3"></div>
                 Loading redemptions...
               </div>
-            ) : redemptions.length === 0 ? (
+            ) : filteredRedemptions.length === 0 ? (
               <div className="text-center py-12 bg-black/20 rounded-lg border border-primary-500/10">
-                <span className="text-4xl mb-3 block">🎫</span>
-                <p className="text-primary-400 text-sm font-medium">No redemptions yet</p>
-                <p className="text-primary-400/70 text-xs mt-1">Redemptions will appear here as customers use their shots</p>
+                <span className="text-4xl mb-3 block">💳</span>
+                <p className="text-primary-400 text-sm font-medium">No payment activity yet</p>
+                <p className="text-primary-400/70 text-xs mt-1">Events will appear here as guests complete transactions</p>
               </div>
             ) : (
-              redemptions.map((redemption, idx) => (
+              filteredRedemptions.map((redemption, idx) => (
                 <div 
                   key={redemption._id || idx} 
                   className="bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/40 hover:bg-black/60 transition-all group"
@@ -271,7 +281,7 @@ export default function RedemptionsPage() {
             )}
           </div>
         </div>
-      </div>
+      </DashboardPageShell>
     </DashboardLayout>
   )
 }

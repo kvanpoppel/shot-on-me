@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
+import DashboardPageShell from '../../components/DashboardPageShell'
 import EarningsDashboard from '../../components/EarningsDashboard'
 import LiveActivityDashboard from '../../components/LiveActivityDashboard'
 import AIAnalyticsDashboard from '../../components/AIAnalyticsDashboard'
@@ -13,6 +14,17 @@ import ROICalculator from '../../components/ROICalculator'
 import CheckInsHistory from '../../components/CheckInsHistory'
 import PaymentsHistory from '../../components/PaymentsHistory'
 import PayoutsHistory from '../../components/PayoutsHistory'
+import {
+  BarChart3,
+  Bot,
+  CircleDollarSign,
+  Compass,
+  CreditCard,
+  Landmark,
+  MapPin,
+  Sparkles,
+  Target
+} from 'lucide-react'
 
 export default function AnalyticsPage() {
   const { user, loading } = useAuth()
@@ -20,17 +32,6 @@ export default function AnalyticsPage() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<string>('earnings')
   
-  // Ensure earnings tab is shown by default on initial load
-  useEffect(() => {
-    const tab = searchParams?.get('tab')
-    if (tab) {
-      setActiveTab(tab)
-    } else {
-      // Default to earnings if no tab specified
-      setActiveTab('earnings')
-    }
-  }, [searchParams])
-
   useEffect(() => {
     if (!loading && !user) {
       router.push('/')
@@ -38,14 +39,8 @@ export default function AnalyticsPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    // Check for tab parameter in URL, default to earnings if none
     const tab = searchParams?.get('tab')
-    if (tab) {
-      setActiveTab(tab)
-    } else {
-      // Ensure earnings is shown by default
-      setActiveTab('earnings')
-    }
+    setActiveTab(tab || 'earnings')
   }, [searchParams])
 
   if (loading) {
@@ -59,27 +54,57 @@ export default function AnalyticsPage() {
   if (!user) return null
 
   const tabs = [
-    { id: 'earnings', label: 'Earnings', icon: '💰' },
-    { id: 'roi', label: 'ROI Forecast', icon: '📊' },
-    { id: 'ai-analytics', label: 'AI Analytics', icon: '🤖' },
-    { id: 'suggestions', label: 'AI Suggestions', icon: '✨' },
-    { id: 'personalized', label: 'Personalized', icon: '🎯' },
-    { id: 'activity', label: 'Activity', icon: '📊' },
-    { id: 'checkins', label: 'Check-ins', icon: '📍' },
-    { id: 'payments', label: 'Payments', icon: '💳' },
-    { id: 'payouts', label: 'Payouts', icon: '🏦' }
+    { id: 'earnings', label: 'Earnings', icon: CircleDollarSign },
+    { id: 'roi', label: 'ROI Forecast', icon: BarChart3 },
+    { id: 'ai-analytics', label: 'AI Analytics', icon: Bot },
+    { id: 'suggestions', label: 'AI Suggestions', icon: Sparkles },
+    { id: 'personalized', label: 'Personalized', icon: Target },
+    { id: 'activity', label: 'Activity', icon: Compass },
+    { id: 'checkins', label: 'Check-ins', icon: MapPin },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'payouts', label: 'Payouts', icon: Landmark }
   ]
+
+  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label || 'Earnings'
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-5 w-full max-w-full">
-        {/* Clean Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-primary-400 mb-1">Earnings & Analytics</h1>
-          <p className="text-sm text-primary-500/70">View earnings, track performance, and analyze insights</p>
-        </div>
+      <DashboardPageShell
+        icon={<CircleDollarSign className="w-5 h-5 text-primary-500" />}
+        title="Earnings & Analytics"
+        subtitle="Track revenue, monitor performance, and act faster with AI insights."
+        actions={(
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <button
+              onClick={() => setActiveTab('earnings')}
+              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">Finance</p>
+              <p className="mt-1 text-sm font-semibold text-primary-500">Revenue, payouts, payments</p>
+            </button>
+            <button
+              onClick={() => setActiveTab('ai-analytics')}
+              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">AI Layer</p>
+              <p className="mt-1 text-sm font-semibold text-primary-500">Insights, suggestions, targeting</p>
+            </button>
+            <button
+              onClick={() => setActiveTab('activity')}
+              className="rounded-lg border border-primary-500/20 bg-black/40 px-3 py-2 text-left transition hover:border-primary-500/45"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-primary-400/70">Operational</p>
+              <p className="mt-1 text-sm font-semibold text-primary-500">Live activity and check-ins</p>
+            </button>
+          </div>
+        )}
+        metrics={[
+          { label: 'Active View', value: activeTabLabel, detail: 'Current analytics workspace.' },
+          { label: 'Finance Modules', value: '3', detail: 'Earnings, payments, payouts.' },
+          { label: 'AI Modules', value: '3', detail: 'Insights, suggestions, personalization.' }
+        ]}
+      >
 
-        {/* Tab Navigation - Enhanced & Responsive */}
         <div className="bg-black/40 border border-primary-500/20 rounded-xl p-1.5 md:p-2 mb-4 md:mb-5">
           <div className="flex space-x-1 md:space-x-2 overflow-x-auto scrollbar-hide pb-1">
             {tabs.map((tab) => (
@@ -97,7 +122,7 @@ export default function AnalyticsPage() {
                     : 'bg-black/40 text-primary-400 hover:bg-primary-500/10 hover:text-primary-500'
                 }`}
               >
-                <span className="text-sm md:text-base">{tab.icon}</span>
+                <tab.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
@@ -105,8 +130,11 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Tab Content - Organized */}
         <div className="min-h-[400px] md:min-h-[500px]">
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-primary-500/20 bg-black/30 px-3 py-2">
+            <p className="text-xs text-primary-400/75">Currently viewing</p>
+            <p className="text-sm font-semibold text-primary-500">{activeTabLabel}</p>
+          </div>
           {activeTab === 'earnings' && (
             <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
               <EarningsDashboard />
@@ -153,7 +181,7 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
-      </div>
+      </DashboardPageShell>
     </DashboardLayout>
   )
 }
