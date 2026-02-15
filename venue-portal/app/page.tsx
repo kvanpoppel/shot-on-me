@@ -8,9 +8,7 @@ import FeatureDetailModal from './components/FeatureDetailModal'
 import FAQ from './components/FAQ'
 import axios from 'axios'
 import { getApiUrl } from './utils/api'
-import { Sparkles, TrendingUp, Users, BarChart3, Zap, Shield, Bot, CalendarClock, ArrowRight } from 'lucide-react'
-
-type PortalRole = 'owner' | 'manager' | 'staff'
+import { Sparkles, TrendingUp, Users, BarChart3, Zap, Shield, ArrowRight } from 'lucide-react'
 
 function HomeContent() {
   const { user, loading } = useAuth()
@@ -18,7 +16,6 @@ function HomeContent() {
   const searchParams = useSearchParams()
   const [selectedFeature, setSelectedFeature] = useState<number | null>(null)
   const [mode, setMode] = useState<'login' | 'register' | null>(null)
-  const [selectedPortalRole, setSelectedPortalRole] = useState<PortalRole>('owner')
   const [venueContextName, setVenueContextName] = useState<string | null>(null)
   const venueSlug = searchParams.get('venue')
 
@@ -111,30 +108,6 @@ function HomeContent() {
     }
   ], [])
 
-  const aiOptions = useMemo(() => [
-    {
-      icon: Sparkles,
-      title: 'Generate Smart Promotions',
-      description: 'Create high-converting promotions in under a minute using AI templates built for bars and venues.',
-      bestFor: 'Last-minute slow nights and quick campaign launches',
-      featureIndex: 4
-    },
-    {
-      icon: Bot,
-      title: 'Run AI Auto Mode',
-      description: 'Let AI monitor performance and recommend timing, discount, and audience strategy throughout the week.',
-      bestFor: 'Hands-off optimization and consistent growth',
-      featureIndex: 0
-    },
-    {
-      icon: CalendarClock,
-      title: 'Forecast Busy vs Slow Nights',
-      description: 'Use AI predictions to plan staffing, inventory, and offers before the week starts.',
-      bestFor: 'Planning labor, inventory, and revenue targets',
-      featureIndex: 1
-    }
-  ], [])
-
   const setAuthMode = (nextMode: 'login' | 'register') => {
     if (mode === nextMode) {
       setMode(null)
@@ -144,6 +117,10 @@ function HomeContent() {
 
     setMode(nextMode)
     router.push(buildAuthPath(nextMode), { scroll: false })
+  }
+
+  const toggleAuthPanel = () => {
+    setAuthMode('login')
   }
 
   useEffect(() => {
@@ -156,15 +133,10 @@ function HomeContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const role = searchParams.get('role')
     if (tab === 'login' || tab === 'register') {
       setMode(tab)
     } else {
       setMode(null)
-    }
-
-    if (role === 'owner' || role === 'manager' || role === 'staff') {
-      setSelectedPortalRole(role)
     }
   }, [searchParams])
 
@@ -191,15 +163,8 @@ function HomeContent() {
     const params = new URLSearchParams()
     if (tab) params.set('tab', tab)
     if (venueSlug) params.set('venue', venueSlug)
-    params.set('role', selectedPortalRole)
     const query = params.toString()
     return query ? `/?${query}` : '/'
-  }
-
-  const roleDescriptions: Record<PortalRole, string> = {
-    owner: 'Full control of venue settings, AI strategy, billing, and staff permissions.',
-    manager: 'Manage day-to-day operations, promotions, and performance with owner-approved access.',
-    staff: 'Execute daily tasks, track activity, and support guest experience.'
   }
 
   // Show loading spinner while checking for saved login
@@ -219,50 +184,6 @@ function HomeContent() {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-black to-black" aria-hidden="true"></div>
       
-      {/* Top Navigation - Tabs */}
-      <div className="relative z-10 w-full border-b border-primary-500/20 bg-black/60 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex justify-center space-x-2">
-            <button
-              onClick={() => setAuthMode('login')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setAuthMode('login')
-                }
-              }}
-              className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black ${
-                mode === 'login'
-                  ? 'bg-primary-500 text-black border-primary-500 shadow-md'
-                  : 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 hover:text-primary-500 border-primary-500/30'
-              }`}
-              aria-label="Sign in to your account"
-              aria-pressed={mode === 'login'}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setAuthMode('register')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setAuthMode('register')
-                }
-              }}
-              className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black ${
-                mode === 'register'
-                  ? 'bg-primary-500 text-black border-primary-500 shadow-md'
-                  : 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 hover:text-primary-500 border-primary-500/30'
-              }`}
-              aria-label="Create a new account"
-              aria-pressed={mode === 'register'}
-            >
-              Create Account
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="relative flex-1 flex items-center justify-center container mx-auto px-4 py-8 w-full max-w-6xl">
         <div className="w-full space-y-8">
@@ -273,10 +194,10 @@ function HomeContent() {
             </h1>
             <div className="h-1 w-32 bg-gradient-to-r from-transparent via-primary-500 to-transparent mx-auto mb-2 animate-slide-up"></div>
             <p className="text-xl lg:text-2xl text-primary-400 font-light animate-slide-up">
-              AI tools made for venue operators
+              The Complete Venue Management Platform
             </p>
             <p className="text-base lg:text-lg text-primary-500/70 max-w-2xl mx-auto animate-slide-up">
-              Launch smarter promotions, fill slow nights, and keep regulars coming back with less manual work.
+              Manage promotions, engage customers, and grow your business with AI-powered insights.
             </p>
             {venueSlug && (
               <p className="text-sm text-primary-400/80">
@@ -286,100 +207,12 @@ function HomeContent() {
             )}
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
-                onClick={() => setAuthMode('register')}
+                onClick={toggleAuthPanel}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary-500 px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black"
               >
-                Start with AI
+                Sign In / Create Account
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => setAuthMode('login')}
-                className="inline-flex items-center rounded-lg border border-primary-500/40 bg-black/40 px-5 py-2.5 text-sm font-semibold text-primary-400 transition-all hover:border-primary-500/70 hover:text-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black"
-              >
-                Sign in to continue
-              </button>
-            </div>
-            <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-primary-500/25 bg-black/45 p-4">
-              <p className="text-sm font-medium text-primary-400">Who is using this portal today?</p>
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {(['owner', 'manager', 'staff'] as PortalRole[]).map((role) => (
-                  <button
-                    key={role}
-                    onClick={() => setSelectedPortalRole(role)}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black ${
-                      selectedPortalRole === role
-                        ? 'bg-primary-500 text-black'
-                        : 'border border-primary-500/40 bg-black/50 text-primary-400 hover:border-primary-500/70 hover:text-primary-300'
-                    }`}
-                    aria-pressed={selectedPortalRole === role}
-                    aria-label={`Set portal role to ${role}`}
-                  >
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-primary-400/75">
-                {roleDescriptions[selectedPortalRole]}
-              </p>
-            </div>
-          </div>
-
-          {/* AI Options - Venue Friendly */}
-          <div className="max-w-5xl mx-auto pt-2">
-            <div className="text-center mb-4">
-              <h2 className="text-xl md:text-2xl font-semibold text-primary-500">Pick what you want AI to handle</h2>
-              <p className="text-sm md:text-base text-primary-400/80 mt-2">
-                Yes - AI continuously reviews live analytics to optimize your specials over time.
-              </p>
-            </div>
-            <div className="mb-4 rounded-xl border border-primary-500/20 bg-black/45 p-4 max-w-4xl mx-auto">
-              <p className="text-sm font-medium text-primary-400">How AI optimization works</p>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-primary-400/80">
-                <div className="rounded-lg border border-primary-500/15 bg-black/35 p-3">
-                  <span className="text-primary-500 font-semibold">1) Track</span> live views, clicks, redemptions, and revenue.
-                </div>
-                <div className="rounded-lg border border-primary-500/15 bg-black/35 p-3">
-                  <span className="text-primary-500 font-semibold">2) Analyze</span> timing, offer type, and audience behavior.
-                </div>
-                <div className="rounded-lg border border-primary-500/15 bg-black/35 p-3">
-                  <span className="text-primary-500 font-semibold">3) Optimize</span> the next specials with confidence scoring.
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {aiOptions.map((option, idx) => {
-                const Icon = option.icon
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedFeature(option.featureIndex)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setSelectedFeature(option.featureIndex)
-                      }
-                    }}
-                    className="text-left bg-black/50 border border-primary-500/25 rounded-xl p-5 hover:border-primary-500/60 hover:bg-black/70 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black"
-                    aria-label={`Open details for ${option.title}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary-500/15">
-                        <Icon className="h-5 w-5 text-primary-500" />
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-base font-semibold text-primary-500">{option.title}</h3>
-                        <p className="text-sm text-primary-400/80 leading-relaxed">{option.description}</p>
-                        <p className="text-xs text-primary-400/60">
-                          Best for: <span className="text-primary-400">{option.bestFor}</span>
-                        </p>
-                        <span className="inline-flex items-center text-xs text-primary-500/80">
-                          See AI details <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
             </div>
           </div>
 
@@ -387,72 +220,76 @@ function HomeContent() {
           {mode === 'login' || mode === 'register' ? (
             <div className="max-w-md mx-auto animate-fade-in">
               <div className="bg-black/60 backdrop-blur-sm border border-primary-500/30 rounded-xl shadow-lg p-6 md:p-8 hover:border-primary-500/50 transition-all duration-300 transform hover:scale-[1.01]">
-                <LoginForm initialMode={mode} selectedRole={selectedPortalRole} />
+                <LoginForm initialMode={mode} />
               </div>
             </div>
           ) : null}
 
-          {/* Features Grid - Clickable */}
-          <div className="max-w-4xl mx-auto pt-6">
-            <h3 className="text-center text-base md:text-lg font-medium text-primary-400/90 mb-4">Everything included in the venue portal</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {features.map((feature, idx) => {
-              const Icon = feature.icon
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedFeature(idx)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setSelectedFeature(idx)
-                    }
-                  }}
-                  className="bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/50 hover:bg-black/60 transition-all duration-300 group text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black transform hover:scale-[1.02] active:scale-[0.98]"
-                  aria-label={`Learn more about ${feature.title}`}
-                >
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="p-3 bg-primary-500/10 rounded-lg group-hover:bg-primary-500/20 transition-colors">
-                      <Icon className="w-6 h-6 text-primary-500" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-primary-500 mb-1">
-                        {feature.title}
-                      </h3>
-                      <p className="text-xs text-primary-400/70 leading-tight">
-                        {feature.description}
-                      </p>
-                    </div>
-                    <span className="text-xs text-primary-500/60 group-hover:text-primary-500 transition-colors">
-                      Learn more →
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-            </div>
-          </div>
+          {mode === null ? (
+            <>
+              {/* Features Grid - Clickable */}
+              <div className="max-w-4xl mx-auto pt-6">
+                <h3 className="text-center text-base md:text-lg font-medium text-primary-400/90 mb-4">Everything included in the venue portal</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {features.map((feature, idx) => {
+                  const Icon = feature.icon
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedFeature(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedFeature(idx)
+                        }
+                      }}
+                      className="bg-black/40 border border-primary-500/20 rounded-lg p-4 hover:border-primary-500/50 hover:bg-black/60 transition-all duration-300 group text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black transform hover:scale-[1.02] active:scale-[0.98]"
+                      aria-label={`Learn more about ${feature.title}`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-3">
+                        <div className="p-3 bg-primary-500/10 rounded-lg group-hover:bg-primary-500/20 transition-colors">
+                          <Icon className="w-6 h-6 text-primary-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-primary-500 mb-1">
+                            {feature.title}
+                          </h3>
+                          <p className="text-xs text-primary-400/70 leading-tight">
+                            {feature.description}
+                          </p>
+                        </div>
+                        <span className="text-xs text-primary-500/60 group-hover:text-primary-500 transition-colors">
+                          Learn more →
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+                </div>
+              </div>
 
-          {/* Trust Indicators */}
-          <div className="flex items-center justify-center gap-6 pt-4 text-sm text-primary-400/60">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary-500" />
-              <span>Secure</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary-500" />
-              <span>Real-Time</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary-500" />
-              <span>AI-Powered</span>
-            </div>
-          </div>
+              {/* Trust Indicators */}
+              <div className="flex items-center justify-center gap-6 pt-4 text-sm text-primary-400/60">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary-500" />
+                  <span>Secure</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-primary-500" />
+                  <span>Real-Time</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary-500" />
+                  <span>AI-Powered</span>
+                </div>
+              </div>
 
-          {/* FAQ Section */}
-          <div className="pt-12 pb-8">
-            <FAQ />
-          </div>
+              {/* FAQ Section */}
+              <div className="pt-12 pb-8">
+                <FAQ />
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
 

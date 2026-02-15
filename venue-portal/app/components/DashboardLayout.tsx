@@ -1,11 +1,11 @@
 'use client'
 
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, ChevronDown } from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -19,7 +19,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const [venueName, setVenueName] = useState<string>('Venue')
   const [userInitial, setUserInitial] = useState<string>('V')
+  const [userRole, setUserRole] = useState<'owner' | 'manager' | 'staff'>('owner')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement | null>(null)
 
   const handleLogout = () => {
     logout()
@@ -29,6 +32,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     fetchVenueName()
   }, [token, user])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    if (accountMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [accountMenuOpen])
 
   const fetchVenueName = async () => {
     if (!token || !user) return
@@ -47,15 +63,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         venues = response.data.venues
       }
       
-      // Improved venue matching: handle both populated owner object and owner ID string
-      const myVenue = venues.find((v: any) => {
+      const userId = user.id?.toString() || (user as any)?._id?.toString()
+
+      const ownedVenue = venues.find((v: any) => {
         const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-        const userId = user.id?.toString()
         return ownerId === userId
       })
+
+      const staffVenue = venues.find((v: any) =>
+        Array.isArray(v.staff) && v.staff.some((s: any) => {
+          const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
+          return staffUserId === userId
+        })
+      )
+      const myVenue = ownedVenue || staffVenue
       
       if (myVenue && myVenue.name) {
         setVenueName(myVenue.name)
+      }
+
+      if (ownedVenue) {
+        setUserRole('owner')
+      } else if (staffVenue && userId) {
+        const me = staffVenue.staff?.find((s: any) => {
+          const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
+          return staffUserId === userId
+        })
+        setUserRole((me?.role || 'staff') as 'manager' | 'staff')
+      } else {
+        setUserRole('owner')
       }
       
       // Set user initial
@@ -285,11 +321,51 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               Settings
             </button>
-            <div className="relative ml-1 md:ml-2">
-              <div className="w-7 h-7 border border-primary-500/30 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                <span className="text-primary-500 text-xs font-medium">{userInitial}</span>
-              </div>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-black"></span>
+            <div className="relative ml-1 md:ml-2" ref={accountMenuRef}>
+              <button
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                className="flex items-center gap-1 rounded-lg border border-primary-500/25 bg-black/40 px-2 py-1 text-[11px] text-primary-400 hover:border-primary-500/45"
+              >
+                <div className="w-6 h-6 border border-primary-500/30 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <span className="text-primary-500 text-xs font-medium">{userInitial}</span>
+                </div>
+                <span className="hidden sm:inline capitalize">{userRole}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              {accountMenuOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-lg border border-primary-500/25 bg-black/95 p-2 shadow-xl z-30">
+                  <p className="px-2 py-1 text-[11px] text-primary-400/70">Logged in as</p>
+                  <p className="px-2 pb-2 text-xs font-semibold text-primary-500 capitalize">{userRole}</p>
+                  <button
+                    onClick={() => {
+                      setAccountMenuOpen(false)
+                      router.push('/dashboard/profile')
+                    }}
+                    className="w-full text-left rounded px-2 py-1.5 text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAccountMenuOpen(false)
+                      router.push('/dashboard/settings')
+                    }}
+                    className="w-full text-left rounded px-2 py-1.5 text-xs text-primary-400 hover:bg-primary-500/10 hover:text-primary-500"
+                  >
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAccountMenuOpen(false)
+                      handleLogout()
+                    }}
+                    className="w-full text-left rounded px-2 py-1.5 text-xs text-red-300 hover:bg-red-500/10"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

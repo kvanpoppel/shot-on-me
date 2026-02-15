@@ -108,6 +108,19 @@ input, textarea, select {
   font-weight: 400;
 }
 
+/* Keep auth/input colors consistent even with browser autofill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.8) inset !important;
+  -webkit-text-fill-color: #B8945A !important;
+  caret-color: #B8945A !important;
+  border-color: rgba(184, 148, 90, 0.5) !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

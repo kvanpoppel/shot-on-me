@@ -9,15 +9,13 @@ import { useToast } from './ToastContainer'
 import Link from 'next/link'
 
 type Mode = 'login' | 'register'
-type PortalRole = 'owner' | 'manager' | 'staff'
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
 interface LoginFormProps {
   initialMode: Mode
-  selectedRole?: PortalRole
 }
 
-export default function LoginForm({ initialMode, selectedRole = 'owner' }: LoginFormProps) {
+export default function LoginForm({ initialMode }: LoginFormProps) {
   const [mode, setMode] = useState<Mode>(initialMode)
 
   // Login state
@@ -192,20 +190,34 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
   }
 
   const isLogin = mode === 'login'
-  const roleLabel = selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)
+  const fieldClassName = 'w-full !bg-black border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200'
 
   return (
     <div className="space-y-5" role="main" aria-label={isLogin ? 'Sign in form' : 'Registration form'}>
-      <div className="rounded-lg border border-primary-500/25 bg-black/50 px-3 py-2 text-xs text-primary-400/90">
-        <span className="font-semibold text-primary-500">Signing in as:</span> {roleLabel}
+      <div className="flex items-center rounded-lg border border-primary-500/25 bg-black/40 p-1">
+        <button
+          type="button"
+          onClick={() => setMode('login')}
+          className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+            isLogin
+              ? 'bg-primary-500 text-black'
+              : 'text-primary-400 hover:text-primary-300'
+          }`}
+        >
+          Sign In
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('register')}
+          className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+            !isLogin
+              ? 'bg-primary-500 text-black'
+              : 'text-primary-400 hover:text-primary-300'
+          }`}
+        >
+          Create Account
+        </button>
       </div>
-
-      {!isLogin && selectedRole !== 'owner' && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
-          New account signup creates an <span className="font-semibold">Owner</span> account. For {roleLabel.toLowerCase()} access,
-          ask your owner to invite you from the dashboard staff section.
-        </div>
-      )}
 
       {/* Error Message - Enhanced with ARIA */}
       {error && (
@@ -254,7 +266,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                className={`${fieldClassName} px-3 py-2 text-sm`}
                 placeholder="First name"
               />
             </div>
@@ -268,7 +280,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                className={`${fieldClassName} px-3 py-2 text-sm`}
                 placeholder="Last name"
               />
             </div>
@@ -285,7 +297,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+            className={`${fieldClassName} px-4 py-3 text-sm`}
             placeholder={isLogin ? "Enter your email or username" : "venue@example.com"}
           />
         </div>
@@ -302,7 +314,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
-                className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                className={`${fieldClassName} px-3 py-2 text-sm`}
                 placeholder="(555) 123-4567"
               />
             </div>
@@ -322,7 +334,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                     value={venueName}
                     onChange={(e) => setVenueName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                    className={`${fieldClassName} px-3 py-2 text-sm`}
                     placeholder="Kates Pub"
                   />
                 </div>
@@ -336,7 +348,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                     type="text"
                     value={venueAddress}
                     onChange={(e) => setVenueAddress(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                    className={`${fieldClassName} px-3 py-2 text-sm`}
                     placeholder="123 Main St, Austin, TX, 78701"
                   />
                 </div>
@@ -350,7 +362,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                     type="tel"
                     value={venuePhone}
                     onChange={(e) => setVenuePhone(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                    className={`${fieldClassName} px-3 py-2 text-sm`}
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -363,7 +375,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
                     id="subscriptionTier"
                     value={subscriptionTier}
                     onChange={(e) => setSubscriptionTier(e.target.value as SubscriptionTier)}
-                    className="w-full px-3 py-2 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+                    className={`${fieldClassName} px-3 py-2 text-sm`}
                   >
                     <option value="free" className="bg-black text-primary-500">Starter - $0/mo</option>
                     <option value="basic" className="bg-black text-primary-500">Growth - $79/mo</option>
@@ -432,7 +444,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
               }
             }}
             required
-            className={`w-full px-4 py-3 text-sm bg-black/60 border rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200 ${
+            className={`w-full px-4 py-3 text-sm !bg-black border rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 ${
               fieldErrors.password ? 'border-red-500/50' : 'border-primary-500/50'
             }`}
             placeholder="••••••••"
@@ -457,7 +469,7 @@ export default function LoginForm({ initialMode, selectedRole = 'owner' }: Login
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 text-sm bg-black/60 border border-primary-500/50 rounded-lg text-primary-500 placeholder-primary-600/70 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-black/80 transition-all duration-200"
+              className={`${fieldClassName} px-4 py-3 text-sm`}
               placeholder="Re-enter password"
             />
           </div>
