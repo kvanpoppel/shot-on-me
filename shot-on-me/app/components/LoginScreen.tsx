@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowRight, Building2, Eye, EyeOff, ShieldCheck, Smartphone, Sparkles, TrendingUp, Users2 } from 'lucide-react'
+import { ArrowRight, Building2, Eye, EyeOff, Smartphone, Sparkles } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -129,86 +129,73 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-black text-primary-500">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary-500/10 blur-3xl" />
-        <div className="absolute top-1/3 -left-24 h-64 w-64 rounded-full bg-primary-500/8 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary-500/6 blur-3xl" />
+        <div className="absolute -top-28 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary-500/12 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-primary-500/8 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 md:px-6 md:py-12">
-        <section className="w-full rounded-2xl border border-primary-500/25 bg-black/65 p-5 md:p-7 backdrop-blur-sm">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary-500/35 bg-black/60 px-3 py-1 text-[11px] uppercase tracking-wide text-primary-400">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-10 md:px-8 md:py-14">
+        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/70 p-7 md:p-12 backdrop-blur-sm">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary-500/35 bg-black/55 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-primary-400">
               <Sparkles className="h-3.5 w-3.5" />
               Premium app + venue platform
             </div>
 
-            <h1 className="mt-4 text-5xl md:text-6xl logo-script text-primary-500">Shot On Me</h1>
-            <p className="mt-3 text-xl md:text-2xl text-primary-300/95 font-medium">
-              One brand. Two powerful experiences.
+            <h1 className="mt-5 text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
+            <p className="mt-5 text-2xl md:text-3xl text-primary-300/95 font-medium">
+              Crafted for unforgettable nights.
             </p>
-            <p className="mt-2 max-w-2xl text-sm md:text-base text-primary-500/85">
-              Social payments and nightlife discovery for users, plus AI-powered promotions and analytics for venue teams.
+            <p className="mt-3 text-sm md:text-lg text-primary-500/82">
+              One elegant ecosystem for social users and venue teams.
             </p>
 
-            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="rounded-xl border border-primary-500/30 bg-black/55 p-3">
-                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/15 text-primary-500">
-                  <Smartphone className="h-4 w-4" />
-                </div>
-                <p className="text-[11px] uppercase tracking-wide text-primary-400/80">App Experience</p>
-                <p className="mt-1 text-xs text-primary-500">Send drinks, discover venues, and grow your social circle.</p>
-              </div>
-              <div className="rounded-xl border border-primary-500/30 bg-black/55 p-3">
-                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/15 text-primary-500">
-                  <Building2 className="h-4 w-4" />
-                </div>
-                <p className="text-[11px] uppercase tracking-wide text-primary-400/80">Venue Growth</p>
-                <p className="mt-1 text-xs text-primary-500">Launch AI deals, track revenue, and activate repeat visits.</p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-primary-500/35 bg-black/75 p-3">
-              <p className="text-[11px] uppercase tracking-wide text-primary-400/80 mb-2 text-center">Choose your portal</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLogin(true)
-                    setShowAuthPanel(true)
-                  }}
-                  className="group rounded-lg border border-primary-500/45 bg-primary-500 px-4 py-3 text-left transition-all hover:bg-primary-400"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-black">App User</span>
-                    <ArrowRight className="h-4 w-4 text-black transition-transform group-hover:translate-x-0.5" />
-                  </div>
-                  <p className="mt-1 text-[11px] text-black/80">Instant social payments and rewards.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (venuePortalLoginUrl) {
-                      window.location.href = venuePortalLoginUrl
-                    }
-                  }}
-                  className="group rounded-lg border border-primary-500/60 bg-black/40 px-4 py-3 text-left transition-all hover:bg-primary-500/12"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-primary-400">Venue User</span>
-                    <ArrowRight className="h-4 w-4 text-primary-500 transition-transform group-hover:translate-x-0.5" />
-                  </div>
-                  <p className="mt-1 text-[11px] text-primary-500/85">AI-led campaigns and owner control center.</p>
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <div className="mt-9 grid grid-cols-1 gap-3 md:grid-cols-2">
               <button
                 type="button"
                 onClick={() => {
                   setIsLogin(true)
                   setShowAuthPanel(true)
                 }}
-                className="rounded-lg border border-primary-500/45 bg-black/40 px-4 py-2 text-xs font-semibold text-primary-400 hover:bg-primary-500/10"
+                className="group rounded-2xl border border-primary-500/50 bg-primary-500 px-6 py-5 text-left shadow-lg shadow-primary-500/10 transition-all hover:bg-primary-400"
+              >
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-black/10 text-black">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-black">App User</span>
+                  <ArrowRight className="h-5 w-5 text-black transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-1 text-sm text-black/80">Discover, connect, and send instantly.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (venuePortalLoginUrl) {
+                    window.location.href = venuePortalLoginUrl
+                  }
+                }}
+                className="group rounded-2xl border border-primary-500/50 bg-black/55 px-6 py-5 text-left transition-all hover:bg-primary-500/12"
+              >
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-500/15 text-primary-500">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-primary-300">Venue User</span>
+                  <ArrowRight className="h-5 w-5 text-primary-500 transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-1 text-sm text-primary-500/85">Launch AI promotions and grow revenue.</p>
+              </button>
+            </div>
+
+            <div className="mt-8 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true)
+                  setShowAuthPanel(true)
+                }}
+                className="rounded-full border border-primary-500/45 px-5 py-2 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
               >
                 Sign In
               </button>
@@ -218,35 +205,12 @@ export default function LoginScreen() {
                   setIsLogin(false)
                   setShowAuthPanel(true)
                 }}
-                className="rounded-lg border border-primary-500/45 bg-black/40 px-4 py-2 text-xs font-semibold text-primary-400 hover:bg-primary-500/10"
+                className="rounded-full border border-primary-500/45 px-5 py-2 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
               >
                 Create Account
               </button>
             </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-primary-500/20 bg-black/45 p-2.5">
-                <div className="flex items-center gap-2 text-primary-400/85">
-                  <Users2 className="h-3.5 w-3.5" />
-                  <span className="text-[11px] uppercase tracking-wide">Community</span>
-                </div>
-                <p className="mt-1 text-xs text-primary-500/85">Built for repeat engagement.</p>
-              </div>
-              <div className="rounded-lg border border-primary-500/20 bg-black/45 p-2.5">
-                <div className="flex items-center gap-2 text-primary-400/85">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span className="text-[11px] uppercase tracking-wide">Performance</span>
-                </div>
-                <p className="mt-1 text-xs text-primary-500/85">Revenue-focused by design.</p>
-              </div>
-              <div className="rounded-lg border border-primary-500/20 bg-black/45 p-2.5">
-                <div className="flex items-center gap-2 text-primary-400/85">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  <span className="text-[11px] uppercase tracking-wide">Trust</span>
-                </div>
-                <p className="mt-1 text-xs text-primary-500/85">Secure authentication flows.</p>
-              </div>
-            </div>
+          </div>
         </section>
       </div>
 
