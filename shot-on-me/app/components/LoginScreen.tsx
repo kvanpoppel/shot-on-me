@@ -133,68 +133,85 @@ export default function LoginScreen() {
         <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-primary-500/7 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-4xl items-center px-5 py-10 md:px-8 md:py-14">
-        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/72 p-7 md:p-10 backdrop-blur-sm">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-10 md:px-8 md:py-14">
+        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/70 p-7 md:p-11 backdrop-blur-sm">
           <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
-            <p className="mt-4 text-2xl md:text-3xl text-primary-300/95 font-medium">
-              Elegant social nights. Intelligent venue growth.
+            <p className="text-[11px] uppercase tracking-[0.14em] text-primary-500/70">
+              One platform for guests and venues
+            </p>
+            <h1 className="mt-3 text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
+            <p className="mt-5 text-2xl md:text-3xl text-primary-300/95 font-medium">
+              Premium nights for guests. Growth intelligence for venues.
             </p>
             <p className="mt-3 text-sm md:text-base text-primary-500/80">
-              Choose your experience and continue in one click.
+              Choose your path and continue instantly.
             </p>
 
-            <div className="mt-9 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
-              <div className="rounded-2xl border border-primary-500/40 bg-primary-500 px-5 py-5 shadow-lg shadow-primary-500/10">
-                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-black/10 text-black">
+            <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
+              <div className="rounded-xl border border-primary-500/25 bg-black/45 p-4">
+                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/12 text-primary-500">
                   <Smartphone className="h-4 w-4" />
                 </div>
-                <p className="text-lg font-semibold text-black">App User</p>
-                <p className="mt-1 text-sm text-black/80">Send drinks, discover spots, and enjoy rewards.</p>
-                <div className="mt-4 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLogin(true)
-                      setShowAuthPanel(true)
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full bg-black/90 px-3 py-1.5 text-xs font-semibold text-primary-500"
-                  >
-                    Sign In
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLogin(false)
-                      setShowAuthPanel(true)
-                    }}
-                    className="rounded-full border border-black/25 px-3 py-1.5 text-xs font-semibold text-black/85"
-                  >
-                    Create Account
-                  </button>
-                </div>
+                <p className="text-xs uppercase tracking-[0.12em] text-primary-400/90">App Experience</p>
+                <p className="mt-1 text-sm text-primary-300/95">Social gifting, discovery, and instant rewards.</p>
               </div>
-
-              <div className="rounded-2xl border border-primary-500/45 bg-black/55 px-5 py-5">
-                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/15 text-primary-500">
+              <div className="rounded-xl border border-primary-500/25 bg-black/45 p-4">
+                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/12 text-primary-500">
                   <Building2 className="h-4 w-4" />
                 </div>
-                <p className="text-lg font-semibold text-primary-300">Venue User</p>
-                <p className="mt-1 text-sm text-primary-500/85">Launch AI promotions and manage performance.</p>
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (venuePortalLoginUrl) {
-                        window.location.href = venuePortalLoginUrl
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full border border-primary-500/45 px-3 py-1.5 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
-                  >
-                    Open Venue Portal
-                    <ArrowRight className="h-3.5 w-3.5 text-primary-500" />
-                  </button>
+                <p className="text-xs uppercase tracking-[0.12em] text-primary-400/90">Venue Growth</p>
+                <p className="mt-1 text-sm text-primary-300/95">AI promotions, analytics, and performance tools.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-primary-500/30 bg-black/55 p-4 md:p-5">
+              <p className="text-xs uppercase tracking-[0.14em] text-primary-400/85">Choose your portal</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
+                <div className="group rounded-xl border border-primary-500/35 bg-black/55 px-4 py-4 transition-colors hover:border-primary-500/55 hover:bg-black/65">
+                  <p className="text-base font-semibold text-primary-200">App User</p>
+                  <p className="mt-1 text-xs text-primary-500/82">Sign in or create an account to continue.</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(true)
+                        setShowAuthPanel(true)
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary-500 px-3.5 py-1.5 text-xs font-semibold text-black transition-colors group-hover:bg-primary-400"
+                    >
+                      Sign In
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(false)
+                        setShowAuthPanel(true)
+                      }}
+                      className="text-xs font-semibold text-primary-300/95 hover:text-primary-200"
+                    >
+                      Create Account
+                    </button>
+                  </div>
+                </div>
+
+                <div className="group rounded-xl border border-primary-500/35 bg-black/55 px-4 py-4 transition-colors hover:border-primary-500/55 hover:bg-black/65">
+                  <p className="text-base font-semibold text-primary-200">Venue User</p>
+                  <p className="mt-1 text-xs text-primary-500/85">Open your venue workspace and dashboard.</p>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (venuePortalLoginUrl) {
+                          window.location.href = venuePortalLoginUrl
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary-500/45 px-3.5 py-1.5 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
+                    >
+                      Open Venue Portal
+                      <ArrowRight className="h-3.5 w-3.5 text-primary-500" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
