@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowRight, Building2, Eye, EyeOff, Smartphone, Sparkles } from 'lucide-react'
+import { ArrowRight, Building2, Eye, EyeOff, Smartphone } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -129,86 +129,74 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-black text-primary-500">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-28 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary-500/12 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-primary-500/8 blur-3xl" />
+        <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-primary-500/7 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-10 md:px-8 md:py-14">
-        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/70 p-7 md:p-12 backdrop-blur-sm">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-4xl items-center px-5 py-10 md:px-8 md:py-14">
+        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/72 p-7 md:p-10 backdrop-blur-sm">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary-500/35 bg-black/55 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-primary-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              Premium app + venue platform
-            </div>
-
-            <h1 className="mt-5 text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
-            <p className="mt-5 text-2xl md:text-3xl text-primary-300/95 font-medium">
-              Crafted for unforgettable nights.
+            <h1 className="text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
+            <p className="mt-4 text-2xl md:text-3xl text-primary-300/95 font-medium">
+              Elegant social nights. Intelligent venue growth.
             </p>
-            <p className="mt-3 text-sm md:text-lg text-primary-500/82">
-              One elegant ecosystem for social users and venue teams.
+            <p className="mt-3 text-sm md:text-base text-primary-500/80">
+              Choose your experience and continue in one click.
             </p>
 
-            <div className="mt-9 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(true)
-                  setShowAuthPanel(true)
-                }}
-                className="group rounded-2xl border border-primary-500/50 bg-primary-500 px-6 py-5 text-left shadow-lg shadow-primary-500/10 transition-all hover:bg-primary-400"
-              >
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-black/10 text-black">
-                  <Smartphone className="h-5 w-5" />
+            <div className="mt-9 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
+              <div className="rounded-2xl border border-primary-500/40 bg-primary-500 px-5 py-5 shadow-lg shadow-primary-500/10">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-black/10 text-black">
+                  <Smartphone className="h-4 w-4" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-black">App User</span>
-                  <ArrowRight className="h-5 w-5 text-black transition-transform group-hover:translate-x-0.5" />
+                <p className="text-lg font-semibold text-black">App User</p>
+                <p className="mt-1 text-sm text-black/80">Send drinks, discover spots, and enjoy rewards.</p>
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLogin(true)
+                      setShowAuthPanel(true)
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-black/90 px-3 py-1.5 text-xs font-semibold text-primary-500"
+                  >
+                    Sign In
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLogin(false)
+                      setShowAuthPanel(true)
+                    }}
+                    className="rounded-full border border-black/25 px-3 py-1.5 text-xs font-semibold text-black/85"
+                  >
+                    Create Account
+                  </button>
                 </div>
-                <p className="mt-1 text-sm text-black/80">Discover, connect, and send instantly.</p>
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (venuePortalLoginUrl) {
-                    window.location.href = venuePortalLoginUrl
-                  }
-                }}
-                className="group rounded-2xl border border-primary-500/50 bg-black/55 px-6 py-5 text-left transition-all hover:bg-primary-500/12"
-              >
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-500/15 text-primary-500">
-                  <Building2 className="h-5 w-5" />
+              <div className="rounded-2xl border border-primary-500/45 bg-black/55 px-5 py-5">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/15 text-primary-500">
+                  <Building2 className="h-4 w-4" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-primary-300">Venue User</span>
-                  <ArrowRight className="h-5 w-5 text-primary-500 transition-transform group-hover:translate-x-0.5" />
+                <p className="text-lg font-semibold text-primary-300">Venue User</p>
+                <p className="mt-1 text-sm text-primary-500/85">Launch AI promotions and manage performance.</p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (venuePortalLoginUrl) {
+                        window.location.href = venuePortalLoginUrl
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary-500/45 px-3 py-1.5 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
+                  >
+                    Open Venue Portal
+                    <ArrowRight className="h-3.5 w-3.5 text-primary-500" />
+                  </button>
                 </div>
-                <p className="mt-1 text-sm text-primary-500/85">Launch AI promotions and grow revenue.</p>
-              </button>
-            </div>
-
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(true)
-                  setShowAuthPanel(true)
-                }}
-                className="rounded-full border border-primary-500/45 px-5 py-2 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(false)
-                  setShowAuthPanel(true)
-                }}
-                className="rounded-full border border-primary-500/45 px-5 py-2 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
-              >
-                Create Account
-              </button>
+              </div>
             </div>
           </div>
         </section>
