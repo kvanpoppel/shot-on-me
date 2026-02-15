@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
@@ -26,7 +26,7 @@ import {
   Target
 } from 'lucide-react'
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -158,5 +158,19 @@ export default function AnalyticsPage() {
         </div>
       </DashboardPageShell>
     </DashboardLayout>
+  )
+}
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-black">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
+      }
+    >
+      <AnalyticsPageContent />
+    </Suspense>
   )
 }

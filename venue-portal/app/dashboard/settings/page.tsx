@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
@@ -14,7 +14,7 @@ import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
 import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap, Crown } from 'lucide-react'
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const { user, loading, token } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -422,6 +422,20 @@ export default function SettingsPage() {
         </div>
       </DashboardPageShell>
     </DashboardLayout>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-black">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
+      }
+    >
+      <SettingsPageContent />
+    </Suspense>
   )
 }
 

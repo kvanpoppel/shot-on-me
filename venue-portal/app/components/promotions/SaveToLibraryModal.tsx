@@ -27,6 +27,9 @@ export default function SaveToLibraryModal({ promotion, onClose, onSaved }: Save
       return
     }
 
+    // Keep promotion payload available in catch logging as well.
+    let promotionData: Record<string, any> | null = null
+
     try {
       setSaving(true)
       setError(null)
@@ -47,7 +50,7 @@ export default function SaveToLibraryModal({ promotion, onClose, onSaved }: Save
       }
 
       // Prepare promotion data - ensure all fields are present
-      const promotionData = {
+      promotionData = {
         title: promotion.title || '',
         description: promotion.description || '',
         type: promotion.type || 'other',
