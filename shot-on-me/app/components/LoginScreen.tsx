@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Wallet, MapPin, Users, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Building2, Eye, EyeOff, Sparkles, Smartphone } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -128,32 +128,53 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-black flex flex-col">
       {/* Header */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl logo-script text-primary-500 mb-2">Shot On Me</h1>
-          <p className="text-primary-400 text-lg mt-4">Buy someone a drink at any bar or coffee shop—send instantly by email or text. Your friend will get a secure link to claim their treat!</p>
+      <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-10">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary-500/8 via-black to-black" />
+
+        <div className="relative text-center mb-7 max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary-500/35 bg-black/60 px-3 py-1 text-[11px] uppercase tracking-wide text-primary-400">
+            <Sparkles className="h-3.5 w-3.5" />
+            Premium app + venue platform
+          </div>
+          <h1 className="mt-4 text-5xl md:text-6xl logo-script text-primary-500">Shot On Me</h1>
+          <p className="mt-3 text-base md:text-lg text-primary-300/90">
+            One brand. Two powerful experiences.
+          </p>
+          <p className="mt-2 text-sm md:text-base text-primary-500/80">
+            Social payments and discovery for users, plus AI-powered growth tools for venues.
+          </p>
         </div>
 
-        <div className="w-full max-w-md mb-4 grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-primary-500/25 bg-black/50 p-3">
+        <div className="relative w-full max-w-xl mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="rounded-xl border border-primary-500/30 bg-black/60 p-3 text-left">
+            <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/15 text-primary-500">
+              <Smartphone className="h-4 w-4" />
+            </div>
             <p className="text-[11px] uppercase tracking-wide text-primary-400/80">App Experience</p>
             <p className="mt-1 text-xs text-primary-500">Fast social payments, discovery, and rewards.</p>
           </div>
-          <div className="rounded-lg border border-primary-500/25 bg-black/50 p-3">
+          <div className="rounded-xl border border-primary-500/30 bg-black/60 p-3 text-left">
+            <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/15 text-primary-500">
+              <Building2 className="h-4 w-4" />
+            </div>
             <p className="text-[11px] uppercase tracking-wide text-primary-400/80">Venue Growth</p>
             <p className="mt-1 text-xs text-primary-500">AI promotions, analytics, and owner tools.</p>
           </div>
         </div>
 
-        <div className="w-full max-w-md mb-4">
-          <div className="rounded-lg border border-primary-500/30 bg-black/60 p-3 text-center">
-            <p className="text-xs uppercase tracking-wide text-primary-400/80 mb-2">Choose your portal</p>
-            <div className="grid grid-cols-2 gap-2">
+        <div className="relative w-full max-w-xl mb-5">
+          <div className="rounded-xl border border-primary-500/35 bg-black/70 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-primary-400/80 mb-2 text-center">Choose your portal</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
-                className="rounded-md bg-primary-500 px-3 py-2 text-xs font-semibold text-black"
+                className="group rounded-lg border border-primary-500/45 bg-primary-500 px-4 py-3 text-left transition-all hover:bg-primary-400"
               >
-                App User
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-black">App User</span>
+                  <ArrowRight className="h-4 w-4 text-black transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-1 text-[11px] text-black/80">Send drinks, discover spots, and earn rewards.</p>
               </button>
               <button
                 type="button"
@@ -162,16 +183,20 @@ export default function LoginScreen() {
                     window.location.href = venuePortalLoginUrl
                   }
                 }}
-                className="rounded-md border border-primary-500/60 px-3 py-2 text-xs font-semibold text-primary-400 hover:bg-primary-500/10"
+                className="group rounded-lg border border-primary-500/60 bg-black/40 px-4 py-3 text-left transition-all hover:bg-primary-500/12"
               >
-                Venue User
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-primary-400">Venue User</span>
+                  <ArrowRight className="h-4 w-4 text-primary-500 transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-1 text-[11px] text-primary-500/85">Launch AI deals and grow revenue faster.</p>
               </button>
             </div>
           </div>
         </div>
 
         {/* Form */}
-        <div className="w-full max-w-md">
+        <div className="relative w-full max-w-md">
           <div className="bg-black border-2 border-primary-500 rounded-lg shadow-2xl p-8">
             {/* Toggle between Sign In and Sign Up */}
             <div className="flex mb-6 border-b border-primary-500/20">
