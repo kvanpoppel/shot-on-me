@@ -31,6 +31,34 @@ const buildUniqueVenueSlug = async (VenueModel, venueName) => {
   return `${base}-${Date.now().toString().slice(-6)}`;
 };
 
+const normalizeBaseUrl = (url) => String(url || '').trim().replace(/\/$/, '');
+
+const resolveVenuePortalBaseUrl = (req) => {
+  const configuredBase =
+    process.env.VENUE_PORTAL_URL ||
+    process.env.VENUE_PORTAL_BASE_URL ||
+    process.env.FRONTEND_URL;
+
+  if (configuredBase) {
+    return normalizeBaseUrl(configuredBase);
+  }
+
+  const origin = req.get('origin');
+  if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    return normalizeBaseUrl(origin);
+  }
+
+  const forwardedHost = req.get('x-forwarded-host');
+  const host = forwardedHost || req.get('host');
+  const forwardedProto = req.get('x-forwarded-proto');
+  const protocol = (forwardedProto || req.protocol || 'https').split(',')[0].trim();
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return normalizeBaseUrl(`${protocol}://${host}`);
+  }
+
+  return 'http://localhost:3002';
+};
+
 // Login route
 router.post('/login', async (req, res) => {
   const startTime = Date.now();
@@ -381,8 +409,8 @@ router.post('/register-venue', async (req, res) => {
     );
 
     // Return user data and token
-    const venuePortalBaseUrl = process.env.VENUE_PORTAL_URL || process.env.VENUE_PORTAL_BASE_URL || 'http://localhost:3002';
-    const venuePortalUrl = `${venuePortalBaseUrl.replace(/\/$/, '')}/v/${newVenue.slug}`;
+    const venuePortalBaseUrl = resolveVenuePortalBaseUrl(req);
+    const venuePortalUrl = `${venuePortalBaseUrl}/v/${newVenue.slug}`;
 
     res.status(201).json({
       token,

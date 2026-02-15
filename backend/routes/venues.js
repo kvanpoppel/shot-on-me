@@ -12,6 +12,36 @@ router.setIO = (socketIO) => {
   io = socketIO;
 };
 
+// GET /api/venues/slug/:slug/public
+// Public lookup used by venue-portal slug pages
+router.get('/slug/:slug/public', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase().trim();
+    if (!slug) {
+      return res.status(400).json({ message: 'Venue slug is required' });
+    }
+
+    const venue = await Venue.findOne({ slug, isActive: true })
+      .select('_id name slug isActive')
+      .lean();
+
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    return res.json({
+      venue: {
+        id: venue._id,
+        name: venue.name,
+        slug: venue.slug
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching venue by slug:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /api/venues
 // - For venue owners: only their own venues
 // - For regular users: all active venues

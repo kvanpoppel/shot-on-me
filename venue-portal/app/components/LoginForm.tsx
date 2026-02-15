@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import { useToast } from './ToastContainer'
 import Link from 'next/link'
+import { getApiUrl } from '../utils/api'
 
 type Mode = 'login' | 'register'
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
@@ -66,6 +67,12 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
 
   const validatePassword = (password: string): boolean => {
     return password.length >= 6
+  }
+
+  const resolveVenuePortalUrl = (portalUrl?: string, slug?: string): string | null => {
+    if (portalUrl && !portalUrl.includes('localhost')) return portalUrl
+    if (slug && typeof window !== 'undefined') return `${window.location.origin}/v/${encodeURIComponent(slug)}`
+    return portalUrl || null
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -138,7 +145,7 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
     setLoading(true)
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+      const apiBase = getApiUrl()
       const response = await axios.post(`${apiBase}/auth/register-venue`, {
         email,
         password,
@@ -153,7 +160,8 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
         acceptedPrivacy
       })
 
-      const portalUrl = response.data?.venue?.portalUrl as string | undefined
+      const venueSlug = response.data?.venue?.slug as string | undefined
+      const portalUrl = resolveVenuePortalUrl(response.data?.venue?.portalUrl, venueSlug)
 
       // Registration successful - show success message
       const successMessage = portalUrl
@@ -167,7 +175,11 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
         await login(email, password)
         showSuccess('Welcome! Redirecting to dashboard...')
         setTimeout(() => {
-          router.push('/dashboard')
+          if (venueSlug) {
+            router.push(`/v/${encodeURIComponent(venueSlug)}/dashboard`)
+          } else {
+            router.push('/dashboard')
+          }
         }, 500)
       } catch (loginErr: any) {
         // If auto-login fails, show error but registration was successful

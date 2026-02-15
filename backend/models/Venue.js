@@ -6,6 +6,11 @@ const venueSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  slug: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -74,6 +79,11 @@ const venueSchema = new mongoose.Schema({
     currentUses: { type: Number, default: 0 },
     image: String, // Promotion image
     terms: String, // Terms and conditions
+    pricePoint: {
+      originalPrice: Number,
+      specialPrice: Number,
+      currency: { type: String, default: 'USD' }
+    },
     // Analytics tracking
     analytics: {
       views: { type: Number, default: 0 }, // How many times promotion was viewed
@@ -138,6 +148,15 @@ const venueSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  aiAutomation: {
+    enabled: { type: Boolean, default: false },
+    autoPostThreshold: { type: Number, default: 0.85 },
+    autoNotifyFollowers: { type: Boolean, default: true },
+    autoGenerateSpecials: { type: Boolean, default: true },
+    checkIntervalHours: { type: Number, default: 24 },
+    maxPromotionsPerCycle: { type: Number, default: 2 },
+    lastRunAt: Date
+  },
   rating: {
     average: { type: Number, default: 0, min: 0, max: 5 },
     count: { type: Number, default: 0 }
@@ -177,6 +196,7 @@ const venueSchema = new mongoose.Schema({
 venueSchema.index({ location: '2dsphere' });
 venueSchema.index({ owner: 1 });
 venueSchema.index({ isActive: 1 });
+venueSchema.index({ slug: 1 }, { unique: true, sparse: true });
 venueSchema.index({ stripeAccountId: 1 }, { unique: true, sparse: true }); // Unique Stripe account IDs
 
 module.exports = mongoose.model('Venue', venueSchema);
