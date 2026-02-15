@@ -15,6 +15,21 @@ function HomeContent() {
   const [mode, setMode] = useState<'login' | 'register' | null>(null)
   const [venueContextName, setVenueContextName] = useState<string | null>(null)
   const venueSlug = searchParams.get('venue')
+  const source = searchParams.get('source')
+  const requestedReturnTo = searchParams.get('returnTo')
+
+  const appReturnUrl = (() => {
+    if (!requestedReturnTo) return 'https://www.shotonme.com'
+    try {
+      const parsed = new URL(requestedReturnTo)
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.toString()
+      }
+    } catch {
+      // ignore malformed URLs and fall back to default
+    }
+    return 'https://www.shotonme.com'
+  })()
 
   const setAuthMode = (nextMode: 'login' | 'register') => {
     if (mode === nextMode) {
@@ -134,6 +149,16 @@ function HomeContent() {
                 </button>
               </div>
             ) : null}
+            {(source === 'app' || source === 'logout') && (
+              <div className="pt-2">
+                <a
+                  href={appReturnUrl}
+                  className="inline-flex items-center rounded-lg border border-primary-500/35 bg-black/40 px-4 py-2 text-xs font-semibold text-primary-400 hover:border-primary-500/55 hover:text-primary-500"
+                >
+                  Back to App User Login
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Login/Registration Form - Centered (only shown when tab is selected) */}

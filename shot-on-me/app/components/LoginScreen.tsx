@@ -134,6 +134,17 @@ export default function LoginScreen() {
           <p className="text-primary-400 text-lg mt-4">Buy someone a drink at any bar or coffee shop—send instantly by email or text. Your friend will get a secure link to claim their treat!</p>
         </div>
 
+        <div className="w-full max-w-md mb-4 grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-primary-500/25 bg-black/50 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-primary-400/80">App Experience</p>
+            <p className="mt-1 text-xs text-primary-500">Fast social payments, discovery, and rewards.</p>
+          </div>
+          <div className="rounded-lg border border-primary-500/25 bg-black/50 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-primary-400/80">Venue Growth</p>
+            <p className="mt-1 text-xs text-primary-500">AI promotions, analytics, and owner tools.</p>
+          </div>
+        </div>
+
         <div className="w-full max-w-md mb-4">
           <div className="rounded-lg border border-primary-500/30 bg-black/60 p-3 text-center">
             <p className="text-xs uppercase tracking-wide text-primary-400/80 mb-2">Choose your portal</p>
@@ -153,7 +164,7 @@ export default function LoginScreen() {
                 }}
                 className="rounded-md border border-primary-500/60 px-3 py-2 text-xs font-semibold text-primary-400 hover:bg-primary-500/10"
               >
-                Venue Owner
+                Venue User
               </button>
             </div>
           </div>

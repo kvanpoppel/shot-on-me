@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
-import { Menu, X, ChevronDown } from 'lucide-react'
+import { Menu, X, ChevronDown, LogOut } from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -24,9 +24,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement | null>(null)
 
+  const appLoginUrl = (() => {
+    const configured = process.env.NEXT_PUBLIC_APP_URL
+    const base = configured ? configured.trim() : 'https://www.shotonme.com'
+    return `${base.replace(/\/$/, '')}/`
+  })()
+
+  const venueLoginWithReturnPath = `/?tab=login&source=logout&returnTo=${encodeURIComponent(appLoginUrl)}`
+
   const handleLogout = () => {
     logout()
-    router.push('/')
+    router.push(venueLoginWithReturnPath)
   }
 
   const handleSwitchUser = () => {
@@ -203,6 +211,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <h2 className="text-base md:text-lg logo-script text-primary-500 tracking-tight truncate">{venueName}</h2>
           </div>
           <div className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/15 px-2.5 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/25"
+              title="Log out of Venue Portal"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Log Out</span>
+            </button>
             <div className="relative ml-1 md:ml-2" ref={accountMenuRef}>
               <button
                 onClick={() => setAccountMenuOpen((open) => !open)}

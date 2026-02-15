@@ -142,7 +142,12 @@ export const getVenuePortalUrl = (): string => {
 }
 
 export const getVenuePortalLoginUrl = (): string => {
-  return `${getVenuePortalUrl()}/?tab=login`
+  const base = `${getVenuePortalUrl()}/?source=app`
+  if (typeof window !== 'undefined') {
+    const returnTo = encodeURIComponent(window.location.origin)
+    return `${base}&returnTo=${returnTo}`
+  }
+  return base
 }
 
 /**
