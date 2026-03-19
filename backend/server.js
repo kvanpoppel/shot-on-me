@@ -31,23 +31,17 @@ app.use(cors(corsOptions));
 
 // Security headers
 app.use((req, res, next) => {
-  // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-  // Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  // XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  // Strict transport security (HTTPS only in production)
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
-  // Content Security Policy
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';");
   next();
 });
 
 // Stripe webhook route must be BEFORE express.json() middleware
-// because Stripe requires raw body for signature verification
 const paymentsRouter = require('./routes/payments');
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), paymentsRouter.webhook);
 
@@ -63,7 +57,7 @@ const io = socketIo(server, {
   cors: corsOptions
 });
 
-// MongoDB Connection with enhanced options
+// MongoDB Connection
 const mongoOptions = {
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
@@ -93,45 +87,28 @@ const connectDB = async () => {
   }
 };
 
-// MongoDB connection event listeners
-mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB connection error:', err);
-});
+mongoose.connection.on('error', (err) => { console.error('❌ MongoDB connection error:', err); });
+mongoose.connection.on('disconnected', () => { console.log('⚠️ MongoDB disconnected. Attempting to reconnect...'); });
+mongoose.connection.on('reconnected', () => { console.log('✅ MongoDB reconnected'); });
+mongoose.connection.on('connected', () => { console.log('✅ MongoDB connected'); });
 
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB disconnected. Attempting to reconnect...');
-});
-
-mongoose.connection.on('reconnected', () => {
-  console.log('✅ MongoDB reconnected');
-});
-
-mongoose.connection.on('connected', () => {
-  console.log('✅ MongoDB connected');
-});
-
-// Health check endpoint (before DB connection for faster response)
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
+  res.status(200).json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
-// Initialize DB connection
 connectDB();
 
 // Initialize email service
 const emailService = require('./utils/emailService');
-// Test email connection on startup (non-blocking)
-setTimeout(() => {
-  emailService.testEmailConnection();
-}, 2000); // Wait 2 seconds for other services to initialize
+setTimeout(() => { emailService.testEmailConnection(); }, 2000);
 
-// Seed test venues on startup (development/testing only)
-// Disabled by default to prevent startup issues - enable with SEED_TEST_VENUES=true
+// Seed test venues (dev only)
 if (process.env.SEED_TEST_VENUES === 'true') {
   const seedTestVenuesOnConnect = async () => {
     try {
@@ -141,111 +118,98 @@ if (process.env.SEED_TEST_VENUES === 'true') {
       console.log('✅ Test venues seeded');
     } catch (error) {
       console.error('⚠️  Failed to seed test venues (non-critical):', error.message);
-      // Don't exit - this is non-critical
     }
   };
-
-  // Wait for MongoDB connection before seeding
   if (mongoose.connection.readyState === 1) {
-    // Already connected, seed immediately
     setTimeout(seedTestVenuesOnConnect, 2000);
   } else {
-    // Wait for connection event
-    mongoose.connection.once('connected', () => {
-      setTimeout(seedTestVenuesOnConnect, 2000);
-    });
+    mongoose.connection.once('connected', () => { setTimeout(seedTestVenuesOnConnect, 2000); });
   }
 }
 
-// Routes - Auth routes first with their own rate limiter
+// ─── NEW: Geo restriction + batch users ──────────────────────────────────────
+const { geoRestrict } = require('./middleware/geoRestriction');
+const usersBatchRouter = require('./routes/usersBatch');
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Auth routes
 const { authLimiter } = require('./middleware/rateLimiter');
-// DISABLE auth rate limiting in development to prevent 429 errors during testing
 if (process.env.NODE_ENV === 'production') {
-  app.use('/api/auth', authLimiter, require('./routes/auth'));
+  // Apply geo restriction to registration only, rate limit to all auth in prod
+  app.use('/api/auth', authLimiter, (req, res, next) => {
+    if (req.method === 'POST' && req.path === '/register') return geoRestrict(req, res, next);
+    next();
+  }, require('./routes/auth'));
 } else {
-  app.use('/api/auth', require('./routes/auth'));
+  // Dev: no rate limiting, but still geo-restrict registration
+  app.use('/api/auth', (req, res, next) => {
+    if (req.method === 'POST' && req.path === '/register') return geoRestrict(req, res, next);
+    next();
+  }, require('./routes/auth'));
 }
 
-// Apply rate limiting to all other routes EXCEPT frequently-called safe endpoints
+// Rate limiting for other routes
 const { apiLimiter, mediaUploadLimiter } = require('./middleware/rateLimiter');
 app.use('/api', (req, res, next) => {
-  // DISABLE rate limiting in development to prevent 429 errors during testing
-  if (process.env.NODE_ENV !== 'production') {
-    return next();
-  }
-  
-  // Skip rate limiting for auth routes (they have their own limiter)
-  if (req.path.startsWith('/auth')) {
-    return next();
-  }
-  // Skip rate limiting for stories routes (they have their own limiter)
-  if (req.path.startsWith('/stories')) {
-    return next();
-  }
-  // Skip rate limiting for stripe-key endpoint (public key, called frequently)
-  if (req.path === '/payments/stripe-key') {
-    return next();
-  }
-  // Skip rate limiting for payment creation (critical user action, has its own validation)
-  if (req.path === '/payments/create-intent') {
-    return next();
-  }
-  // Skip rate limiting for read-only GET endpoints that are called frequently on page load
-  // These are safe to exclude as they don't modify data
+  if (process.env.NODE_ENV !== 'production') return next();
+  if (req.path.startsWith('/auth')) return next();
+  if (req.path.startsWith('/stories')) return next();
+  if (req.path === '/payments/stripe-key') return next();
+  if (req.path === '/payments/create-intent') return next();
   if (req.method === 'GET') {
     const readOnlyEndpoints = [
-      '/users/me',
-      '/venues',
-      '/location/friends',
-      '/location/check-proximity',
-      '/venue-activity/trending/list',
-      '/notifications/unread-count',
-      '/messages/unread-count',
-      '/virtual-cards/status',
-      '/payments/history',
-      '/gamification/stats',
-      '/payment-methods', // Read-only, just fetches saved payment methods
+      '/users/me', '/venues', '/location/friends', '/location/check-proximity',
+      '/venue-activity/trending/list', '/notifications/unread-count',
+      '/messages/unread-count', '/virtual-cards/status', '/payments/history',
+      '/gamification/stats', '/payment-methods',
     ];
-    
-    // Check if this is a read-only endpoint
-    const isReadOnly = readOnlyEndpoints.some(endpoint => {
-      // Exact match or starts with endpoint (for paths with IDs)
-      return req.path === endpoint || req.path.startsWith(endpoint + '/');
-    });
-    
-    if (isReadOnly) {
-      return next();
-    }
+    if (readOnlyEndpoints.some(e => req.path === e || req.path.startsWith(e + '/'))) return next();
   }
   apiLimiter(req, res, next);
 });
+
+// ─── NEW: Batch users route — must be registered BEFORE the generic /api/users
+// route so that /api/users/batch is matched before /api/users/:id ─────────────
+app.use('/api/users', usersBatchRouter);
+// ─────────────────────────────────────────────────────────────────────────────
 app.use('/api/users', require('./routes/users'));
 
-// Featured venues and analytics routes MUST come BEFORE generic /:venueId route
-// to prevent "featured" from being treated as a venue ID
+// Featured/analytics venue routes BEFORE generic /:venueId
 const venuesFeaturedRouter = require('./routes/venues-featured');
 app.use('/api/venues', venuesFeaturedRouter);
-
 const venuesAnalyticsRouter = require('./routes/venues-analytics');
 app.use('/api/venues', venuesAnalyticsRouter);
 
-// Generic venues routes (including /:venueId) - must come AFTER specific routes
+// Generic venues routes
 const venuesRouter = require('./routes/venues');
-venuesRouter.setIO(io); // Pass Socket.io instance to venues router
+venuesRouter.setIO(io);
 app.use('/api/venues', venuesRouter);
+
 const messagesRouter = require('./routes/messages');
-messagesRouter.setIO(io); // Pass Socket.io instance to messages router
+messagesRouter.setIO(io);
 app.use('/api/messages', messagesRouter);
+
 const feedRouter = require('./routes/feed');
-feedRouter.setIO(io); // Pass Socket.io instance to feed router
+feedRouter.setIO(io);
 app.use('/api/feed', feedRouter);
+
 app.use('/api/feed-ai', require('./routes/feedAI'));
 app.use('/api/stories', mediaUploadLimiter, require('./routes/stories'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/groups', require('./routes/groups'));
 app.use('/api/checkins', require('./routes/checkins'));
 app.use('/api/loyalty', require('./routes/loyalty'));
-app.use('/api/payments', require('./routes/payments'));
+
+// ─── NEW: Geo restriction on money-movement payment endpoints ─────────────────
+app.use('/api/payments', (req, res, next) => {
+  const restricted = ['/send', '/add-funds', '/redeem'];
+  if (req.method === 'POST' && restricted.some(p => req.path === p)) {
+    return geoRestrict(req, res, next);
+  }
+  next();
+}, require('./routes/payments'));
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.use('/api/location', require('./routes/location'));
 app.use('/api/favorites', require('./routes/favorites'));
 app.use('/api/venue-activity', require('./routes/venue-activity'));
@@ -271,12 +235,13 @@ app.use('/api/personalized-promotions', require('./routes/personalizedPromotions
 app.use('/api/predictive-analytics', require('./routes/predictiveAnalytics'));
 app.use('/api/ai-automation', require('./routes/aiAutomation'));
 app.use('/api/search', require('./routes/search'));
+
 const tapAndPayRouter = require('./routes/tap-and-pay');
 app.use('/api/owner', require('./routes/owner'));
-tapAndPayRouter.setIO(io); // Pass Socket.io instance
+tapAndPayRouter.setIO(io);
 app.use('/api/tap-and-pay', tapAndPayRouter);
 
-// Root API endpoint - provides API information
+// Root API endpoint
 app.get('/api', (req, res) => {
   res.json({
     message: 'Shot On Me API',
@@ -285,171 +250,103 @@ app.get('/api', (req, res) => {
     database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
     timestamp: new Date().toISOString(),
     endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      users: '/api/users',
-      venues: '/api/venues',
-      dashboard: '/api/dashboard',
-      payments: '/api/payments',
-      notifications: '/api/notifications',
-      checkins: '/api/checkins',
-      loyalty: '/api/loyalty',
-      rewards: '/api/rewards',
-      virtualCards: '/api/virtual-cards',
-      tapAndPay: '/api/tap-and-pay'
+      health: '/api/health', auth: '/api/auth', users: '/api/users',
+      venues: '/api/venues', dashboard: '/api/dashboard', payments: '/api/payments',
+      notifications: '/api/notifications', checkins: '/api/checkins',
+      loyalty: '/api/loyalty', rewards: '/api/rewards',
+      virtualCards: '/api/virtual-cards', tapAndPay: '/api/tap-and-pay'
     }
   });
 });
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({
     status: 'OK',
-    database: dbStatus,
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
     service: 'Shot On Me API'
   });
 });
 
-// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'Shot On Me API Server',
     status: 'Running',
     database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-    endpoints: [
-      '/api/auth',
-      '/api/users', 
-      '/api/venues',
-      '/api/feed',
-      '/api/payments',
-      '/api/location',
-      '/api/health'
-    ]
+    endpoints: ['/api/auth', '/api/users', '/api/venues', '/api/feed', '/api/payments', '/api/location', '/api/health']
   });
 });
 
-// Socket.io connection handling
-const { updateUserActivity, getUserStatus } = require('./utils/activityTracker');
+// Socket.io
+const { updateUserActivity } = require('./utils/activityTracker');
 const jwt = require('jsonwebtoken');
 
 io.on('connection', (socket) => {
   console.log('👤 User connected:', socket.id);
-  
-  // Authenticate socket connection
+
   socket.on('authenticate', async (token) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
       socket.userId = decoded.userId;
-      
-      // Update user activity to online
       await updateUserActivity(decoded.userId);
-      
-      // Join user's personal room for notifications
       socket.join(decoded.userId.toString());
       console.log(`✅ User ${decoded.userId} authenticated and joined room`);
-      
-      // Emit status update to friends
       const User = require('./models/User');
       const user = await User.findById(decoded.userId).select('friends');
       if (user && user.friends.length > 0) {
         io.to(user.friends.map(f => f.toString())).emit('user-status-update', {
-          userId: decoded.userId,
-          status: 'online',
-          lastSeen: new Date()
+          userId: decoded.userId, status: 'online', lastSeen: new Date()
         });
       }
-      
       socket.emit('authenticated', { success: true });
     } catch (error) {
       console.error('Socket authentication error:', error);
       socket.emit('authenticated', { success: false, error: 'Invalid token' });
     }
   });
-  
-  // Join user's personal room for notifications
+
   socket.on('join-user-room', (userId) => {
-    if (userId) {
-      socket.join(userId.toString());
-      console.log(`✅ User ${userId} joined their notification room`);
-    }
+    if (userId) { socket.join(userId.toString()); console.log(`✅ User ${userId} joined their notification room`); }
   });
-  
-  // Leave user room
   socket.on('leave-user-room', (userId) => {
-    if (userId) {
-      socket.leave(userId.toString());
-      console.log(`👋 User ${userId} left their notification room`);
-    }
+    if (userId) { socket.leave(userId.toString()); console.log(`👋 User ${userId} left their notification room`); }
   });
-  
-  // Handle activity ping (user is active)
   socket.on('activity-ping', async () => {
-    if (socket.userId) {
-      await updateUserActivity(socket.userId);
-    }
+    if (socket.userId) await updateUserActivity(socket.userId);
   });
-  
   socket.on('disconnect', async () => {
     console.log('👋 User disconnected:', socket.id);
-    
-    // Update user status to away when they disconnect
     if (socket.userId) {
       const User = require('./models/User');
-      // Don't immediately set to offline, set to away
-      // Status will be recalculated based on lastSeen
-      const user = await User.findByIdAndUpdate(
-        socket.userId,
-        { status: 'away' },
-        { new: true }
-      ).select('friends');
-      
-      // Notify friends of status change
+      const user = await User.findByIdAndUpdate(socket.userId, { status: 'away' }, { new: true }).select('friends');
       if (user && user.friends && user.friends.length > 0) {
         io.to(user.friends.map(f => f.toString())).emit('user-status-update', {
-          userId: socket.userId,
-          status: 'away',
-          lastSeen: new Date()
+          userId: socket.userId, status: 'away', lastSeen: new Date()
         });
       }
     }
   });
 });
 
-// Error handling middleware (with logging)
+// Error handling
 app.use(logger.logError);
-
-// Error response middleware
 app.use((err, req, res, next) => {
-  // Error already logged by logger.logError
-  res.status(err.status || 500).json({ 
+  res.status(err.status || 500).json({
     message: err.message || 'Something went wrong!',
     error: process.env.NODE_ENV === 'production' ? {} : err.stack
   });
 });
-
-// 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ 
-    message: 'Route not found',
-    path: req.originalUrl,
-    method: req.method
-  });
+  res.status(404).json({ message: 'Route not found', path: req.originalUrl, method: req.method });
 });
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-// Error handling for server startup
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
-  // Don't exit in production, let Render handle it
-  if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
-  }
+  if (process.env.NODE_ENV !== 'production') process.exit(1);
 });
-
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
@@ -458,72 +355,41 @@ server.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on ${HOST}:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Socket.io enabled`);
-  // Show localhost URL for local development (0.0.0.0 can't be accessed in browser)
   const accessUrl = HOST === '0.0.0.0' ? 'http://localhost' : `http://${HOST}`;
   console.log(`✅ Health check available at ${accessUrl}:${PORT}/health`);
   console.log(`   Also accessible at ${accessUrl}:${PORT}/api/health`);
-  
-  // Initialize venue promotion notification checks
+
   const { checkExpiringPromotions, checkLaunchingPromotions, checkPromotionObjectives } = require('./services/venuePromotionNotifications');
   const { runAiAutomationSchedulerCycle } = require('./services/aiAutomationScheduler');
-  
-  // Check for expiring/launching promotions every 30 minutes
-  setInterval(() => {
-    checkExpiringPromotions(io);
-    checkLaunchingPromotions(io);
-  }, 30 * 60 * 1000); // 30 minutes
-  
-  // Check for promotion objectives every hour
-  setInterval(() => {
-    checkPromotionObjectives(io);
-  }, 60 * 60 * 1000); // 1 hour
 
-  // Run AI automation scheduler hourly in backend (no owner login required)
-  const aiSchedulerIntervalMinutes = Math.max(
-    10,
-    Number(process.env.AI_AUTOMATION_SCHEDULER_INTERVAL_MINUTES || 60)
-  );
+  setInterval(() => { checkExpiringPromotions(io); checkLaunchingPromotions(io); }, 30 * 60 * 1000);
+  setInterval(() => { checkPromotionObjectives(io); }, 60 * 60 * 1000);
+
+  const aiSchedulerIntervalMinutes = Math.max(10, Number(process.env.AI_AUTOMATION_SCHEDULER_INTERVAL_MINUTES || 60));
   setInterval(async () => {
     try {
       const result = await runAiAutomationSchedulerCycle();
       if (!result?.skipped) {
-        console.log(
-          `🤖 AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`
-        );
+        console.log(`🤖 AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`);
       }
-    } catch (error) {
-      console.error('❌ AI automation scheduler error:', error.message);
-    }
+    } catch (error) { console.error('❌ AI automation scheduler error:', error.message); }
   }, aiSchedulerIntervalMinutes * 60 * 1000);
-  
-  // Run initial checks after 1 minute (give DB time to connect)
-  setTimeout(() => {
-    checkExpiringPromotions(io);
-    checkLaunchingPromotions(io);
-    checkPromotionObjectives(io);
-  }, 60000); // 1 minute
 
-  // Run first AI scheduler cycle shortly after startup
+  setTimeout(() => { checkExpiringPromotions(io); checkLaunchingPromotions(io); checkPromotionObjectives(io); }, 60000);
   setTimeout(async () => {
     try {
       const result = await runAiAutomationSchedulerCycle();
       if (!result?.skipped) {
-        console.log(
-          `🤖 Initial AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`
-        );
+        console.log(`🤖 Initial AI scheduler run: venues=${result.processed}/${result.totalEligibleVenues}, posted=${result.posted}, pending=${result.pending}, failures=${result.failures?.length || 0}`);
       }
-    } catch (error) {
-      console.error('❌ Initial AI automation scheduler error:', error.message);
-    }
-  }, 120000); // 2 minutes
-  
+    } catch (error) { console.error('❌ Initial AI automation scheduler error:', error.message); }
+  }, 120000);
+
   console.log('📢 Venue promotion notification checks initialized');
   console.log(`🤖 AI automation scheduler initialized (${aiSchedulerIntervalMinutes} min interval)`);
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
-  if (err.code === 'EADDRINUSE') {
-    console.error(`⚠️ Port ${PORT} is already in use`);
-  }
+  if (err.code === 'EADDRINUSE') console.error(`⚠️ Port ${PORT} is already in use`);
   process.exit(1);
 });
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import axios from 'axios'
@@ -9,10 +10,13 @@ import { Building2, Search, Download, Loader, DollarSign, TrendingUp, CheckCircl
 
 export default function VenuesPage() {
   const { token } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const API_URL = useApiUrl()
   const [venues, setVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const aiIntent = searchParams.get('ai')
 
   useEffect(() => {
     if (token) {
@@ -46,6 +50,11 @@ export default function VenuesPage() {
       venue.owner?.email?.toLowerCase().includes(query) ||
       addressStr.includes(query)
     )
+  }).filter((venue) => {
+    if (aiIntent === 'inactive_venues') {
+      return (venue.activePromotions || 0) === 0
+    }
+    return true
   })
 
   const totalRevenue = venues.reduce((sum, v) => sum + parseFloat(v.revenue || '0'), 0)
@@ -148,6 +157,18 @@ export default function VenuesPage() {
             />
           </div>
         </div>
+
+        {aiIntent === 'inactive_venues' && (
+          <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3 flex items-center justify-between">
+            <p className="text-sm text-primary-500">AI filter active: showing venues with no active promotions.</p>
+            <button
+              onClick={() => router.push('/dashboard/venues')}
+              className="text-xs px-2 py-1 rounded bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Venues Table */}
         <div className="bg-black border-2 border-primary-500/30 rounded-lg overflow-hidden">

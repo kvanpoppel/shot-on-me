@@ -1,72 +1,48 @@
-# Check Which Servers Are Running
-Write-Host "🔍 Checking Server Status..." -ForegroundColor Cyan
+# Check which servers are running
+Write-Host "Checking server status..." -ForegroundColor Cyan
 Write-Host ""
 
-# Check Backend (Port 5000)
-Write-Host "1️⃣ Backend (Port 5000):" -ForegroundColor Yellow
-$backend = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
-if ($backend) {
-    $process = Get-Process -Id $backend.OwningProcess -ErrorAction SilentlyContinue
-    Write-Host "   ✅ Running (PID: $($backend.OwningProcess))" -ForegroundColor Green
-    Write-Host "   Process: $($process.ProcessName)" -ForegroundColor Gray
-} else {
-    Write-Host "   ❌ Not Running" -ForegroundColor Red
+function Show-ServiceStatus {
+    param(
+        [string]$Label,
+        [int]$Port
+    )
+
+    Write-Host "$Label (Port $Port):" -ForegroundColor Yellow
+    $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $_.OwningProcess -gt 0 } |
+        Select-Object -First 1
+    if ($connection) {
+        $process = Get-Process -Id $connection.OwningProcess -ErrorAction SilentlyContinue
+        Write-Host "  [OK] Running (PID: $($connection.OwningProcess))" -ForegroundColor Green
+        if ($process) {
+            Write-Host "  Process: $($process.ProcessName)" -ForegroundColor Gray
+        }
+        return $true
+    }
+
+    Write-Host "  [X] Not running" -ForegroundColor Red
+    return $false
 }
+
+$backendRunning = Show-ServiceStatus -Label "1) Backend" -Port 5000
+Write-Host ""
+$shotOnMeRunning = Show-ServiceStatus -Label "2) Shot On Me App" -Port 3001
+Write-Host ""
+$venueRunning = Show-ServiceStatus -Label "3) Venue Portal" -Port 3002
+Write-Host ""
+$ownerRunning = Show-ServiceStatus -Label "4) Owner Portal" -Port 3000
 Write-Host ""
 
-# Check Shot On Me (Port 3001)
-Write-Host "2️⃣ Shot On Me App (Port 3001):" -ForegroundColor Yellow
-$shotOnMe = Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue
-if ($shotOnMe) {
-    $process = Get-Process -Id $shotOnMe.OwningProcess -ErrorAction SilentlyContinue
-    Write-Host "   ✅ Running (PID: $($shotOnMe.OwningProcess))" -ForegroundColor Green
-    Write-Host "   Process: $($process.ProcessName)" -ForegroundColor Gray
-} else {
-    Write-Host "   ❌ Not Running" -ForegroundColor Red
-}
-Write-Host ""
-
-# Check Venue Portal (Port 3000)
-Write-Host "3️⃣ Venue Portal (Port 3000):" -ForegroundColor Yellow
-$venuePortal = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
-if ($venuePortal) {
-    $process = Get-Process -Id $venuePortal.OwningProcess -ErrorAction SilentlyContinue
-    Write-Host "   ✅ Running (PID: $($venuePortal.OwningProcess))" -ForegroundColor Green
-    Write-Host "   Process: $($process.ProcessName)" -ForegroundColor Gray
-} else {
-    Write-Host "   ❌ Not Running" -ForegroundColor Red
-}
-Write-Host ""
-
-# Check Owner Portal (Port 3002)
-Write-Host "4️⃣ Owner Portal (Port 3002):" -ForegroundColor Yellow
-$ownerPortal = Get-NetTCPConnection -LocalPort 3002 -ErrorAction SilentlyContinue
-if ($ownerPortal) {
-    $process = Get-Process -Id $ownerPortal.OwningProcess -ErrorAction SilentlyContinue
-    Write-Host "   ✅ Running (PID: $($ownerPortal.OwningProcess))" -ForegroundColor Green
-    Write-Host "   Process: $($process.ProcessName)" -ForegroundColor Gray
-} else {
-    Write-Host "   ❌ Not Running" -ForegroundColor Red
-}
-Write-Host ""
-
-# Summary
-Write-Host "📊 Summary:" -ForegroundColor Cyan
-$allRunning = $backend -and $shotOnMe
+Write-Host "Summary:" -ForegroundColor Cyan
+$allRunning = $backendRunning -and $shotOnMeRunning -and $venueRunning -and $ownerRunning
 if ($allRunning) {
-    Write-Host "   ✅ Essential servers are running" -ForegroundColor Green
-} else {
-    Write-Host "   ⚠️  Some servers are not running" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "💡 To start all servers, run:" -ForegroundColor Cyan
-    Write-Host "   .\start-all.ps1" -ForegroundColor White
-    Write-Host ""
-    Write-Host "   Or start individually:" -ForegroundColor Cyan
-    if (-not $backend) {
-        Write-Host "   • Backend: cd backend; npm run dev" -ForegroundColor White
-    }
-    if (-not $shotOnMe) {
-        Write-Host "   • Shot On Me: cd shot-on-me; npm run dev" -ForegroundColor White
-    }
+    Write-Host "  [OK] All services are running." -ForegroundColor Green
+    return
 }
+
+Write-Host "  [!] Some services are not running." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Start all services with:" -ForegroundColor Cyan
+Write-Host "  .\start-all.ps1" -ForegroundColor White
 

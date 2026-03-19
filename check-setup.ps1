@@ -1,109 +1,122 @@
-# Setup Verification Script
-# Checks if everything is configured correctly
+# Setup verification script
+# Checks if local development prerequisites are configured.
 
-Write-Host "🔍 Checking Shot On Me & Venue Portal Setup..." -ForegroundColor Cyan
+Write-Host "Checking project setup..." -ForegroundColor Cyan
 Write-Host ""
 
 $allGood = $true
+$requiredDirs = @("backend", "shot-on-me", "owner-portal", "venue-portal")
 
-# Check Node.js
+function Show-Ok {
+    param([string]$Message)
+    Write-Host "  [OK] $Message" -ForegroundColor Green
+}
+
+function Show-Warn {
+    param([string]$Message)
+    Write-Host "  [!]  $Message" -ForegroundColor Yellow
+}
+
+function Show-Error {
+    param([string]$Message)
+    Write-Host "  [X]  $Message" -ForegroundColor Red
+}
+
 Write-Host "Checking Node.js..." -ForegroundColor Yellow
 try {
     $nodeVersion = node --version
-    Write-Host "  ✅ Node.js: $nodeVersion" -ForegroundColor Green
+    Show-Ok "Node.js: $nodeVersion"
 } catch {
-    Write-Host "  ❌ Node.js not found. Install from https://nodejs.org/" -ForegroundColor Red
+    Show-Error "Node.js not found. Install from https://nodejs.org/"
     $allGood = $false
 }
 
-# Check npm
 Write-Host "Checking npm..." -ForegroundColor Yellow
 try {
     $npmVersion = npm --version
-    Write-Host "  ✅ npm: $npmVersion" -ForegroundColor Green
+    Show-Ok "npm: $npmVersion"
 } catch {
-    Write-Host "  ❌ npm not found" -ForegroundColor Red
+    Show-Error "npm not found"
     $allGood = $false
 }
 
-# Check project structure
 Write-Host ""
 Write-Host "Checking project structure..." -ForegroundColor Yellow
-
-$requiredDirs = @("backend", "venue-portal", "shot-on-me")
 foreach ($dir in $requiredDirs) {
     if (Test-Path $dir) {
-        Write-Host "  ✅ $dir/ exists" -ForegroundColor Green
+        Show-Ok "$dir/ exists"
     } else {
-        Write-Host "  ❌ $dir/ missing" -ForegroundColor Red
+        Show-Error "$dir/ missing"
         $allGood = $false
     }
 }
 
-# Check package.json files
 Write-Host ""
 Write-Host "Checking package.json files..." -ForegroundColor Yellow
 foreach ($dir in $requiredDirs) {
     if (Test-Path "$dir\package.json") {
-        Write-Host "  ✅ $dir/package.json exists" -ForegroundColor Green
+        Show-Ok "$dir/package.json exists"
     } else {
-        Write-Host "  ❌ $dir/package.json missing" -ForegroundColor Red
+        Show-Error "$dir/package.json missing"
         $allGood = $false
     }
 }
 
-# Check node_modules
 Write-Host ""
 Write-Host "Checking dependencies..." -ForegroundColor Yellow
 foreach ($dir in $requiredDirs) {
     if (Test-Path "$dir\node_modules") {
-        Write-Host "  ✅ $dir/ dependencies installed" -ForegroundColor Green
+        Show-Ok "$dir/ dependencies installed"
     } else {
-        Write-Host "  ⚠️  $dir/ dependencies not installed (run: cd $dir && npm install)" -ForegroundColor Yellow
+        Show-Warn "$dir/ dependencies not installed (run: Set-Location $dir; npm install)"
     }
 }
 
-# Check .env files
 Write-Host ""
 Write-Host "Checking configuration files..." -ForegroundColor Yellow
 
 if (Test-Path "backend\.env") {
-    Write-Host "  ✅ backend/.env exists" -ForegroundColor Green
+    Show-Ok "backend/.env exists"
 } else {
-    Write-Host "  ⚠️  backend/.env missing (copy from CONFIG_TEMPLATE.md)" -ForegroundColor Yellow
+    Show-Warn "backend/.env missing (copy from CONFIG_TEMPLATE.md)"
 }
 
 if (Test-Path "shot-on-me\.env.local") {
-    Write-Host "  ✅ shot-on-me/.env.local exists" -ForegroundColor Green
+    Show-Ok "shot-on-me/.env.local exists"
 } else {
-    Write-Host "  ⚠️  shot-on-me/.env.local missing (copy from CONFIG_TEMPLATE.md)" -ForegroundColor Yellow
+    Show-Warn "shot-on-me/.env.local missing (copy from CONFIG_TEMPLATE.md)"
+}
+
+if (Test-Path "owner-portal\.env.local") {
+    Show-Ok "owner-portal/.env.local exists"
+} else {
+    Show-Warn "owner-portal/.env.local missing (copy from CONFIG_TEMPLATE.md)"
 }
 
 if (Test-Path "venue-portal\.env.local") {
-    Write-Host "  ✅ venue-portal/.env.local exists" -ForegroundColor Green
+    Show-Ok "venue-portal/.env.local exists"
 } else {
-    Write-Host "  ⚠️  venue-portal/.env.local missing (copy from CONFIG_TEMPLATE.md)" -ForegroundColor Yellow
+    Show-Warn "venue-portal/.env.local missing (copy from CONFIG_TEMPLATE.md)"
 }
 
-# Check MongoDB
 Write-Host ""
 Write-Host "Checking MongoDB..." -ForegroundColor Yellow
 try {
     $mongoCheck = Test-NetConnection -ComputerName localhost -Port 27017 -InformationLevel Quiet -WarningAction SilentlyContinue
     if ($mongoCheck) {
-        Write-Host "  ✅ MongoDB running on localhost:27017" -ForegroundColor Green
+        Show-Ok "MongoDB running on localhost:27017"
     } else {
-        Write-Host "  ⚠️  MongoDB not running locally (use MongoDB Atlas or start MongoDB)" -ForegroundColor Yellow
+        Show-Warn "MongoDB not running locally (use MongoDB Atlas or start MongoDB)"
     }
 } catch {
-    Write-Host "  ⚠️  Could not check MongoDB" -ForegroundColor Yellow
+    Show-Warn "Could not check MongoDB"
 }
 
 Write-Host ""
 if ($allGood) {
-    Write-Host "✨ Setup looks good! You can run .\start-all.ps1 to start all services" -ForegroundColor Green
+    Write-Host "Setup looks good. Run .\start-all.ps1 to start all services." -ForegroundColor Green
 } else {
-    Write-Host "⚠️  Some issues found. Please fix them before starting" -ForegroundColor Yellow
+    Write-Host "Some required items are missing. Fix them before starting." -ForegroundColor Yellow
 }
 Write-Host ""
 

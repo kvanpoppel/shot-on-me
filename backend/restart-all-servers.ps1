@@ -1,31 +1,31 @@
-# Restart All Development Servers
-# This script stops all servers and provides commands to restart them
+# Restart all development servers
+# Stops listeners on common dev ports and prints restart commands.
 
 Write-Host ""
-Write-Host "🛑 STOPPING ALL SERVERS" -ForegroundColor Red
+Write-Host "STOPPING ALL SERVERS" -ForegroundColor Red
 Write-Host ""
 
-# Kill processes on common ports
 $ports = @(5000, 3000, 3001, 3002, 3003)
-
 foreach ($port in $ports) {
-    $process = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
-    if ($process) {
-        foreach ($pid in $process) {
-            Write-Host "  Killing process on port $port (PID: $pid)..." -ForegroundColor Yellow
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    $processIds = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+
+    if ($processIds) {
+        foreach ($processId in $processIds) {
+            Write-Host "  Killing process on port $port (PID: $processId)..." -ForegroundColor Yellow
+            Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
         }
     }
 }
 
 Write-Host ""
-Write-Host "✅ All processes stopped" -ForegroundColor Green
+Write-Host "All target processes stopped." -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 TO RESTART SERVERS:" -ForegroundColor Cyan
+Write-Host "TO RESTART SERVERS:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "1. BACKEND (port 5000):" -ForegroundColor Yellow
 Write-Host "   cd backend" -ForegroundColor White
-Write-Host "   npm start" -ForegroundColor White
+Write-Host "   npm run dev" -ForegroundColor White
 Write-Host ""
 Write-Host "2. SHOT ON ME APP (port 3001):" -ForegroundColor Yellow
 Write-Host "   cd shot-on-me" -ForegroundColor White

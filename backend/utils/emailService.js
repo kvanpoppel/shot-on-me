@@ -130,8 +130,8 @@ async function sendPasswordResetEmail(email, resetToken) {
   }
 }
 
-// Send invite email
-async function sendInviteEmail(recipientEmail, inviterName, inviteLink, referralCode) {
+// Send invite email (no referral code – link uses user ID, backend attributes referral)
+async function sendInviteEmail(recipientEmail, inviterName, inviteLink) {
   if (!transporter) {
     console.warn('⚠️  Email service not configured. Invite email not sent.');
     return { success: false, error: 'Email service not configured' };
@@ -160,13 +160,6 @@ async function sendInviteEmail(recipientEmail, inviterName, inviteLink, referral
             <p>Hello,</p>
             
             <p><strong>${inviterName || 'Someone'}</strong> invited you to join Shot On Me! Send drinks to friends at any bar or coffee shop.</p>
-            
-            ${referralCode ? `
-            <div style="background: #fff; border: 2px solid #D4AF37; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Your Referral Code</p>
-              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #D4AF37; letter-spacing: 2px;">${referralCode}</p>
-            </div>
-            ` : ''}
             
             <p>Join now and get started:</p>
             
@@ -200,7 +193,7 @@ async function sendInviteEmail(recipientEmail, inviterName, inviteLink, referral
       
       ${inviterName || 'Someone'} invited you to join Shot On Me! Send drinks to friends at any bar or coffee shop.
       
-      ${referralCode ? `Use my referral code: ${referralCode}\n\n` : ''}Join now and get started: ${inviteLink}
+      Join now and get started: ${inviteLink}
       
       When you sign up using this link, you both earn rewards!
       

@@ -7,7 +7,7 @@ const emailService = require('../utils/emailService');
 // Send email invite
 router.post('/email', auth, async (req, res) => {
   try {
-    const { email, inviteLink, referralCode } = req.body;
+    const { email, inviteLink } = req.body;
     const inviterId = req.user.userId;
 
     if (!email || !inviteLink) {
@@ -28,13 +28,7 @@ router.post('/email', auth, async (req, res) => {
 
     const inviterName = inviter.firstName || inviter.name || 'Someone';
 
-    // Send email
-    const result = await emailService.sendInviteEmail(
-      email,
-      inviterName,
-      inviteLink,
-      referralCode
-    );
+    const result = await emailService.sendInviteEmail(email, inviterName, inviteLink);
 
     if (result.success) {
       res.json({

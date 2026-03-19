@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import axios from 'axios'
@@ -10,19 +11,23 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 export default function AnalyticsPage() {
   const { token } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const API_URL = useApiUrl()
   const [trends, setTrends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const period = searchParams.get('period') || '30'
+  const aiIntent = searchParams.get('ai')
 
   useEffect(() => {
     if (token) {
       fetchTrends()
     }
-  }, [token])
+  }, [token, period])
 
   const fetchTrends = async () => {
     try {
-      const response = await axios.get(`${API_URL}/owner/revenue-trends?period=30`, {
+      const response = await axios.get(`${API_URL}/owner/revenue-trends?period=${period}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setTrends(response.data.trends || [])
@@ -58,12 +63,24 @@ export default function AnalyticsPage() {
           <p className="text-primary-400/70 mt-1">Advanced analytics and insights</p>
         </div>
 
+        {aiIntent === 'revenue_alert' && (
+          <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3 flex items-center justify-between">
+            <p className="text-sm text-primary-500">AI context active: focused on short-term revenue trend ({period} days).</p>
+            <button
+              onClick={() => router.push('/dashboard/analytics')}
+              className="text-xs px-2 py-1 rounded bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Revenue Chart */}
         <div className="bg-black border-2 border-primary-500/30 rounded-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-primary-500">Revenue & Commissions</h3>
-              <p className="text-primary-400/70 text-sm mt-1">Last 30 days</p>
+              <p className="text-primary-400/70 text-sm mt-1">Last {period} days</p>
             </div>
             <div className="p-2 bg-primary-500/10 rounded-lg">
               <BarChart3 className="w-5 h-5 text-primary-500" />
@@ -115,7 +132,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-primary-500">Transaction Volume</h3>
-              <p className="text-primary-400/70 text-sm mt-1">Last 30 days</p>
+              <p className="text-primary-400/70 text-sm mt-1">Last {period} days</p>
             </div>
             <div className="p-2 bg-primary-500/10 rounded-lg">
               <TrendingUp className="w-5 h-5 text-primary-500" />

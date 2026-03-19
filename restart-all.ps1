@@ -1,26 +1,26 @@
-# Restart All Services Script
-# This script kills all Node processes and provides instructions to restart
+# Restart all services script
+# Stops listeners on known dev ports and prints restart commands.
 
-Write-Host "🛑 Stopping all Node processes..." -ForegroundColor Yellow
+Write-Host "Stopping all node listeners..." -ForegroundColor Yellow
 
-# Kill processes on our ports
-$ports = @(5000, 3000, 3001)
+$ports = @(5000, 3000, 3001, 3002)
 foreach ($port in $ports) {
-    $process = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
-    if ($process) {
-        Write-Host "Killing process $process on port $port..." -ForegroundColor Cyan
-        Stop-Process -Id $process -Force -ErrorAction SilentlyContinue
+    $processIds = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+
+    if ($processIds) {
+        foreach ($processId in $processIds) {
+            Write-Host "Killing process $processId on port $port..." -ForegroundColor Cyan
+            Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
-# Kill all node processes (be careful with this)
-# Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-
 Start-Sleep -Seconds 2
 
-Write-Host "✅ All processes stopped!" -ForegroundColor Green
+Write-Host "All configured ports have been cleaned up." -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 To restart, open 3 separate PowerShell windows and run:" -ForegroundColor Cyan
+Write-Host "To restart, open 4 PowerShell windows and run:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Window 1 - Backend:" -ForegroundColor Yellow
 Write-Host "  cd backend" -ForegroundColor White
@@ -32,6 +32,10 @@ Write-Host "  npm run dev" -ForegroundColor White
 Write-Host ""
 Write-Host "Window 3 - Venue Portal:" -ForegroundColor Yellow
 Write-Host "  cd venue-portal" -ForegroundColor White
+Write-Host "  npm run dev" -ForegroundColor White
+Write-Host ""
+Write-Host "Window 4 - Owner Portal:" -ForegroundColor Yellow
+Write-Host "  cd owner-portal" -ForegroundColor White
 Write-Host "  npm run dev" -ForegroundColor White
 Write-Host ""
 

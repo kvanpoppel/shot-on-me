@@ -47,42 +47,42 @@ router.get('/code', auth, async (req, res) => {
   }
 });
 
-// Apply referral code (when new user signs up)
+// Apply referral (when new user signs up via invite link)
+// Uses referrerId (user ID) only – no visible referral code. Tied to user ID on backend.
 router.post('/apply', async (req, res) => {
   try {
-    const { code, userId } = req.body;
+    const { referrerId, userId } = req.body;
 
-    if (!code || !userId) {
-      return res.status(400).json({ message: 'Referral code and user ID are required' });
+    if (!referrerId || !userId) {
+      return res.status(400).json({ message: 'Referrer ID and user ID are required' });
     }
 
-    const referrer = await User.findOne({ referralCode: code });
+    const referrer = await User.findById(referrerId);
     if (!referrer) {
-      return res.status(404).json({ message: 'Invalid referral code' });
+      return res.status(404).json({ message: 'Invalid referrer' });
     }
 
     if (referrer._id.toString() === userId) {
-      return res.status(400).json({ message: 'Cannot use your own referral code' });
+      return res.status(400).json({ message: 'Cannot refer yourself' });
     }
 
-    // Check if referral already exists
     const existingReferral = await Referral.findOne({
       referrer: referrer._id,
       referred: userId
     });
 
     if (existingReferral) {
-      return res.status(400).json({ message: 'Referral code already applied' });
+      return res.status(400).json({ message: 'Referral already applied' });
     }
 
-    // Create referral
+    const internalCode = `ref-${referrerId}-${userId}`;
     const referral = new Referral({
       referrer: referrer._id,
       referred: userId,
-      referralCode: code,
+      referralCode: internalCode,
       status: 'pending',
       rewards: {
-        referrerReward: 5, // $5 or 5 points
+        referrerReward: 5,
         referredReward: 5
       }
     });
@@ -103,10 +103,9 @@ router.post('/apply', async (req, res) => {
     await referrer.save();
 
     res.json({
-      message: 'Referral code applied successfully',
+      message: 'Referral applied successfully',
       referral: {
         id: referral._id,
-        code: referral.referralCode,
         rewards: referral.rewards
       }
     });

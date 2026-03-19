@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Sparkles, Settings, Zap } from 'lucide-react'
+import { Sparkles, Zap } from 'lucide-react'
 import { useToast } from './ToastContainer'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
@@ -10,9 +10,11 @@ import { getApiUrl } from '../utils/api'
 interface AutoModeSettings {
   enabled: boolean
   autoPostThreshold: number
-  autoNotify: boolean
-  autoGenerate: boolean
-  checkInterval: number // in hours
+  autoNotifyFollowers: boolean
+  autoGenerateSpecials: boolean
+  checkIntervalHours: number
+  maxPromotionsPerCycle: number
+  lastRunAt?: string | null
 }
 
 export default function AutoModeToggle() {
@@ -21,95 +23,102 @@ export default function AutoModeToggle() {
   const [settings, setSettings] = useState<AutoModeSettings>({
     enabled: false,
     autoPostThreshold: 0.85,
-    autoNotify: true,
-    autoGenerate: true,
-    checkInterval: 24
+    autoNotifyFollowers: true,
+    autoGenerateSpecials: true,
+    checkIntervalHours: 24,
+    maxPromotionsPerCycle: 2,
+    lastRunAt: null
   })
   const [loading, setLoading] = useState(false)
+  const [venueId, setVenueId] = useState<string | null>(null)
 
   useEffect(() => {
-    loadSettings()
+    if (token) {
+      bootstrap()
+    }
   }, [token])
 
-  const loadSettings = async () => {
+  const bootstrap = async () => {
     if (!token) return
-    
+
     try {
-      // Load from localStorage for now (can be moved to backend)
-      const saved = localStorage.getItem('ai-auto-mode-settings')
-      if (saved) {
-        setSettings(JSON.parse(saved))
+      const apiUrl = getApiUrl()
+      const venuesRes = await axios.get(`${apiUrl}/venues`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const foundVenueId = Array.isArray(venuesRes.data)
+        ? venuesRes.data[0]?._id
+        : venuesRes.data?.venues?.[0]?._id
+
+      if (!foundVenueId) {
+        return
       }
-    } catch (error) {
-      console.error('Error loading settings:', error)
+
+      setVenueId(foundVenueId)
+
+      const settingsRes = await axios.get(`${apiUrl}/ai-automation/settings?venueId=${foundVenueId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (settingsRes.data?.settings) {
+        setSettings(settingsRes.data.settings)
+      }
+    } catch (error: any) {
+      showError(error?.response?.data?.error || 'Failed to load AI automation settings')
     }
   }
 
   const saveSettings = async (newSettings: AutoModeSettings) => {
-    if (!token) return
+    if (!token || !venueId) return
 
     try {
       setLoading(true)
-      localStorage.setItem('ai-auto-mode-settings', JSON.stringify(newSettings))
-      setSettings(newSettings)
-      
+      const apiUrl = getApiUrl()
+      const saveRes = await axios.put(
+        `${apiUrl}/ai-automation/settings`,
+        { venueId, settings: newSettings },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      setSettings(saveRes.data.settings || newSettings)
+
       if (newSettings.enabled) {
-        // Start automation if enabled
-        await startAutomation(newSettings)
-        showSuccess('AI Auto Mode enabled! I\'ll handle promotions automatically.')
+        await runCycle(true)
+        showSuccess('AI Auto Mode enabled. Specials and follower notifications are now automated.')
       } else {
         showSuccess('AI Auto Mode disabled.')
       }
     } catch (error: any) {
-      showError(error.message || 'Failed to save settings')
+      showError(error?.response?.data?.error || 'Failed to save settings')
     } finally {
       setLoading(false)
     }
   }
 
-  const startAutomation = async (settings: AutoModeSettings) => {
-    if (!token) return
+  const runCycle = async (force = false) => {
+    if (!token || !venueId) return
 
     try {
       const apiUrl = getApiUrl()
-      
-      // Get venue ID
-      const venuesRes = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const venueId = Array.isArray(venuesRes.data) 
-        ? venuesRes.data[0]?._id 
-        : venuesRes.data?.venues?.[0]?._id
-
-      if (!venueId) throw new Error('Venue not found')
-
-      // Process initial automation
-      await axios.post(
-        `${apiUrl}/ai-automation/process-all`,
-        { venueId, threshold: settings.autoPostThreshold },
+      const response = await axios.post(
+        `${apiUrl}/ai-automation/run-cycle`,
+        { venueId, force },
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      // Set up interval for periodic checks
-      if (typeof window !== 'undefined') {
-        const intervalMs = settings.checkInterval * 60 * 60 * 1000
-        const intervalId = setInterval(async () => {
-          try {
-            await axios.post(
-              `${apiUrl}/ai-automation/process-all`,
-              { venueId, threshold: settings.autoPostThreshold },
-              { headers: { Authorization: `Bearer ${token}` } }
-            )
-          } catch (error) {
-            console.error('Automated check failed:', error)
-          }
-        }, intervalMs)
-
-        // Store interval ID to clear later
-        localStorage.setItem('ai-auto-interval-id', intervalId.toString())
+      if (response.data?.skipped) {
+        if (response.data?.reason === 'interval_not_elapsed') {
+          showSuccess(`Next AI cycle in ~${response.data.nextRunInMinutes} minutes.`)
+        }
+        return
       }
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to start automation')
+
+      setSettings((prev) => ({
+        ...prev,
+        lastRunAt: new Date().toISOString()
+      }))
+    } catch (error) {
+      // handled at caller
     }
   }
 
@@ -142,18 +151,91 @@ export default function AutoModeToggle() {
       </div>
 
       {settings.enabled && (
-        <div className="space-y-2 text-xs text-primary-400/70">
+        <div className="space-y-3 text-xs text-primary-400/70">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="space-y-1">
+              <span className="block">Auto-post threshold ({Math.round(settings.autoPostThreshold * 100)}%)</span>
+              <input
+                type="range"
+                min="0.5"
+                max="0.99"
+                step="0.01"
+                value={settings.autoPostThreshold}
+                onChange={(e) => setSettings({ ...settings, autoPostThreshold: Number(e.target.value) })}
+                disabled={loading}
+                className="w-full"
+              />
+            </label>
+
+            <label className="space-y-1">
+              <span className="block">Auto-update interval (hours)</span>
+              <input
+                type="number"
+                min={1}
+                max={168}
+                value={settings.checkIntervalHours}
+                onChange={(e) => setSettings({ ...settings, checkIntervalHours: Number(e.target.value || 24) })}
+                disabled={loading}
+                className="w-full bg-black/30 border border-primary-500/20 rounded px-2 py-1 text-primary-300"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="block">Max specials per cycle</span>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={settings.maxPromotionsPerCycle}
+                onChange={(e) => setSettings({ ...settings, maxPromotionsPerCycle: Number(e.target.value || 2) })}
+                disabled={loading}
+                className="w-full bg-black/30 border border-primary-500/20 rounded px-2 py-1 text-primary-300"
+              />
+            </label>
+          </div>
+
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-3 h-3 text-primary-500" />
-            <span>Auto-generating promotions based on patterns</span>
+            <input
+              type="checkbox"
+              checked={settings.autoGenerateSpecials}
+              onChange={(e) => setSettings({ ...settings, autoGenerateSpecials: e.target.checked })}
+              className="rounded"
+            />
+            <span>Automatically generate new specials from AI suggestions</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-3 h-3 text-primary-500" />
-            <span>Auto-posting high-confidence suggestions ({settings.autoPostThreshold * 100}%+)</span>
+            <input
+              type="checkbox"
+              checked={settings.autoNotifyFollowers}
+              onChange={(e) => setSettings({ ...settings, autoNotifyFollowers: e.target.checked })}
+              className="rounded"
+            />
+            <span>Auto-notify venue followers when AI publishes specials</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-3 h-3 text-primary-500" />
-            <span>Auto-sending notifications at optimal times</span>
+
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-3 h-3 text-primary-500" />
+              <span>
+                Last run:{' '}
+                {settings.lastRunAt ? new Date(settings.lastRunAt).toLocaleString() : 'Not run yet'}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => runCycle(true)}
+                disabled={loading}
+                className="px-2.5 py-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded transition-colors"
+              >
+                Run now
+              </button>
+              <button
+                onClick={() => saveSettings(settings)}
+                disabled={loading}
+                className="px-2.5 py-1 bg-primary-500 text-black font-medium rounded hover:bg-primary-400 transition-colors"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

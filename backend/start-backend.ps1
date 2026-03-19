@@ -1,7 +1,7 @@
 # Backend Server Startup Script
 # Double-click this file or run: .\start-backend.ps1
 
-Write-Host "🚀 Starting Backend Server..." -ForegroundColor Cyan
+Write-Host "Starting Backend Server..." -ForegroundColor Cyan
 Write-Host ""
 
 # Get the directory where this script is located
@@ -13,7 +13,7 @@ Write-Host ""
 
 # Check if node_modules exists
 if (-not (Test-Path "node_modules")) {
-    Write-Host "⚠️  node_modules not found. Installing dependencies..." -ForegroundColor Yellow
+    Write-Host "node_modules not found. Installing dependencies..." -ForegroundColor Yellow
     npm install
     Write-Host ""
 }

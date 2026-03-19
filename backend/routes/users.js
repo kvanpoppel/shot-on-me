@@ -285,6 +285,121 @@ router.put('/me/notification-preferences', auth, async (req, res) => {
   }
 });
 
+// Get persisted AI personalization signals
+router.get('/me/ai-signals', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('aiSignals');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const viewedProfileIds = (user.aiSignals?.viewedProfileIds || []).map(id => id.toString());
+    const addedFriendIds = (user.aiSignals?.addedFriendIds || []).map(id => id.toString());
+
+    return res.json({
+      aiSignals: {
+        viewedProfileIds,
+        addedFriendIds,
+        feedback: {
+          helpfulCount: user.aiSignals?.feedback?.helpfulCount || 0,
+          lessLikeThisCount: user.aiSignals?.feedback?.lessLikeThisCount || 0
+        },
+        updatedAt: user.aiSignals?.updatedAt || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching AI signals:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update persisted AI personalization signals
+router.put('/me/ai-signals', auth, async (req, res) => {
+  try {
+    const { viewedProfileIds = [], addedFriendIds = [] } = req.body || {};
+
+    const sanitizeIds = (ids) => {
+      if (!Array.isArray(ids)) return [];
+      const unique = [...new Set(ids.map(id => String(id).trim()))];
+      // Keep only valid Mongo ObjectId strings and cap to last 50
+      return unique.filter(id => /^[a-fA-F0-9]{24}$/.test(id)).slice(0, 50);
+    };
+
+    const safeViewed = sanitizeIds(viewedProfileIds);
+    const safeAdded = sanitizeIds(addedFriendIds);
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        $set: {
+          'aiSignals.viewedProfileIds': safeViewed,
+          'aiSignals.addedFriendIds': safeAdded,
+          'aiSignals.updatedAt': new Date()
+        }
+      },
+      { new: true, runValidators: false }
+    ).select('aiSignals');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.json({
+      message: 'AI signals updated',
+      aiSignals: {
+        viewedProfileIds: (user.aiSignals?.viewedProfileIds || []).map(id => id.toString()),
+        addedFriendIds: (user.aiSignals?.addedFriendIds || []).map(id => id.toString()),
+        feedback: {
+          helpfulCount: user.aiSignals?.feedback?.helpfulCount || 0,
+          lessLikeThisCount: user.aiSignals?.feedback?.lessLikeThisCount || 0
+        },
+        updatedAt: user.aiSignals?.updatedAt || null
+      }
+    });
+  } catch (error) {
+    console.error('Error updating AI signals:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Record AI feedback for personalization quality
+router.post('/me/ai-feedback', auth, async (req, res) => {
+  try {
+    const { feedbackType } = req.body || {};
+    if (!feedbackType || !['helpful', 'less_like_this'].includes(feedbackType)) {
+      return res.status(400).json({ message: 'Invalid feedbackType' });
+    }
+
+    const incUpdate = feedbackType === 'helpful'
+      ? { 'aiSignals.feedback.helpfulCount': 1 }
+      : { 'aiSignals.feedback.lessLikeThisCount': 1 };
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        $inc: incUpdate,
+        $set: { 'aiSignals.updatedAt': new Date() }
+      },
+      { new: true, runValidators: false }
+    ).select('aiSignals.feedback aiSignals.updatedAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'AI feedback recorded',
+      feedback: {
+        helpfulCount: user.aiSignals?.feedback?.helpfulCount || 0,
+        lessLikeThisCount: user.aiSignals?.feedback?.lessLikeThisCount || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error recording AI feedback:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get current user (me) - must come after /me/profile-picture and PUT /me
 router.get('/me', auth, async (req, res) => {
   try {
@@ -350,15 +465,41 @@ router.get('/suggestions', auth, async (req, res) => {
     friendIds.push(req.user.userId); // Exclude self
 
     // Get users who are not already friends
-    const suggestions = await User.find({
+    const candidates = await User.find({
       _id: { $nin: friendIds },
       userType: { $ne: 'venue' } // Don't suggest venues
     })
-    .select('-password')
-    .limit(10)
-    .sort({ createdAt: -1 }); // Newest users first
+    .select('email name phoneNumber profilePicture friends createdAt')
+    .limit(50)
+    .sort({ createdAt: -1 }); // Pull more, then AI-rank
 
-    const transformedSuggestions = suggestions.map(user => {
+    const currentFriendSet = new Set((currentUser.friends || []).map(id => id.toString()));
+    const viewedSet = new Set((currentUser.aiSignals?.viewedProfileIds || []).map(id => id.toString()));
+    const addedSet = new Set((currentUser.aiSignals?.addedFriendIds || []).map(id => id.toString()));
+    const nowMs = Date.now();
+
+    const ranked = candidates.map(user => {
+      const candidateId = user._id.toString();
+      const candidateFriendIds = (user.friends || []).map(id => id.toString());
+      const mutualFriends = candidateFriendIds.filter(id => currentFriendSet.has(id));
+      const mutualCount = mutualFriends.length;
+      const viewedBoost = viewedSet.has(candidateId) ? 8 : 0;
+      const builderHistoryBoost = addedSet.size > 0 && mutualCount > 0 ? 5 : 0;
+      const recencyDays = Math.max(0, (nowMs - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      const recencyBoost = Math.max(0, 12 - recencyDays); // Up to 12 points for newer users
+      const aiScore = Math.round(50 + mutualCount * 10 + viewedBoost + builderHistoryBoost + recencyBoost);
+
+      let aiReason = 'Great fit based on your activity';
+      if (mutualCount > 0) {
+        aiReason = `${mutualCount} mutual friend${mutualCount !== 1 ? 's' : ''}`;
+      } else if (viewedBoost > 0) {
+        aiReason = 'You viewed this profile recently';
+      }
+
+      return { user, mutualFriends, aiScore: Math.min(99, aiScore), aiReason };
+    }).sort((a, b) => b.aiScore - a.aiScore);
+
+    const transformedSuggestions = ranked.slice(0, 10).map(({ user, mutualFriends, aiScore, aiReason }) => {
       const nameParts = (user.name || '').split(' ');
       return {
         id: user._id,
@@ -368,7 +509,10 @@ router.get('/suggestions', auth, async (req, res) => {
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
         phoneNumber: user.phoneNumber,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        mutualFriends: mutualFriends.slice(0, 5),
+        aiScore,
+        aiReason
       };
     });
 

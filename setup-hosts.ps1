@@ -53,7 +53,7 @@ if ($entriesToAdd.Count -gt 0) {
 
         Write-Host "`nSuccessfully updated hosts file!" -ForegroundColor Green
         Write-Host "`nYou can now access:" -ForegroundColor Cyan
-        Write-Host "  • Venue Portal: http://venueportal:3000" -ForegroundColor White
+        Write-Host "  • Venue Portal: http://venueportal:3002" -ForegroundColor White
         Write-Host "  • Shot On Me:   http://shotonme:3001" -ForegroundColor White
     } catch {
         Write-Host "ERROR: Failed to update hosts file: $_" -ForegroundColor Red

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import axios from 'axios'
@@ -9,12 +10,15 @@ import { Users, Search, Download, Loader, DollarSign, TrendingUp, Calendar } fro
 
 export default function UsersPage() {
   const { token } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const API_URL = useApiUrl()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('createdAt')
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 })
+  const aiIntent = searchParams.get('ai')
 
   useEffect(() => {
     if (token) {
@@ -53,6 +57,13 @@ export default function UsersPage() {
       user.lastName?.toLowerCase().includes(query) ||
       user.phone?.toLowerCase().includes(query)
     )
+  }).filter((user) => {
+    if (aiIntent === 'inactive_users') {
+      if (!user.lastActive) return true
+      const daysSinceActive = (Date.now() - new Date(user.lastActive).getTime()) / (1000 * 60 * 60 * 24)
+      return daysSinceActive > 14
+    }
+    return true
   })
 
   const totalBalance = users.reduce((sum, u) => sum + parseFloat(u.walletBalance || '0'), 0)
@@ -160,6 +171,18 @@ export default function UsersPage() {
             </select>
           </div>
         </div>
+
+        {aiIntent === 'inactive_users' && (
+          <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3 flex items-center justify-between">
+            <p className="text-sm text-primary-500">AI filter active: showing users inactive for 14+ days.</p>
+            <button
+              onClick={() => router.push('/dashboard/users')}
+              className="text-xs px-2 py-1 rounded bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Users Table */}
         <div className="bg-black border-2 border-primary-500/30 rounded-lg overflow-hidden">

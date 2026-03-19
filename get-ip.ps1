@@ -7,8 +7,9 @@ $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.Interface
 if ($ipAddress) {
     Write-Host "Your IP: $ipAddress" -ForegroundColor Green
     Write-Host "`nAccess URLs:" -ForegroundColor Cyan
-    Write-Host "  Venue Portal:  http://$ipAddress`:3000" -ForegroundColor White
+    Write-Host "  Owner Portal:  http://$ipAddress`:3000" -ForegroundColor White
     Write-Host "  Shot On Me:    http://$ipAddress`:3001" -ForegroundColor White
+    Write-Host "  Venue Portal:  http://$ipAddress`:3002" -ForegroundColor White
     Write-Host "  Backend API:   http://$ipAddress`:5000" -ForegroundColor White
     Write-Host "`nMake sure all devices are on the same Wi-Fi network!`n" -ForegroundColor Yellow
 } else {

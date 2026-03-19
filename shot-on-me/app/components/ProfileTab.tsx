@@ -133,7 +133,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
       if (!loadingMorePosts && postsHasMore && postsContainerRef.current) {
         const scrollHeight = document.documentElement.scrollHeight
         const scrollTop = window.innerHeight + window.scrollY
-        const threshold = 500 // Load when 500px from bottom
+        const threshold = 500
         
         if (scrollTop >= scrollHeight - threshold) {
           setLoadingMorePosts(true)
@@ -171,7 +171,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     if (!token || !user) return
 
     try {
-
       // Fetch gamification stats
       try {
         const gamificationResponse = await axios.get(`${API_URL}/gamification/stats`, {
@@ -182,25 +181,23 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
         console.error('Failed to fetch gamification stats:', error)
       }
 
-      // Fetch friends
+      // Fetch the current user's friend list
       const userResponse = await axios.get(`${API_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const userData = userResponse.data.user
-      
+
       if (userData.friends && userData.friends.length > 0) {
-        // Fetch friend details
-        const friendPromises = userData.friends.slice(0, 20).map((friendId: string) =>
-          axios.get(`${API_URL}/users/${friendId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).catch(() => null)
-        )
-        const friendResponses = await Promise.all(friendPromises)
-        const friendList = friendResponses
-          .filter(r => r !== null)
-          .map(r => r?.data?.user)
-          .filter(Boolean)
-        setFriends(friendList)
+        const friendIds = userData.friends.slice(0, 50) // cap at 50
+
+        // FIX: Single batch request instead of N individual requests.
+        // Previously this made up to 20 individual axios.get(`/users/${friendId}`)
+        // calls — one per friend. Now it's a single query using $in on the backend.
+        const batchResponse = await axios.get(`${API_URL}/users/batch`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { ids: friendIds.join(',') }
+        })
+        setFriends(batchResponse.data.users || [])
       }
     } catch (error) {
       console.error('Failed to fetch profile data:', error)
@@ -398,14 +395,12 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
                   </div>
                 ))}
               </div>
-              {/* Loading More Indicator */}
               {loadingMorePosts && (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
                   <span className="ml-3 text-primary-400">Loading more posts...</span>
                 </div>
               )}
-              {/* End of List Indicator */}
               {!postsHasMore && userPosts.length > 0 && (
                 <div className="text-center py-8 text-primary-400/50 text-sm">
                   No more posts
@@ -418,7 +413,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
 
         {activeView === 'checkins' && (
           <div>
-            {/* Check In Button - Always Visible */}
             <button
               onClick={() => setActiveTab?.('map')}
               className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
@@ -478,7 +472,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
 
         {activeView === 'friends' && (
           <div>
-            {/* Find Friends Button - Always Visible */}
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('open-find-friends'))

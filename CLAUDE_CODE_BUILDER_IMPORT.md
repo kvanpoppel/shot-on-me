@@ -1,0 +1,2860 @@
+﻿# Claude Code Builder Import Pack
+
+Paste this entire file into Claude Code Builder.
+These are the exact source files from the project.
+
+## Recommended prompt to prepend in Claude
+```text
+You are importing code from my Next.js app. Create/update files exactly as provided below, preserving paths and code.
+After importing, summarize any missing dependencies or environment variables needed to run.
+```
+
+<file path="shot-on-me/app/components/LoginScreen.tsx">
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { ArrowRight, Building2, Eye, EyeOff, Smartphone } from 'lucide-react'
+import ForgotPasswordModal from './ForgotPasswordModal'
+import WalletOnboarding from './WalletOnboarding'
+import Link from 'next/link'
+import { getVenuePortalLoginUrl } from '../utils/api'
+
+export default function LoginScreen() {
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState(() => {
+    // Auto-fill email if remembered
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('savedEmail') || ''
+      } catch (err) {
+        return ''
+      }
+    }
+    return ''
+  })
+  const [password, setPassword] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showPermissions, setShowPermissions] = useState(false)
+  const [justAuthenticated, setJustAuthenticated] = useState(false)
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Check if user previously chose to be remembered
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('rememberMe')
+        return saved === 'true' || saved === null // Default to true for better UX
+      } catch (err) {
+        return true // Default to true on error
+      }
+    }
+    return true // Default to true
+  })
+  const { login, register } = useAuth()
+  const [referrerId, setReferrerId] = useState<string>('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
+  const [venuePortalLoginUrl, setVenuePortalLoginUrl] = useState('')
+  const [showAuthPanel, setShowAuthPanel] = useState(false)
+
+  // Capture ?ref= (user ID) from invite link â€“ backend attributes referral by user ID, no visible code
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const ref = params.get('ref')
+      if (ref) {
+        setReferrerId(ref)
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    setVenuePortalLoginUrl(getVenuePortalLoginUrl())
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      // Save remember me preference
+      try {
+        localStorage.setItem('rememberMe', rememberMe.toString())
+      } catch (err) {
+        // Tracking prevention or localStorage blocked - continue anyway
+      }
+      
+      if (isLogin) {
+        await login(email, password, rememberMe)
+        // Show permissions after login (if not shown before)
+        setJustAuthenticated(true)
+        setShowPermissions(true)
+      } else {
+        if (!acceptedTerms || !acceptedPrivacy) {
+          setError('You must accept Terms of Service and Privacy Policy to continue.')
+          setLoading(false)
+          return
+        }
+        await register({ email, password, phoneNumber, firstName, lastName, referrerId, acceptedTerms, acceptedPrivacy })
+        // Also save remember me for registration
+        try {
+          localStorage.setItem('rememberMe', rememberMe.toString())
+        } catch (err) {
+          // Tracking prevention or localStorage blocked - continue anyway
+        }
+        // Show enhanced permissions after successful registration
+        setJustAuthenticated(true)
+        setShowPermissions(true)
+      }
+    } catch (err: any) {
+      console.error('Login error:', err)
+      let errorMsg = err.message || 'Authentication failed'
+      
+      // Provide more helpful error messages
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorMsg = 'Connection timeout. The backend server may not be running. Please check the backend PowerShell window.'
+      } else if (err.code === 'ECONNREFUSED' || err.message?.includes('refused')) {
+        errorMsg = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
+      } else if (err.response?.status === 401) {
+        errorMsg = 'Invalid email or password. Please check your credentials.'
+      } else if (err.response?.status === 503) {
+        errorMsg = 'Backend server is unavailable. Please check if the server is running and MongoDB is connected.'
+      }
+      
+      setError(errorMsg)
+      // Keep error visible for 5 seconds
+      setTimeout(() => {
+        setError('')
+      }, 5000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-primary-500">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-primary-500/7 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-5 py-10 md:px-8 md:py-14">
+        <section className="w-full rounded-3xl border border-primary-500/25 bg-black/70 p-7 md:p-11 backdrop-blur-sm">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-primary-500/70">
+              One platform for guests and venues
+            </p>
+            <h1 className="mt-3 text-6xl md:text-7xl logo-script text-primary-500 leading-none">Shot On Me</h1>
+            <p className="mt-5 text-2xl md:text-3xl text-primary-300/95 font-medium">
+              Premium nights for guests. Growth intelligence for venues.
+            </p>
+            <p className="mt-3 text-sm md:text-base text-primary-500/80">
+              Choose your path and continue instantly.
+            </p>
+
+            <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
+              <div className="rounded-xl border border-primary-500/25 bg-black/45 p-4">
+                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/12 text-primary-500">
+                  <Smartphone className="h-4 w-4" />
+                </div>
+                <p className="text-xs uppercase tracking-[0.12em] text-primary-400/90">App Experience</p>
+                <p className="mt-1 text-sm text-primary-300/95">Social gifting, discovery, and instant rewards.</p>
+              </div>
+              <div className="rounded-xl border border-primary-500/25 bg-black/45 p-4">
+                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/12 text-primary-500">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <p className="text-xs uppercase tracking-[0.12em] text-primary-400/90">Venue Growth</p>
+                <p className="mt-1 text-sm text-primary-300/95">AI promotions, analytics, and performance tools.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-primary-500/30 bg-black/55 p-4 md:p-5">
+              <p className="text-xs uppercase tracking-[0.14em] text-primary-400/85">Choose your portal</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 text-left">
+                <div className="group rounded-xl border border-primary-500/35 bg-black/55 px-4 py-4 transition-colors hover:border-primary-500/55 hover:bg-black/65">
+                  <p className="text-base font-semibold text-primary-200">App User</p>
+                  <p className="mt-1 text-xs text-primary-500/82">Sign in or create an account to continue.</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(true)
+                        setShowAuthPanel(true)
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary-500 px-3.5 py-1.5 text-xs font-semibold text-black transition-colors group-hover:bg-primary-400"
+                    >
+                      Sign In
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(false)
+                        setShowAuthPanel(true)
+                      }}
+                      className="text-xs font-semibold text-primary-300/95 hover:text-primary-200"
+                    >
+                      Create Account
+                    </button>
+                  </div>
+                </div>
+
+                <div className="group rounded-xl border border-primary-500/35 bg-black/55 px-4 py-4 transition-colors hover:border-primary-500/55 hover:bg-black/65">
+                  <p className="text-base font-semibold text-primary-200">Venue User</p>
+                  <p className="mt-1 text-xs text-primary-500/85">Open your venue workspace and dashboard.</p>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (venuePortalLoginUrl) {
+                          window.location.href = venuePortalLoginUrl
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary-500/45 px-3.5 py-1.5 text-xs font-semibold text-primary-300 hover:bg-primary-500/10"
+                    >
+                      Open Venue Portal
+                      <ArrowRight className="h-3.5 w-3.5 text-primary-500" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {showAuthPanel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-primary-500/60 bg-black/95 p-5 md:p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold text-primary-400">{isLogin ? 'App User Sign In' : 'Create App Account'}</p>
+              <button
+                type="button"
+                onClick={() => setShowAuthPanel(false)}
+                className="rounded-md border border-primary-500/35 px-2 py-1 text-xs text-primary-400 hover:bg-primary-500/10"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Toggle between Sign In and Sign Up */}
+            <div className="flex mb-6 border-b border-primary-500/20">
+              <button
+                type="button"
+                onClick={() => setIsLogin(true)}
+                className={`flex-1 py-2 text-center text-sm font-semibold transition-colors ${
+                  isLogin
+                    ? 'text-primary-500 border-b-2 border-primary-500'
+                    : 'text-primary-400 hover:text-primary-500'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsLogin(false)}
+                className={`flex-1 py-2 text-center text-sm font-semibold transition-colors ${
+                  !isLogin
+                    ? 'text-primary-500 border-b-2 border-primary-500'
+                    : 'text-primary-400 hover:text-primary-500'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {!isLogin && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-primary-500 text-sm font-medium mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First Name"
+                        required
+                        className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-primary-500 text-sm font-medium mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last Name"
+                        required
+                        className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-primary-500 text-sm font-medium mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+1234567890"
+                      required
+                      className="w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                  className="login-form-input w-full px-3 py-2.5 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    required
+                    minLength={6}
+                    autoComplete="current-password"
+                    className="login-form-input w-full px-3 py-2.5 pr-11 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-primary-500 hover:text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="mr-2 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500 cursor-pointer"
+                    style={{ accentColor: '#D4AF37' }}
+                  />
+                  <span className="text-primary-400 text-sm">Remember me</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setShowForgotPassword(true)
+                  }}
+                  className="text-primary-500 text-sm hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              {!isLogin && (
+                <div className="space-y-3 rounded-lg border border-primary-500/20 bg-black/40 p-3">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                      style={{ accentColor: '#D4AF37' }}
+                    />
+                    <span className="text-primary-400 text-xs leading-relaxed">
+                      I agree to the{' '}
+                      <Link href="/terms" target="_blank" className="text-primary-500 hover:underline">
+                        Terms of Service
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedPrivacy}
+                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                      className="mt-0.5 border-primary-500 text-primary-500 focus:ring-primary-500 bg-black accent-primary-500"
+                      style={{ accentColor: '#D4AF37' }}
+                    />
+                    <span className="text-primary-400 text-xs leading-relaxed">
+                      I agree to the{' '}
+                      <Link href="/privacy" target="_blank" className="text-primary-500 hover:underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-900/90 border-2 border-red-600 text-red-200 px-4 py-3 rounded-lg text-sm font-medium animate-pulse">
+                  âš ï¸ {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || (!isLogin && (!acceptedTerms || !acceptedPrivacy))}
+                className="w-full bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
+
+      {/* Wallet Onboarding - Show after login or registration (PRIMARY ONBOARDING) */}
+      {showPermissions && justAuthenticated && (
+        <WalletOnboarding
+          showOnMount={true}
+          onComplete={() => {
+            setShowPermissions(false)
+            setJustAuthenticated(false)
+            // Don't use router.push - the app uses state-based navigation
+            // The page.tsx will automatically show the dashboard when user is set
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+</file>
+
+<file path="shot-on-me/app/contexts/AuthContext.tsx">
+'use client'
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import axios from 'axios'
+
+interface User {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  name?: string // Computed from firstName + lastName, but may be provided by backend
+  username?: string
+  profilePicture?: string
+  location?: {
+    latitude?: number
+    longitude?: number
+    isVisible?: boolean
+  }
+  wallet: {
+    balance: number
+    pendingBalance: number
+  }
+}
+
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  register: (data: RegisterData) => Promise<void>
+  logout: () => void
+  updateUser: (data: Partial<User>) => Promise<void>
+  token: string | null
+}
+
+interface RegisterData {
+  email: string
+  password: string
+  phoneNumber: string
+  firstName: string
+  lastName: string
+  referrerId?: string
+  acceptedTerms: boolean
+  acceptedPrivacy: boolean
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Import centralized API URL function
+import { getApiUrl, buildApiUrl } from '../utils/api'
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [token, setToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setLoading(false)
+      return
+    }
+    
+    let isMounted = true
+    
+    try {
+      const storedToken = localStorage.getItem('token')
+      if (storedToken) {
+        setToken(storedToken)
+        fetchUser(storedToken)
+      } else {
+        if (isMounted) setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error)
+      if (isMounted) setLoading(false)
+    }
+    
+    const timeout = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false)
+      }
+    }, 10000)
+    
+    return () => {
+      isMounted = false
+      clearTimeout(timeout)
+    }
+  }, [])
+
+  const fetchUser = async (authToken: string) => {
+    if (!authToken) {
+      setLoading(false)
+      return
+    }
+    try {
+      const apiUrl = getApiUrl()
+      
+      const response = await axios.get(`${apiUrl}/users/me`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+        timeout: 10000 // 10 seconds - increased for reliability
+      })
+      
+      // Normalize user data - convert _id to id if needed
+      const userData = response.data.user
+      if (userData && userData._id && !userData.id) {
+        userData.id = userData._id.toString()
+      }
+      
+      // Ensure wallet exists
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
+      }
+      
+      setUser(userData)
+      setToken(authToken) // Ensure token is set
+    } catch (error: any) {
+      console.error('Failed to fetch user:', error)
+      // Only clear token on auth errors, not network errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        try {
+          localStorage.removeItem('token')
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        setToken(null)
+        setUser(null)
+      } else {
+        // For network errors, keep token but show login screen
+        // User can retry when network is available
+        console.warn('Network error - keeping token for retry')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
+    try {
+      const apiUrl = getApiUrl()
+      const loginUrl = buildApiUrl('auth/login')
+      
+      // Validate URL doesn't have double /api
+      if (loginUrl.includes('/api/api')) {
+        console.error('âŒ ERROR: Double /api detected in URL:', loginUrl)
+        throw new Error('Invalid API URL configuration. Please check NEXT_PUBLIC_API_URL in .env.local')
+      }
+      
+      const response = await axios.post(loginUrl, { email, password }, { 
+        timeout: 8000, // 8 seconds - fail faster if backend is down
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      const { token: authToken, user: userData } = response.data
+      
+      // Normalize user data - ensure id field exists
+      if (userData && userData.id) {
+        // Already has id, use as is
+      } else if (userData && userData._id) {
+        userData.id = userData._id.toString()
+      }
+      
+      // Ensure wallet exists in user data
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
+      }
+      
+      // Set state immediately - don't wait for any additional calls
+      setToken(authToken)
+      setUser(userData)
+      
+      // Always save token to localStorage (it's needed for the app to work)
+      // The rememberMe flag is just for UI preference
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', authToken)
+          localStorage.setItem('rememberMe', rememberMe.toString())
+          
+          // Also save user email for auto-fill if remember me is checked
+          if (rememberMe) {
+            localStorage.setItem('savedEmail', email)
+          } else {
+            localStorage.removeItem('savedEmail')
+          }
+        }
+      } catch (error) {
+        console.error('Error saving to localStorage:', error)
+        // Continue even if localStorage fails
+      }
+      
+      // Don't call fetchUser - we already have the user data from login response
+    } catch (error: any) {
+      let errorMessage = 'Login failed'
+      
+      console.error('Login error details:', {
+        code: error.code,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      })
+      
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        // More helpful error message
+        errorMessage = 'Connection timeout. The backend server may not be running or is not responding. Please check the backend PowerShell window and ensure MongoDB is connected.'
+      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('refused')) {
+        errorMessage = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials.'
+      } else if (error.response?.status === 405) {
+        const attemptedUrl = error.config?.url || 'unknown'
+        errorMessage = `Method Not Allowed (405). The API endpoint may not exist.
+
+Attempted URL: ${attemptedUrl}
+
+For PRODUCTION (shotonme.com):
+- Set NEXT_PUBLIC_API_URL in Vercel environment variables
+- Go to: Vercel Dashboard â†’ Settings â†’ Environment Variables
+- Add: NEXT_PUBLIC_API_URL = https://your-backend-url.com/api
+- Then redeploy
+
+For LOCAL development:
+- Make sure backend is running on port 5000
+- Check: http://localhost:5000/api/health`
+      } else if (error.response?.status === 0 || error.message?.includes('Network Error') || error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
+        errorMessage = 'Cannot connect to server. Make sure the backend is running on port 5000.'
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      throw new Error(errorMessage)
+    }
+  }
+
+  const register = async (data: RegisterData) => {
+    try {
+          const apiUrl = getApiUrl()
+          const response = await axios.post(`${apiUrl}/auth/register`, data, {
+            timeout: 30000 // 30 seconds - increased for slow connections
+          })
+      const { token: authToken, user: userData } = response.data
+      // Normalize user data - ensure id field exists
+      if (userData && userData.id) {
+        // Already has id, use as is
+      } else if (userData && userData._id) {
+        userData.id = userData._id.toString()
+      }
+      
+      // Ensure wallet exists
+      if (!userData.wallet) {
+        userData.wallet = { balance: 0, pendingBalance: 0 }
+      }
+      
+      setToken(authToken)
+      setUser(userData)
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', authToken)
+        }
+      } catch (storageError) {
+        console.error('Error saving token to localStorage:', storageError)
+        // Continue even if localStorage fails
+      }
+      
+      // Attribute referral by referrer ID (from invite link ?ref=userId) â€“ backend only, no visible code
+      if (data.referrerId && userData?.id) {
+        try {
+          await axios.post(`${apiUrl}/referrals/apply`, {
+            referrerId: data.referrerId,
+            userId: userData.id
+          }, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          })
+        } catch (refError: any) {
+          console.warn('Failed to apply referral:', refError.message)
+        }
+      }
+      
+      // After successful registration, check if virtual card was automatically created
+      // This happens in the background - no user action needed
+      // The card will be visible in the Wallet tab automatically
+      if (userData && userData.userType === 'user') {
+        // Card creation happens automatically in backend during registration
+        // No need to do anything here - just let the Wallet tab load it
+        console.log('âœ… User registered - virtual card will be created automatically if Issuing is enabled')
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Registration failed'
+      console.error('Registration error:', errorMessage, error)
+      throw new Error(errorMessage)
+    }
+  }
+
+  const logout = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token')
+      }
+    } catch (error) {
+      console.error('Error removing token from localStorage:', error)
+    }
+    setUser(null)
+    setToken(null)
+  }
+
+  const updateUser = async (data: Partial<User>) => {
+    if (!token) throw new Error('Not authenticated')
+    try {
+      // If data contains a full user object (from profile picture upload), use it directly
+      if (data.id || (data as any)._id) {
+        // This is a full user object, update state directly
+        const updatedUser = { ...user, ...data } as User
+        // Ensure id field exists
+        if ((updatedUser as any)._id && !updatedUser.id) {
+          updatedUser.id = (updatedUser as any)._id.toString()
+        }
+        setUser(updatedUser)
+        return
+      }
+      
+      // If called with empty data, fetch fresh user data from server
+      const isEmpty = Object.keys(data).length === 0
+      if (isEmpty) {
+        // Refresh user data from server
+        const apiUrl = getApiUrl()
+        const response = await axios.get(`${apiUrl}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (response.data.user) {
+          const userData = response.data.user
+          if (userData._id && !userData.id) {
+            userData.id = userData._id.toString()
+          }
+          // Ensure wallet exists
+          if (!userData.wallet) {
+            userData.wallet = { balance: 0, pendingBalance: 0 }
+          }
+          setUser(userData)
+          console.log('âœ… User data refreshed from server. Balance:', userData.wallet?.balance)
+        }
+        return
+      }
+      
+      // Otherwise, try to update via API
+      const apiUrl = getApiUrl()
+      const response = await axios.put(`${apiUrl}/users/me`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.data.user) {
+        // Normalize user data
+        const userData = response.data.user
+        if (userData._id && !userData.id) {
+          userData.id = userData._id.toString()
+        }
+        // Ensure wallet exists
+        if (!userData.wallet) {
+          userData.wallet = { balance: 0, pendingBalance: 0 }
+        }
+        setUser(userData)
+      } else {
+        // Merge with existing user data
+        setUser(prev => prev ? { ...prev, ...data } : null)
+      }
+    } catch (error: any) {
+      // If API call fails but we have data, still update local state
+      if (data.profilePicture) {
+        setUser(prev => prev ? { ...prev, ...data } : null)
+      } else {
+        console.error('Error updating user:', error)
+        // Don't throw - just log the error to avoid breaking the UI
+        // The balance will update via webhook/Socket.io eventually
+      }
+    }
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, token }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+</file>
+
+<file path="shot-on-me/app/components/ForgotPasswordModal.tsx">
+'use client'
+
+import { useState } from 'react'
+import { X, Mail } from 'lucide-react'
+import axios from 'axios'
+import { useApiUrl } from '../utils/api'
+
+interface ForgotPasswordModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProps) {
+  const API_URL = useApiUrl()
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [resetToken, setResetToken] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
+  if (!isOpen) return null
+
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    try {
+      const response = await axios.post(`${API_URL}/auth/forgot-password`, { email })
+      setMessage(response.data.message)
+      
+      // In development, show token for testing
+      if (response.data.resetToken) {
+        setResetToken(response.data.resetToken)
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send reset email')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await axios.post(`${API_URL}/auth/reset-password`, {
+        token: resetToken,
+        newPassword
+      })
+      setMessage(response.data.message)
+      setTimeout(() => {
+        onClose()
+        setResetToken('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setEmail('')
+        setMessage('')
+      }, 2000)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to reset password')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+      <div className="bg-black border-2 border-primary-500 rounded-lg p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-primary-500">Reset Password</h2>
+          <button
+            onClick={onClose}
+            className="text-primary-400 hover:text-primary-500"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {!resetToken ? (
+          <form onSubmit={handleRequestReset} className="space-y-4">
+            <div className="flex items-center gap-2 text-primary-400 text-sm mb-4">
+              <Mail className="w-4 h-4" />
+              <p>Enter your email to receive a password reset link.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary-500 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="bg-emerald-900 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-lg text-sm">
+                {message}
+                {process.env.NODE_ENV === 'development' && resetToken && (
+                  <div className="mt-2 pt-2 border-t border-emerald-700">
+                    <p className="text-xs">Dev Token: {resetToken}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-black border border-primary-500 text-primary-500 py-3 rounded-lg font-semibold hover:bg-primary-500/10"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div className="text-primary-400 text-sm mb-4">
+              <p>Enter your new password.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary-500 mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Minimum 6 characters"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary-500 mb-2">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="bg-emerald-900 border border-emerald-700 text-emerald-300 px-4 py-3 rounded-lg text-sm">
+                {message}
+              </div>
+            )}
+
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetToken('')
+                  setNewPassword('')
+                  setConfirmPassword('')
+                }}
+                className="flex-1 bg-black border border-primary-500 text-primary-500 py-3 rounded-lg font-semibold hover:bg-primary-500/10"
+              >
+                Back
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+</file>
+
+<file path="shot-on-me/app/components/WalletOnboarding.tsx">
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useSocket } from '../contexts/SocketContext'
+import axios from 'axios'
+import { CreditCard, Wallet, CheckCircle2, Loader2, ArrowRight, Sparkles, Radio, Shield, Zap } from 'lucide-react'
+import { useApiUrl } from '../utils/api'
+import EnhancedPermissions from './EnhancedPermissions'
+
+interface WalletOnboardingProps {
+  onComplete?: () => void
+  showOnMount?: boolean
+}
+
+export default function WalletOnboarding({ onComplete, showOnMount = true }: WalletOnboardingProps) {
+  const { user, token, updateUser } = useAuth()
+  const { socket, connected } = useSocket()
+  const API_URL = useApiUrl()
+  const [showModal, setShowModal] = useState(false)
+  const [step, setStep] = useState<'card' | 'funds' | 'permissions' | 'complete'>('card')
+  const [creatingCard, setCreatingCard] = useState(false)
+  const [cardStatus, setCardStatus] = useState<any>(null)
+  const [checkingCard, setCheckingCard] = useState(true)
+  const [showPermissions, setShowPermissions] = useState(false)
+  const [socketConnected, setSocketConnected] = useState(false)
+
+  const checkCardStatus = useCallback(async () => {
+    if (!token) return
+    
+    setCheckingCard(true)
+    try {
+      const response = await axios.get(`${API_URL}/virtual-cards/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setCardStatus(response.data)
+      
+      // Determine current step
+      if (response.data.hasCard) {
+        const balance = user?.wallet?.balance || 0
+        if (balance > 0) {
+          setStep('permissions')
+        } else {
+          setStep('funds')
+        }
+      } else {
+        setStep('card')
+      }
+    } catch (error) {
+      console.error('Failed to check card status:', error)
+      setStep('card')
+    } finally {
+      setCheckingCard(false)
+    }
+  }, [token, API_URL, user?.wallet?.balance])
+
+  useEffect(() => {
+    if (showOnMount && token) {
+      // Check if onboarding has been completed
+      let onboardingComplete = null
+      try {
+        onboardingComplete = localStorage.getItem('wallet-onboarding-complete')
+      } catch (err) {
+        onboardingComplete = null
+      }
+      
+      if (!onboardingComplete) {
+        checkCardStatus()
+        setShowModal(true)
+      }
+    }
+  }, [showOnMount, token, checkCardStatus])
+
+  // Monitor Socket.io connection
+  useEffect(() => {
+    if (socket) {
+      setSocketConnected(connected)
+      
+      // Listen for wallet updates
+      const handleWalletUpdate = (data: any) => {
+        console.log('Wallet updated via Socket:', data)
+        if (updateUser) {
+          updateUser({})
+        }
+        checkCardStatus()
+      }
+
+      socket.on('wallet-updated', handleWalletUpdate)
+      socket.on('card-created', handleWalletUpdate)
+      socket.on('payment-processed', handleWalletUpdate)
+
+      return () => {
+        socket.off('wallet-updated', handleWalletUpdate)
+        socket.off('card-created', handleWalletUpdate)
+        socket.off('payment-processed', handleWalletUpdate)
+      }
+    }
+  }, [socket, connected, updateUser, checkCardStatus])
+
+  const handleCreateCard = async () => {
+    if (!token) return
+    
+    setCreatingCard(true)
+    try {
+      const response = await axios.post(`${API_URL}/virtual-cards/create`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      // Wait a moment for card to be fully created
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Refresh card status
+      await checkCardStatus()
+      
+      // Move to next step
+      setStep('funds')
+    } catch (error: any) {
+      console.error('Failed to create card:', error)
+      alert(error.response?.data?.message || 'Failed to create card. Please try again.')
+    } finally {
+      setCreatingCard(false)
+    }
+  }
+
+  const handleSkipFunds = () => {
+    // Move to permissions step
+    setStep('permissions')
+  }
+
+  const handleCompleteOnboarding = () => {
+    try {
+      localStorage.setItem('wallet-onboarding-complete', 'true')
+    } catch (err) {
+      // Continue anyway
+    }
+    setShowModal(false)
+    if (onComplete) onComplete()
+  }
+
+  const handlePermissionsComplete = () => {
+    setShowPermissions(false)
+    setStep('complete')
+    handleCompleteOnboarding()
+  }
+
+  if (!showModal) return null
+
+  const balance = user?.wallet?.balance || 0
+  const hasCard = cardStatus?.hasCard || false
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary-500/30 to-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-primary-500/40">
+              <Wallet className="w-10 h-10 text-primary-500" />
+            </div>
+            <h2 className="text-3xl font-bold text-primary-500 tracking-tight mb-2">
+              Welcome to Shot On Me!
+            </h2>
+            <p className="text-primary-400/80 text-sm font-light">
+              Let's set up your tap-and-pay card to get started
+            </p>
+          </div>
+
+          {/* Socket Connection Status */}
+          <div className={`mb-4 p-3 rounded-lg border flex items-center gap-2 ${
+            socketConnected
+              ? 'bg-green-500/10 border-green-500/20'
+              : 'bg-yellow-500/10 border-yellow-500/20'
+          }`}>
+            {socketConnected ? (
+              <>
+                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                <span className="text-green-400 text-sm">Real-time updates connected</span>
+              </>
+            ) : (
+              <>
+                <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" />
+                <span className="text-yellow-400 text-sm">Connecting to real-time services...</span>
+              </>
+            )}
+          </div>
+
+          {/* Step 1: Create Card */}
+          {step === 'card' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+                    <CreditCard className="w-6 h-6 text-primary-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-primary-500 mb-2">Create Your Tap & Pay Card</h3>
+                    <p className="text-primary-400/80 text-sm mb-4 font-light leading-relaxed">
+                      Your virtual card enables seamless payments at venues. It's free to create and takes just a few seconds.
+                    </p>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-primary-400/70 text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-primary-500" />
+                        <span>Works at all participating venues</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-primary-400/70 text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-primary-500" />
+                        <span>Add to Apple Wallet or Google Pay</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-primary-400/70 text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-primary-500" />
+                        <span>Secure and encrypted</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {checkingCard ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+                  <span className="ml-3 text-primary-400">Checking card status...</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleCreateCard}
+                  disabled={creatingCard || hasCard}
+                  className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold text-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-lg shadow-primary-500/25"
+                >
+                  {creatingCard ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Creating Your Card...</span>
+                    </>
+                  ) : hasCard ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Card Created!</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      <span>Create Tap & Pay Card</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              )}
+
+              {hasCard && (
+                <button
+                  onClick={() => setStep('funds')}
+                  className="w-full bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  Continue to Add Funds
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Add Funds */}
+          {step === 'funds' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+                    <Wallet className="w-6 h-6 text-primary-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-primary-500 mb-2">Add Funds to Your Wallet</h3>
+                    <p className="text-primary-400/80 text-sm mb-4 font-light leading-relaxed">
+                      Add money to your wallet to start using your tap-and-pay card at venues. You can add funds anytime from the Wallet tab.
+                    </p>
+                    <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary-400 text-sm">Current Balance:</span>
+                        <span className="text-2xl font-bold text-primary-500">${balance.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSkipFunds}
+                  className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-all"
+                >
+                  Skip for Now
+                </button>
+                <button
+                  onClick={() => {
+                    // Open wallet tab or add funds modal
+                    // For now, just move to permissions
+                    handleSkipFunds()
+                  }}
+                  className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+                >
+                  Add Funds
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Permissions */}
+          {step === 'permissions' && !showPermissions && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+                    <Shield className="w-6 h-6 text-primary-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-primary-500 mb-2">Enable App Features</h3>
+                    <p className="text-primary-400/80 text-sm mb-4 font-light leading-relaxed">
+                      Enable location, camera, and notifications to get the most out of Shot On Me. You can change these anytime in Settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowPermissions(true)}
+                className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold text-lg hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-primary-500/25"
+              >
+                <Shield className="w-5 h-5" />
+                <span>Set Up Permissions</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Step 4: Complete */}
+          {step === 'complete' && (
+            <div className="space-y-6 text-center">
+              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/40">
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-primary-500">You're All Set!</h3>
+              <p className="text-primary-400/80 text-sm">
+                Your tap-and-pay card is ready to use. Start exploring venues and making payments!
+              </p>
+              <button
+                onClick={handleCompleteOnboarding}
+                className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold text-lg hover:bg-primary-600 transition-all"
+              >
+                Get Started
+              </button>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="mt-6 pt-4 border-t border-primary-500/10 text-center">
+            <p className="text-primary-400/60 text-xs font-light">
+              Step {step === 'card' ? '1' : step === 'funds' ? '2' : step === 'permissions' ? '3' : '4'} of 4
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Permissions Modal */}
+      {showPermissions && (
+        <EnhancedPermissions
+          showOnMount={true}
+          onComplete={handlePermissionsComplete}
+        />
+      )}
+    </>
+  )
+}
+
+</file>
+
+<file path="shot-on-me/app/contexts/SocketContext.tsx">
+'use client'
+
+import { createContext, useContext, useEffect, useState, ReactNode, useRef, useMemo } from 'react'
+import { io, Socket } from 'socket.io-client'
+import { useAuth } from './AuthContext'
+import { getSocketUrl } from '../utils/api'
+
+interface SocketContextType {
+  socket: Socket | null
+  connected: boolean
+}
+
+const SocketContext = createContext<SocketContextType>({ socket: null, connected: false })
+
+export const useSocket = () => useContext(SocketContext)
+
+// Get socket URL dynamically at runtime in browser context
+// Priority: NEXT_PUBLIC_SOCKET_URL env var, then getSocketUrl() fallback
+const getSocketUrlForConnection = () => {
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.trim()
+  }
+  return getSocketUrl()
+}
+
+export function SocketProvider({ children }: { children: ReactNode }) {
+  const [socket, setSocket] = useState<Socket | null>(null)
+  const [connected, setConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null)
+  const userIdRef = useRef<string | null>(null)
+  
+  // Safely get auth context - don't crash if AuthProvider fails
+  let user = null
+  let token = null
+  try {
+    const auth = useAuth()
+    if (auth) {
+      user = auth.user || null
+      token = auth.token || null
+    }
+  } catch (error) {
+    console.warn('SocketProvider: Could not access AuthContext:', error)
+  }
+
+  // Get stable user ID for comparison
+  const userId = useMemo(() => {
+    if (!user) return null
+    return user.id || (user as any)?._id || null
+  }, [user?.id, (user as any)?._id])
+
+  useEffect(() => {
+    // Only reconnect if user ID or token actually changed
+    const currentUserId = userId
+    const hasUserIdChanged = userIdRef.current !== currentUserId
+    const hasToken = !!token
+    
+    // If we already have a socket and nothing changed, don't reconnect
+    if (socketRef.current && socketRef.current.connected && !hasUserIdChanged && hasToken) {
+      return
+    }
+
+    // Clean up existing socket if user changed
+    if (socketRef.current && hasUserIdChanged) {
+      console.log('User changed, closing existing socket')
+      socketRef.current.close()
+      socketRef.current = null
+      setSocket(null)
+      setConnected(false)
+    }
+
+    if (user && token && currentUserId) {
+      const socketUrl = getSocketUrlForConnection()
+      console.log('ðŸ”Œ Connecting Socket.io to:', socketUrl)
+      
+      const newSocket = io(socketUrl, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        timeout: 20000, // 20 second connection timeout
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity, // Keep trying to reconnect
+        // Exponential backoff
+        randomizationFactor: 0.5,
+        // Force new connection to avoid stale connections
+        forceNew: false,
+        // Auto-connect
+        autoConnect: true,
+      })
+
+      newSocket.on('connect', () => {
+        console.log('Connected to Socket.io')
+        setConnected(true)
+        
+        // Authenticate socket connection
+        if (token) {
+          newSocket.emit('authenticate', token)
+        }
+        
+        // Join user-specific room for notifications
+        if (currentUserId) {
+          newSocket.emit('join-user-room', currentUserId)
+          console.log('Joined notification room for user:', currentUserId)
+          userIdRef.current = currentUserId
+        }
+        
+        // Send activity ping every 2 minutes to keep status as online
+        const activityInterval = setInterval(() => {
+          if (newSocket.connected) {
+            newSocket.emit('activity-ping')
+          }
+        }, 120000) // 2 minutes
+        
+        // Store interval ID for cleanup
+        ;(newSocket as any).activityInterval = activityInterval
+      })
+      
+      newSocket.on('authenticated', (data: { success: boolean }) => {
+        if (data.success) {
+          console.log('âœ… Socket authenticated successfully')
+          console.log('ðŸŽ¯ Real-time features enabled:')
+          console.log('   â€¢ Wallet updates')
+          console.log('   â€¢ Card creation notifications')
+          console.log('   â€¢ Payment processing')
+          console.log('   â€¢ Feed updates')
+          console.log('   â€¢ Location sharing')
+          console.log('   â€¢ Messages')
+          console.log('   â€¢ Notifications')
+        } else {
+          console.warn('âš ï¸ Socket authentication failed')
+        }
+      })
+
+      newSocket.on('disconnect', (reason) => {
+        console.log('Disconnected from Socket.io:', reason)
+        setConnected(false)
+        
+        // Don't manually reconnect - let Socket.io handle it automatically
+        // Only manual disconnect reasons: 'io client disconnect' (user action)
+        // All other reasons (transport close, ping timeout, etc.) will auto-reconnect
+      })
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to Socket.io after', attemptNumber, 'attempts')
+        setConnected(true)
+        
+        // Re-authenticate after reconnection
+        if (token) {
+          newSocket.emit('authenticate', token)
+        }
+        
+        // Re-join user room
+        if (currentUserId) {
+          newSocket.emit('join-user-room', currentUserId)
+        }
+      })
+
+      newSocket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('Attempting to reconnect to Socket.io (attempt', attemptNumber, ')')
+      })
+
+      newSocket.on('reconnect_error', (error) => {
+        console.warn('Socket.io reconnection error:', error)
+      })
+
+      newSocket.on('reconnect_failed', () => {
+        console.error('Socket.io reconnection failed after all attempts')
+        setConnected(false)
+      })
+
+      newSocket.on('error', (error) => {
+        console.error('Socket.io error:', error)
+      })
+
+      // Listen for wallet updates
+      newSocket.on('wallet-updated', (data: { userId: string; balance: number }) => {
+        console.log('ðŸ’° Wallet updated via Socket.io:', data)
+        // Emit custom event that components can listen to
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wallet-updated', { detail: data }))
+        }
+      })
+
+      // Listen for card creation
+      newSocket.on('card-created', (data: any) => {
+        console.log('ðŸ’³ Card created via Socket.io:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('card-created', { detail: data }))
+        }
+      })
+
+      // Listen for payment processing
+      newSocket.on('payment-processed', (data: any) => {
+        console.log('ðŸ’¸ Payment processed via Socket.io:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('payment-processed', { detail: data }))
+        }
+      })
+
+      // Listen for notifications
+      newSocket.on('notification', (data: any) => {
+        console.log('ðŸ”” Notification received via Socket.io:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('socket-notification', { detail: data }))
+          
+          // Show browser notification if permission granted
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(data.title || 'Shot On Me', {
+                body: data.message || data.text || data.content,
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: data.id || data.notification?._id || 'notification',
+                requireInteraction: false,
+                silent: false
+              })
+            } catch (error) {
+              console.error('Error showing notification:', error)
+            }
+          }
+        }
+      })
+
+      // Listen for new-notification events (from backend)
+      newSocket.on('new-notification', (data: any) => {
+        console.log('ðŸ”” New notification event:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }))
+          
+          // Show browser notification if permission granted
+          if ('Notification' in window && Notification.permission === 'granted' && data.notification) {
+            try {
+              const notif = data.notification
+              new Notification('Shot On Me', {
+                body: notif.content || data.message || 'You have a new notification',
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: notif._id || 'notification',
+                requireInteraction: false,
+                silent: false
+              })
+            } catch (error) {
+              console.error('Error showing notification:', error)
+            }
+          }
+        }
+      })
+
+      // Listen for feed updates
+      newSocket.on('new-post', (data: any) => {
+        console.log('ðŸ“ New post via Socket.io:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('new-post', { detail: data }))
+        }
+      })
+
+      // Listen for location updates
+      newSocket.on('location-updated', (data: any) => {
+        console.log('ðŸ“ Location updated via Socket.io:', data)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('location-updated', { detail: data }))
+        }
+      })
+
+      socketRef.current = newSocket
+      setSocket(newSocket)
+
+      return () => {
+        // Clear activity ping interval
+        if ((newSocket as any).activityInterval) {
+          clearInterval((newSocket as any).activityInterval)
+        }
+        newSocket.close()
+        socketRef.current = null
+      }
+    } else {
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
+        setSocket(null)
+        setConnected(false)
+        userIdRef.current = null
+      }
+    }
+  }, [userId, token])
+
+  return (
+    <SocketContext.Provider value={{ socket, connected }}>
+      {children}
+    </SocketContext.Provider>
+  )
+}
+
+</file>
+
+<file path="shot-on-me/app/components/EnhancedPermissions.tsx">
+'use client'
+
+import { useState, useEffect } from 'react'
+import { MapPin, Camera, Users, Bell, Mic, X } from 'lucide-react'
+
+interface PermissionConfig {
+  key: string
+  icon: any
+  title: string
+  description: string
+  why: string
+}
+
+interface EnhancedPermissionsProps {
+  onComplete?: () => void
+  showOnMount?: boolean
+}
+
+export default function EnhancedPermissions({ onComplete, showOnMount = true }: EnhancedPermissionsProps) {
+  const [showModal, setShowModal] = useState(false)
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({
+    location: true,
+    camera: true,
+    microphone: true,
+    contacts: true,
+    notifications: true
+  })
+  const [requesting, setRequesting] = useState<string | null>(null)
+  const [requested, setRequested] = useState<Set<string>>(new Set())
+  const [availability, setAvailability] = useState<Record<string, boolean>>({
+    location: true,
+    camera: true,
+    microphone: true,
+    contacts: false,
+    notifications: false
+  })
+
+  // Check availability on mount
+  useEffect(() => {
+    try {
+      // Check contacts API availability (only available on mobile browsers with HTTPS)
+      let contactsAvailable = false
+      try {
+        contactsAvailable = 'contacts' in navigator && typeof (window as any).ContactsManager !== 'undefined'
+      } catch (e) {
+        contactsAvailable = false
+      }
+      setAvailability(prev => ({ ...prev, contacts: contactsAvailable }))
+      
+      // Check notifications API availability
+      const notificationsAvailable = typeof window !== 'undefined' && 'Notification' in window
+      setAvailability(prev => ({ ...prev, notifications: notificationsAvailable }))
+      
+      // If contacts or notifications are not available, disable them by default
+      if (!contactsAvailable) {
+        setPermissions(prev => ({ ...prev, contacts: false }))
+      }
+      if (!notificationsAvailable) {
+        setPermissions(prev => ({ ...prev, notifications: false }))
+      }
+    } catch (error) {
+      console.error('Error checking permission availability:', error)
+      // Set defaults on error
+      setAvailability({
+        location: true,
+        camera: true,
+        microphone: true,
+        contacts: false,
+        notifications: false
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (showOnMount) {
+      // Check if permissions have been shown before
+      let permissionsShown = null
+      try {
+        permissionsShown = localStorage.getItem('permissions-shown')
+      } catch (err) {
+        permissionsShown = null
+      }
+      if (!permissionsShown) {
+        setShowModal(true)
+      }
+    } else {
+      setShowModal(true)
+    }
+  }, [showOnMount])
+
+  const permissionConfig: PermissionConfig[] = [
+    {
+      key: 'location',
+      icon: MapPin,
+      title: 'Location Access',
+      description: 'Find nearby venues, see friend locations, and get proximity notifications',
+      why: 'We use your location to show you nearby venues with active promotions and help you find friends nearby.'
+    },
+    {
+      key: 'camera',
+      icon: Camera,
+      title: 'Camera Access',
+      description: 'Take photos and videos to share moments with friends',
+      why: 'Capture and share your experiences at venues with photos and videos.'
+    },
+    {
+      key: 'microphone',
+      icon: Mic,
+      title: 'Microphone Access',
+      description: 'Record videos with audio and voice messages',
+      why: 'Add audio to your videos and voice messages for better engagement.'
+    },
+    {
+      key: 'contacts',
+      icon: Users,
+      title: 'Contacts Access',
+      description: 'Find friends who are already on Shot On Me from your contacts',
+      why: 'We match phone numbers to help you quickly find and connect with friends.'
+    },
+    {
+      key: 'notifications',
+      icon: Bell,
+      title: 'Notifications',
+      description: 'Get notified about nearby deals, friend activity, and messages',
+      why: 'Stay updated on promotions, friend check-ins, and important updates.'
+    }
+  ]
+
+  const requestLocation = async () => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      console.warn('Geolocation is not available in this browser')
+      return false
+    }
+    
+    setRequesting('location')
+    try {
+      await new Promise<GeolocationPosition>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Location request timeout'))
+        }, 10000) // 10 second timeout
+        
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeout)
+            resolve(position)
+          },
+          (error) => {
+            clearTimeout(timeout)
+            reject(error)
+          },
+          { 
+            timeout: 8000,
+            enableHighAccuracy: false, // Changed to false for better compatibility
+            maximumAge: 60000
+          }
+        )
+      })
+      setRequested(prev => new Set([...prev, 'location']))
+      return true
+    } catch (error: any) {
+      console.warn('Location permission request failed:', error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.code !== 1) { // PERMISSION_DENIED
+        console.warn('Location error details:', error)
+      }
+      return false
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const requestCamera = async () => {
+    if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Camera API is not available in this browser')
+      return false
+    }
+    
+    setRequesting('camera')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      // Stop all tracks immediately to release the camera
+      stream.getTracks().forEach(track => {
+        track.stop()
+      })
+      setRequested(prev => new Set([...prev, 'camera']))
+      return true
+    } catch (error: any) {
+      console.warn('Camera permission request failed:', error?.name || error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.name !== 'NotAllowedError') {
+        console.warn('Camera error details:', error)
+      }
+      return false
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const requestMicrophone = async () => {
+    if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Microphone API is not available in this browser')
+      return false
+    }
+    
+    setRequesting('microphone')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Stop all tracks immediately to release the microphone
+      stream.getTracks().forEach(track => {
+        track.stop()
+      })
+      setRequested(prev => new Set([...prev, 'microphone']))
+      return true
+    } catch (error: any) {
+      console.warn('Microphone permission request failed:', error?.name || error?.message || error)
+      // Don't show alert for user-denied permissions
+      if (error?.name !== 'NotAllowedError') {
+        console.warn('Microphone error details:', error)
+      }
+      return false
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const requestContacts = async () => {
+    setRequesting('contacts')
+    try {
+      // Check if Contacts API is available
+      if (typeof window === 'undefined' || !('contacts' in navigator)) {
+        console.warn('Contacts API is not available on this device/browser')
+        return false
+      }
+      
+      // Check for ContactsManager (Chrome/Edge on Android)
+      const ContactsManager = (window as any).ContactsManager
+      if (!ContactsManager) {
+        console.warn('ContactsManager is not available. Contacts API requires HTTPS and mobile browser support.')
+        return false
+      }
+      
+      // Request contacts access
+      const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
+      if (contacts && contacts.length > 0) {
+        setRequested(prev => new Set([...prev, 'contacts']))
+        return true
+      }
+      return false
+    } catch (error: any) {
+      // Handle specific error types
+      if (error?.name === 'NotAllowedError' || error?.name === 'AbortError') {
+        console.warn('Contacts permission denied by user')
+      } else if (error?.name === 'NotSupportedError') {
+        console.warn('Contacts API not supported on this device/browser')
+      } else {
+        console.warn('Contacts permission request failed:', error?.message || error)
+      }
+      return false
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const requestNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      console.warn('Notifications are not supported in this browser')
+      return false
+    }
+    
+    setRequesting('notifications')
+    try {
+      // Check current permission first
+      if (Notification.permission === 'granted') {
+        setRequested(prev => new Set([...prev, 'notifications']))
+        return true
+      }
+      
+      if (Notification.permission === 'denied') {
+        console.warn('Notifications are blocked. User must enable them in browser settings.')
+        return false
+      }
+      
+      // Request permission (only works in response to user gesture)
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        setRequested(prev => new Set([...prev, 'notifications']))
+        return true
+      }
+      
+      return false
+    } catch (error: any) {
+      console.warn('Notifications permission request failed:', error?.message || error)
+      return false
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const handleToggle = async (key: string) => {
+    try {
+      const newValue = !permissions[key]
+      setPermissions(prev => ({ ...prev, [key]: newValue }))
+
+      // If enabling, request permission immediately
+      if (newValue && !requested.has(key)) {
+        let success = false
+        switch (key) {
+          case 'location':
+            success = await requestLocation()
+            break
+          case 'camera':
+            success = await requestCamera()
+            break
+          case 'microphone':
+            success = await requestMicrophone()
+            break
+          case 'contacts':
+            success = await requestContacts()
+            break
+          case 'notifications':
+            success = await requestNotifications()
+            break
+        }
+        
+        // If permission request failed and it's not available, disable the toggle
+        if (!success && !availability[key]) {
+          setPermissions(prev => ({ ...prev, [key]: false }))
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleToggle:', error)
+      // Revert toggle on error
+      setPermissions(prev => ({ ...prev, [key]: !prev[key] }))
+    }
+  }
+
+  const handleContinue = async () => {
+    try {
+      // Request all enabled permissions
+      const permissionTypes = ['location', 'camera', 'microphone', 'contacts', 'notifications'] as const
+      
+      for (const type of permissionTypes) {
+        if (permissions[type] && !requested.has(type) && availability[type]) {
+          try {
+            switch (type) {
+              case 'location':
+                await requestLocation()
+                break
+              case 'camera':
+                await requestCamera()
+                break
+              case 'microphone':
+                await requestMicrophone()
+                break
+              case 'contacts':
+                await requestContacts()
+                break
+              case 'notifications':
+                await requestNotifications()
+                break
+            }
+          } catch (error) {
+            console.warn(`Failed to request ${type} permission:`, error)
+            // Continue with other permissions even if one fails
+          }
+          // Small delay between requests to avoid overwhelming the browser
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+
+      // Mark as shown
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('permissions-shown', 'true')
+        }
+      } catch (err) {
+        console.warn('Failed to save permissions-shown flag:', err)
+        // Continue anyway
+      }
+      
+      setShowModal(false)
+      if (onComplete) onComplete()
+    } catch (error) {
+      console.error('Error in handleContinue:', error)
+      // Still close modal and call onComplete even on error
+      setShowModal(false)
+      if (onComplete) onComplete()
+    }
+  }
+
+  const handleSkip = () => {
+    try {
+      localStorage.setItem('permissions-shown', 'true')
+    } catch (err) {
+      // Continue anyway
+    }
+    setShowModal(false)
+    if (onComplete) onComplete()
+  }
+
+  if (!showModal) return null
+
+  const enabledCount = Object.values(permissions).filter(Boolean).length
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-primary-500 tracking-tight">App Permissions</h2>
+            <p className="text-sm text-primary-400/80 mt-1 font-light">
+              Enable features to get the most out of Shot On Me. You can change these anytime in Settings.
+            </p>
+          </div>
+          <button
+            onClick={handleSkip}
+            className="text-primary-400 hover:text-primary-500 transition-all"
+            title="Skip"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Permissions List with Toggles */}
+        <div className="space-y-4 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2">
+          {permissionConfig.map((config) => {
+            const Icon = config.icon
+            const isEnabled = permissions[config.key]
+            const isRequesting = requesting === config.key
+            const hasRequested = requested.has(config.key)
+            const isUnavailable = !availability[config.key]
+
+            return (
+              <div
+                key={config.key}
+                className={`bg-black/40 border rounded-lg p-4 transition-all ${
+                  isEnabled
+                    ? 'border-primary-500/40 bg-primary-500/5'
+                    : 'border-primary-500/20'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className={`w-12 h-12 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isEnabled
+                      ? 'border-primary-500/50 bg-primary-500/20'
+                      : 'border-primary-500/20 bg-primary-500/10'
+                  }`}>
+                    <Icon className={`w-6 h-6 ${isEnabled ? 'text-primary-500' : 'text-primary-500/60'}`} />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-primary-500">{config.title}</h3>
+                      {/* Toggle Switch */}
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={() => handleToggle(config.key)}
+                          disabled={isRequesting || isUnavailable}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-primary-500/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-primary-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"></div>
+                      </label>
+                    </div>
+                    <p className="text-sm text-primary-400/80 mb-2 font-light">{config.description}</p>
+                    <div className="bg-black/40 border border-primary-500/10 rounded p-2 mb-2">
+                      <p className="text-xs text-primary-400/70 font-light">
+                        <span className="text-primary-500 font-medium">Why:</span> {config.why}
+                      </p>
+                    </div>
+                    {/* Status indicators */}
+                    <div className="flex items-center gap-2 text-xs">
+                      {isRequesting && (
+                        <span className="text-primary-400">Requesting...</span>
+                      )}
+                      {hasRequested && isEnabled && (
+                        <span className="text-emerald-400">âœ“ Enabled</span>
+                      )}
+                      {!isEnabled && (
+                        <span className="text-primary-400/60">Disabled</span>
+                      )}
+                      {isUnavailable && (
+                        <span className="text-primary-400/50">
+                          {config.key === 'contacts' 
+                            ? 'Contacts API not supported on this device/browser. You can still find friends by searching.'
+                            : config.key === 'notifications'
+                            ? 'Notifications not supported on this device/browser.'
+                            : 'Not available on this device'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 pt-4 border-t border-primary-500/10">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-primary-400/70 font-light">
+              {enabledCount} of {permissionConfig.length} permissions enabled
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSkip}
+              className="flex-1 bg-black/40 border border-primary-500/20 text-primary-500 py-3 rounded-lg font-medium hover:bg-primary-500/10 transition-all"
+            >
+              Skip
+            </button>
+            <button
+              onClick={handleContinue}
+              disabled={requesting !== null}
+              className="flex-1 bg-primary-500 text-black py-3 rounded-lg font-semibold hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {requesting ? 'Requesting...' : 'Continue'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+</file>
+
+<file path="shot-on-me/app/utils/api.ts">
+/**
+ * CENTRALIZED API URL MANAGEMENT
+ * This is the single source of truth for API URLs across the entire app
+ * 
+ * IMPORTANT: All components should use useApiUrl() hook or getApiUrl() function
+ * DO NOT create custom API URL functions elsewhere
+ */
+
+/**
+ * Gets the base API URL (includes /api suffix)
+ * This must be called at runtime in the browser, not at module load time
+ * 
+ * IMPORTANT: Environment variables take absolute priority. 
+ * Only use fallback logic if environment variables are not set.
+ */
+export const getApiUrl = (): string => {
+  // PRIORITY 1: Environment variable (set in Vercel for production)
+  // This MUST be used when set - do not override with hostname detection
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    let url = process.env.NEXT_PUBLIC_API_URL.trim()
+    // Ensure it ends with /api
+    if (!url.endsWith('/api')) {
+      url = url.endsWith('/') ? `${url}api` : `${url}/api`
+    }
+    return url
+  }
+  
+  // PRIORITY 2: Fallback logic - only used when NEXT_PUBLIC_API_URL is NOT set
+  // This is for local development when environment variable is not configured
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    
+    // For localhost, use local backend
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000/api'
+    }
+    
+    // For IP addresses (mobile devices on same network), use that IP
+    // Mobile devices accessing via IP address (e.g., 192.168.1.100:3001)
+    // Should connect to backend at that same IP on port 5000
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      const apiUrl = `http://${hostname}:5000/api`
+      console.log('ðŸ“± Mobile device detected, using IP-based API URL:', apiUrl)
+      return apiUrl
+    }
+    
+    // For any other hostname in production (should not happen if env var is set),
+    // fallback to Render URL
+    return 'https://shot-on-me.onrender.com/api'
+  }
+  
+  // Default for server-side rendering when env var is not set
+  return 'http://localhost:5000/api'
+}
+
+/**
+ * Gets the Socket.io URL (no /api suffix)
+ * 
+ * IMPORTANT: Environment variables take absolute priority.
+ * Socket.io client will handle protocol conversion (https -> wss) automatically.
+ */
+export const getSocketUrl = (): string => {
+  // PRIORITY 1: NEXT_PUBLIC_SOCKET_URL environment variable (use as-is)
+  // Socket.io client library will automatically convert https:// to wss:// for WebSocket
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.trim()
+  }
+  
+  // PRIORITY 2: Derive from NEXT_PUBLIC_API_URL if SOCKET_URL is not set
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    // Remove /api suffix if present, Socket.io doesn't use /api path
+    let url = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/?$/, '')
+    // Socket.io client will handle https:// to wss:// conversion automatically
+    // Do NOT manually convert here - keep it as https://
+    return url
+  }
+  
+  // PRIORITY 3: Fallback logic - only used when environment variables are NOT set
+  // This is for local development when environment variable is not configured
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    
+    // For localhost, use local backend
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000'
+    }
+    
+    // For IP addresses (mobile devices), extract IP and use port 5000
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return `http://${hostname}:5000`
+    }
+    
+    // For any other hostname in production (should not happen if env var is set),
+    // fallback to Render URL - Socket.io will convert https:// to wss:// automatically
+    return 'https://shot-on-me.onrender.com'
+  }
+  
+  // Default for server-side rendering when env var is not set
+  return 'http://localhost:5000'
+}
+
+// For backward compatibility
+export const getAPI_URL = () => getApiUrl()
+export const getSOCKET_URL = () => getSocketUrl()
+
+/**
+ * React hook to get API URL at runtime (use in components)
+ * Always prioritizes NEXT_PUBLIC_API_URL environment variable when set
+ */
+export const useApiUrl = () => {
+  // Always use getApiUrl() which prioritizes environment variables
+  return getApiUrl()
+}
+
+export const useSocketUrl = () => {
+  // Always use getSocketUrl() which prioritizes environment variables
+  return getSocketUrl()
+}
+
+/**
+ * Gets the venue portal base URL for venue-owner authentication.
+ * Prefer NEXT_PUBLIC_VENUE_PORTAL_URL in production.
+ */
+export const getVenuePortalUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_VENUE_PORTAL_URL) {
+    return process.env.NEXT_PUBLIC_VENUE_PORTAL_URL.trim().replace(/\/$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    const { origin, hostname } = window.location
+
+    // Local development fallback
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3002'
+    }
+
+    // If venue portal lives on same host, this still works.
+    return origin.replace(/\/$/, '')
+  }
+
+  return 'http://localhost:3002'
+}
+
+export const getVenuePortalLoginUrl = (): string => {
+  const base = `${getVenuePortalUrl()}/?source=app`
+  if (typeof window !== 'undefined') {
+    const returnTo = encodeURIComponent(window.location.origin)
+    return `${base}&returnTo=${returnTo}`
+  }
+  return base
+}
+
+/**
+ * Helper function to build full API endpoint URLs
+ * Ensures proper URL construction without double slashes
+ */
+export const buildApiUrl = (endpoint: string): string => {
+  const baseUrl = getApiUrl()
+  // Remove leading slash from endpoint if present
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
+  // Ensure baseUrl doesn't have trailing slash
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  return `${cleanBase}/${cleanEndpoint}`
+}
+</file>
+
+<file path="shot-on-me/app/components/Providers.tsx">
+'use client'
+
+import { ReactNode, useRef, useEffect, useState, useMemo, useContext } from 'react'
+import { Elements } from '@stripe/react-stripe-js'
+import { Stripe } from '@stripe/stripe-js'
+import { AuthProvider } from '../contexts/AuthContext'
+import { SocketProvider } from '../contexts/SocketContext'
+import { GoogleMapsProvider } from '../contexts/GoogleMapsContext'
+import { ErrorBoundary } from './ErrorBoundary'
+import { getStripeInstance } from '../utils/stripe-instance'
+import axios from 'axios'
+import { getApiUrl } from '../utils/api'
+// import { useModal } from '../contexts/ModalContext' // Not needed here anymore
+
+// Create Stripe promise OUTSIDE component - this ensures it's truly stable
+let globalStripePromise: Promise<Stripe | null> | null = null
+let stripeInitialized = false
+
+function initializeGlobalStripe() {
+  if (stripeInitialized) return globalStripePromise
+  
+  // Skip during build time (server-side rendering)
+  // Stripe key will be fetched at runtime in the browser
+  if (typeof window === 'undefined') {
+    stripeInitialized = true
+    globalStripePromise = Promise.resolve(null)
+    return globalStripePromise
+  }
+  
+  stripeInitialized = true
+  
+  const promise = (async () => {
+    try {
+      const API_URL = getApiUrl()
+      const response = await axios.get(`${API_URL}/payments/stripe-key`)
+      
+      if (response.data.configured && response.data.publishableKey) {
+        const key = response.data.publishableKey
+        if (key && !key.includes('0000') && !key.includes('placeholder') && !key.includes('your_stripe')) {
+          // Stripe key loaded successfully (not logging key for security)
+          return await getStripeInstance(key)
+        }
+      }
+      return null
+    } catch (error: any) {
+      // Suppress errors during build or if backend is unavailable
+      if (error.response?.status !== 503 && typeof window !== 'undefined') {
+        console.error('âŒ Failed to fetch Stripe key:', error)
+      }
+      return null
+    }
+  })()
+  
+  globalStripePromise = promise
+  return promise
+}
+
+export default function Providers({ children }: { children: ReactNode }) {
+  // CRITICAL: Use global promise that's created OUTSIDE component
+  // This ensures it's truly stable and never changes
+  const stripePromise = useMemo(() => {
+    return initializeGlobalStripe()
+  }, []) // Empty deps - promise created ONCE
+
+  return (
+    <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Auth Error - Please refresh</div>}>
+      <AuthProvider>
+        <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Socket Error - Please refresh</div>}>
+          <SocketProvider>
+            <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Maps Error - Please refresh</div>}>
+              <GoogleMapsProvider>
+                <ErrorBoundary fallback={<div className="min-h-screen bg-black flex items-center justify-center text-red-500">Stripe Error - Please refresh</div>}>
+                  {/* Render Elements directly - ModalProvider is now outside */}
+                  {stripePromise ? (
+                    <Elements stripe={stripePromise}>
+                      {children}
+                    </Elements>
+                  ) : (
+                    <>{children}</>
+                  )}
+                </ErrorBoundary>
+              </GoogleMapsProvider>
+            </ErrorBoundary>
+          </SocketProvider>
+        </ErrorBoundary>
+      </AuthProvider>
+    </ErrorBoundary>
+  )
+}
+
+
+
+</file>
+
+<file path="shot-on-me/app/page.tsx">
+'use client'
+
+import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { useAuth } from './contexts/AuthContext'
+import LoginScreen from './components/LoginScreen'
+import Dashboard from './components/Dashboard'
+import BottomNav from './components/BottomNav'
+import FeedTab from './components/FeedTab'
+import WalletTab from './components/WalletTab'
+import MapTab from './components/MapTab'
+import ProfileTab from './components/ProfileTab'
+import HomeTab from './components/HomeTab'
+import MessagesTab from './components/MessagesTab'
+import GroupChatsTab from './components/GroupChatsTab'
+import FriendProfile from './components/FriendProfile'
+import ProximityNotifications from './components/ProximityNotifications'
+import PermissionsManager from './components/PermissionsManager'
+import TonightTab from './components/TonightTab'
+import BadgesScreen from './components/BadgesScreen'
+import LeaderboardsScreen from './components/LeaderboardsScreen'
+import RewardsScreen from './components/RewardsScreen'
+import ReferralScreen from './components/ReferralScreen'
+import MyVenuesTab from './components/MyVenuesTab'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { Tab } from '@/app/types'
+
+function Home() {
+  const { user, loading } = useAuth()
+  const [activeTab, setActiveTab] = useState<Tab>('home')
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null)
+  const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
+  const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
+  const [autoOpenPostForm, setAutoOpenPostForm] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Clear caches but DON'T reload (prevents infinite loop)
+    if ('caches' in window) {
+      caches.keys().then(names => names.forEach(name => caches.delete(name)))
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
+    }
+    
+    setIsMounted(true)
+  }, [])
+
+  // Scroll to top when returning to home tab
+  useEffect(() => {
+    if (activeTab === 'home' && typeof window !== 'undefined') {
+      // Force scroll to absolute top - use requestAnimationFrame for reliable execution
+      const scrollToTop = () => {
+        // Use all available scroll methods
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, 0)
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        }
+        if (typeof document !== 'undefined') {
+          if (document.documentElement) {
+            document.documentElement.scrollTop = 0
+            document.documentElement.scrollLeft = 0
+          }
+          if (document.body) {
+            document.body.scrollTop = 0
+            document.body.scrollLeft = 0
+          }
+          // Also try scrolling the main element
+          const mainElement = document.querySelector('main')
+          if (mainElement) {
+            mainElement.scrollTop = 0
+          }
+          // Force scroll on window - check current position and force scroll if needed
+          if (typeof window !== 'undefined') {
+            if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
+              window.scrollTo(0, 0)
+            }
+            if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
+              window.scrollTo(0, 0)
+            }
+          }
+        }
+      }
+      
+      // Scroll immediately using requestAnimationFrame for better reliability
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          scrollToTop()
+          // Also scroll after brief delays
+          setTimeout(scrollToTop, 0)
+          setTimeout(scrollToTop, 10)
+          setTimeout(scrollToTop, 50)
+          setTimeout(scrollToTop, 100)
+          setTimeout(scrollToTop, 200)
+        })
+      } else {
+        // Fallback if requestAnimationFrame not available
+        scrollToTop()
+        setTimeout(scrollToTop, 0)
+        setTimeout(scrollToTop, 50)
+        setTimeout(scrollToTop, 100)
+      }
+    }
+  }, [activeTab])
+
+  // Removed console.log to reduce noise - tab changes are handled by state
+
+  useEffect(() => {
+    if (!user || loading) return
+    
+    const handleHashChange = () => {
+      if (window.location.hash === '#profile') {
+        setActiveTab('profile')
+      }
+    }
+    
+    window.addEventListener('hashchange', handleHashChange)
+    handleHashChange()
+    
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [setActiveTab, user, loading])
+
+  // Listen for open-post-form event
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleOpenPostForm = () => {
+      setAutoOpenPostForm(true)
+      setActiveTab('feed')
+    }
+    
+    window.addEventListener('open-post-form', handleOpenPostForm)
+    return () => window.removeEventListener('open-post-form', handleOpenPostForm)
+  }, [])
+
+  // Listen for search modal open/close events
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleOpenSearch = () => {
+      setIsSearchOpen(true)
+    }
+    const handleCloseSearch = () => {
+      setIsSearchOpen(false)
+    }
+    
+    window.addEventListener('open-search', handleOpenSearch)
+    window.addEventListener('close-search', handleCloseSearch)
+    return () => {
+      window.removeEventListener('open-search', handleOpenSearch)
+      window.removeEventListener('close-search', handleCloseSearch)
+    }
+  }, [])
+
+  // CRITICAL: NEVER render anything during SSR - completely client-only
+  // This is the nuclear option to prevent ALL hydration mismatches
+  if (typeof window === 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Wait for mount AND loading to complete
+  if (!isMounted || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-primary-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login screen if no user
+  if (!user) {
+    return <LoginScreen />
+  }
+
+  return (
+    <ErrorBoundary>
+      {user && isMounted && <PermissionsManager />}
+      <Dashboard 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        viewingProfile={viewingProfile}
+        setViewingProfile={setViewingProfile}
+        onOpenAddFunds={() => setAutoOpenAddFunds(true)}
+      />
+      <ProximityNotifications />
+      <main className="min-h-screen bg-black overflow-y-auto">
+        {activeTab === 'home' && (
+          <HomeTab 
+            setActiveTab={setActiveTab} 
+            onViewProfile={setViewingProfile} 
+            onSendMoney={() => {
+              setAutoOpenSendForm(true)
+              setActiveTab('wallet')
+            }} 
+          />
+        )}
+        {activeTab === 'wallet' && <WalletTab 
+          autoOpenSendForm={autoOpenSendForm} 
+          onSendFormOpened={() => setAutoOpenSendForm(false)}
+          autoOpenAddFunds={autoOpenAddFunds}
+          onAddFundsOpened={() => setAutoOpenAddFunds(false)}
+        />}
+        {activeTab === 'feed' && (
+          <ErrorBoundary>
+            <FeedTab 
+              onViewProfile={setViewingProfile} 
+              autoOpenPostForm={autoOpenPostForm}
+              onPostFormOpened={() => setAutoOpenPostForm(false)}
+            />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'map' && (
+          <MapTab 
+            setActiveTab={setActiveTab} 
+            onViewProfile={setViewingProfile} 
+            activeTab={activeTab}
+            onOpenSettings={() => {
+              // Trigger settings modal from Dashboard
+              const event = new CustomEvent('open-settings')
+              window.dispatchEvent(event)
+            }}
+          />
+        )}
+        {/* Messages are now in header modal, not a tab */}
+        {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
+        {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} setActiveTab={setActiveTab} />}
+        {/* Menu items from hamburger menu */}
+        {activeTab === 'tonight' && <TonightTab />}
+        {activeTab === 'badges' && <BadgesScreen />}
+        {activeTab === 'leaderboards' && <LeaderboardsScreen />}
+        {activeTab === 'rewards' && <RewardsScreen />}
+        {activeTab === 'referrals' && <ReferralScreen />}
+        {activeTab === 'venues' && <MyVenuesTab />}
+      </main>
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
+      {viewingProfile && (
+        <FriendProfile
+          userId={viewingProfile}
+          onClose={() => setViewingProfile(null)}
+          onSendShot={(userId) => {
+            setViewingProfile(null)
+            setAutoOpenSendForm(true)
+            setActiveTab('wallet')
+          }}
+        />
+      )}
+    </ErrorBoundary>
+  )
+}
+
+// Export Home component directly - dynamic import can cause 404 issues
+export default Home
+
+</file>
+
+<file path="shot-on-me/package.json">
+{
+  "name": "shot-on-me",
+  "version": "1.0.0",
+  "description": "Shot On Me - Social payment app",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3001 -H 0.0.0.0",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-google-maps/api": "^2.20.7",
+    "@stripe/react-stripe-js": "^5.3.0",
+    "@stripe/stripe-js": "^8.4.0",
+    "axios": "^1.6.2",
+    "date-fns": "^3.0.6",
+    "fabric": "^6.9.0",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^0.303.0",
+    "mapbox-gl": "^3.0.1",
+    "next": "^14.2.18",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-color": "^2.19.3",
+    "react-dom": "^18.3.1",
+    "react-easy-crop": "^5.5.6",
+    "react-hook-form": "^7.49.2",
+    "react-map-gl": "^7.1.7",
+    "react-qr-code": "^2.0.18",
+    "socket.io-client": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/mapbox-gl": "^3.0.0",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.16",
+    "canvas": "^3.2.0",
+    "next-pwa": "^5.6.0",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3"
+  }
+}
+</file>
+

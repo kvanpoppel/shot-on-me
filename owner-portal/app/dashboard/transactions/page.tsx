@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import axios from 'axios'
@@ -9,6 +10,8 @@ import { Search, Filter, Download, Loader, DollarSign } from 'lucide-react'
 
 export default function TransactionsPage() {
   const { token } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const API_URL = useApiUrl()
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,6 +23,19 @@ export default function TransactionsPage() {
     search: ''
   })
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 })
+  const aiIntent = searchParams.get('ai')
+
+  useEffect(() => {
+    if (aiIntent === 'low_volume_today') {
+      const today = new Date().toISOString().split('T')[0]
+      setFilters((prev) => ({
+        ...prev,
+        startDate: today,
+        endDate: today
+      }))
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    }
+  }, [aiIntent])
 
   useEffect(() => {
     if (token) {
@@ -156,6 +172,18 @@ export default function TransactionsPage() {
             </div>
           </div>
         </div>
+
+        {aiIntent === 'low_volume_today' && (
+          <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3 flex items-center justify-between">
+            <p className="text-sm text-primary-500">AI filter active: showing today&apos;s transactions.</p>
+            <button
+              onClick={() => router.push('/dashboard/transactions')}
+              className="text-xs px-2 py-1 rounded bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Transactions Table */}
         <div className="bg-black border-2 border-primary-500/30 rounded-lg overflow-hidden">

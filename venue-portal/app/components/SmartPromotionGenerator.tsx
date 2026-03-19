@@ -18,6 +18,12 @@ interface GeneratedPromotion {
   daysOfWeek: string[]
   confidence: number
   reasoning: string
+  autoNotify?: boolean
+  pricePoint?: {
+    originalPrice: number
+    specialPrice: number
+    currency: string
+  }
   priority?: string
   category?: string
 }
@@ -83,7 +89,9 @@ export default function SmartPromotionGenerator({ onGenerated }: { onGenerated?:
         endTime: promo.endTime || '22:00',
         daysOfWeek: promo.daysOfWeek || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
         confidence: topSuggestion.confidence,
-        reasoning: topSuggestion.description
+        reasoning: topSuggestion.description,
+        autoNotify: !!topSuggestion.autoNotify,
+        pricePoint: promo.pricePoint
       })
     } catch (error: any) {
       showError(error.message || 'Failed to generate promotion')
@@ -106,6 +114,7 @@ export default function SmartPromotionGenerator({ onGenerated }: { onGenerated?:
           suggestion: {
             suggestedPromotion: generated,
             autoPost: true,
+            autoNotify: generated.autoNotify ?? true,
             confidence: generated.confidence
           }
         },
@@ -258,6 +267,15 @@ export default function SmartPromotionGenerator({ onGenerated }: { onGenerated?:
                   <span className="text-sm font-semibold text-primary-500/70 ml-1">OFF</span>
                 </div>
               </div>
+
+              {generated.pricePoint && (
+                <div className="flex items-center justify-center">
+                  <div className="text-xs text-primary-400/80 bg-black/30 border border-primary-500/20 rounded-full px-4 py-1.5">
+                    Suggested price: {generated.pricePoint.currency} {generated.pricePoint.specialPrice.toFixed(2)}
+                    {' '}<span className="line-through text-primary-500/60">({generated.pricePoint.originalPrice.toFixed(2)})</span>
+                  </div>
+                </div>
+              )}
 
               {/* Details Grid */}
               <div className="grid grid-cols-2 gap-3 pt-2">

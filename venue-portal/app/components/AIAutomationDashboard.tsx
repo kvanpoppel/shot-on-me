@@ -245,6 +245,22 @@ export default function AIAutomationDashboard() {
                     <p><strong>Title:</strong> {suggestion.suggestedPromotion.title}</p>
                     <p><strong>Discount:</strong> {suggestion.suggestedPromotion.discount}%</p>
                     <p><strong>Type:</strong> {suggestion.suggestedPromotion.type}</p>
+                    {suggestion.suggestedPromotion.pricePoint?.specialPrice && (
+                      <p>
+                        <strong>Suggested Price:</strong>{' '}
+                        {suggestion.suggestedPromotion.pricePoint.currency || 'USD'} {Number(suggestion.suggestedPromotion.pricePoint.specialPrice).toFixed(2)}
+                      </p>
+                    )}
+                    {(suggestion.suggestedPromotion.startTime || suggestion.suggestedPromotion.endTime) && (
+                      <p>
+                        <strong>Best Time:</strong> {suggestion.suggestedPromotion.startTime || '17:00'} - {suggestion.suggestedPromotion.endTime || '22:00'}
+                      </p>
+                    )}
+                    {Array.isArray(suggestion.suggestedPromotion.daysOfWeek) && suggestion.suggestedPromotion.daysOfWeek.length > 0 && (
+                      <p>
+                        <strong>Best Days:</strong> {suggestion.suggestedPromotion.daysOfWeek.join(', ')}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

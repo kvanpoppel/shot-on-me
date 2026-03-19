@@ -5,6 +5,7 @@ const User = require('../models/User')
 const Venue = require('../models/Venue')
 const Payment = require('../models/Payment')
 const VirtualCard = require('../models/VirtualCard')
+const OwnerAIInsightEvent = require('../models/OwnerAIInsightEvent')
 const mongoose = require('mongoose')
 
 // Middleware to check if user is owner/admin
@@ -137,6 +138,23 @@ router.get('/dashboard', auth, isOwner, async (req, res) => {
     const tapAndPayTransactions = allPayments.filter(p => p.type === 'tap_and_pay')
     const tapAndPayCount = tapAndPayTransactions.length
     const tapAndPayRevenue = tapAndPayTransactions.reduce((sum, p) => sum + (p.amount || 0), 0)
+
+    // Owner AI insight adoption metrics
+    const insightWindowStart = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const insightEvents = await OwnerAIInsightEvent.find({
+      ownerId: req.user.userId,
+      createdAt: { $gte: insightWindowStart },
+      eventType: 'apply'
+    }).lean()
+
+    const insightCounts = insightEvents.reduce((acc, event) => {
+      const key = event.insightKey || 'unknown'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+
+    const weekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const appliedThisWeek = insightEvents.filter(e => new Date(e.createdAt) >= weekStart).length
     
     res.json({
       overview: {
@@ -168,10 +186,72 @@ router.get('/dashboard', auth, isOwner, async (req, res) => {
           count: tapAndPayCount,
           revenue: tapAndPayRevenue.toFixed(2)
         }
+      },
+      aiInsights: {
+        appliedLast30Days: insightEvents.length,
+        appliedThisWeek,
+        insightCounts
       }
     })
   } catch (error) {
     console.error('Error fetching owner dashboard:', error)
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+})
+
+// @route   POST /api/owner/ai-insights/track
+// @desc    Track owner AI insight apply event
+// @access  Private (Owner only)
+router.post('/ai-insights/track', auth, isOwner, async (req, res) => {
+  try {
+    const { insightKey, aiIntent = '', actionHref = '' } = req.body || {}
+    if (!insightKey || typeof insightKey !== 'string') {
+      return res.status(400).json({ message: 'insightKey is required' })
+    }
+
+    await OwnerAIInsightEvent.create({
+      ownerId: req.user.userId,
+      insightKey,
+      aiIntent,
+      actionHref,
+      eventType: 'apply'
+    })
+
+    return res.json({ message: 'AI insight event tracked' })
+  } catch (error) {
+    console.error('Error tracking AI insight event:', error)
+    return res.status(500).json({ message: 'Server error', error: error.message })
+  }
+})
+
+// @route   GET /api/owner/ai-insights/metrics
+// @desc    Get owner AI insight metrics
+// @access  Private (Owner only)
+router.get('/ai-insights/metrics', auth, isOwner, async (req, res) => {
+  try {
+    const period = parseInt(req.query.period || '30', 10)
+    const start = new Date()
+    start.setDate(start.getDate() - Math.max(1, period))
+
+    const events = await OwnerAIInsightEvent.find({
+      ownerId: req.user.userId,
+      createdAt: { $gte: start },
+      eventType: 'apply'
+    }).lean()
+
+    const byInsight = events.reduce((acc, event) => {
+      const key = event.insightKey || 'unknown'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+
+    res.json({
+      periodDays: period,
+      totalApplies: events.length,
+      byInsight
+    })
+  } catch (error) {
+    console.error('Error fetching AI insight metrics:', error)
     res.status(500).json({ message: 'Server error', error: error.message })
   }
 })
