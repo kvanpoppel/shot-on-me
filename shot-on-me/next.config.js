@@ -3,6 +3,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: { ignoreBuildErrors: true },
+  output: 'standalone',
   reactStrictMode: true,
   webpack: (config) => {
     config.resolve.alias = {
@@ -19,4 +20,5 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+
 
