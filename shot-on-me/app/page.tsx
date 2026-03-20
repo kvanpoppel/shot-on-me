@@ -1,4 +1,3 @@
-export const dynamic = 'force-dynamic'
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -264,5 +263,6 @@ function Home() {
 
 // Export Home component directly - dynamic import can cause 404 issues
 export default Home
+
 
 
