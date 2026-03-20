@@ -1,8 +1,5 @@
 'use client'
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { useAuth } from './contexts/AuthContext'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
@@ -264,6 +261,7 @@ function Home() {
 
 // Export Home component directly - dynamic import can cause 404 issues
 export default Home
+
 
 
 
