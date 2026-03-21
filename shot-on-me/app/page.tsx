@@ -20,7 +20,6 @@ import LeaderboardsScreen from './components/LeaderboardsScreen'
 import RewardsScreen from './components/RewardsScreen'
 import ReferralScreen from './components/ReferralScreen'
 import MyVenuesTab from './components/MyVenuesTab'
-import WhatsHappeningTab from './components/WhatsHappeningTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
@@ -243,7 +242,6 @@ function Home() {
         {activeTab === 'rewards' && <RewardsScreen />}
         {activeTab === 'referrals' && <ReferralScreen />}
         {activeTab === 'venues' && <MyVenuesTab />}
-        {activeTab === 'whats-happening' && <WhatsHappeningTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
       {viewingProfile && (
@@ -263,7 +261,6 @@ function Home() {
 
 // Export Home component directly - dynamic import can cause 404 issues
 export default Home
-
 
 
 
