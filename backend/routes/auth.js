@@ -121,8 +121,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         userType: user.userType || 'user'
       },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '7d' }
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
     // Split name into firstName and lastName for frontend compatibility
@@ -277,8 +277,8 @@ router.post('/register', async (req, res) => {
         email: newUser.email,
         userType: newUser.userType
       },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '7d' }
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
     // Split name into firstName and lastName for frontend compatibility
@@ -404,8 +404,8 @@ router.post('/register-venue', async (req, res) => {
         email: newUser.email,
         userType: 'venue'
       },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '7d' }
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
     // Return user data and token
@@ -466,7 +466,7 @@ router.post('/forgot-password', async (req, res) => {
     // Generate reset token
     const resetToken = jwt.sign(
       { userId: user._id, type: 'password-reset' },
-      process.env.JWT_SECRET || 'fallback_secret',
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
@@ -520,7 +520,7 @@ router.post('/reset-password', async (req, res) => {
     // Verify token
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (decoded.type !== 'password-reset') {
         return res.status(400).json({ message: 'Invalid reset token' });
       }

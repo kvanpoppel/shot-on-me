@@ -65,10 +65,13 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Invalid amount',
         error: `Amount must be a positive number. Received: ${amount}`
       });
+    }
+    if (amountNum > 500) {
+      return res.status(400).json({ message: 'Amount exceeds the maximum of $500 per transaction' });
     }
 
     const sender = await User.findById(req.user.userId);
@@ -704,10 +707,13 @@ router.post('/create-intent', auth, async (req, res) => {
     // Validate and parse amount
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Valid amount is required',
         error: `Amount must be a positive number. Received: ${amount} (type: ${typeof amount})`
       });
+    }
+    if (amountNum > 500) {
+      return res.status(400).json({ message: 'Amount exceeds the maximum of $500 per transaction' });
     }
 
     // Check if Stripe is configured

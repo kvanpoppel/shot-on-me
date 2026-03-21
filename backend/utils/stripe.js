@@ -241,7 +241,10 @@ async function createConnectedAccountCharge(
 function verifyWebhookSignature(payload, signature) {
   try {
     if (!process.env.STRIPE_WEBHOOK_SECRET) {
-      console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set. Webhook verification disabled.');
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('STRIPE_WEBHOOK_SECRET is required in production. Webhook rejected.');
+      }
+      console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set. Webhook verification disabled (dev only).');
       return null;
     }
 

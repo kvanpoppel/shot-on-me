@@ -49,12 +49,22 @@ router.get('/code', auth, async (req, res) => {
 
 // Apply referral (when new user signs up via invite link)
 // Uses referrerId (user ID) only – no visible referral code. Tied to user ID on backend.
-router.post('/apply', async (req, res) => {
+router.post('/apply', auth, async (req, res) => {
   try {
     const { referrerId, userId } = req.body;
 
     if (!referrerId || !userId) {
       return res.status(400).json({ message: 'Referrer ID and user ID are required' });
+    }
+
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(referrerId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid referrer or user ID' });
+    }
+
+    // Ensure the authenticated user is the one being referred
+    if (req.user.userId !== userId) {
+      return res.status(403).json({ message: 'Unauthorized: userId does not match authenticated user' });
     }
 
     const referrer = await User.findById(referrerId);

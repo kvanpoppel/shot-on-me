@@ -750,10 +750,26 @@ router.post('/status/batch', auth, async (req, res) => {
       return res.status(400).json({ message: 'userIds must be an array' });
     }
 
+    const mongoose = require('mongoose');
+    const validIds = userIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validIds.length === 0) return res.json({ statuses: {} });
+
+    const users = await User.find({ _id: { $in: validIds } }).select('_id lastSeen status');
+
+    const now = Date.now();
     const statuses = {};
-    for (const userId of userIds) {
-      const status = await getUserStatus(userId);
-      statuses[userId] = status;
+    for (const user of users) {
+      let calculatedStatus = 'offline';
+      if (user.lastSeen) {
+        const diffMinutes = (now - new Date(user.lastSeen).getTime()) / 60000;
+        calculatedStatus = diffMinutes <= 5 ? 'online' : diffMinutes <= 30 ? 'away' : 'offline';
+      }
+      statuses[user._id.toString()] = { status: calculatedStatus, lastSeen: user.lastSeen };
+    }
+
+    // Fill in offline for any requested ids not found
+    for (const id of validIds) {
+      if (!statuses[id]) statuses[id] = { status: 'offline', lastSeen: null };
     }
 
     res.json({ statuses });

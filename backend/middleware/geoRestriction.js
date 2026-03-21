@@ -4,7 +4,7 @@ const ALLOWED_STATES = new Set(['IN']);
 function lookupState(ip) {
   return new Promise((resolve) => {
     if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return resolve(null);
-    const req = https.get(`http://ip-api.com/json/${ip}?fields=status,regionCode`, { timeout: 3000 }, (res) => {
+    const req = https.get(`https://ip-api.com/json/${ip}?fields=status,regionCode`, { timeout: 3000 }, (res) => {
       let data = '';
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => { try { const json = JSON.parse(data); resolve(json.status === 'success' ? json.regionCode : null); } catch { resolve(null); } });
