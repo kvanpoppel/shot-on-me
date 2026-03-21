@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 // Removed Inter font import to prevent hydration mismatches - using CSS font instead
 import './globals.css'
 import AppWrapper from './components/AppWrapper'
+import Providers from './components/Providers'
 
 export const metadata: Metadata = {
   title: 'Shot On Me - Send Money, Share Moments',
@@ -47,7 +48,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans" suppressHydrationWarning>
         <AppWrapper>
-          {children}
+          <Providers>
+            {children}
+          </Providers>
         </AppWrapper>
       </body>
     </html>

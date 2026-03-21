@@ -2,19 +2,14 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../contexts/AuthContext'
 
 // Redirect /home to root / to avoid duplicate pages
 export default function HomePage() {
-  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
-      // Always redirect to root
-      router.replace('/')
-    }
-  }, [loading, router])
+    router.replace('/')
+  }, [router])
 
   // Show loading while redirecting
   return (
