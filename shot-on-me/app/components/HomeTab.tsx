@@ -1392,12 +1392,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* What's Happening - Friend-focused: nearby friends, navigates to Tonight */}
+      {/* What's Happening - Friend-focused: nearby friends, navigates to happening */}
       {nearbyFriends.length > 0 && !searchQuery && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-4">
             <button
-              onClick={() => setActiveTab?.('feed')}
+              onClick={() => setActiveTab?.('happening')}
               className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
             >
               <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
@@ -1410,7 +1410,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             </button>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setActiveTab?.('feed')}
+                onClick={() => setActiveTab?.('happening')}
                 className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
               >
                 See All
