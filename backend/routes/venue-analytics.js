@@ -19,7 +19,7 @@ router.get('/:venueId', auth, async (req, res) => {
     }
 
     // Check if user is venue owner
-    if (venue.owner.toString() !== req.user.userId) {
+    if (venue.owner.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -231,7 +231,7 @@ router.get('/:venueId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue analytics:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -245,7 +245,7 @@ router.get('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    if (venue.owner.toString() !== req.user.userId) {
+    if (venue.owner.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -294,7 +294,7 @@ router.get('/:venueId/promotions/:promotionId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching promotion ROI:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

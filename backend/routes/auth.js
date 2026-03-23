@@ -4,6 +4,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const analytics = require('../utils/analytics');
+const auth = require('../middleware/auth');
+const PendingPayment = require('../models/PendingPayment');
+const AuditLog = require('../models/AuditLog');
+const { normalizePhone } = require('../utils/phone');
+const { authLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -60,7 +65,7 @@ const resolveVenuePortalBaseUrl = (req) => {
 };
 
 // Login route
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const startTime = Date.now();
   try {
     // Check if MongoDB is connected
@@ -79,29 +84,24 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    console.log(`🔐 Login attempt for email: ${email.toLowerCase()}`);
+    if (process.env.NODE_ENV !== 'production') console.log(`🔐 Login attempt`);
 
     // Find user by email - select needed fields for login
     const user = await User.findOne({ email: email.toLowerCase() })
       .select('_id email name firstName lastName phoneNumber userType wallet friends location profilePicture password');
     
     if (!user) {
-      console.log(`❌ User not found for email: ${email.toLowerCase()}`);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    console.log(`✅ User found: ${user.email} (ID: ${user._id})`);
-
     // Check password
     if (!user.password) {
-      console.error('❌ User found but password field is missing:', user._id);
       analytics.trackAPI('/auth/login', 'POST', null, Date.now() - startTime, 500);
       return res.status(500).json({ message: 'Account error. Please contact support.' });
     }
     
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log('❌ Password mismatch for user:', user.email);
       analytics.trackAPI('/auth/login', 'POST', null, Date.now() - startTime, 401);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -133,6 +133,22 @@ router.post('/login', async (req, res) => {
     // Track login
     analytics.trackAPI('/auth/login', 'POST', userObj._id.toString(), Date.now() - startTime, 200);
 
+    // Set HttpOnly cookie — not accessible to JavaScript, prevents XSS token theft
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // Audit log (fire-and-forget)
+    AuditLog.create({
+      action: 'login',
+      actorId: user._id,
+      ip: req.ip,
+      meta: { userAgent: req.headers['user-agent'] }
+    }).catch(() => {});
+
     // Return user data and token
     res.json({
       token,
@@ -157,13 +173,13 @@ router.post('/login', async (req, res) => {
     console.error('❌ Login error:', error);
     res.status(500).json({ 
       message: 'Server error during login',
-      error: error.message 
+      error: undefined 
     });
   }
 });
 
 // Register route
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     // Check if MongoDB is connected
     if (mongoose.connection.readyState !== 1) {
@@ -181,14 +197,33 @@ router.post('/register', async (req, res) => {
     if (!email || !password || !fullName) {
       return res.status(400).json({ message: 'Email, password, and name (or firstName + lastName) are required' });
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
     if (acceptedTerms !== true || acceptedPrivacy !== true) {
       return res.status(400).json({ message: 'You must accept Terms of Service and Privacy Policy to create an account' });
     }
 
-    // Check if user already exists
+    // Check email uniqueness
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Check phone uniqueness — prevents two accounts claiming the same pending payments
+    if (phoneNumber) {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      const existingPhone = await User.findOne({ phoneNumber: normalizedPhone });
+      if (existingPhone) {
+        return res.status(400).json({ message: 'An account with this phone number already exists' });
+      }
     }
 
     // Hash password
@@ -213,6 +248,29 @@ router.post('/register', async (req, res) => {
     });
 
     await newUser.save();
+
+    // Auto-claim any pending payments sent to this phone number before they registered
+    if (newUser.phoneNumber) {
+      const normalizedPhone = normalizePhone(newUser.phoneNumber);
+      try {
+        const pending = await PendingPayment.find({
+          recipientPhone: normalizedPhone,
+          status: 'pending'
+        });
+        if (pending.length > 0) {
+          const totalClaimed = pending.reduce((sum, p) => sum + p.amount, 0);
+          await User.findByIdAndUpdate(newUser._id, {
+            $inc: { 'wallet.balance': totalClaimed }
+          });
+          await PendingPayment.updateMany(
+            { _id: { $in: pending.map(p => p._id) } },
+            { $set: { status: 'claimed', claimedAt: new Date(), claimedBy: newUser._id } }
+          );
+        }
+      } catch (claimErr) {
+        console.error('Error auto-claiming pending payments:', claimErr.message);
+      }
+    }
 
     // Auto-create virtual card for new users (if Stripe Issuing is enabled)
     if (newUser.userType === 'user') {
@@ -288,7 +346,23 @@ router.post('/register', async (req, res) => {
 
     // Ensure wallet exists
     const userWallet = newUser.wallet || { balance: 0, pendingBalance: 0 };
-    
+
+    // Set HttpOnly cookie on registration
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // Audit log (fire-and-forget)
+    AuditLog.create({
+      action: 'register',
+      actorId: newUser._id,
+      ip: req.ip,
+      meta: { userType: newUser.userType }
+    }).catch(() => {});
+
     // Return user data and token
     res.status(201).json({
       token,
@@ -312,13 +386,13 @@ router.post('/register', async (req, res) => {
     console.error('❌ Registration error:', error);
     res.status(500).json({ 
       message: 'Server error during registration',
-      error: error.message 
+      error: undefined 
     });
   }
 });
 
 // Register venue route (creates user with venue type and initial venue)
-router.post('/register-venue', async (req, res) => {
+router.post('/register-venue', authLimiter, async (req, res) => {
   try {
     // Check if MongoDB is connected
     if (mongoose.connection.readyState !== 1) {
@@ -339,7 +413,7 @@ router.post('/register-venue', async (req, res) => {
       return res.status(400).json({ message: 'You must accept Terms of Service and Privacy Policy to create an account' });
     }
 
-    // Check if user already exists
+    // Check email uniqueness
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
@@ -440,13 +514,13 @@ router.post('/register-venue', async (req, res) => {
     console.error('❌ Venue registration error:', error);
     res.status(500).json({ 
       message: 'Server error during venue registration',
-      error: error.message 
+      error: undefined 
     });
   }
 });
 
 // Forgot password - request reset
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -476,36 +550,27 @@ router.post('/forgot-password', async (req, res) => {
     
     if (!emailResult.success) {
       console.warn(`⚠️  Failed to send email to ${email}:`, emailResult.error);
-      // Always return token in development, and provide helpful message
       if (process.env.NODE_ENV === 'development' || !process.env.SMTP_USER) {
-        console.log(`\n🔑 Password Reset Token (for testing):`);
-        console.log(`   ${resetToken}\n`);
+        // Log to console only — never expose the token in the API response
+        console.log(`\n[DEV ONLY] Password reset link generated for ${email} (configure SMTP to send via email)\n`);
         console.log(`📧 To enable email sending, configure SMTP_USER and SMTP_PASS in .env\n`);
-        return res.json({ 
-          message: 'If an account exists with that email, a password reset link has been sent.',
-          warning: 'Email service not configured. Use this token for testing:',
-          resetToken,
-          resetUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`
-        });
       }
     }
 
-    res.json({ 
-      message: 'If an account exists with that email, a password reset link has been sent.',
-      // In development, include token for testing (even if email succeeded)
-      ...(process.env.NODE_ENV === 'development' && { resetToken })
+    res.json({
+      message: 'If an account exists with that email, a password reset link has been sent.'
     });
   } catch (error) {
     console.error('❌ Forgot password error:', error);
     res.status(500).json({ 
       message: 'Server error',
-      error: error.message 
+      error: undefined 
     });
   }
 });
 
 // Reset password with token
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
@@ -513,8 +578,8 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Token and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
     // Verify token
@@ -540,14 +605,80 @@ router.post('/reset-password', async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
+    // Audit log (fire-and-forget)
+    AuditLog.create({
+      action: 'password_reset',
+      actorId: user._id,
+      ip: req.ip
+    }).catch(() => {});
+
     res.json({ message: 'Password reset successfully. You can now login with your new password.' });
   } catch (error) {
     console.error('❌ Reset password error:', error);
     res.status(500).json({ 
       message: 'Server error',
-      error: error.message 
+      error: undefined 
     });
   }
+});
+
+// Verify session from HttpOnly cookie — used by frontend on page reload
+// Returns a fresh token + user so the frontend can restore its in-memory state
+router.get('/verify', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId)
+      .select('_id email name firstName lastName phoneNumber userType wallet friends location profilePicture');
+
+    if (!user) {
+      res.clearCookie('token');
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Re-issue a fresh token (resets expiry)
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, userType: user.userType || 'user' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    const nameParts = (user.name || '').split(' ');
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: user.firstName || nameParts[0] || '',
+        lastName: user.lastName || nameParts.slice(1).join(' ') || '',
+        phoneNumber: user.phoneNumber,
+        userType: user.userType || 'user',
+        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+        friends: user.friends || [],
+        location: user.location || { isVisible: true },
+        profilePicture: user.profilePicture || ''
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error'});
+  }
+});
+
+// Logout — clears the HttpOnly session cookie
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  });
+  res.json({ message: 'Logged out successfully' });
 });
 
 module.exports = router;

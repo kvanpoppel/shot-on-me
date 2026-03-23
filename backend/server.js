@@ -2,8 +2,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
+const cookieParser = require('cookie-parser');
 const socketIo = require('socket.io');
+const helmet = require('helmet');
 require('dotenv').config();
+
+// Fail fast — catch missing critical env vars before the server accepts traffic
+const REQUIRED_ENV = ['JWT_SECRET', 'MONGODB_URI'];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+  console.error('   Add them to backend/.env and restart.');
+  process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -17,7 +28,12 @@ const corsOptions = {
     'https://www.shotonme.com', // Primary production domain (www only)
     'https://shotonme.com', // Production domain (without www)
     'https://venue.shotonme.com', // Venue portal production subdomain
-    /^https:\/\/.*\.vercel\.app$/, // All Vercel deployment URLs (preview and production)
+    // Explicit Vercel preview URLs — set VERCEL_ALLOWED_ORIGINS in .env as a comma-separated list
+    // e.g. "https://shot-on-me-abc123.vercel.app,https://shot-on-me-xyz.vercel.app"
+    ...(process.env.VERCEL_ALLOWED_ORIGINS
+      ? process.env.VERCEL_ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+      : []
+    ),
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
     /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
     /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/ // Local network
@@ -29,17 +45,26 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Security headers
-app.use((req, res, next) => {
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';");
-  next();
-});
+// Security headers via helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'https://res.cloudinary.com', 'data:'],
+      connectSrc: ["'self'", 'https://api.stripe.com'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
+  hsts: process.env.NODE_ENV === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true }
+    : false,
+  frameguard: { action: 'deny' },
+}));
 
 // Stripe webhook route must be BEFORE express.json() middleware
 const paymentsRouter = require('./routes/payments');
@@ -47,6 +72,24 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), pay
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
+
+// In production, strip internal error details from any 5xx JSON response.
+// This covers all the res.status(500).json({ error: error.message }) calls
+// across 100+ route files without touching each one individually.
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      if (body && typeof body === 'object' && res.statusCode >= 500) {
+        const { error, stack, ...safe } = body;
+        return originalJson(safe);
+      }
+      return originalJson(body);
+    };
+    next();
+  });
+}
 
 // Request logging middleware
 const logger = require('./middleware/logger');
@@ -56,6 +99,7 @@ app.use(logger.logRequest);
 const io = socketIo(server, {
   cors: corsOptions
 });
+app.set('io', io);
 
 // MongoDB Connection
 const mongoOptions = {
@@ -107,6 +151,23 @@ connectDB();
 // Initialize email service
 const emailService = require('./utils/emailService');
 setTimeout(() => { emailService.testEmailConnection(); }, 2000);
+
+// Daily job: refund pending payments whose recipient never signed up
+const { refundExpiredPendingPayments } = require('./jobs/refundExpiredPendingPayments');
+const startRefundJob = () => {
+  // Run once shortly after startup, then every 24 hours
+  setTimeout(async () => {
+    try { await refundExpiredPendingPayments(); } catch (e) { console.error('Refund job error:', e.message); }
+    setInterval(async () => {
+      try { await refundExpiredPendingPayments(); } catch (e) { console.error('Refund job error:', e.message); }
+    }, 24 * 60 * 60 * 1000);
+  }, 10000); // 10s after boot
+};
+if (mongoose.connection.readyState === 1) {
+  startRefundJob();
+} else {
+  mongoose.connection.once('connected', startRefundJob);
+}
 
 // Seed test venues (dev only)
 if (process.env.SEED_TEST_VENUES === 'true') {
@@ -277,6 +338,26 @@ app.get('/', (req, res) => {
   });
 });
 
+// Global error handler — must be registered AFTER all routes
+// Strips internal error details in production to prevent information disclosure
+app.use((err, req, res, next) => {
+  // Mongoose CastError = invalid ObjectId in a route param → clean 400
+  if (err.name === 'CastError' && err.kind === 'ObjectId') {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+  // Mongoose duplicate key error → clean 409
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
+    return res.status(409).json({ message: `${field} already exists` });
+  }
+  console.error('Unhandled error:', err);
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.status(err.status || 500).json({
+    message: isDev ? err.message : 'An unexpected error occurred',
+    ...(isDev && { stack: err.stack })
+  });
+});
+
 // Socket.io
 const { updateUserActivity } = require('./utils/activityTracker');
 const jwt = require('jsonwebtoken');
@@ -286,15 +367,16 @@ io.on('connection', (socket) => {
 
   socket.on('authenticate', async (token) => {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+      if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = decoded.userId;
       await updateUserActivity(decoded.userId);
-      socket.join(decoded.userId.toString());
+      socket.join(`user-${decoded.userId.toString()}`);
       console.log(`✅ User ${decoded.userId} authenticated and joined room`);
       const User = require('./models/User');
       const user = await User.findById(decoded.userId).select('friends');
       if (user && user.friends.length > 0) {
-        io.to(user.friends.map(f => f.toString())).emit('user-status-update', {
+        io.to(user.friends.map(f => `user-${f.toString()}`)).emit('user-status-update', {
           userId: decoded.userId, status: 'online', lastSeen: new Date()
         });
       }
@@ -306,24 +388,26 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-user-room', (userId) => {
-    if (userId) { socket.join(userId.toString()); console.log(`✅ User ${userId} joined their notification room`); }
+    if (!socket.userId) return socket.emit('error', 'Not authenticated');
+    if (!userId || userId.toString() !== socket.userId.toString()) return socket.emit('error', 'Unauthorized');
+    socket.join(`user-${socket.userId.toString()}`);
+    console.log(`User ${socket.userId} joined their notification room`);
   });
   socket.on('leave-user-room', (userId) => {
-    if (userId) { socket.leave(userId.toString()); console.log(`👋 User ${userId} left their notification room`); }
+    if (!socket.userId) return;
+    if (!userId || userId.toString() !== socket.userId.toString()) return;
+    socket.leave(`user-${socket.userId.toString()}`);
   });
   socket.on('activity-ping', async () => {
     if (socket.userId) await updateUserActivity(socket.userId);
   });
   socket.on('disconnect', async () => {
-    console.log('👋 User disconnected:', socket.id);
     if (socket.userId) {
+      // Update status in DB only — do not broadcast to all friends on every disconnect.
+      // Friends will see the updated lastSeen/status on their next data fetch or
+      // via the periodic activity-ping mechanism, avoiding expensive fan-out.
       const User = require('./models/User');
-      const user = await User.findByIdAndUpdate(socket.userId, { status: 'away' }, { new: true }).select('friends');
-      if (user && user.friends && user.friends.length > 0) {
-        io.to(user.friends.map(f => f.toString())).emit('user-status-update', {
-          userId: socket.userId, status: 'away', lastSeen: new Date()
-        });
-      }
+      await User.findByIdAndUpdate(socket.userId, { status: 'away', lastSeen: new Date() });
     }
   });
 });

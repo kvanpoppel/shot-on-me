@@ -19,7 +19,7 @@ router.get('/:venueId/:promotionId', auth, async (req, res) => {
     }
 
     // Check authorization
-    if (venue.owner.toString() !== req.user.userId) {
+    if (venue.owner.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -164,7 +164,7 @@ router.get('/:venueId/:promotionId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching promotion analytics:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -218,7 +218,7 @@ router.post('/:venueId/:promotionId/track', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error tracking promotion analytics:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

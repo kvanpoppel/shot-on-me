@@ -6,7 +6,11 @@ if (!process.env.JWT_SECRET) {
 
 const auth = (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Prefer Authorization header (API calls, Socket.io).
+    // Fall back to HttpOnly cookie (page reloads / session restore).
+    const token =
+      req.header('Authorization')?.replace('Bearer ', '') ||
+      req.cookies?.token;
 
     if (!token) {
       return res.status(401).json({ message: 'No token, authorization denied' });
@@ -16,7 +20,11 @@ const auth = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
+      return res.status(401).json({ message: 'Token is not valid' });
+    }
+    console.error('Auth middleware error:', error.message);
+    res.status(500).json({ message: 'Authentication error' });
   }
 };
 

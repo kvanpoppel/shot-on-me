@@ -48,9 +48,8 @@ router.get('/slug/:slug/public', async (req, res) => {
 // Supports pagination with skip and limit query parameters
 router.get('/', auth, async (req, res) => {
   try {
-    const { skip = 0, limit = 20 } = req.query;
-    const skipNum = parseInt(skip);
-    const limitNum = parseInt(limit);
+    const skipNum = Math.max(0, parseInt(req.query.skip) || 0);
+    const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
     let venues;
     let totalCount;
@@ -247,8 +246,8 @@ router.put('/:venueId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    // Only owner can update venue
-    if (venue.owner.toString() !== req.user.userId && req.user.userType !== 'venue') {
+    // Only this venue's owner (or platform admin) can update it
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update this venue' });
     }
 
@@ -290,7 +289,7 @@ router.put('/:venueId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating venue:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -302,8 +301,8 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    // Only owner (or venue user) can create promotions
-    if (venue.owner.toString() !== req.user.userId && req.user.userType !== 'venue') {
+    // Only the venue owner or admin can create promotions
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to create promotions for this venue' });
     }
 
@@ -435,7 +434,7 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -447,7 +446,7 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    if (venue.owner.toString() !== req.user.userId && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update promotions for this venue' });
     }
 
@@ -513,7 +512,7 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -525,7 +524,7 @@ router.delete('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    if (venue.owner.toString() !== req.user.userId && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to delete promotions for this venue' });
     }
 
@@ -554,7 +553,7 @@ router.delete('/:venueId/promotions/:promotionId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -620,7 +619,7 @@ router.post('/connect/onboard', auth, async (req, res) => {
     console.error('Error creating Stripe Connect onboarding link:', error);
     res.status(500).json({ 
       message: 'Failed to create onboarding link',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -673,7 +672,7 @@ router.get('/connect/status', auth, async (req, res) => {
     console.error('Error checking Stripe Connect status:', error);
     res.status(500).json({ 
       message: 'Failed to check Stripe status',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -698,7 +697,7 @@ router.get('/connect/status/:venueId', auth, async (req, res) => {
     }
 
     // Check authorization: user must own the venue or be admin
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString().toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to view this venue\'s Stripe status' });
     }
 
@@ -724,15 +723,16 @@ router.get('/connect/status/:venueId', auth, async (req, res) => {
     console.error('Error checking Stripe Connect status:', error);
     res.status(500).json({ 
       message: 'Failed to check Stripe status',
-      error: error.message 
+      error: undefined 
     });
   }
 });
 
-// Debug endpoint: list all venues (including inactive) – useful for checking Kate's Pub
+// Debug endpoint: list all venues (including inactive) — admin only in production
 router.get('/debug/all', auth, async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production' && req.user.userType !== 'venue') {
+    // In production restrict to admins/owners only; in dev allow any authenticated user
+    if (process.env.NODE_ENV === 'production' && req.user.role !== 'admin' && req.user.role !== 'owner') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -756,7 +756,7 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
     }
 
     // Only venue owner can see nearby users
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString().toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -803,7 +803,7 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
     res.json({ users: nearbyUsers });
   } catch (error) {
     console.error('Error fetching nearby users:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -819,7 +819,7 @@ router.get('/:venueId/followers', auth, async (req, res) => {
     }
 
     // Only venue owner can see followers
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString().toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -839,7 +839,7 @@ router.get('/:venueId/followers', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue followers:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

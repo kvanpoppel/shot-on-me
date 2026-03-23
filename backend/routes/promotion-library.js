@@ -10,6 +10,8 @@ const mongoose = require('mongoose');
 router.get('/', auth, async (req, res) => {
   try {
     const { category, search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const allowedSortFields = ['createdAt', 'updatedAt', 'name', 'category', 'usageCount'];
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
 
     // Get user's venue - handle both populated and non-populated owner
     let venue = await Venue.findOne({ owner: req.user.userId });
@@ -31,17 +33,18 @@ router.get('/', auth, async (req, res) => {
       query.category = category;
     }
     if (search) {
+      // Escape regex special chars to prevent ReDoS
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { 'promotionData.title': { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search, 'i')] } } // Search in tags array
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
+        { 'promotionData.title': { $regex: safeSearch, $options: 'i' } },
+        { tags: { $in: [new RegExp(safeSearch, 'i')] } }
       ];
     }
 
-    // Sort options
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    // Sort options (safeSortBy is whitelisted)
+    const sortOptions = { [safeSortBy]: sortOrder === 'asc' ? 1 : -1 };
 
     const savedPromotions = await PromotionLibrary.find(query)
       .sort(sortOptions)
@@ -53,7 +56,7 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching promotion library:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -136,7 +139,7 @@ router.post('/', auth, async (req, res) => {
     console.error('Request body:', req.body);
     res.status(500).json({ 
       message: 'Server error', 
-      error: error.message,
+      error: undefined,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
@@ -153,14 +156,14 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // Check authorization
-    if (savedPromotion.userId.toString() !== req.user.userId) {
+    if (savedPromotion.userId.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
     res.json({ promotion: savedPromotion });
   } catch (error) {
     console.error('Error fetching saved promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -177,7 +180,7 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     // Check authorization
-    if (savedPromotion.userId.toString() !== req.user.userId) {
+    if (savedPromotion.userId.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -194,7 +197,7 @@ router.put('/:id', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating saved promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -209,7 +212,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     // Check authorization
-    if (savedPromotion.userId.toString() !== req.user.userId) {
+    if (savedPromotion.userId.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -218,7 +221,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ message: 'Saved promotion deleted' });
   } catch (error) {
     console.error('Error deleting saved promotion:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -233,7 +236,7 @@ router.post('/:id/use', auth, async (req, res) => {
     }
 
     // Check authorization
-    if (savedPromotion.userId.toString() !== req.user.userId) {
+    if (savedPromotion.userId.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -248,7 +251,7 @@ router.post('/:id/use', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error tracking usage:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

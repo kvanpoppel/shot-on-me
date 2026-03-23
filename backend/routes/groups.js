@@ -195,7 +195,7 @@ router.post('/:groupId/leave', auth, async (req, res) => {
     }
 
     group.members = group.members.filter(
-      m => m.user.toString() !== req.user.userId
+      m => m.user.toString() !== req.user.userId.toString()
     );
 
     await group.save();
@@ -227,10 +227,11 @@ router.get('/:groupId/messages', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not a member of this group' });
     }
 
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
     const messages = await GroupMessage.find({ group: req.params.groupId })
       .populate('sender', 'name firstName lastName profilePicture')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
+      .limit(safeLimit)
       .reverse(); // Reverse to show oldest first
 
     // Transform sender names

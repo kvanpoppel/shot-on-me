@@ -1,5 +1,6 @@
 const express = require('express');
 const FeedPost = require('../models/FeedPost');
+const Report = require('../models/Report');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
@@ -37,9 +38,9 @@ const upload = multer({
 // Supports filtering by userId to get posts from a specific user
 router.get('/', auth, async (req, res) => {
   try {
-    const { skip = 0, limit = 20, userId } = req.query;
-    const skipNum = parseInt(skip);
-    const limitNum = parseInt(limit);
+    const { userId } = req.query;
+    const skipNum = Math.max(0, parseInt(req.query.skip) || 0);
+    const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     
     const User = require('../models/User');
     const FeedPost = require('../models/FeedPost');
@@ -297,7 +298,7 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
         
         // Emit real-time notification
         if (socketIO) {
-          socketIO.to(friendId.toString()).emit('new-notification', {
+          socketIO.to(`user-${friendId.toString()}`).emit('new-notification', {
             type: 'friend_post',
             message: notification.content,
             postId: newPost._id
@@ -332,7 +333,7 @@ router.post('/', auth, upload.array('media', 5), async (req, res) => {
           // If no media, create or use default check-in image
           if (!storyMediaUrl) {
             // Use a simple placeholder or create default image
-            storyMediaUrl = `https://via.placeholder.com/1080x1920/1a1a2e/FFD700?text=${encodeURIComponent(venue.name + ' Check-In')}`;
+            storyMediaUrl = null; // No fallback image — frontend handles missing media
           } else if (!storyMediaUrl.includes('cloudinary.com') && !storyMediaUrl.includes('res.cloudinary.com')) {
             // Upload to Cloudinary if not already there
             try {
@@ -427,7 +428,7 @@ router.post('/:postId/like', auth, async (req, res) => {
       // Add ❤️ reaction
       // Remove any existing reaction from this user first
       post.reactions = post.reactions.filter(
-        r => r.user.toString() !== req.user.userId
+        r => r.user.toString() !== req.user.userId.toString()
       );
       post.reactions.push({
         user: req.user.userId,
@@ -521,7 +522,7 @@ router.post('/:postId/reaction', auth, async (req, res) => {
     await post.populate('author', 'name firstName lastName');
     
     // Create notification if reaction was added (not removed) and user is not the post author
-    if (!existingReaction && post.author._id.toString() !== req.user.userId.toString()) {
+    if (!existingReaction && post.author._id.toString() !== req.user.userId.toString().toString()) {
       const Notification = require('../models/Notification');
       const actor = await require('../models/User').findById(req.user.userId);
       if (actor) {
@@ -537,7 +538,7 @@ router.post('/:postId/reaction', auth, async (req, res) => {
         // Emit real-time notification
         const socketIO = io || req.app.get('io');
         if (socketIO) {
-          socketIO.to(post.author._id.toString()).emit('new-notification', {
+          socketIO.to(`user-${post.author._id.toString()}`).emit('new-notification', {
             notification: notification,
             message: notification.content,
             postId: post._id
@@ -648,7 +649,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
     }
     
     // Create notification if commenting on someone else's post
-    if (post.author._id.toString() !== req.user.userId.toString()) {
+    if (post.author._id.toString() !== req.user.userId.toString().toString()) {
       const Notification = require('../models/Notification');
       const actor = await require('../models/User').findById(req.user.userId);
       if (actor) {
@@ -665,7 +666,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
         // Emit real-time notification
         const socketIO = io || req.app.get('io');
         if (socketIO) {
-          socketIO.to(post.author._id.toString()).emit('new-notification', {
+          socketIO.to(`user-${post.author._id.toString()}`).emit('new-notification', {
             notification: notification,
             message: notification.content,
             postId: post._id
@@ -700,7 +701,7 @@ router.post('/:postId/comment', auth, async (req, res) => {
         await notification.save();
         
         if (socketIO) {
-          socketIO.to(commenterId).emit('new-notification', {
+          socketIO.to(`user-${commenterId}`).emit('new-notification', {
             notification: notification,
             message: notification.content,
             postId: post._id
@@ -834,7 +835,7 @@ router.delete('/:postId', auth, async (req, res) => {
     }
 
     // Check if user is the author
-    if (post.author.toString() !== req.user.userId) {
+    if (post.author.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this post' });
     }
 
@@ -885,7 +886,7 @@ router.delete('/:postId/comment/:commentId', auth, async (req, res) => {
     }
 
     // Check if user is the comment author
-    if (comment.user.toString() !== req.user.userId) {
+    if (comment.user.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this comment' });
     }
 
@@ -929,17 +930,16 @@ router.post('/:postId/report', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot report your own post' });
     }
 
-    // TODO: Store report in database (create Report model if needed)
-    // For now, just log it
-    console.log(`🚨 Post reported: ${postId} by user ${req.user.userId}`);
-    console.log(`Reason: ${reason || 'Not specified'}`);
-    console.log(`Details: ${details || 'None'}`);
-    console.log(`Reported post author: ${post.author.name || post.author.firstName}`);
-
-    // In production, you would:
-    // 1. Create a Report document
-    // 2. Send notification to admins
-    // 3. Track report count and auto-hide if threshold reached
+    try {
+      await Report.create({
+        reporter: req.user.userId,
+        targetType: 'post',
+        targetId: postId,
+        reason: (reason || details || 'Not specified').substring(0, 500)
+      });
+    } catch (reportErr) {
+      if (reportErr.code !== 11000) throw reportErr; // 11000 = duplicate (already reported)
+    }
 
     res.json({ message: 'Report submitted successfully. Thank you for helping keep our community safe.' });
   } catch (error) {
@@ -970,10 +970,16 @@ router.post('/:postId/comment/:commentId/report', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot report your own comment' });
     }
 
-    // TODO: Store report in database
-    console.log(`🚨 Comment reported: ${commentId} on post ${postId} by user ${req.user.userId}`);
-    console.log(`Reason: ${reason || 'Not specified'}`);
-    console.log(`Details: ${details || 'None'}`);
+    try {
+      await Report.create({
+        reporter: req.user.userId,
+        targetType: 'comment',
+        targetId: commentId,
+        reason: (reason || details || 'Not specified').substring(0, 500)
+      });
+    } catch (reportErr) {
+      if (reportErr.code !== 11000) throw reportErr;
+    }
 
     res.json({ message: 'Report submitted successfully. Thank you for helping keep our community safe.' });
   } catch (error) {

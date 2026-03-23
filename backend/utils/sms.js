@@ -223,8 +223,40 @@ const sendMentionSMS = async (recipientPhone, mentionerName, contentPreview, typ
   }
 };
 
+/**
+ * Send a 2FA OTP for payment verification
+ * @param {string} phone - Recipient phone number
+ * @param {string} otp - 6-digit code
+ * @returns {Promise<boolean>}
+ */
+const sendPaymentOTP = async (phone, otp) => {
+  if (!twilioClient) {
+    twilioClient = initializeTwilio();
+    if (!twilioClient) return false;
+  }
+  if (!phone) return false;
+
+  let formattedPhone = phone.trim();
+  if (!formattedPhone.startsWith('+')) {
+    formattedPhone = `+1${formattedPhone.replace(/\D/g, '')}`;
+  }
+
+  try {
+    const result = await twilioClient.messages.create({
+      body: `Your Shot On Me payment code is: ${otp}\n\nValid for 10 minutes. Never share this code.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: formattedPhone
+    });
+    return !!result.sid;
+  } catch (error) {
+    console.error('Error sending payment OTP:', error.message);
+    return false;
+  }
+};
+
 module.exports = {
   sendPaymentSMS,
+  sendPaymentOTP,
   sendFriendInviteSMS,
   sendMentionSMS,
   isTwilioConfigured,

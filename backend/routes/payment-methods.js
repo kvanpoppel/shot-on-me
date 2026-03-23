@@ -83,7 +83,7 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching payment methods:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -192,10 +192,8 @@ router.post('/setup-intent', auth, async (req, res) => {
           type: stripeError.type,
           code: stripeError.code
         });
-        return res.status(500).json({ 
-          message: 'Failed to create payment customer',
-          error: stripeError.message || 'Stripe API error',
-          details: stripeError.type || 'unknown_error'
+        return res.status(500).json({
+          message: 'Failed to create payment customer'
         });
       }
     }
@@ -243,34 +241,20 @@ router.post('/setup-intent', auth, async (req, res) => {
         statusCode: stripeError.statusCode
       });
       
-      // Provide more specific error messages
       if (stripeError.type === 'StripeInvalidRequestError') {
-        return res.status(400).json({ 
-          message: 'Invalid request to Stripe',
-          error: stripeError.message || 'Stripe API validation error'
-        });
+        return res.status(400).json({ message: 'Invalid payment setup request' });
       } else if (stripeError.type === 'StripeAPIError') {
-        return res.status(502).json({ 
-          message: 'Stripe API error',
-          error: stripeError.message || 'Payment service temporarily unavailable'
-        });
+        return res.status(502).json({ message: 'Payment service temporarily unavailable' });
       } else if (stripeError.type === 'StripeAuthenticationError') {
-        return res.status(503).json({ 
-          message: 'Stripe authentication failed',
-          error: 'Payment service configuration error'
-        });
+        return res.status(503).json({ message: 'Payment service configuration error' });
       }
-      
-      return res.status(500).json({ 
-        message: 'Failed to create payment setup',
-        error: stripeError.message || 'Unknown error occurred'
-      });
+      return res.status(500).json({ message: 'Failed to create payment setup' });
     }
   } catch (error) {
     console.error('❌ Unexpected error in setup-intent endpoint:', error);
     res.status(500).json({ 
       message: 'Server error', 
-      error: error.message || 'An unexpected error occurred'
+      error: undefined || 'An unexpected error occurred'
     });
   }
 });
@@ -321,7 +305,7 @@ router.post('/:paymentMethodId/set-default', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error setting default payment method:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -359,7 +343,7 @@ router.delete('/:paymentMethodId', auth, async (req, res) => {
     res.json({ message: 'Payment method deleted' });
   } catch (error) {
     console.error('Error deleting payment method:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

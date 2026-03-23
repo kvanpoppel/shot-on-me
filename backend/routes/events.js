@@ -49,7 +49,7 @@ router.get('/', auth, async (req, res) => {
     res.json({ events: eventsWithRSVP });
   } catch (error) {
     console.error('Error fetching events:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -68,7 +68,7 @@ router.post('/', auth, async (req, res) => {
     }
 
     // Check if user is venue owner
-    if (venue.owner.toString() !== req.user.userId) {
+    if (venue.owner.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized to create events for this venue' });
     }
 
@@ -93,7 +93,7 @@ router.post('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating event:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -127,7 +127,7 @@ router.post('/:eventId/rsvp', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error RSVPing to event:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -141,7 +141,7 @@ router.delete('/:eventId/rsvp', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    event.rsvps = event.rsvps.filter(r => r.user.toString() !== req.user.userId);
+    event.rsvps = event.rsvps.filter(r => r.user.toString() !== req.user.userId.toString());
     await event.save();
 
     res.json({
@@ -150,7 +150,7 @@ router.delete('/:eventId/rsvp', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error cancelling RSVP:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -195,7 +195,7 @@ router.post('/:eventId/checkin', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking in to event:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

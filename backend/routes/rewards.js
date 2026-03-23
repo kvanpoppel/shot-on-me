@@ -66,7 +66,7 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching rewards:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -152,7 +152,7 @@ router.post('/redeem', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error redeeming reward:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -185,7 +185,7 @@ router.get('/my-rewards', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching user rewards:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -205,7 +205,7 @@ router.post('/use', auth, async (req, res) => {
       return res.status(404).json({ message: 'Redemption not found' });
     }
 
-    if (redemption.user.toString() !== req.user.userId) {
+    if (redemption.user.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -232,7 +232,7 @@ router.post('/use', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error using reward:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -274,14 +274,22 @@ router.post('/redeem-cash', auth, async (req, res) => {
     // Calculate cash value
     const cashAmount = (pointsToRedeem / 100) * cashValue;
 
-    // Deduct points and add cash to wallet
-    user.points = user.points - pointsToRedeem;
-    user.totalPointsRedeemed = (user.totalPointsRedeemed || 0) + pointsToRedeem;
-    user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
-    user.wallet.balance = (user.wallet.balance || 0) + cashAmount;
-    user.rewardCashBalance = (user.rewardCashBalance || 0) + cashAmount;
-
-    await user.save();
+    // Atomically deduct points and credit wallet — $gte guard prevents negative points
+    const rewardUpdated = await User.findOneAndUpdate(
+      { _id: user._id, points: { $gte: pointsToRedeem } },
+      {
+        $inc: {
+          points: -pointsToRedeem,
+          totalPointsRedeemed: pointsToRedeem,
+          'wallet.balance': cashAmount,
+          rewardCashBalance: cashAmount
+        }
+      },
+      { new: true }
+    );
+    if (!rewardUpdated) {
+      return res.status(400).json({ message: 'Insufficient points' });
+    }
 
     // Create reward redemption record
     const Reward = require('../models/Reward');
@@ -344,7 +352,7 @@ router.post('/redeem-cash', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error redeeming points for cash:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -376,7 +384,7 @@ router.get('/daily-stats', auth, async (req, res) => {
     res.json({ dailyPoints });
   } catch (error) {
     console.error('Error fetching daily points stats:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -386,18 +394,19 @@ router.get('/venue-history/:venueId', auth, async (req, res) => {
     const DailyVenuePoints = require('../models/DailyVenuePoints');
     const { venueId } = req.params;
     const { limit = 30 } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 30));
 
     const dailyPoints = await DailyVenuePoints.find({
       user: req.user.userId,
       venue: venueId
     })
       .sort({ date: -1 })
-      .limit(parseInt(limit));
+      .limit(safeLimit);
 
     res.json({ dailyPoints });
   } catch (error) {
     console.error('Error fetching venue points history:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

@@ -1,12 +1,17 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Venue = require('../models/Venue');
 const Payment = require('../models/Payment');
 const VirtualCard = require('../models/VirtualCard');
+const AuditLog = require('../models/AuditLog');
+const PendingPayment = require('../models/PendingPayment');
 const auth = require('../middleware/auth');
 const stripeUtils = require('../utils/stripe');
 const { handlePaymentSent, handlePaymentReceived } = require('../utils/gamification');
+const { sendPaymentOTP, sendPaymentSMS } = require('../utils/sms');
+const { normalizePhone } = require('../utils/phone');
 
 const router = express.Router();
 const { paymentLimiter } = require('../middleware/rateLimiter');
@@ -34,21 +39,92 @@ router.get('/stripe-key', (req, res) => {
   }
 });
 
+// Request a payment OTP — sent via SMS to the user's registered phone
+router.post('/request-otp', auth, paymentLimiter, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('phoneNumber paymentOtp');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (!user.phoneNumber) {
+      return res.status(400).json({
+        message: 'A verified phone number is required to send payments. Please add one in your profile settings.'
+      });
+    }
+
+    // Enforce a 60-second cooldown between OTP requests to prevent SMS flooding
+    if (user.paymentOtp?.expiresAt) {
+      const secondsRemaining = Math.ceil((new Date(user.paymentOtp.expiresAt) - Date.now()) / 1000);
+      const otpAgeSeconds = 10 * 60 - secondsRemaining; // How many seconds ago was it issued?
+      if (otpAgeSeconds < 60) {
+        return res.status(429).json({
+          message: 'Please wait before requesting another code.',
+          retryAfter: 60 - otpAgeSeconds
+        });
+      }
+    }
+
+    // Generate cryptographically random 6-digit OTP
+    const crypto = require('crypto');
+    const otp = String(crypto.randomInt(100000, 1000000));
+    const hash = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await User.findByIdAndUpdate(req.user.userId, { paymentOtp: { hash, expiresAt } });
+
+    const sent = await sendPaymentOTP(user.phoneNumber, otp);
+
+    if (!sent && process.env.NODE_ENV !== 'production') {
+      // Dev fallback — indicate OTP was generated but do NOT log the value
+      console.log(`[DEV] Payment OTP generated for user ${req.user.userId} (SMS unavailable)`);
+    }
+
+    res.json({
+      message: sent
+        ? 'Verification code sent to your phone.'
+        : 'SMS unavailable — check server logs (dev only).',
+      requiresVerification: true
+    });
+  } catch (error) {
+    console.error('Error requesting payment OTP:', error);
+    res.status(500).json({ message: 'Server error'});
+  }
+});
+
 // Send payment
 router.post('/send', auth, paymentLimiter, async (req, res) => {
   try {
-    const { recipientPhone, recipientId, amount, message } = req.body;
-    
-    // Log request for debugging
-    console.log('📤 Payment send request:', {
-      hasRecipientPhone: !!recipientPhone,
-      hasRecipientId: !!recipientId,
-      amount: amount,
-      amountType: typeof amount,
-      message: message ? 'present' : 'missing'
-    });
-    
-    // Basic validation with detailed error messages
+    const { recipientPhone, recipientId, amount, message, otp } = req.body;
+
+    // --- 2FA: verify OTP before processing ---
+    if (!otp) {
+      return res.status(400).json({
+        message: 'A verification code is required. Please request one first.',
+        requiresVerification: true
+      });
+    }
+
+    const senderForOtp = await User.findById(req.user.userId).select('paymentOtp');
+    if (!senderForOtp?.paymentOtp?.hash || !senderForOtp?.paymentOtp?.expiresAt) {
+      return res.status(400).json({
+        message: 'No active verification code found. Please request a new one.',
+        requiresVerification: true
+      });
+    }
+    if (new Date() > senderForOtp.paymentOtp.expiresAt) {
+      return res.status(400).json({
+        message: 'Verification code expired. Please request a new one.',
+        requiresVerification: true
+      });
+    }
+    const otpValid = await bcrypt.compare(String(otp), senderForOtp.paymentOtp.hash);
+    if (!otpValid) {
+      return res.status(400).json({ message: 'Invalid verification code. Please try again.' });
+    }
+    // Clear OTP immediately — single use
+    await User.findByIdAndUpdate(req.user.userId, { $unset: { paymentOtp: 1 } });
+    // --- end 2FA ---
+
+    // Basic validation
     if (!recipientPhone && !recipientId) {
       return res.status(400).json({ 
         message: 'Recipient is required',
@@ -63,16 +139,18 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       });
     }
     
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    // Convert to integer cents to avoid floating-point precision issues
+    const cents = Math.round(parseFloat(amount) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) {
       return res.status(400).json({
         message: 'Invalid amount',
         error: `Amount must be a positive number. Received: ${amount}`
       });
     }
-    if (amountNum > 500) {
+    if (cents > 50000) {
       return res.status(400).json({ message: 'Amount exceeds the maximum of $500 per transaction' });
     }
+    const amountNum = cents / 100;
 
     const sender = await User.findById(req.user.userId);
     if (!sender) {
@@ -104,13 +182,57 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       recipient = await User.findOne({ phoneNumber: recipientPhone });
     }
 
+    // If recipient not found by ID/phone, create a pending payment so they can claim it after sign-up
     if (!recipient) {
-      return res.status(404).json({ message: 'Recipient not found' });
+      if (!recipientPhone) {
+        return res.status(404).json({ message: 'Recipient not found' });
+      }
+
+      // Atomically deduct from sender
+      const updatedSender = await User.findOneAndUpdate(
+        { _id: req.user.userId, 'wallet.balance': { $gte: amountNum } },
+        { $inc: { 'wallet.balance': -amountNum } },
+        { new: true }
+      );
+      if (!updatedSender) {
+        return res.status(400).json({ message: 'Insufficient balance', insufficientBalance: true });
+      }
+
+      const senderName = sender.name || sender.phoneNumber || sender.email || 'Someone';
+
+      // Normalise phone for storage/lookup
+      const normalizedPhone = normalizePhone(recipientPhone);
+
+      const pending = new PendingPayment({
+        senderId: req.user.userId,
+        senderName,
+        recipientPhone: normalizedPhone,
+        amount: amountNum,
+        message: message || ''
+      });
+      await pending.save();
+
+      // SMS with download link — no redemption code, money will be in wallet after sign-up
+      sendPaymentSMS(normalizedPhone, senderName, amountNum, null, message || '').catch(() => {});
+
+      AuditLog.create({
+        action: 'payment_sent',
+        actorId: req.user.userId,
+        amount: amountNum,
+        ip: req.ip,
+        metadata: { recipientPhone: normalizedPhone, pendingPaymentId: pending._id }
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        pendingPayment: true,
+        message: `$${amountNum.toFixed(2)} is waiting for ${normalizedPhone} to join Shot On Me. They will receive an SMS with a download link.`
+      });
     }
 
     // Use parsed amount
     const finalAmount = amountNum;
-    
+
     // Ensure both users have a name (required by User model)
     if (!sender.name) {
       sender.name = sender.phoneNumber || sender.email || 'User';
@@ -118,21 +240,28 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     if (!recipient.name) {
       recipient.name = recipient.phoneNumber || recipient.email || 'User';
     }
-    
-    // Update balances
-    sender.wallet = sender.wallet || { balance: 0, pendingBalance: 0 };
-    recipient.wallet = recipient.wallet || { balance: 0, pendingBalance: 0 };
-    
-    sender.wallet.balance -= finalAmount;
-    recipient.wallet.pendingBalance = (recipient.wallet.pendingBalance || 0) + finalAmount;
 
-    await sender.save();
-    await recipient.save();
+    // Atomically deduct from sender — prevents double-spend from concurrent requests
+    const updatedSender = await User.findOneAndUpdate(
+      { _id: req.user.userId, 'wallet.balance': { $gte: finalAmount } },
+      { $inc: { 'wallet.balance': -finalAmount } },
+      { new: true }
+    );
+    if (!updatedSender) {
+      return res.status(400).json({
+        message: 'Insufficient balance',
+        insufficientBalance: true
+      });
+    }
+
+    // Atomically credit recipient's spendable balance — money is immediately available
+    await User.findByIdAndUpdate(
+      recipient._id,
+      { $inc: { 'wallet.balance': finalAmount } }
+    );
 
     // NO redemption code for money transfers - money goes to wallet, recipient uses tap-and-pay card
     // Redemption codes are ONLY for point/reward system between users and venue owners
-    const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
     // Log payment to database (no redemption code for money transfers)
     const payment = new Payment({
       senderId: req.user.userId,
@@ -143,6 +272,16 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       status: 'succeeded'
     });
     await payment.save();
+
+    // Audit log — fire and forget
+    AuditLog.create({
+      action: 'payment_sent',
+      actorId: req.user.userId,
+      targetId: recipient._id,
+      amount: finalAmount,
+      paymentId: payment._id,
+      ip: req.ip
+    }).catch(() => {});
 
     // Award points and update stats (async, don't wait)
     handlePaymentSent(req.user.userId, amount).catch(err => console.error('Gamification error:', err));
@@ -197,11 +336,11 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       // Emit real-time notifications via Socket.io
       const socketIO = req.app.get('io');
       if (socketIO) {
-        socketIO.to(recipient._id.toString()).emit('new-notification', {
+        socketIO.to(`user-${recipient._id.toString()}`).emit('new-notification', {
           notification: recipientNotification,
           message: `${senderName} sent you $${finalAmount.toFixed(2)}`
         });
-        socketIO.to(req.user.userId.toString()).emit('new-notification', {
+        socketIO.to(`user-${req.user.userId.toString()}`).emit('new-notification', {
           notification: senderNotification,
           message: `Payment sent successfully`
         });
@@ -211,10 +350,9 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       // Don't fail payment if notification creation fails
     }
 
-    res.json({ 
+    res.json({
       message: 'Payment sent successfully. Recipient can use their tap-and-pay card to spend at venues.',
       payment: {
-        transactionId,
         // No redemptionCode - money transfers use tap-and-pay
         amount: finalAmount,
         paymentId: payment._id,
@@ -228,7 +366,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending payment:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -257,8 +395,8 @@ router.get('/history', auth, async (req, res) => {
       delete query.$or;
     }
 
-    const limitNum = parseInt(limit);
-    const skipNum = parseInt(skip);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skipNum = Math.min(10000, Math.max(0, parseInt(skip) || 0));
 
     const payments = await Payment.find(query)
       .populate('senderId', 'firstName lastName profilePicture phoneNumber')
@@ -292,8 +430,8 @@ router.get('/recent-recipients', auth, async (req, res) => {
     const payments = await Payment.find({ senderId: req.user.userId })
       .populate('recipientId', 'firstName lastName profilePicture phoneNumber')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit) * 2); // Get more to deduplicate
-    
+      .limit(Math.min(50, Math.max(1, parseInt(limit) || 10)) * 2); // Get more to deduplicate
+
     // Deduplicate by recipient and get most recent
     const recipientMap = new Map();
     payments.forEach(payment => {
@@ -322,7 +460,7 @@ router.get('/recent-recipients', auth, async (req, res) => {
     // Convert to array and sort by last sent date
     const recipients = Array.from(recipientMap.values())
       .sort((a, b) => new Date(b.lastSent).getTime() - new Date(a.lastSent).getTime())
-      .slice(0, parseInt(limit));
+      .slice(0, Math.min(50, Math.max(1, parseInt(limit) || 10)));
 
     res.json({ recipients });
   } catch (error) {
@@ -508,10 +646,13 @@ router.post('/redeem', auth, async (req, res) => {
     try {
       // Deduct wallet for tap_and_pay ONLY if not already deducted by webhook
       if (payment.type === 'tap_and_pay' && !walletAlreadyDeducted) {
-        user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
-        user.wallet.balance = userBalance - amountInDollars;
-        await user.save({ session });
-        console.log(`💰 Deducted $${amountInDollars} from user ${userId} wallet. New balance: $${user.wallet.balance}`);
+        const deducted = await User.findOneAndUpdate(
+          { _id: userId, 'wallet.balance': { $gte: amountInDollars } },
+          { $inc: { 'wallet.balance': -amountInDollars } },
+          { new: true, session }
+        );
+        if (!deducted) throw new Error('Insufficient balance during redeem deduction');
+        console.log(`💰 Deducted $${amountInDollars} from user ${userId} wallet. New balance: $${deducted.wallet.balance}`);
       } else if (walletAlreadyDeducted) {
         console.log(`ℹ️ Wallet already deducted for virtual card payment ${payment._id} via webhook`);
       }
@@ -637,7 +778,7 @@ router.post('/redeem', auth, async (req, res) => {
         // Emit real-time notification
         const io = req.app.get('io');
         if (io) {
-          io.to(userId.toString()).emit('new-notification', {
+          io.to(`user-${userId.toString()}`).emit('new-notification', {
             notification: redemptionNotification,
             message: `Payment redeemed at ${venue.name}`
           });
@@ -898,12 +1039,12 @@ router.post('/create-intent', auth, async (req, res) => {
       // Don't fail the request if DB save fails - payment intent is already created
     }
 
-    // If payment succeeded immediately (saved payment method), update wallet
+    // If payment succeeded immediately (saved payment method), update wallet atomically.
+    // The Payment record is saved with status:'succeeded' above, so the webhook guard
+    // (payment.status === 'pending') will prevent a double-credit if the webhook also fires.
     if (paymentIntent.status === 'succeeded') {
       try {
-        user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
-        user.wallet.balance = (user.wallet.balance || 0) + amount;
-        await user.save();
+        await User.findByIdAndUpdate(req.user.userId, { $inc: { 'wallet.balance': amount } });
 
         if (payment) {
           payment.status = 'succeeded';
@@ -914,17 +1055,29 @@ router.post('/create-intent', auth, async (req, res) => {
         // Non-critical - payment intent succeeded, wallet update can be retried
       }
 
-      // Emit real-time update
+      // Emit real-time update — re-fetch fresh balance for accuracy
       const io = req.app.get('io');
       if (io) {
-        io.to(`user-${user._id.toString()}`).emit('wallet-updated', {
-          userId: user._id.toString(),
-          balance: user.wallet.balance
-        });
+        const freshUser = await User.findById(req.user.userId, 'wallet');
+        if (freshUser) {
+          io.to(`user-${freshUser._id.toString()}`).emit('wallet-updated', {
+            userId: freshUser._id.toString(),
+            balance: freshUser.wallet.balance
+          });
+        }
       }
+
+      // Audit log — fire-and-forget
+      AuditLog.create({
+        action: 'wallet_funded',
+        actorId: req.user.userId,
+        amount,
+        ip: req.ip,
+        meta: { paymentIntentId: paymentIntent.id }
+      }).catch(() => {});
     }
 
-    res.json({ 
+    res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       amount: amount,
@@ -964,7 +1117,7 @@ router.post('/create-intent', auth, async (req, res) => {
     
     res.status(statusCode).json({ 
       message: errorMessage,
-      error: error.message || 'Unknown error',
+      error: undefined || 'Unknown error',
       type: error.type || 'unknown',
       code: error.code || null
     });
@@ -1043,10 +1196,11 @@ router.post('/transfer', auth, async (req, res) => {
     });
     await payment.save();
 
-    // Deduct from sender's wallet
-    sender.wallet = sender.wallet || { balance: 0, pendingBalance: 0 };
-    sender.wallet.balance = sender.wallet.balance - amount;
-    await sender.save();
+    // Atomically deduct from sender's wallet
+    await User.findOneAndUpdate(
+      { _id: req.user.userId, 'wallet.balance': { $gte: amount } },
+      { $inc: { 'wallet.balance': -amount } }
+    );
 
     // Emit Socket.io event for real-time update
     const io = req.app.get('io');
@@ -1073,7 +1227,7 @@ router.post('/transfer', auth, async (req, res) => {
     console.error('Error creating transfer:', error);
     res.status(500).json({ 
       message: 'Failed to create transfer',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -1116,12 +1270,13 @@ async function webhookHandler(req, res) {
         payment.stripeChargeId = paymentIntent.latest_charge;
         await payment.save();
 
-        // Update user wallet balance AND sync virtual card
-        const user = await User.findById(payment.senderId);
+        // Atomically credit wallet — prevents double-credit from concurrent webhooks
+        const user = await User.findOneAndUpdate(
+          { _id: payment.senderId },
+          { $inc: { 'wallet.balance': payment.amount } },
+          { new: true }
+        );
         if (user) {
-          user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
-          user.wallet.balance = (user.wallet.balance || 0) + payment.amount;
-          await user.save();
 
           // Card uses wallet.balance for authorization - no separate sync needed
           // The card checks wallet.balance directly when authorizing transactions
@@ -1250,16 +1405,25 @@ async function webhookHandler(req, res) {
           await payment.save();
           console.error(`❌ Transfer failed: ${transfer.id} for payment ${paymentId}. Reason: ${transfer.failure_code}`);
           
-          // TODO: Consider refunding user wallet if wallet was deducted
-          // For now, log for admin review
-          if (payment.type === 'tap_and_pay') {
-            console.error(`⚠️ CRITICAL: Wallet was deducted for payment ${paymentId} but transfer failed. Manual intervention may be required.`);
-            // Optionally: Refund user wallet
-            // const user = await User.findById(payment.senderId);
-            // if (user) {
-            //   user.wallet.balance = (user.wallet.balance || 0) + payment.amount;
-            //   await user.save();
-            // }
+          // Automatically refund sender if wallet was already deducted
+          if (payment.type === 'tap_and_pay' || payment.type === 'shot_sent') {
+            try {
+              await User.findByIdAndUpdate(
+                payment.senderId,
+                { $inc: { 'wallet.balance': payment.amount } }
+              );
+              payment.status = 'refunded';
+              await payment.save();
+              AuditLog.create({
+                action: 'payment_refunded',
+                actorId: payment.senderId,
+                amount: payment.amount,
+                meta: { reason: 'transfer_failed', transferId: transfer.id, paymentId: payment._id }
+              }).catch(() => {});
+              console.log(`✅ Auto-refunded $${payment.amount} to sender ${payment.senderId} after transfer failure`);
+            } catch (refundErr) {
+              console.error(`❌ CRITICAL: Failed to auto-refund payment ${payment._id} after transfer failure:`, refundErr.message);
+            }
           }
         } else {
           console.warn(`⚠️ Payment ${paymentId} not found for failed transfer ${transfer.id}`);
@@ -1340,9 +1504,23 @@ async function webhookHandler(req, res) {
           return res.json({ received: true, handled: true, approved: false, reason: 'insufficient_balance' });
         }
         
-        // Sufficient balance - approve authorization
-        // The charge will draw from platform account automatically (Stripe Issuing)
-        console.log(`✅ Approving authorization ${authorization.id}: User ${user._id}, Balance: $${walletBalance}, Amount: $${amountInDollars}`);
+        // Sufficient balance — look up participating venue before approving
+        // Stripe Issuing: merchant_data.network_id is the merchant's network MID.
+        // Venues that use Stripe Terminal under their connected account expose this MID
+        // through the authorization event. We store it as stripeAccountId on the Venue.
+        const merchantNetworkId = authorization.merchant_data?.network_id;
+        let venue = null;
+        if (merchantNetworkId) {
+          venue = await Venue.findOne({ stripeAccountId: merchantNetworkId });
+          if (!venue) {
+            // Secondary attempt: some Stripe configurations use the connected account ID
+            // directly as the network_id — no match means non-participating merchant.
+            console.warn(`⚠️ Tap-and-pay at unrecognized merchant "${authorization.merchant_data?.name}" (network_id: ${merchantNetworkId}) for authorization ${authorization.id}`);
+          }
+        } else {
+          console.warn(`⚠️ No merchant network_id in authorization ${authorization.id} — cannot verify venue`);
+        }
+
         const stripe = stripeUtils.stripe;
         await stripe.issuing.authorizations.approve(authorization.id, {
           metadata: {
@@ -1350,22 +1528,25 @@ async function webhookHandler(req, res) {
             walletBalance: walletBalance.toString(),
             amount: amountInDollars.toString(),
             type: 'tap_and_pay',
-            merchant: authorization.merchant_data?.name || 'Unknown'
+            merchant: authorization.merchant_data?.name || 'Unknown',
+            venueId: venue ? venue._id.toString() : ''
           }
         });
-        
+
         // Create a pending Payment record for tracking
         const payment = new Payment({
           senderId: user._id,
           amount: amountInDollars,
           type: 'tap_and_pay',
           status: 'processing',
-          stripeAuthorizationId: authorization.id, // Store authorization ID
+          stripeAuthorizationId: authorization.id,
+          ...(venue && { venueId: venue._id }),
           metadata: new Map([
             ['authorizationId', authorization.id],
             ['cardId', cardId],
             ['merchant', authorization.merchant_data?.name || 'Unknown'],
-            ['location', authorization.merchant_data?.location || 'Unknown']
+            ['location', authorization.merchant_data?.city || 'Unknown'],
+            ...(venue ? [['venueId', venue._id.toString()], ['venueName', venue.name]] : [])
           ])
         });
         await payment.save();
@@ -1385,10 +1566,10 @@ async function webhookHandler(req, res) {
         } catch (declineError) {
           console.error(`❌ Failed to decline authorization ${authorization.id}:`, declineError);
         }
-        return res.json({ received: true, handled: false, error: authError.message });
+        return res.json({ received: true, handled: false });
       }
     }
-    
+
     // Process issuing.authorization.updated (authorization completed/finalized)
     // When the charge is finalized, deduct from wallet ledger and create transfer to venue
     // Handle both dot and underscore formats (Stripe uses dots in webhooks)
@@ -1416,101 +1597,75 @@ async function webhookHandler(req, res) {
       
       // If authorization was approved and completed, deduct wallet (ledger) and create transfer
       if (authorization.status === 'approved' && payment.status === 'processing') {
-        const user = await User.findById(payment.senderId);
-        if (!user) {
-          console.error(`❌ User not found for payment ${payment._id}`);
+        const amountInDollars = authorization.amount / 100;
+
+        // Atomically deduct wallet — $gte guard prevents going negative if somehow
+        // the balance dropped between authorization approval and this webhook
+        const updatedUser = await User.findOneAndUpdate(
+          { _id: payment.senderId, 'wallet.balance': { $gte: amountInDollars } },
+          { $inc: { 'wallet.balance': -amountInDollars } },
+          { new: true }
+        );
+
+        if (!updatedUser) {
+          console.error(`❌ Insufficient balance or user not found for payment ${payment._id}`);
           payment.status = 'failed';
           await payment.save();
-          return res.json({ received: true, handled: false, reason: 'user_not_found' });
+          return res.json({ received: true, handled: false, reason: 'insufficient_balance' });
         }
-        
-        const amountInDollars = authorization.amount / 100;
-        
-        // Deduct from wallet ledger (atomic operation)
-        // Money stays in platform account, we just update the ledger
-        const session = await mongoose.startSession();
-        session.startTransaction();
-        
+
         try {
-          user.wallet = user.wallet || { balance: 0, pendingBalance: 0 };
-          const newBalance = user.wallet.balance - amountInDollars;
-          
-          if (newBalance < 0) {
-            // This shouldn't happen if authorization was approved, but check anyway
-            throw new Error('Insufficient balance after authorization approval');
-          }
-          
-          user.wallet.balance = newBalance;
-          await user.save({ session });
-          
           // Update payment status
           payment.status = 'succeeded';
           payment.stripeChargeId = authorization.id;
-          await payment.save({ session });
+          await payment.save();
           
-          await session.commitTransaction();
-          
-          console.log(`✅ Wallet ledger updated: User ${user._id}, Amount: $${amountInDollars}, New Balance: $${user.wallet.balance}`);
-          console.log(`   💰 Money remains in platform account, ledger updated`);
-          
+          console.log(`✅ Wallet ledger updated: User ${updatedUser._id}, Amount: $${amountInDollars}, New Balance: $${updatedUser.wallet.balance}`);
+
           // Emit real-time update
           const io = req.app.get('io');
           if (io) {
-            io.to(`user-${user._id.toString()}`).emit('wallet-updated', {
-              userId: user._id.toString(),
-              balance: user.wallet.balance
+            io.to(`user-${updatedUser._id.toString()}`).emit('wallet-updated', {
+              userId: updatedUser._id.toString(),
+              balance: updatedUser.wallet.balance
             });
           }
-          
-          // Create transfer from platform account to venue (if venue is known)
-          // Note: For virtual card tap-and-pay, venue info may not be in authorization
-          // Transfer will be created when venue processes via /redeem endpoint
-          // For now, we've deducted the wallet ledger - transfer happens on redemption
-          
-          // If payment has venueId, create transfer immediately
+
+          // If venueId is known, create transfer from platform → venue immediately
           if (payment.venueId) {
             try {
               const venue = await Venue.findById(payment.venueId);
               if (venue && venue.stripeAccountId) {
                 const amountInCents = Math.round(amountInDollars * 100);
-                const stripe = stripeUtils.stripe;
-                
-                const transfer = await stripe.transfers.create({
+                const transfer = await stripeUtils.stripe.transfers.create({
                   amount: amountInCents,
                   currency: 'usd',
                   destination: venue.stripeAccountId,
                   metadata: {
                     paymentId: payment._id.toString(),
-                    userId: user._id.toString(),
+                    userId: updatedUser._id.toString(),
                     venueId: venue._id.toString(),
                     venueName: venue.name,
                     type: 'tap_and_pay',
                     authorizationId: authorization.id
                   }
                 }, {
-                  idempotencyKey: `tap-pay-${authorization.id}-${Date.now()}`
+                  idempotencyKey: `tap-pay-${authorization.id}`
                 });
-                
                 payment.stripeTransferId = transfer.id;
                 await payment.save();
-                
                 console.log(`✅ Transfer created: ${transfer.id} from platform to venue ${venue.name}`);
               }
             } catch (transferError) {
-              // Log error but don't fail - transfer can be created later via /redeem
               console.error(`⚠️ Could not create transfer for authorization ${authorization.id}:`, transferError.message);
-              console.log(`   Transfer will be created when venue processes payment via /redeem endpoint`);
             }
           }
-          
+
         } catch (deductError) {
-          await session.abortTransaction();
-          console.error(`❌ Error updating wallet ledger for authorization ${authorization.id}:`, deductError);
+          console.error(`❌ Error processing authorization ${authorization.id}:`, deductError);
           payment.status = 'failed';
           await payment.save();
           throw deductError;
-        } finally {
-          session.endSession();
         }
       } else if (authorization.status === 'declined') {
         // Authorization was declined - mark payment as failed
