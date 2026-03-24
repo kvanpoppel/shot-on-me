@@ -72,6 +72,11 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [showQRCode, setShowQRCode] = useState(false)
   const [qrCodeData, setQrCodeData] = useState('')
 
+  // OTP flow
+  const [otpStep, setOtpStep] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
+
   // Define functions BEFORE useEffects that use them
   const fetchDefaultPaymentMethod = async () => {
     try {
@@ -391,25 +396,49 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     }
   }, [socket, updateUser, user, previousPoints, fetchPayments, fetchPoints])
 
+  // Step 1 — validate form then request OTP
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    if (!recipientPhone.trim()) {
+      setError('Please enter a recipient phone number')
+      return
+    }
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Please enter a valid amount greater than 0')
+      return
+    }
+
+    setOtpLoading(true)
+    try {
+      await axios.post(
+        `${API_URL}/payments/request-otp`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setOtpStep(true)
+      setOtp('')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send verification code.')
+    } finally {
+      setOtpLoading(false)
+    }
+  }
+
+  // Step 2 — submit payment with verified OTP
+  const handleSendWithOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      setError('Please enter the 6-digit code sent to your phone.')
+      return
+    }
     setSending(true)
     setError(null)
     setSuccess(null)
 
-    // Frontend validation
-    if (!recipientPhone.trim()) {
-      setError('Please enter a recipient phone number')
-      setSending(false)
-      return
-    }
-
     const amountNum = parseFloat(amount)
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid amount greater than 0')
-      setSending(false)
-      return
-    }
 
     try {
       const response = await axios.post(
@@ -417,7 +446,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         {
           recipientPhone: recipientPhone.trim(),
           amount: amountNum,
-          message: message.trim() || undefined
+          message: message.trim() || undefined,
+          otp
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -432,7 +462,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         setSuccess(`Payment sent! Recipient can use their tap-and-pay card at venues.`)
         setTimeout(() => setSuccess(null), 8000)
       }
-      
+
+      setOtpStep(false)
+      setOtp('')
       setShowSendForm(false)
       setRecipientPhone('')
       setRecipientName('')
@@ -451,6 +483,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       if (error.response?.status === 402 && error.response?.data?.canPayWithCard) {
         const shortfall = error.response?.data?.shortfall || amountNum
         const currentBalance = error.response?.data?.currentBalance || 0
+        setOtpStep(false)
+        setOtp('')
         
         // If user has a default payment method, offer quick "Add Funds"
         if (defaultPaymentMethod) {
@@ -713,6 +747,13 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               )}
             </div>
             
+            {/* Low balance warning */}
+            {balance > 0 && balance < 10 && (
+              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-2">
+                <span className="text-yellow-400 text-xs">⚠️ Low balance — <button onClick={() => setShowAddFunds(true)} className="underline hover:text-yellow-300">Add funds</button></span>
+              </div>
+            )}
+
             {/* Points Display with Redemption */}
             <div className="pt-3 border-t border-primary-500/20 space-y-3">
               <div className="flex items-center justify-between">
@@ -969,6 +1010,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             </div>
 
             {/* Send Form */}
+            {!otpStep ? (
             <form onSubmit={handleSend} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
               <div>
                 <label className="block text-primary-500 text-sm font-semibold mb-2">
@@ -984,10 +1026,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        setRecipientPhone('')
-                        setRecipientName('')
-                      }}
+                      onClick={() => { setRecipientPhone(''); setRecipientName('') }}
                       className="px-3 py-3 bg-primary-500/20 border border-primary-500/30 rounded-lg text-primary-500 hover:bg-primary-500/30 transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -1006,6 +1045,23 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               </div>
               <div>
                 <label className="block text-primary-500 text-sm font-semibold mb-2">Amount ($)</label>
+                {/* Quick amount buttons */}
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {[5, 10, 20, 50].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAmount(String(preset))}
+                      className={`py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+                        amount === String(preset)
+                          ? 'bg-primary-500 text-black border-primary-500'
+                          : 'bg-primary-500/10 text-primary-500 border-primary-500/30 hover:bg-primary-500/20'
+                      }`}
+                    >
+                      ${preset}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="number"
                   step="0.01"
@@ -1050,7 +1106,41 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               )}
               <button
                 type="submit"
-                disabled={sending || !amount || parseFloat(amount) <= 0 || !recipientPhone}
+                disabled={otpLoading || !amount || parseFloat(amount) <= 0 || !recipientPhone}
+                className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Sending code...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    <span>Continue — Send ${amount || '0.00'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+            ) : (
+            /* OTP verification step */
+            <div className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+              <div className="text-center mb-2">
+                <p className="text-primary-500 font-semibold">Verify Payment</p>
+                <p className="text-primary-400/70 text-sm mt-1">Enter the 6-digit code sent to your phone</p>
+              </div>
+              <input
+                type="number"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+                className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 text-center text-2xl tracking-widest placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleSendWithOtp}
+                disabled={sending || otp.length !== 6}
                 className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
               >
                 {sending ? (
@@ -1061,11 +1151,26 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    <span>Send Payment</span>
+                    <span>Confirm & Send ${amount}</span>
                   </>
                 )}
               </button>
-            </form>
+              <button
+                onClick={() => { setOtpStep(false); setOtp('') }}
+                disabled={sending}
+                className="w-full text-primary-400/70 text-sm hover:text-primary-400 transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleSend as any}
+                disabled={otpLoading}
+                className="w-full text-primary-400/60 text-xs hover:text-primary-400 transition-colors"
+              >
+                {otpLoading ? 'Resending...' : 'Resend code'}
+              </button>
+            </div>
+            )}
           </div>
         )}
 

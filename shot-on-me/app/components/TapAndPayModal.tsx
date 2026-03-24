@@ -243,6 +243,24 @@ export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: Ta
               <label className="block text-primary-500 text-sm font-medium mb-2">
                 Payment Amount
               </label>
+              {/* Quick amount buttons */}
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[5, 10, 20, 50].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => { setAmount(String(preset)); setError(null) }}
+                    disabled={processing || !canPay || preset > balance}
+                    className={`py-1.5 rounded-lg text-sm font-semibold border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                      amount === String(preset)
+                        ? 'bg-primary-500 text-black border-primary-500'
+                        : 'bg-primary-500/10 text-primary-500 border-primary-500/30 hover:bg-primary-500/20'
+                    }`}
+                  >
+                    ${preset}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-400" />
                 <input
@@ -284,15 +302,15 @@ export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: Ta
                 <div className="flex items-center justify-between text-xs text-primary-400/70">
                   <span>Commission:</span>
                   <span>
-                    {parseFloat(amount || '0') < 20 
-                      ? '$0.50' 
-                      : `$${(parseFloat(amount || '0') * 0.025).toFixed(2)}`}
+                    {parseFloat(amount || '0') < 20
+                      ? '$0.25'
+                      : `$${(parseFloat(amount || '0') * 0.01).toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-primary-500/10">
                   <span className="text-primary-400">Venue Receives:</span>
                   <span className="text-primary-500 font-semibold">
-                    ${(parseFloat(amount || '0') - (parseFloat(amount || '0') < 20 ? 0.50 : parseFloat(amount || '0') * 0.025)).toFixed(2)}
+                    ${(parseFloat(amount || '0') - (parseFloat(amount || '0') < 20 ? 0.25 : parseFloat(amount || '0') * 0.01)).toFixed(2)}
                   </span>
                 </div>
               </div>
