@@ -1816,5 +1816,128 @@ router.post('/add-payment-method', auth, async (req, res) => {
   }
 });
 
+// ─── Refund a payment (within 24 hours, wallet-to-wallet only) ───────────────
+router.post('/refund/:paymentId', auth, paymentLimiter, async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.paymentId);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+
+    // Only the sender can request a refund
+    if (payment.senderId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: 'Only the sender can request a refund' });
+    }
+
+    // Only wallet-to-wallet payments are eligible
+    if (!['shot_sent', 'transfer'].includes(payment.type)) {
+      return res.status(400).json({ message: 'Only wallet payments are eligible for refund' });
+    }
+
+    if (payment.status !== 'succeeded' && payment.status !== 'completed') {
+      return res.status(400).json({ message: 'Only completed payments can be refunded' });
+    }
+
+    // 24-hour window
+    const ageHours = (Date.now() - new Date(payment.createdAt).getTime()) / 3600000;
+    if (ageHours > 24) {
+      return res.status(400).json({ message: 'Refunds are only available within 24 hours of payment' });
+    }
+
+    if (payment.refunded) {
+      return res.status(400).json({ message: 'This payment has already been refunded' });
+    }
+
+    // Atomically deduct from recipient and credit sender
+    const recipient = await User.findOneAndUpdate(
+      { _id: payment.recipientId, 'wallet.balance': { $gte: payment.amount } },
+      { $inc: { 'wallet.balance': -payment.amount } },
+      { new: true }
+    );
+    if (!recipient) {
+      return res.status(400).json({ message: 'Recipient has insufficient balance to refund this payment' });
+    }
+
+    await User.findByIdAndUpdate(payment.senderId, {
+      $inc: { 'wallet.balance': payment.amount }
+    });
+
+    payment.refunded = true;
+    payment.refundedAt = new Date();
+    await payment.save();
+
+    AuditLog.create({
+      action: 'payment_refunded',
+      actorId: req.user.userId,
+      amount: payment.amount,
+      ip: req.ip,
+      metadata: { paymentId: payment._id, reason: 'user_requested' }
+    }).catch(() => {});
+
+    // Notify both parties
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user-${payment.senderId.toString()}`).emit('wallet-updated', { balance: null });
+      io.to(`user-${payment.recipientId.toString()}`).emit('wallet-updated', { balance: null });
+    }
+
+    res.json({ success: true, message: `$${payment.amount.toFixed(2)} has been refunded to your wallet` });
+  } catch (error) {
+    console.error('Refund error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── Claim pending payments (for existing users) ──────────────────────────────
+router.post('/claim-pending', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('phoneNumber wallet');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.phoneNumber) {
+      return res.status(400).json({ message: 'Add a phone number to your profile to claim pending payments' });
+    }
+
+    const { normalizePhone } = require('../utils/phone');
+    const normalizedPhone = normalizePhone(user.phoneNumber);
+
+    const pending = await PendingPayment.find({ recipientPhone: normalizedPhone, status: 'pending' });
+    if (pending.length === 0) {
+      return res.json({ claimed: 0, message: 'No pending payments found for your phone number' });
+    }
+
+    const totalClaimed = pending.reduce((sum, p) => sum + p.amount, 0);
+
+    await User.findByIdAndUpdate(req.user.userId, {
+      $inc: { 'wallet.balance': totalClaimed }
+    });
+
+    await PendingPayment.updateMany(
+      { _id: { $in: pending.map(p => p._id) } },
+      { $set: { status: 'claimed', claimedAt: new Date(), claimedBy: req.user.userId } }
+    );
+
+    AuditLog.create({
+      action: 'pending_payments_claimed',
+      actorId: req.user.userId,
+      amount: totalClaimed,
+      ip: req.ip,
+      metadata: { count: pending.length, phone: normalizedPhone }
+    }).catch(() => {});
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user-${req.user.userId.toString()}`).emit('wallet-updated', { balance: null });
+    }
+
+    res.json({
+      success: true,
+      claimed: pending.length,
+      totalAmount: totalClaimed,
+      message: `$${totalClaimed.toFixed(2)} from ${pending.length} payment${pending.length > 1 ? 's' : ''} added to your wallet`
+    });
+  } catch (error) {
+    console.error('Claim pending payments error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
 module.exports.webhook = webhookHandler;

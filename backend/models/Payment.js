@@ -42,6 +42,8 @@ const paymentSchema = new mongoose.Schema({
     index: true,
     sparse: true
   },
+  refunded: { type: Boolean, default: false },
+  refundedAt: { type: Date },
   metadata: {
     type: Map,
     of: String
