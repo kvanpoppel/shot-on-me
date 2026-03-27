@@ -15,15 +15,10 @@ import CheckInsHistory from '../../components/CheckInsHistory'
 import PaymentsHistory from '../../components/PaymentsHistory'
 import PayoutsHistory from '../../components/PayoutsHistory'
 import {
-  BarChart3,
-  Bot,
   CircleDollarSign,
-  Compass,
-  CreditCard,
-  Landmark,
-  MapPin,
   Sparkles,
-  Target
+  Users,
+  Landmark
 } from 'lucide-react'
 
 function AnalyticsPageContent() {
@@ -55,13 +50,8 @@ function AnalyticsPageContent() {
 
   const tabs = [
     { id: 'earnings', label: 'Earnings', icon: CircleDollarSign },
-    { id: 'roi', label: 'ROI Forecast', icon: BarChart3 },
-    { id: 'ai-analytics', label: 'AI Analytics', icon: Bot },
-    { id: 'suggestions', label: 'AI Suggestions', icon: Sparkles },
-    { id: 'personalized', label: 'Personalized', icon: Target },
-    { id: 'activity', label: 'Activity', icon: Compass },
-    { id: 'checkins', label: 'Check-ins', icon: MapPin },
-    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'ai', label: 'AI Insights', icon: Sparkles },
+    { id: 'guests', label: 'Guests', icon: Users },
     { id: 'payouts', label: 'Payouts', icon: Landmark }
   ]
 
@@ -75,8 +65,8 @@ function AnalyticsPageContent() {
         subtitle="Track revenue, monitor performance, and act faster with AI insights."
         metrics={[
           { label: 'Active View', value: activeTabLabel, detail: 'Current analytics workspace.' },
-          { label: 'Finance Modules', value: '3', detail: 'Earnings, payments, payouts.' },
-          { label: 'AI Modules', value: '3', detail: 'Insights, suggestions, personalization.' }
+          { label: 'Revenue', tone: 'success' as const, value: 'Earnings + ROI', detail: 'Track all income and forecast.' },
+          { label: 'AI', value: 'Analytics + Suggestions', detail: 'Personalized insights and next steps.' }
         ]}
       >
 
@@ -105,50 +95,42 @@ function AnalyticsPageContent() {
           </div>
         </div>
 
-        <div className="min-h-[400px] md:min-h-[500px]">
-          <div className="mb-3 flex items-center justify-between rounded-lg border border-primary-500/20 bg-black/30 px-3 py-2">
-            <p className="text-xs text-primary-400/75">Currently viewing</p>
-            <p className="text-sm font-semibold text-primary-500">{activeTabLabel}</p>
-          </div>
+        <div className="min-h-[400px] md:min-h-[500px] space-y-4">
           {activeTab === 'earnings' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <EarningsDashboard />
-            </div>
+            <>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <EarningsDashboard />
+              </div>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <ROICalculator />
+              </div>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <PaymentsHistory />
+              </div>
+            </>
           )}
-          {activeTab === 'roi' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <ROICalculator />
-            </div>
+          {activeTab === 'ai' && (
+            <>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <PromotionSuggestions />
+              </div>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <AIAnalyticsDashboard />
+              </div>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <PersonalizedPromotions />
+              </div>
+            </>
           )}
-          {activeTab === 'ai-analytics' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <AIAnalyticsDashboard />
-            </div>
-          )}
-          {activeTab === 'suggestions' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <PromotionSuggestions />
-            </div>
-          )}
-          {activeTab === 'personalized' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <PersonalizedPromotions />
-            </div>
-          )}
-          {activeTab === 'activity' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <LiveActivityDashboard />
-            </div>
-          )}
-          {activeTab === 'checkins' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <CheckInsHistory />
-            </div>
-          )}
-          {activeTab === 'payments' && (
-            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
-              <PaymentsHistory />
-            </div>
+          {activeTab === 'guests' && (
+            <>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <LiveActivityDashboard />
+              </div>
+              <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">
+                <CheckInsHistory />
+              </div>
+            </>
           )}
           {activeTab === 'payouts' && (
             <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 md:p-6 overflow-x-hidden">

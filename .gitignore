@@ -59,4 +59,9 @@ RENDER_ENV_VARS_EXACT.md
 RENDER_FIX_STEPS.md
 TWILIO_CONFIGURATION_GUIDE.md
 backend/TWILIO_SETUP.md
+NDA-Marketing-Strategy.md
+
+# One-off scripts with credentials
+fix.js
+*.credentials.js
 
