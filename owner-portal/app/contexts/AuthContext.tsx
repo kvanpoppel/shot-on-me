@@ -2,6 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
+
+// Send cookies on every request — required for HttpOnly session cookie
+axios.defaults.withCredentials = true
 import { useApiUrl } from '../utils/api'
 
 interface User {
@@ -29,70 +32,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const API_URL = useApiUrl()
 
+  // Restore session from HttpOnly cookie on mount
   useEffect(() => {
     if (typeof window === 'undefined') {
       setLoading(false)
       return
     }
-    
-    try {
-      const storedToken = localStorage.getItem('owner_token')
-      if (storedToken) {
-        setToken(storedToken)
-        fetchUser(storedToken)
-      } else {
-        setLoading(false)
-      }
-    } catch (error) {
-      console.error('Error accessing localStorage:', error)
-      setLoading(false)
-    }
-  }, [])
 
-  const fetchUser = async (authToken: string) => {
-    try {
-      const response = await axios.get(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 10000
+    axios.get(`${API_URL}/auth/verify`, { withCredentials: true, timeout: 10000 })
+      .then(res => {
+        const { token: freshToken, user: userData } = res.data
+        setToken(freshToken)
+        setUser(userData)
       })
-      const userData = response.data.user || response.data
-      setUser(userData)
-    } catch (error) {
-      console.error('Error fetching user:', error)
-      localStorage.removeItem('owner_token')
-      setToken(null)
-      setUser(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+      .catch(() => {
+        // No valid session — user needs to log in
+      })
+      .finally(() => setLoading(false))
+  }, [API_URL])
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password
-      }, {
-        timeout: 15000
-      })
+      const response = await axios.post(
+        `${API_URL}/auth/login`,
+        { email, password },
+        { withCredentials: true, timeout: 15000 }
+      )
 
       const { token: authToken, user: userData } = response.data
-      
-      if (authToken) {
-        localStorage.setItem('owner_token', authToken)
-        setToken(authToken)
-        setUser(userData)
-      } else {
-        throw new Error('No token received')
-      }
+
+      if (!authToken) throw new Error('No token received')
+
+      setToken(authToken)
+      setUser(userData)
     } catch (error: any) {
       console.error('Login error:', error)
       throw new Error(error.response?.data?.message || 'Login failed')
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('owner_token')
+  const logout = async () => {
+    try {
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true })
+    } catch {
+      // Ignore — clear local state regardless
+    }
     setToken(null)
     setUser(null)
   }
@@ -111,4 +95,3 @@ export function useAuth() {
   }
   return context
 }
-

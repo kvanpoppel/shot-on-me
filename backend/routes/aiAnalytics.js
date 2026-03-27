@@ -31,7 +31,7 @@ router.get('/performance', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch analytics',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -66,7 +66,7 @@ router.get('/optimal-deals', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to get optimal deals',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -97,7 +97,7 @@ router.get('/recommendations', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to get recommendations',
-      error: error.message 
+      error: undefined 
     });
   }
 });

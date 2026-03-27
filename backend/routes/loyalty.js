@@ -69,11 +69,12 @@ router.get('/venue/:venueId/leaderboard', auth, async (req, res) => {
   try {
     const { venueId } = req.params;
     const { limit = 20 } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
 
     const loyalties = await VenueLoyalty.find({ venue: venueId })
       .populate('user', 'firstName lastName profilePicture')
       .sort({ checkInCount: -1 })
-      .limit(parseInt(limit));
+      .limit(safeLimit);
 
     const leaderboard = loyalties.map((loyalty, index) => ({
       rank: index + 1,

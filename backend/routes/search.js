@@ -20,7 +20,8 @@ router.get('/', auth, async (req, res) => {
       });
     }
 
-    const searchQuery = q.trim();
+    // Escape regex metacharacters to prevent ReDoS / unintended regex injection
+    const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const limitNum = Math.min(parseInt(limit) || 10, 20); // Max 20 results per type
 
     // Search users
@@ -29,11 +30,11 @@ router.get('/', auth, async (req, res) => {
         { _id: { $ne: req.user.userId } },
         {
           $or: [
-            { name: { $regex: searchQuery, $options: 'i' } },
-            { firstName: { $regex: searchQuery, $options: 'i' } },
-            { lastName: { $regex: searchQuery, $options: 'i' } },
-            { email: { $regex: searchQuery, $options: 'i' } },
-            { username: { $regex: searchQuery, $options: 'i' } }
+            { name: { $regex: escaped, $options: 'i' } },
+            { firstName: { $regex: escaped, $options: 'i' } },
+            { lastName: { $regex: escaped, $options: 'i' } },
+            { email: { $regex: escaped, $options: 'i' } },
+            { username: { $regex: escaped, $options: 'i' } }
           ]
         }
       ]
@@ -47,11 +48,11 @@ router.get('/', auth, async (req, res) => {
         { isActive: true },
         {
           $or: [
-            { name: { $regex: searchQuery, $options: 'i' } },
-            { 'address.city': { $regex: searchQuery, $options: 'i' } },
-            { 'address.state': { $regex: searchQuery, $options: 'i' } },
-            { 'address.street': { $regex: searchQuery, $options: 'i' } },
-            { category: { $regex: searchQuery, $options: 'i' } }
+            { name: { $regex: escaped, $options: 'i' } },
+            { 'address.city': { $regex: escaped, $options: 'i' } },
+            { 'address.state': { $regex: escaped, $options: 'i' } },
+            { 'address.street': { $regex: escaped, $options: 'i' } },
+            { category: { $regex: escaped, $options: 'i' } }
           ]
         }
       ]
@@ -70,9 +71,9 @@ router.get('/', auth, async (req, res) => {
         { author: { $in: postAuthorIds } },
         {
           $or: [
-            { content: { $regex: searchQuery, $options: 'i' } },
-            { 'checkIn.venue.name': { $regex: searchQuery, $options: 'i' } },
-            { 'location.venue.name': { $regex: searchQuery, $options: 'i' } }
+            { content: { $regex: escaped, $options: 'i' } },
+            { 'checkIn.venue.name': { $regex: escaped, $options: 'i' } },
+            { 'location.venue.name': { $regex: escaped, $options: 'i' } }
           ]
         }
       ]

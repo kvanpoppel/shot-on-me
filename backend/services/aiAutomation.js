@@ -316,7 +316,7 @@ function analyzeDayOfWeekActivity(checkIns) {
   }
 
   checkIns.forEach(checkIn => {
-    const day = new Date(checkIn.createdAt).toLocaleDateString('en-US', { weekday: 'lowercase' })
+    const day = new Date(checkIn.createdAt).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
     if (activity[day] !== undefined) {
       activity[day]++
     }

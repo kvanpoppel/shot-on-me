@@ -71,7 +71,7 @@ router.get('/badges', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching badges:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -98,7 +98,7 @@ router.get('/stats', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -184,7 +184,7 @@ router.post('/check-badges', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking badges:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -193,6 +193,7 @@ router.get('/leaderboards', auth, async (req, res) => {
   try {
     const { type = 'generous', limit = 50 } = req.query;
 
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
     let leaderboard = [];
 
     switch (type) {
@@ -200,21 +201,21 @@ router.get('/leaderboards', auth, async (req, res) => {
         leaderboard = await User.find({ userType: 'user' })
           .select('name profilePicture totalSent points')
           .sort({ totalSent: -1 })
-          .limit(parseInt(limit));
+          .limit(safeLimit);
         break;
 
       case 'active': // Most check-ins
         leaderboard = await User.find({ userType: 'user' })
           .select('name profilePicture totalCheckIns points')
           .sort({ totalCheckIns: -1 })
-          .limit(parseInt(limit));
+          .limit(safeLimit);
         break;
 
       case 'social': // Most friends
         leaderboard = await User.find({ userType: 'user' })
           .select('name profilePicture friends points')
           .sort({ 'friends': -1 })
-          .limit(parseInt(limit))
+          .limit(safeLimit)
           .lean();
         leaderboard = leaderboard.map(u => ({
           ...u,
@@ -226,14 +227,14 @@ router.get('/leaderboards', auth, async (req, res) => {
         leaderboard = await User.find({ userType: 'user' })
           .select('name profilePicture points')
           .sort({ points: -1 })
-          .limit(parseInt(limit));
+          .limit(safeLimit);
         break;
 
       case 'streak': // Longest check-in streak
         leaderboard = await User.find({ userType: 'user' })
           .select('name profilePicture checkInStreak')
           .sort({ 'checkInStreak.longest': -1 })
-          .limit(parseInt(limit));
+          .limit(safeLimit);
         break;
     }
 
@@ -259,7 +260,7 @@ router.get('/leaderboards', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching leaderboards:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

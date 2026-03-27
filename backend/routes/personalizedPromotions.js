@@ -40,7 +40,7 @@ router.post('/target-users', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to get target users',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -103,7 +103,7 @@ router.post('/send-exclusive', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to send exclusive promotion',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -133,7 +133,7 @@ router.get('/user-preferences/:userId', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to get user preferences',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -158,7 +158,7 @@ router.post('/track-interaction', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to track interaction',
-      error: error.message 
+      error: undefined 
     });
   }
 });

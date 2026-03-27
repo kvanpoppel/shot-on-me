@@ -786,7 +786,13 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
                             e.currentTarget.style.display = 'none'
                             const parent = e.currentTarget.parentElement
                             if (parent) {
-                              parent.innerHTML = `<div class="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center"><span class="text-primary-500 text-xs font-semibold">${message.sender.firstName?.[0] || message.sender.name[0]}</span></div>`
+                              const wrapper = document.createElement('div')
+                              wrapper.className = 'w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center'
+                              const span = document.createElement('span')
+                              span.className = 'text-primary-500 text-xs font-semibold'
+                              span.textContent = message.sender.firstName?.[0] || message.sender.name?.[0] || '?'
+                              wrapper.appendChild(span)
+                              parent.appendChild(wrapper)
                             }
                           }}
                         />

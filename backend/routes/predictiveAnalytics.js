@@ -31,7 +31,7 @@ router.get('/revenue', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to predict revenue',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -61,7 +61,7 @@ router.get('/optimal-timing', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to predict optimal timing',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -91,7 +91,7 @@ router.get('/clv/:userId', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to forecast CLV',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -120,7 +120,7 @@ router.get('/promotion-suggestions', auth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to generate suggestions',
-      error: error.message 
+      error: undefined 
     });
   }
 });

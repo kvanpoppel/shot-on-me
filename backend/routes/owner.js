@@ -11,32 +11,21 @@ const mongoose = require('mongoose')
 // Middleware to check if user is owner/admin
 const isOwner = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.userId)
-    // Check if user is owner (you can set a specific email or add a role field)
-    // For now, we'll check if user has a specific email or add an isOwner field
+    const user = await User.findById(req.user.userId).select('role isOwner')
     if (!user) {
       return res.status(401).json({ message: 'User not found' })
     }
-    
-    // Option 1: Check for specific owner email (you can set this in .env)
-    const ownerEmail = process.env.OWNER_EMAIL || 'owner@shotonme.com'
-    if (user.email === ownerEmail) {
+
+    // Only allow users with an explicit role or isOwner flag set in the database.
+    // Email-based access checks are intentionally excluded — they can be bypassed by
+    // registering with the owner email or by manipulating environment variables.
+    if (user.isOwner === true || user.role === 'admin' || user.role === 'owner') {
       return next()
     }
-    
-    // Option 2: Check for isOwner field (if you add this to User model)
-    if (user.isOwner === true) {
-      return next()
-    }
-    
-    // Option 3: Check for admin role
-    if (user.role === 'admin' || user.role === 'owner') {
-      return next()
-    }
-    
+
     res.status(403).json({ message: 'Access denied. Owner privileges required.' })
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 }
 
@@ -195,7 +184,7 @@ router.get('/dashboard', auth, isOwner, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching owner dashboard:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -220,7 +209,7 @@ router.post('/ai-insights/track', auth, isOwner, async (req, res) => {
     return res.json({ message: 'AI insight event tracked' })
   } catch (error) {
     console.error('Error tracking AI insight event:', error)
-    return res.status(500).json({ message: 'Server error', error: error.message })
+    return res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -252,7 +241,7 @@ router.get('/ai-insights/metrics', auth, isOwner, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching AI insight metrics:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -291,15 +280,17 @@ router.get('/transactions', auth, isOwner, async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate)
     }
     
-    const skip = (parseInt(page) - 1) * parseInt(limit)
-    
+    const safeLimit = Math.min(200, Math.max(1, parseInt(limit) || 50))
+    const safePage = Math.max(1, parseInt(page) || 1)
+    const skip = (safePage - 1) * safeLimit
+
     const transactions = await Payment.find(query)
       .populate('sender', 'firstName lastName email phone')
       .populate('recipient', 'firstName lastName email phone')
       .populate('venueId', 'name address')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(safeLimit)
       .lean()
     
     const total = await Payment.countDocuments(query)
@@ -323,15 +314,15 @@ router.get('/transactions', auth, isOwner, async (req, res) => {
     res.json({
       transactions: transactionsWithCommissions,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: safePage,
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: Math.ceil(total / safeLimit)
       }
     })
   } catch (error) {
     console.error('Error fetching transactions:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -341,37 +332,42 @@ router.get('/transactions', auth, isOwner, async (req, res) => {
 router.get('/users', auth, isOwner, async (req, res) => {
   try {
     const { page = 1, limit = 50, sortBy = 'createdAt', order = 'desc' } = req.query
-    
-    const skip = (parseInt(page) - 1) * parseInt(limit)
-    const sort = { [sortBy]: order === 'desc' ? -1 : 1 }
-    
+
+    // Whitelist sortBy to prevent operator injection
+    const allowedSortFields = ['createdAt', 'lastActive', 'firstName', 'lastName', 'email']
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt'
+    const safeLimit = Math.min(200, Math.max(1, parseInt(limit) || 50))
+    const safePage = Math.max(1, parseInt(page) || 1)
+    const skip = (safePage - 1) * safeLimit
+    const sort = { [safeSortBy]: order === 'desc' ? -1 : 1 }
+
     const users = await User.find({ userType: { $ne: 'venue' } })
       .select('firstName lastName email phone wallet createdAt lastActive')
       .sort(sort)
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(safeLimit)
       .lean()
-    
+
     const total = await User.countDocuments({ userType: { $ne: 'venue' } })
-    
+
     // Add wallet balance to each user
     const usersWithBalance = users.map(u => ({
       ...u,
       walletBalance: (u.wallet?.balance || 0).toFixed(2)
     }))
-    
+
     res.json({
       users: usersWithBalance,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: safePage,
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: Math.ceil(total / safeLimit)
       }
     })
   } catch (error) {
     console.error('Error fetching users:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -434,7 +430,7 @@ router.get('/venues', auth, isOwner, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching venues:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -467,7 +463,7 @@ router.get('/virtual-cards', auth, isOwner, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching virtual cards:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -523,7 +519,7 @@ router.get('/revenue-trends', auth, isOwner, async (req, res) => {
     res.json({ trends })
   } catch (error) {
     console.error('Error fetching revenue trends:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
   }
 })
 
@@ -559,7 +555,64 @@ router.get('/system-health', auth, isOwner, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching system health:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
+    res.status(500).json({ message: 'Server error'})
+  }
+})
+
+// @route   GET /api/owner/reports
+// @desc    List user-submitted content reports for moderation
+// @access  Private (Owner only)
+router.get('/reports', auth, isOwner, async (req, res) => {
+  try {
+    const Report = require('../models/Report')
+    const { status = 'pending', limit = 50, skip = 0 } = req.query
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 50))
+    const skipNum = Math.max(0, parseInt(skip) || 0)
+
+    const validStatuses = ['pending', 'reviewed', 'resolved', 'dismissed']
+    const statusFilter = validStatuses.includes(status) ? status : 'pending'
+
+    const [reports, total] = await Promise.all([
+      Report.find({ status: statusFilter })
+        .populate('reporter', 'name profilePicture')
+        .sort({ createdAt: -1 })
+        .limit(limitNum)
+        .skip(skipNum)
+        .lean(),
+      Report.countDocuments({ status: statusFilter })
+    ])
+
+    res.json({ reports, total, status: statusFilter })
+  } catch (error) {
+    console.error('Error fetching reports:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// @route   PATCH /api/owner/reports/:reportId
+// @desc    Update report status (reviewed / resolved / dismissed)
+// @access  Private (Owner only)
+router.patch('/reports/:reportId', auth, isOwner, async (req, res) => {
+  try {
+    const Report = require('../models/Report')
+    const { status } = req.body
+    const validStatuses = ['reviewed', 'resolved', 'dismissed']
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${validStatuses.join(', ')}` })
+    }
+
+    const report = await Report.findByIdAndUpdate(
+      req.params.reportId,
+      { status, reviewedBy: req.user.userId, reviewedAt: new Date() },
+      { new: true }
+    )
+    if (!report) return res.status(404).json({ message: 'Report not found' })
+
+    res.json({ report })
+  } catch (error) {
+    console.error('Error updating report:', error)
+    res.status(500).json({ message: 'Server error' })
   }
 })
 

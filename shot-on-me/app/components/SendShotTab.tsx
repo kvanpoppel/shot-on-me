@@ -49,6 +49,10 @@ export default function SendShotTab() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedVenue, setSelectedVenue] = useState<any>(null)
+  // 2FA state
+  const [otpStep, setOtpStep] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
 
   useEffect(() => {
     if (token) {
@@ -149,46 +153,69 @@ export default function SendShotTab() {
     setShowSendForm(true)
   }
 
-  const handleSendPayment = async () => {
+  // Step 1 — request OTP, then show the code entry screen
+  const handleRequestOtp = async () => {
     if (!recipientPhone || !amount || !token) {
       setError('Please fill in all required fields')
       return
     }
+    setOtpLoading(true)
+    setError('')
+    try {
+      await axios.post(
+        `${API_URL}/payments/request-otp`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setOtpStep(true)
+      setOtp('')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send verification code.')
+    } finally {
+      setOtpLoading(false)
+    }
+  }
 
+  // Step 2 — submit payment with the verified OTP
+  const handleSendPayment = async () => {
+    if (!otp || otp.length !== 6) {
+      setError('Please enter the 6-digit code sent to your phone.')
+      return
+    }
     setLoading(true)
     setError('')
-
     try {
       const response = await axios.post(
         `${API_URL}/payments/send`,
         {
           recipientPhone,
           amount: parseFloat(amount),
-          message: message || undefined
+          message: message || undefined,
+          otp
         },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      if (response.data.success) {
-        const code = response.data.redemptionCode
-        setQrCodeData(code)
-        setShowQRCode(true)
+      if (response.data.payment || response.data.pendingPayment) {
         setShowSendForm(false)
+        setOtpStep(false)
+        setOtp('')
         setRecipientPhone('')
         setRecipientName('')
         setAmount('')
         setMessage('')
         await fetchRecentRecipients()
         await fetchPaymentHistory()
-        if (updateUser) {
-          await updateUser({})
+        if (updateUser) await updateUser({})
+
+        if (response.data.pendingPayment) {
+          // Recipient isn't on the app yet — show a different success message
+          setError('') // clear any previous error
+          alert(response.data.message || `Payment sent! ${recipientPhone} will receive an SMS to claim it when they join Shot On Me.`)
         }
       }
-    } catch (error: any) {
-      console.error('Failed to send payment:', error)
-      setError(error.response?.data?.message || 'Failed to send payment. Please try again.')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send payment. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -352,15 +379,19 @@ export default function SendShotTab() {
         )}
       </div>
 
-      {/* Send Payment Form Modal */}
+      {/* Send Payment Modal — Step 1: form, Step 2: OTP */}
       {showSendForm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Send Payment</h2>
+              <h2 className="text-xl font-bold">
+                {otpStep ? 'Verify Payment' : 'Send Payment'}
+              </h2>
               <button
                 onClick={() => {
                   setShowSendForm(false)
+                  setOtpStep(false)
+                  setOtp('')
                   setError('')
                 }}
                 className="text-gray-400 hover:text-white"
@@ -375,49 +406,92 @@ export default function SendShotTab() {
               </div>
             )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Recipient</label>
-                <input
-                  type="text"
-                  value={recipientName || recipientPhone}
-                  readOnly
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white"
-                />
+            {!otpStep ? (
+              /* ── Step 1: payment details ── */
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Recipient</label>
+                  <input
+                    type="text"
+                    value={recipientName || recipientPhone}
+                    readOnly
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Amount ($)</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    min="0.01"
+                    step="0.01"
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Message (Optional)</label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Add a message..."
+                    rows={3}
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 resize-none"
+                  />
+                </div>
+                <button
+                  onClick={handleRequestOtp}
+                  disabled={otpLoading || !amount || !recipientPhone}
+                  className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
+                  {otpLoading ? 'Sending code...' : `Continue — Send $${amount || '0.00'}`}
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Amount ($)</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  min="0.01"
-                  step="0.01"
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500"
-                />
+            ) : (
+              /* ── Step 2: OTP verification ── */
+              <div className="space-y-4">
+                <p className="text-sm text-gray-400">
+                  A 6-digit verification code was sent to your phone. Enter it below to confirm the payment of{' '}
+                  <span className="text-white font-semibold">${parseFloat(amount).toFixed(2)}</span> to{' '}
+                  <span className="text-white font-semibold">{recipientName || recipientPhone}</span>.
+                </p>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    autoFocus
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-4 text-white text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <button
+                  onClick={handleSendPayment}
+                  disabled={loading || otp.length !== 6}
+                  className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
+                  {loading ? 'Processing...' : 'Confirm Payment'}
+                </button>
+                <button
+                  onClick={() => { setOtpStep(false); setOtp(''); setError('') }}
+                  className="w-full text-gray-400 hover:text-white text-sm py-2 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleRequestOtp}
+                  disabled={otpLoading}
+                  className="w-full text-primary-400 hover:text-primary-300 text-sm py-1 transition-colors"
+                >
+                  {otpLoading ? 'Resending...' : 'Resend code'}
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Message (Optional)</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Add a message..."
-                  rows={3}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 resize-none"
-                />
-              </div>
-
-              <button
-                onClick={handleSendPayment}
-                disabled={loading || !amount || !recipientPhone}
-                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-              >
-                {loading ? 'Sending...' : `Send $${amount || '0.00'}`}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}

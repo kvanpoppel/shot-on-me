@@ -856,6 +856,62 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// GET /api/venues/:venueId/nearby-users
+// Returns users who recently checked in or are flagged as nearby (used by LiveActivityDashboard)
+router.get('/:venueId/nearby-users', auth, async (req, res) => {
+  try {
+    const { venueId } = req.params;
+    const { limit = 20 } = req.query;
+    const safeLimit = Math.min(50, Math.max(1, parseInt(limit) || 20));
+
+    const venue = await Venue.findById(venueId).select('_id name location owner');
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    // Only the venue owner can see nearby users for their venue
+    if (venue.owner.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const CheckIn = require('../models/CheckIn');
+
+    // Users who checked in within the last 4 hours
+    const since = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const recentCheckIns = await CheckIn.find({
+      venue: venueId,
+      createdAt: { $gte: since }
+    })
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .populate('user', 'firstName lastName name profilePicture');
+
+    const users = recentCheckIns
+      .filter(c => c.user)
+      .map(c => ({
+        _id: c.user._id,
+        firstName: c.user.firstName || c.user.name?.split(' ')[0] || '',
+        lastName: c.user.lastName || c.user.name?.split(' ').slice(1).join(' ') || '',
+        profilePicture: c.user.profilePicture,
+        checkedInAt: c.createdAt
+      }));
+
+    // Deduplicate by user ID (keep most recent check-in)
+    const seen = new Set();
+    const unique = users.filter(u => {
+      const key = u._id.toString();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    res.json({ users: unique, count: unique.length });
+  } catch (error) {
+    console.error('Error fetching nearby users:', error);
+    res.status(500).json({ message: 'Server error', error: undefined });
+  }
+});
+
 module.exports = router;
 
 

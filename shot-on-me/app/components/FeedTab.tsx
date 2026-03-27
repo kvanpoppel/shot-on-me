@@ -2155,7 +2155,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                             e.currentTarget.style.display = 'none'
                             const parent = e.currentTarget.parentElement
                             if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary-500/10"><span class="text-primary-500 font-semibold">${post.author.firstName[0]}</span></div>`
+                              const wrapper = document.createElement('div')
+                              wrapper.className = 'w-full h-full flex items-center justify-center bg-primary-500/10'
+                              const span = document.createElement('span')
+                              span.className = 'text-primary-500 font-semibold'
+                              span.textContent = post.author.firstName?.[0] || '?'
+                              wrapper.appendChild(span)
+                              parent.appendChild(wrapper)
                             }
                           }}
                         />

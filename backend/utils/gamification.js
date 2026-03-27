@@ -286,6 +286,13 @@ const handleCheckIn = async (userId, venueId) => {
 
     // Check badges
     await checkBadges(userId);
+
+    // Trigger referral completion for first check-in (async, don't block)
+    if ((user.totalCheckIns || 0) === 1) {
+      checkReferralCompletion(userId, 'first_checkin').catch(err =>
+        console.error('Referral first_checkin error:', err)
+      );
+    }
   } catch (error) {
     console.error('Error handling check-in:', error);
   }

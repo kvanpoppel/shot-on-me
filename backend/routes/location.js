@@ -31,7 +31,9 @@ router.put('/update', auth, async (req, res) => {
       locationUpdate.isVisible = true; // Default
     }
 
-    // Add to location history (keep last 100 entries)
+    // Add to location history — prune entries older than 30 days AND cap at 100
+    // Uses aggregation pipeline update so filter + slice happen atomically
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const locationHistoryEntry = {
       latitude,
       longitude,
@@ -39,21 +41,28 @@ router.put('/update', auth, async (req, res) => {
       venueId: venueId || null
     };
 
-    // Update location and history
-    const updateData = {
-      $set: { location: locationUpdate },
-      $push: {
-        locationHistory: {
-          $each: [locationHistoryEntry],
-          $slice: -100 // Keep only last 100 entries
-        }
-      }
-    };
-
     await User.findByIdAndUpdate(
       req.user.userId,
-      updateData,
-      { runValidators: false } // Skip validation to avoid name field issues
+      [
+        {
+          $set: {
+            location: locationUpdate,
+            locationHistory: {
+              $slice: [
+                {
+                  $filter: {
+                    input: { $concatArrays: [{ $ifNull: ['$locationHistory', []] }, [locationHistoryEntry]] },
+                    as: 'entry',
+                    cond: { $gte: ['$$entry.timestamp', thirtyDaysAgo] }
+                  }
+                },
+                -100
+              ]
+            }
+          }
+        }
+      ],
+      { runValidators: false }
     );
 
     // Check for nearby friends and promotions
@@ -77,7 +86,7 @@ router.put('/update', auth, async (req, res) => {
 
         // Notify if friend is within 3 miles
         if (distance <= 3) {
-          io.to(req.user.userId.toString()).emit('friend-nearby', {
+          io.to(`user-${req.user.userId.toString()}`).emit('friend-nearby', {
             friend: {
               _id: friend._id,
               firstName: friend.firstName || friend.name?.split(' ')[0] || '',
@@ -108,7 +117,7 @@ router.put('/update', auth, async (req, res) => {
 
           // Notify if venue with promotion is within 5 miles
           if (activePromos.length > 0 && distance <= 5) {
-            io.to(req.user.userId.toString()).emit('promotion-nearby', {
+            io.to(`user-${req.user.userId.toString()}`).emit('promotion-nearby', {
               venue: {
                 _id: venue._id,
                 name: venue.name,
@@ -125,7 +134,7 @@ router.put('/update', auth, async (req, res) => {
     res.json({ message: 'Location updated successfully' });
   } catch (error) {
     console.error('Error updating location:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -173,7 +182,7 @@ router.get('/check-proximity', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking proximity:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -251,7 +260,22 @@ router.get('/friends', auth, async (req, res) => {
     res.json({ friends: friendsWithDistance });
   } catch (error) {
     console.error('Error fetching nearby friends:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
+  }
+});
+
+// Clear location history — GDPR / user privacy control
+router.delete('/history', auth, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: { locationHistory: [] } },
+      { runValidators: false }
+    );
+    res.json({ message: 'Location history cleared' });
+  } catch (error) {
+    console.error('Error clearing location history:', error);
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

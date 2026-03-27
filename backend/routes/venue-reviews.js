@@ -72,7 +72,7 @@ router.post('/:venueId/review', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating review:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -81,12 +81,14 @@ router.get('/:venueId/reviews', auth, async (req, res) => {
   try {
     const { venueId } = req.params;
     const { limit = 20, offset = 0 } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
 
     const reviews = await VenueReview.find({ venue: venueId })
       .populate('user', 'name profilePicture')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(offset));
+      .limit(safeLimit)
+      .skip(safeOffset);
 
     // Privacy: Don't expose full user details
     const sanitizedReviews = reviews.map(r => ({
@@ -105,7 +107,7 @@ router.get('/:venueId/reviews', auth, async (req, res) => {
     res.json({ reviews: sanitizedReviews });
   } catch (error) {
     console.error('Error fetching reviews:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -121,7 +123,7 @@ router.get('/:venueId/my-review', auth, async (req, res) => {
     res.json({ review: review || null });
   } catch (error) {
     console.error('Error fetching user review:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -156,7 +158,7 @@ router.delete('/:venueId/review', auth, async (req, res) => {
     res.json({ message: 'Review deleted successfully' });
   } catch (error) {
     console.error('Error deleting review:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

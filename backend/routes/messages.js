@@ -69,42 +69,51 @@ router.get('/conversations', auth, async (req, res) => {
       }
     ]);
 
-    // Populate sender and recipient info
-    const populatedConversations = await Promise.all(
-      conversations.map(async (conv) => {
-        const message = await Message.findById(conv.lastMessage._id)
-          .populate('sender', 'name firstName lastName profilePicture')
-          .populate('recipient', 'name firstName lastName profilePicture');
-        
-        // Get the other user in the conversation
-        const otherUser = message.sender._id.toString() === userId 
-          ? message.recipient 
-          : message.sender;
-        
-        return {
-          conversationId: conv._id,
-          otherUser: {
-            id: otherUser._id,
-            _id: otherUser._id,
-            name: otherUser.name,
-            firstName: otherUser.firstName || otherUser.name?.split(' ')[0] || '',
-            lastName: otherUser.lastName || otherUser.name?.split(' ').slice(1).join(' ') || '',
-            profilePicture: otherUser.profilePicture
-          },
-          lastMessage: {
-            content: message.content,
-            createdAt: message.createdAt,
-            senderId: message.sender._id.toString()
-          },
-          unreadCount: conv.unreadCount
-        };
-      })
-    );
+    // Populate sender and recipient in one aggregation pass — no N+1 queries
+    const lastMessageIds = conversations.map(c => c.lastMessage._id);
+    const populated = await Message.aggregate([
+      { $match: { _id: { $in: lastMessageIds } } },
+      { $lookup: { from: 'users', localField: 'sender', foreignField: '_id', as: 'senderDoc',
+          pipeline: [{ $project: { name: 1, firstName: 1, lastName: 1, profilePicture: 1 } }] } },
+      { $lookup: { from: 'users', localField: 'recipient', foreignField: '_id', as: 'recipientDoc',
+          pipeline: [{ $project: { name: 1, firstName: 1, lastName: 1, profilePicture: 1 } }] } },
+      { $addFields: { senderDoc: { $first: '$senderDoc' }, recipientDoc: { $first: '$recipientDoc' } } }
+    ]);
+
+    const msgById = new Map(populated.map(m => [m._id.toString(), m]));
+
+    const populatedConversations = conversations.map(conv => {
+      const message = msgById.get(conv.lastMessage._id.toString());
+      if (!message) return null;
+
+      const isCurrentUserSender = message.sender.toString() === userId;
+      const otherUser = isCurrentUserSender ? message.recipientDoc : message.senderDoc;
+      if (!otherUser) return null;
+
+      const nameParts = (otherUser.name || '').split(' ');
+      return {
+        conversationId: conv._id,
+        otherUser: {
+          id: otherUser._id,
+          _id: otherUser._id,
+          name: otherUser.name,
+          firstName: otherUser.firstName || nameParts[0] || '',
+          lastName: otherUser.lastName || nameParts.slice(1).join(' ') || '',
+          profilePicture: otherUser.profilePicture
+        },
+        lastMessage: {
+          content: message.content,
+          createdAt: message.createdAt,
+          senderId: message.sender.toString()
+        },
+        unreadCount: conv.unreadCount
+      };
+    }).filter(Boolean);
 
     res.json({ conversations: populatedConversations });
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -114,15 +123,17 @@ router.get('/conversations/:conversationId', auth, async (req, res) => {
     const { conversationId } = req.params;
     const userId = req.user.userId;
     
-    // Verify user is part of this conversation
-    const message = await Message.findOne({ conversationId });
-    if (!message) {
+    // Verify user is part of this conversation (combined query prevents IDOR info-leak)
+    const participantCheck = await Message.findOne({
+      conversationId,
+      $or: [
+        { sender: new mongoose.Types.ObjectId(userId) },
+        { recipient: new mongoose.Types.ObjectId(userId) }
+      ]
+    });
+    if (!participantCheck) {
+      // Return 404 regardless of whether conversation exists to avoid leaking its existence
       return res.status(404).json({ message: 'Conversation not found' });
-    }
-    
-    const isParticipant = message.sender.toString() === userId || message.recipient.toString() === userId;
-    if (!isParticipant) {
-      return res.status(403).json({ message: 'Not authorized' });
     }
     
     // Get all messages in conversation
@@ -141,7 +152,7 @@ router.get('/conversations/:conversationId', auth, async (req, res) => {
     res.json({ messages });
   } catch (error) {
     console.error('Error fetching messages:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -157,7 +168,7 @@ router.get('/unread-count', auth, async (req, res) => {
     res.json({ unreadCount: count });
   } catch (error) {
     console.error('Error getting unread count:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -175,7 +186,7 @@ router.put('/read/:conversationId', auth, async (req, res) => {
     res.json({ message: 'Messages marked as read' });
   } catch (error) {
     console.error('Error marking messages as read:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -213,7 +224,7 @@ router.post('/:messageId/like', auth, async (req, res) => {
     res.json({ liked: likedIndex === -1, message });
   } catch (error) {
     console.error('Error liking message:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -237,13 +248,13 @@ router.delete('/:messageId', auth, async (req, res) => {
     
     // Emit socket event
     if (io) {
-      io.to(message.recipient.toString()).emit('message-deleted', { messageId });
+      io.to(`user-${message.recipient.toString()}`).emit('message-deleted', { messageId });
     }
     
     res.json({ message: 'Message deleted' });
   } catch (error) {
     console.error('Error deleting message:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -253,16 +264,7 @@ router.post('/send', auth, upload.array('media', 5), async (req, res) => {
     const { recipientId, content, replyTo } = req.body;
     const senderId = req.user.userId;
     
-    console.log('📨 Message send request:', { 
-      senderId, 
-      recipientId, 
-      hasContent: !!content, 
-      hasFiles: !!(req.files && req.files.length > 0),
-      fileCount: req.files ? req.files.length : 0
-    });
-    
     if (!recipientId) {
-      console.error('❌ Missing recipientId');
       return res.status(400).json({ message: 'Recipient is required' });
     }
     
@@ -394,11 +396,11 @@ router.post('/send', auth, upload.array('media', 5), async (req, res) => {
     
     // Emit Socket.io event for real-time delivery
     if (io) {
-      io.to(recipientId).emit('new-message', {
+      io.to(`user-${recipientId}`).emit('new-message', {
         message,
         conversationId
       });
-      io.to(recipientId).emit('new-notification', {
+      io.to(`user-${recipientId}`).emit('new-notification', {
         type: 'message',
         message: `${sender.firstName || sender.name} sent you a message`,
         messageId: message._id
@@ -412,7 +414,7 @@ router.post('/send', auth, upload.array('media', 5), async (req, res) => {
     console.error('Error stack:', error.stack);
     res.status(500).json({ 
       message: 'Server error while sending message',
-      error: error.message,
+      error: undefined,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }

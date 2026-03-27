@@ -8,15 +8,35 @@ const analytics = require('../utils/analytics');
 
 const router = express.Router();
 
-// Get user's recent check-ins (GET /api/checkins)
+// Get check-ins (GET /api/checkins)
+// - With ?venueId=xxx: returns check-ins at that venue (venue owners only)
+// - Without venueId: returns the authenticated user's own check-ins
 router.get('/', auth, async (req, res) => {
   try {
-    const { limit = 20 } = req.query;
-    
+    const { limit = 20, venueId } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
+
+    if (venueId) {
+      // Venue owner requesting check-ins at their venue
+      const venueOwner = await Venue.findOne({ _id: venueId, owner: req.user.userId }).select('_id');
+      if (!venueOwner) {
+        return res.status(403).json({ message: 'Not authorized to view check-ins for this venue' });
+      }
+
+      const checkIns = await CheckIn.find({ venue: venueId })
+        .populate('user', 'firstName lastName name profilePicture')
+        .populate('venue', 'name address location image')
+        .sort({ createdAt: -1 })
+        .limit(safeLimit);
+
+      return res.json({ checkIns });
+    }
+
+    // Default: return the authenticated user's own check-ins
     const checkIns = await CheckIn.find({ user: req.user.userId })
       .populate('venue', 'name address location image')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(safeLimit);
 
     res.json({ checkIns });
   } catch (error) {
@@ -32,6 +52,16 @@ router.post('/', auth, async (req, res) => {
 
     if (!venueId) {
       return res.status(400).json({ message: 'Venue ID is required' });
+    }
+
+    // Validate coordinates if provided
+    if (latitude !== undefined || longitude !== undefined) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        return res.status(400).json({ message: 'Invalid coordinates' });
+      }
     }
 
     const venue = await Venue.findById(venueId);
@@ -309,7 +339,7 @@ router.post('/', auth, async (req, res) => {
           } catch (uploadError) {
             console.warn('⚠️ Could not upload venue image, using default:', uploadError);
             // Use a placeholder if upload fails
-            storyMediaUrl = 'https://via.placeholder.com/1080x1920/1a1a2e/FFD700?text=' + encodeURIComponent(venue.name + ' Check-In');
+            storyMediaUrl = null; // No fallback image — frontend handles missing media
           }
         } else {
           // Extract public_id from Cloudinary URL if it's already there
@@ -361,7 +391,7 @@ router.post('/', auth, async (req, res) => {
         
         // Emit real-time notification
         if (io) {
-          io.to(friendId.toString()).emit('new-notification', {
+          io.to(`user-${friendId.toString()}`).emit('new-notification', {
             type: 'check_in',
             message: notification.content,
             venueId: venueId
@@ -383,7 +413,7 @@ router.post('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking in:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -391,11 +421,12 @@ router.post('/', auth, async (req, res) => {
 router.get('/history', auth, async (req, res) => {
   try {
     const { limit = 50 } = req.query;
-    
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
+
     const checkIns = await CheckIn.find({ user: req.user.userId })
       .populate('venue', 'name address location')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(safeLimit);
 
     res.json({ checkIns });
   } catch (error) {
@@ -409,6 +440,7 @@ router.get('/leaderboard/:venueId', auth, async (req, res) => {
   try {
     const { venueId } = req.params;
     const { limit = 20 } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
 
     // Get top check-in users for this venue
     const checkIns = await CheckIn.aggregate([
@@ -422,7 +454,7 @@ router.get('/leaderboard/:venueId', auth, async (req, res) => {
         }
       },
       { $sort: { count: -1 } },
-      { $limit: parseInt(limit) }
+      { $limit: safeLimit }
     ]);
 
     // Populate user info

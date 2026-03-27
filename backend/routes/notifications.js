@@ -8,7 +8,8 @@ const router = express.Router();
 router.get('/', auth, async (req, res) => {
   try {
     const { limit = 50, unreadOnly = false } = req.query;
-    
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
+
     const query = { recipient: req.user.userId };
     if (unreadOnly === 'true') {
       query.read = false;
@@ -20,7 +21,7 @@ router.get('/', auth, async (req, res) => {
       .populate('relatedStory', 'media')
       .populate('relatedVenue', 'name')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(safeLimit);
 
     // Transform actor names
     const transformedNotifications = notifications.map(notif => {

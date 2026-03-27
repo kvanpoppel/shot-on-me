@@ -3,6 +3,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
 
+// Send cookies on every request — required for HttpOnly session cookie
+axios.defaults.withCredentials = true
+
 interface User {
   id: string
   email: string
@@ -58,80 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    
+
     let isMounted = true
-    
-    try {
-      const storedToken = localStorage.getItem('token')
-      if (storedToken) {
-        setToken(storedToken)
-        fetchUser(storedToken)
-      } else {
-        if (isMounted) setLoading(false)
-      }
-    } catch (error) {
-      console.error('Error accessing localStorage:', error)
-      if (isMounted) setLoading(false)
-    }
-    
-    const timeout = setTimeout(() => {
-      if (isMounted) {
-        setLoading(false)
-      }
-    }, 10000)
-    
+    const timeout = setTimeout(() => { if (isMounted) setLoading(false) }, 10000)
+
+    // Restore session from HttpOnly cookie — no localStorage needed
+    const apiUrl = getApiUrl()
+    axios.get(`${apiUrl}/auth/verify`, { withCredentials: true, timeout: 8000 })
+      .then(res => {
+        if (!isMounted) return
+        const { token: authToken, user: userData } = res.data
+        if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
+        if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+        setToken(authToken)
+        setUser(userData)
+      })
+      .catch(() => { /* No valid session — stay logged out */ })
+      .finally(() => { if (isMounted) setLoading(false) })
+
     return () => {
       isMounted = false
       clearTimeout(timeout)
     }
   }, [])
-
-  const fetchUser = async (authToken: string) => {
-    if (!authToken) {
-      setLoading(false)
-      return
-    }
-    try {
-      const apiUrl = getApiUrl()
-      
-      const response = await axios.get(`${apiUrl}/users/me`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 10000 // 10 seconds - increased for reliability
-      })
-      
-      // Normalize user data - convert _id to id if needed
-      const userData = response.data.user
-      if (userData && userData._id && !userData.id) {
-        userData.id = userData._id.toString()
-      }
-      
-      // Ensure wallet exists
-      if (!userData.wallet) {
-        userData.wallet = { balance: 0, pendingBalance: 0 }
-      }
-      
-      setUser(userData)
-      setToken(authToken) // Ensure token is set
-    } catch (error: any) {
-      console.error('Failed to fetch user:', error)
-      // Only clear token on auth errors, not network errors
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        try {
-          localStorage.removeItem('token')
-        } catch (e) {
-          // Ignore localStorage errors
-        }
-        setToken(null)
-        setUser(null)
-      } else {
-        // For network errors, keep token but show login screen
-        // User can retry when network is available
-        console.warn('Network error - keeping token for retry')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
@@ -164,29 +116,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userData.wallet = { balance: 0, pendingBalance: 0 }
       }
       
-      // Set state immediately - don't wait for any additional calls
+      // Token is set as HttpOnly cookie by the backend — store in memory only
       setToken(authToken)
       setUser(userData)
-      
-      // Always save token to localStorage (it's needed for the app to work)
-      // The rememberMe flag is just for UI preference
+
+      // Save email for auto-fill (non-sensitive, safe in localStorage)
       try {
         if (typeof window !== 'undefined') {
-          localStorage.setItem('token', authToken)
-          localStorage.setItem('rememberMe', rememberMe.toString())
-          
-          // Also save user email for auto-fill if remember me is checked
           if (rememberMe) {
             localStorage.setItem('savedEmail', email)
           } else {
             localStorage.removeItem('savedEmail')
           }
         }
-      } catch (error) {
-        console.error('Error saving to localStorage:', error)
-        // Continue even if localStorage fails
-      }
-      
+      } catch { /* ignore */ }
+
       // Don't call fetchUser - we already have the user data from login response
     } catch (error: any) {
       let errorMessage = 'Login failed'
@@ -252,16 +196,9 @@ For LOCAL development:
         userData.wallet = { balance: 0, pendingBalance: 0 }
       }
       
+      // Token is set as HttpOnly cookie by the backend — store in memory only
       setToken(authToken)
       setUser(userData)
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', authToken)
-        }
-      } catch (storageError) {
-        console.error('Error saving token to localStorage:', storageError)
-        // Continue even if localStorage fails
-      }
       
       // Attribute referral by referrer ID (from invite link ?ref=userId) – backend only, no visible code
       if (data.referrerId && userData?.id) {
@@ -293,13 +230,9 @@ For LOCAL development:
   }
 
   const logout = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token')
-      }
-    } catch (error) {
-      console.error('Error removing token from localStorage:', error)
-    }
+    // Clear the HttpOnly cookie server-side
+    const apiUrl = getApiUrl()
+    axios.post(`${apiUrl}/auth/logout`, {}, { withCredentials: true }).catch(() => {})
     setUser(null)
     setToken(null)
   }

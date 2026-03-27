@@ -46,7 +46,7 @@ router.post('/venues/:venueId', auth, async (req, res) => {
     }
   } catch (error) {
     console.error('Error toggling favorite venue:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -63,7 +63,7 @@ router.get('/venues', auth, async (req, res) => {
     res.json({ venues: user.favoriteVenues || [] });
   } catch (error) {
     console.error('Error fetching favorite venues:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -106,7 +106,7 @@ router.post('/posts/:postId', auth, async (req, res) => {
     }
   } catch (error) {
     console.error('Error toggling favorite post:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -129,7 +129,7 @@ router.get('/posts', auth, async (req, res) => {
     res.json({ posts: user.favoritePosts || [] });
   } catch (error) {
     console.error('Error fetching favorite posts:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -198,7 +198,7 @@ router.get('/popular-areas', auth, async (req, res) => {
     res.json({ popularAreas });
   } catch (error) {
     console.error('Error fetching popular areas:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

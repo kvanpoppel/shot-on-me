@@ -250,14 +250,31 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: 'v1'
     }
+  },
+  // Role-based access control — used by owner/admin middleware
+  role: {
+    type: String,
+    enum: ['user', 'admin', 'owner'],
+    default: 'user'
+  },
+  isOwner: {
+    type: Boolean,
+    default: false
+  },
+  // Payment 2FA — single-use OTP, cleared after use or expiry
+  paymentOtp: {
+    hash: { type: String },
+    expiresAt: { type: Date }
   }
 }, {
   timestamps: true
 });
 
 // Index for better query performance
-userSchema.index({ email: 1 });
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ phoneNumber: 1 }, { sparse: true });
 userSchema.index({ userType: 1 });
+userSchema.index({ friends: 1 });
 userSchema.index({ 'location.latitude': 1, 'location.longitude': 1 });
 
 module.exports = mongoose.model('User', userSchema);

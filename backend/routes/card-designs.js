@@ -115,7 +115,7 @@ router.post('/upload', auth, upload.single('image'), async (req, res) => {
     console.error('Error uploading card design:', error);
     res.status(500).json({ 
       message: 'Failed to upload card design',
-      error: error.message 
+      error: undefined 
     });
   }
 });

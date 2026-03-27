@@ -3,6 +3,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
 
+// Send cookies on every request — required for HttpOnly session cookie
+axios.defaults.withCredentials = true
+
 interface User {
   id: string
   email: string
@@ -31,38 +34,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    // Safety check for browser environment
     if (typeof window === 'undefined') {
       setLoading(false)
       return
     }
-    
-    try {
-      // Check for stored token
-      const storedToken = localStorage.getItem('token')
-      if (storedToken) {
-        setToken(storedToken)
-        fetchUser(storedToken)
-      } else {
-        setLoading(false)
-      }
-    } catch (error) {
-      console.error('Error accessing localStorage:', error)
-      setLoading(false)
-    }
-    
-    // Safety timeout - reduced to 5 seconds for faster initial load
-    const timeout = setTimeout(() => {
-      if (loading) {
-        // Silently handle timeout - this is a fallback mechanism
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Auth loading timeout - using fallback')
+
+    let isMounted = true
+    const timeout = setTimeout(() => { if (isMounted) setLoading(false) }, 5000)
+    const apiUrl = getApiUrl()
+
+    // Restore session from HttpOnly cookie — no localStorage needed
+    axios.get(`${apiUrl}/auth/verify`, { withCredentials: true, timeout: 8000 })
+      .then(res => {
+        if (!isMounted) return
+        const { token: authToken, user: userData } = res.data
+        if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
+        // Enforce venue-only access
+        if (userData.userType !== 'venue') {
+          setLoading(false)
+          return
         }
-        setLoading(false)
-      }
-    }, 5000)
-    
-    return () => clearTimeout(timeout)
+        setToken(authToken)
+        setUser(userData)
+      })
+      .catch(() => { /* No valid session */ })
+      .finally(() => { if (isMounted) setLoading(false) })
+
+    return () => {
+      isMounted = false
+      clearTimeout(timeout)
+    }
   }, [])
 
   const getApiUrl = () => {
@@ -74,70 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return url
     }
     return 'http://localhost:5000/api'
-  }
-
-  const fetchUser = async (authToken: string) => {
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/users/me`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 10000 // 10 second timeout
-      })
-      const fetchedUser = response.data.user
-
-      // Normalize user data - convert _id to id if needed
-      if (fetchedUser && fetchedUser._id && !fetchedUser.id) {
-        fetchedUser.id = fetchedUser._id.toString()
-      }
-
-      // Ensure only venue users can stay logged into the venue portal
-      if (fetchedUser.userType !== 'venue') {
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Non-venue user attempted to access venue portal')
-        }
-        localStorage.removeItem('token')
-        localStorage.removeItem('rememberedEmail')
-        setToken(null)
-        setUser(null)
-      } else {
-        // Successfully logged in - set user
-        setUser(fetchedUser)
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('✅ Auto-login successful for:', fetchedUser.email)
-        }
-      }
-    } catch (error: any) {
-      // Only log actual errors, not expected connection retries
-      if (error.response?.status !== 401 && error.response?.status !== 403 && 
-          !error.code?.includes('ECONNABORTED') && !error.message?.includes('timeout')) {
-        console.error('Failed to fetch user:', error.message || error)
-      }
-      
-      // Only clear token if it's an auth error (401/403), not network errors
-      // This allows retry if backend is temporarily unavailable
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Token expired or invalid - clearing stored credentials')
-        }
-        localStorage.removeItem('token')
-        localStorage.removeItem('rememberedEmail')
-        setToken(null)
-        setUser(null)
-      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        // Network timeout - keep token but don't set user
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Backend timeout - keeping token for retry')
-        }
-        setUser(null)
-      } else {
-        // Other errors - clear token to be safe
-        localStorage.removeItem('token')
-        setToken(null)
-        setUser(null)
-      }
-    } finally {
-      setLoading(false)
-    }
   }
 
   const login = async (email: string, password: string) => {
@@ -169,9 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('This portal is for venue accounts only. Please use the Shot On Me app for regular user accounts.')
       }
 
+      // Token is set as HttpOnly cookie by the backend — store in memory only
       setToken(authToken)
       setUser(userData)
-      localStorage.setItem('token', authToken)
     } catch (error: any) {
       if (process.env.NODE_ENV === 'development') {
         console.debug('Login error details:', {
@@ -202,14 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('Logging out user')
-    }
+    // Clear the HttpOnly cookie server-side
+    const apiUrl = getApiUrl()
+    axios.post(`${apiUrl}/auth/logout`, {}, { withCredentials: true }).catch(() => {})
     setUser(null)
     setToken(null)
-    localStorage.removeItem('token')
-    // Optionally clear remembered email on logout
-    // localStorage.removeItem('rememberedEmail')
   }
 
   return (

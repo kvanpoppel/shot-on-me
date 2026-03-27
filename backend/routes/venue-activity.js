@@ -91,7 +91,7 @@ router.get('/:venueId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue activity:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -202,7 +202,7 @@ router.get('/trending/list', auth, async (req, res) => {
         // Secondary sort: most recent activity
         return new Date(b.lastActivity || 0).getTime() - new Date(a.lastActivity || 0).getTime();
       })
-      .slice(0, parseInt(limit));
+      .slice(0, Math.min(100, Math.max(1, parseInt(limit) || 20)));
 
     // Populate venue details
     const venueIds = trendingVenues.map(v => v.venueId);
@@ -240,7 +240,7 @@ router.get('/trending/list', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching trending venues:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -371,7 +371,7 @@ router.get('/trending/friends', auth, async (req, res) => {
         // Tertiary sort: most recent activity
         return new Date(b.lastActivity || 0).getTime() - new Date(a.lastActivity || 0).getTime();
       })
-      .slice(0, parseInt(limit));
+      .slice(0, Math.min(100, Math.max(1, parseInt(limit) || 20)));
 
     // Populate venue details
     const venueIds = trendingVenues.map(v => v.venueId);
@@ -414,7 +414,7 @@ router.get('/trending/friends', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching friend-based trending venues:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -493,7 +493,7 @@ router.get('/venue-events/:venueId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue events:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

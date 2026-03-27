@@ -44,7 +44,7 @@ router.post('/:venueId/follow', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error following venue:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -83,7 +83,7 @@ router.delete('/:venueId/follow', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error unfollowing venue:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -104,7 +104,7 @@ router.get('/:venueId/follow-status', auth, async (req, res) => {
     res.json({ isFollowing });
   } catch (error) {
     console.error('Error checking follow status:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -148,7 +148,7 @@ router.get('/following', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching followed venues:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -163,7 +163,7 @@ router.get('/:venueId/followers', auth, async (req, res) => {
     }
 
     // Only venue owner can see followers
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.userType !== 'venue') {
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -183,7 +183,7 @@ router.get('/:venueId/followers', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue followers:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

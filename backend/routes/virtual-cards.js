@@ -46,7 +46,7 @@ router.get('/status', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking card status:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -164,13 +164,13 @@ router.post('/create', auth, async (req, res) => {
     if (error.type === 'StripeCardError' || error.type === 'StripeInvalidRequestError') {
       return res.status(400).json({
         message: 'Failed to create virtual card',
-        error: error.message
+        error: undefined
       });
     }
     
     res.status(500).json({
       message: 'Server error',
-      error: error.message
+      error: undefined
     });
   }
 });
@@ -208,7 +208,7 @@ router.delete('/:cardId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting card:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -251,7 +251,7 @@ router.get('/wallet-details/:cardId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting wallet details:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -290,7 +290,7 @@ router.put('/wallet-status/:cardId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating wallet status:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -314,7 +314,7 @@ router.post('/deletion-warning/:cardId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error tracking deletion warning:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

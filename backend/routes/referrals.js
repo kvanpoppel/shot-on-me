@@ -43,7 +43,7 @@ router.get('/code', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting referral code:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -121,7 +121,7 @@ router.post('/apply', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error applying referral code:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -144,7 +144,7 @@ router.get('/history', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching referral history:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

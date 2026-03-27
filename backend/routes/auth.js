@@ -114,6 +114,43 @@ router.post('/login', authLimiter, async (req, res) => {
     const { updateLoginStreak } = require('../utils/gamification');
     updateLoginStreak(user._id).catch(err => console.error('Gamification error:', err));
 
+    // Auto-create virtual card if user doesn't have one (fire-and-forget)
+    if (user.userType === 'user') {
+      (async () => {
+        try {
+          const stripeUtils = require('../utils/stripe');
+          const VirtualCard = require('../models/VirtualCard');
+          const issuingEnabled = await stripeUtils.isIssuingEnabled();
+          if (!issuingEnabled) return;
+          const existingCard = await VirtualCard.findOne({ user: user._id, status: 'active' });
+          if (existingCard) return;
+          const nameParts = (user.name || '').split(' ');
+          const cardData = await stripeUtils.createVirtualCard(user._id.toString(), {
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            name: user.name,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
+            address: user.address
+          });
+          await VirtualCard.create({
+            user: user._id,
+            stripeCardId: cardData.cardId,
+            stripeCardholderId: cardData.cardholderId,
+            last4: cardData.last4,
+            brand: cardData.brand,
+            expirationMonth: cardData.expirationMonth,
+            expirationYear: cardData.expirationYear,
+            status: 'active',
+            metadata: { createdAt: new Date() }
+          });
+          console.log(`✅ Virtual card auto-created on login for user ${user._id}: ${cardData.last4}`);
+        } catch (cardErr) {
+          console.error(`⚠️ Failed to auto-create virtual card on login for ${user._id}:`, cardErr.message);
+        }
+      })();
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -248,6 +285,12 @@ router.post('/register', authLimiter, async (req, res) => {
     });
 
     await newUser.save();
+
+    // Trigger referral completion for 'signed_up' action (async, don't block registration)
+    const { checkReferralCompletion } = require('./referrals');
+    checkReferralCompletion(newUser._id, 'signed_up').catch(err =>
+      console.error('Referral completion error on signup:', err)
+    );
 
     // Auto-claim any pending payments sent to this phone number before they registered
     if (newUser.phoneNumber) {

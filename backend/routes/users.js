@@ -167,7 +167,7 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
     console.error('❌ Error updating profile picture:', error);
     res.status(500).json({ 
       message: 'Failed to update profile picture',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -241,7 +241,7 @@ router.put('/me', auth, async (req, res) => {
     console.error('❌ Error updating user profile:', error);
     res.status(500).json({ 
       message: 'Failed to update profile',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -280,7 +280,7 @@ router.put('/me/notification-preferences', auth, async (req, res) => {
     console.error('❌ Error updating notification preferences:', error);
     res.status(500).json({ 
       message: 'Failed to update notification preferences',
-      error: error.message 
+      error: undefined 
     });
   }
 });
@@ -534,14 +534,15 @@ router.get('/search/:query?', auth, async (req, res) => {
     const currentUser = await User.findById(req.user.userId);
     const friendIds = currentUser?.friends || [];
 
+    const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const users = await User.find({
       $and: [
         { _id: { $ne: req.user.userId } },
         {
           $or: [
-            { name: { $regex: query, $options: 'i' } },
-            { email: { $regex: query, $options: 'i' } },
-            { phoneNumber: { $regex: query, $options: 'i' } }
+            { name: { $regex: safeQuery, $options: 'i' } },
+            { email: { $regex: safeQuery, $options: 'i' } },
+            { phoneNumber: { $regex: safeQuery, $options: 'i' } }
           ]
         }
       ]
@@ -586,20 +587,49 @@ router.get('/:userId', auth, async (req, res) => {
     const firstName = nameParts[0] || ''
     const lastName = nameParts.slice(1).join(' ') || ''
     
+    const isSelf = req.user.userId === user._id.toString();
+
+    // Own profile — return full data
+    if (isSelf) {
+      return res.json({
+        user: {
+          id: user._id,
+          _id: user._id,
+          email: user.email,
+          name: user.name,
+          firstName,
+          lastName,
+          phoneNumber: user.phoneNumber,
+          userType: user.userType || 'user',
+          wallet: user.wallet || { balance: 0, pendingBalance: 0 },
+          friends: user.friends || [],
+          location: user.location || { isVisible: true },
+          profilePicture: user.profilePicture,
+          points: user.points,
+          checkInStreak: user.checkInStreak,
+          stats: user.stats
+        }
+      });
+    }
+
+    // Another user — return only public fields (no wallet, phone, email, exact location)
+    const isFriend = (user.friends || []).some(f => f.toString() === req.user.userId);
     res.json({
       user: {
         id: user._id,
         _id: user._id,
-        email: user.email,
         name: user.name,
-        firstName: firstName,
-        lastName: lastName,
-        phoneNumber: user.phoneNumber,
+        firstName,
+        lastName,
         userType: user.userType || 'user',
-        wallet: user.wallet || { balance: 0, pendingBalance: 0 },
-        friends: user.friends || [],
-        location: user.location || { isVisible: true },
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        // Only expose location if user has it visible and is a friend
+        ...(isFriend && user.location?.isVisible && {
+          location: { isVisible: true, latitude: user.location.latitude, longitude: user.location.longitude }
+        }),
+        stats: user.stats,
+        points: user.points,
+        isFriend
       }
     });
   } catch (error) {
@@ -681,11 +711,11 @@ router.post('/friends/:userId', auth, async (req, res) => {
     
     // Emit real-time notifications
     if (io) {
-      io.to(userId.toString()).emit('new-notification', {
+      io.to(`user-${userId.toString()}`).emit('new-notification', {
         notification: friendNotification,
         message: friendNotification.content
       });
-      io.to(currentUserId.toString()).emit('new-notification', {
+      io.to(`user-${currentUserId.toString()}`).emit('new-notification', {
         notification: userNotification,
         message: userNotification.content
       });
@@ -698,7 +728,7 @@ router.post('/friends/:userId', auth, async (req, res) => {
     console.error('Error stack:', error.stack);
     res.status(500).json({ 
       message: 'Server error',
-      error: error.message 
+      error: undefined 
     });
   }
 });

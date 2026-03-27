@@ -109,7 +109,7 @@ router.get('/earnings', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching venue earnings:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -152,7 +152,7 @@ router.get('/history', auth, async (req, res) => {
     res.json({ payouts });
   } catch (error) {
     console.error('Error fetching payout history:', error);
-    res.status(500).json({ message: 'Server error', error: error.message, payouts: [] });
+    res.status(500).json({ message: 'Server error', payouts: [] });
   }
 });
 
@@ -222,7 +222,7 @@ router.post('/request-payout', auth, async (req, res) => {
     console.error('Error requesting payout:', error);
     res.status(500).json({ 
       message: 'Failed to request payout',
-      error: error.message 
+      error: undefined 
     });
   }
 });

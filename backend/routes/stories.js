@@ -357,7 +357,7 @@ router.post('/:storyId/reaction', auth, async (req, res) => {
         // Emit real-time notification
         const io = req.app.get('io');
         if (io) {
-          io.to(story.author._id.toString()).emit('new-notification', {
+          io.to(`user-${story.author._id.toString()}`).emit('new-notification', {
             type: 'story_reaction',
             message: notification.content,
             storyId: story._id

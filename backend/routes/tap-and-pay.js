@@ -3,8 +3,10 @@ const VirtualCard = require('../models/VirtualCard');
 const User = require('../models/User');
 const Venue = require('../models/Venue');
 const Payment = require('../models/Payment');
+const AuditLog = require('../models/AuditLog');
 const auth = require('../middleware/auth');
 const stripeUtils = require('../utils/stripe');
+const { paymentLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -15,185 +17,162 @@ router.setIO = (socketIO) => {
 };
 
 // Process tap-and-pay transaction
-router.post('/process', auth, async (req, res) => {
+// Money flows from the platform's Stripe account → venue via Transfer.
+// No card charge is created here — the user's wallet was already funded on top-up.
+router.post('/process', auth, paymentLimiter, async (req, res) => {
   try {
-    const { venueId, amount, paymentMethodId } = req.body;
+    const { venueId, amount } = req.body;
     const userId = req.user.userId;
 
-    // Validate inputs
-    if (!venueId || !amount || !paymentMethodId) {
-      return res.status(400).json({
-        message: 'Venue ID, amount, and payment method are required'
-      });
+    if (!venueId || !amount) {
+      return res.status(400).json({ message: 'Venue ID and amount are required' });
     }
 
-    // Validate amount
-    if (amount < 5.00) {
-      return res.status(400).json({
-        message: 'Minimum transaction amount is $5.00'
-      });
+    // Convert to integer cents to avoid floating-point precision issues
+    const cents = Math.round(parseFloat(amount) * 100);
+    if (!Number.isFinite(cents) || cents < 500) {
+      return res.status(400).json({ message: 'Minimum transaction amount is $5.00' });
     }
-
-    if (amount > 500.00) {
-      return res.status(400).json({
-        message: 'Maximum transaction amount is $500.00'
-      });
+    if (cents > 50000) {
+      return res.status(400).json({ message: 'Maximum transaction amount is $500.00' });
     }
+    const normalizedAmount = cents / 100;
 
-    // Get user and card
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    // Fetch card (for spend-limit checks) and venue in parallel
+    const [card, venue] = await Promise.all([
+      VirtualCard.findOne({ user: userId, status: 'active' }),
+      Venue.findById(venueId)
+    ]);
 
-    const card = await VirtualCard.findOne({ user: userId, status: 'active' });
     if (!card) {
-      return res.status(404).json({
-        message: 'No active virtual card found. Please create a card first.'
-      });
+      return res.status(404).json({ message: 'No active virtual card found. Please create a card first.' });
     }
 
-    // Check balance
-    const balance = user.wallet?.balance || 0;
-    if (balance < amount) {
-      return res.status(400).json({
-        message: 'Insufficient balance',
-        balance: balance,
-        required: amount
-      });
-    }
-
-    // Check minimum balance requirement
-    const canUse = card.canUse(balance);
-    if (!canUse.canUse) {
-      return res.status(400).json({
-        message: canUse.reason
-      });
-    }
-
-    // Check spending limits
-    const limitCheck = card.checkSpendingLimit(amount, 'daily');
-    if (!limitCheck.allowed) {
-      return res.status(400).json({
-        message: limitCheck.reason,
-        remaining: limitCheck.remaining
-      });
-    }
-
-    // Get venue
-    const venue = await Venue.findById(venueId);
     if (!venue) {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
     if (!venue.stripeAccountId) {
-      return res.status(400).json({
-        message: 'Venue has not connected their Stripe account'
-      });
+      return res.status(400).json({ message: 'Venue has not connected their Stripe account' });
     }
 
-    // Calculate commission
-    const commission = stripeUtils.calculateCommission(amount);
-    const venueAmount = commission.venueReceives;
+    // Pre-flight balance snapshot (informational only — atomic check is below)
+    const userSnap = await User.findById(userId, 'wallet');
+    if (!userSnap) return res.status(404).json({ message: 'User not found' });
 
-    // Create payment intent on venue's Stripe account
+    const balance = userSnap.wallet?.balance || 0;
+    const canUse = card.canUse(balance);
+    if (!canUse.canUse) {
+      return res.status(400).json({ message: canUse.reason });
+    }
+
+    const limitCheck = card.checkSpendingLimit(normalizedAmount, 'daily');
+    if (!limitCheck.allowed) {
+      return res.status(400).json({ message: limitCheck.reason, remaining: limitCheck.remaining });
+    }
+
+    // Atomically deduct wallet BEFORE touching Stripe — prevents double-spend
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, 'wallet.balance': { $gte: normalizedAmount } },
+      { $inc: { 'wallet.balance': -normalizedAmount } },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(400).json({ message: 'Insufficient balance', insufficientBalance: true });
+    }
+
+    // Calculate commission (platform keeps a small fee)
+    const commission = stripeUtils.calculateCommission(normalizedAmount);
+    const venueAmountCents = Math.round(commission.venueReceives * 100);
+
+    // Transfer from platform account → venue's connected account
+    // This is the correct "one business account" model: money was loaded into
+    // the platform account on wallet top-up, now we distribute it to the venue.
+    let transfer;
     try {
-      const paymentIntent = await stripeUtils.stripe.paymentIntents.create(
-        {
-          amount: Math.round(venueAmount * 100), // Convert to cents
-          currency: 'usd',
-          payment_method: paymentMethodId,
-          confirmation_method: 'automatic',
-          confirm: true,
-          application_fee_amount: Math.round(commission.amount * 100),
-          metadata: {
-            userId: userId.toString(),
-            venueId: venueId.toString(),
-            cardId: card.stripeCardId,
-            transactionType: 'tap-and-pay',
-            commissionType: commission.type
-          },
-          description: `Payment at ${venue.name}`
-        },
-        {
-          stripeAccount: venue.stripeAccountId
-        }
-      );
-
-      if (paymentIntent.status !== 'succeeded') {
-        return res.status(400).json({
-          message: 'Payment failed',
-          status: paymentIntent.status,
-          error: paymentIntent.last_payment_error?.message
-        });
-      }
-
-      // Update user balance
-      user.wallet.balance = balance - amount;
-      await user.save();
-
-      // Update card metadata
-      card.metadata.totalTransactions = (card.metadata.totalTransactions || 0) + 1;
-      card.metadata.totalSpent = (card.metadata.totalSpent || 0) + amount;
-      card.metadata.lastUsedAt = new Date();
-      await card.save();
-
-      // Create payment record
-      const payment = new Payment({
-        senderId: userId,
-        venueId: venueId,
-        amount: amount,
-        type: 'tap_and_pay',
-        status: 'succeeded',
-        stripePaymentIntentId: paymentIntent.id,
+      transfer = await stripeUtils.stripe.transfers.create({
+        amount: venueAmountCents,
+        currency: 'usd',
+        destination: venue.stripeAccountId,
         metadata: {
-          commission: commission.amount,
-          commissionType: commission.type,
-          venueReceives: venueAmount,
-          cardId: card.stripeCardId
-        }
-      });
-      await payment.save();
-
-      // Emit socket event for real-time updates
-      if (io) {
-        io.to(userId).emit('payment-processed', {
-          amount: amount,
-          venue: venue.name,
-          newBalance: user.wallet.balance,
-          transactionId: payment._id
-        });
-      }
-
-      res.json({
-        message: 'Payment processed successfully',
-        transaction: {
-          id: payment._id,
-          amount: amount,
-          commission: commission.amount,
-          venueReceives: venueAmount,
-          newBalance: user.wallet.balance,
-          status: 'succeeded'
+          userId: userId.toString(),
+          venueId: venueId.toString(),
+          transactionType: 'tap-and-pay'
         },
-        paymentIntent: {
-          id: paymentIntent.id,
-          status: paymentIntent.status
-        }
+        description: `Payment at ${venue.name}`
       });
     } catch (stripeError) {
-      console.error('Stripe payment error:', stripeError);
+      // Stripe failed — reverse the wallet deduction so the user isn't shorted
+      await User.findByIdAndUpdate(userId, { $inc: { 'wallet.balance': normalizedAmount } });
+      console.error('Stripe transfer error:', stripeError);
       return res.status(400).json({
         message: 'Payment processing failed',
-        error: stripeError.message,
-        type: stripeError.type
+        error: stripeError.message
       });
     }
+
+    // Update card metadata
+    card.metadata.totalTransactions = (card.metadata.totalTransactions || 0) + 1;
+    card.metadata.totalSpent = (card.metadata.totalSpent || 0) + normalizedAmount;
+    card.metadata.lastUsedAt = new Date();
+    await card.save();
+
+    // Record payment
+    const payment = new Payment({
+      senderId: userId,
+      venueId: venueId,
+      amount: normalizedAmount,
+      type: 'tap_and_pay',
+      status: 'succeeded',
+      stripeTransferId: transfer.id,
+      metadata: {
+        commission: commission.amount,
+        commissionType: commission.type,
+        venueReceives: commission.venueReceives,
+        cardId: card.stripeCardId
+      }
+    });
+    await payment.save();
+
+    // Audit log — fire and forget
+    AuditLog.create({
+      action: 'tap_and_pay',
+      actorId: userId,
+      venueId: venueId,
+      amount: normalizedAmount,
+      paymentId: payment._id,
+      ip: req.ip
+    }).catch(() => {});
+
+    // Real-time balance update
+    if (io) {
+      io.to(`user-${userId}`).emit('wallet-updated', {
+        userId: userId.toString(),
+        balance: updatedUser.wallet.balance
+      });
+      io.to(`user-${userId}`).emit('payment-processed', {
+        amount: normalizedAmount,
+        venue: venue.name,
+        newBalance: updatedUser.wallet.balance,
+        transactionId: payment._id
+      });
+    }
+
+    res.json({
+      message: 'Payment processed successfully',
+      transaction: {
+        id: payment._id,
+        amount: normalizedAmount,
+        commission: commission.amount,
+        venueReceives: commission.venueReceives,
+        newBalance: updatedUser.wallet.balance,
+        status: 'succeeded'
+      },
+      transfer: { id: transfer.id }
+    });
   } catch (error) {
     console.error('Error processing tap-and-pay:', error);
-    res.status(500).json({
-      message: 'Server error',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 
@@ -202,6 +181,8 @@ router.get('/transactions', auth, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { limit = 50, offset = 0 } = req.query;
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
 
     const transactions = await Payment.find({
       senderId: userId,
@@ -209,8 +190,8 @@ router.get('/transactions', auth, async (req, res) => {
     })
       .populate('venueId', 'name address')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(offset));
+      .limit(safeLimit)
+      .skip(safeOffset);
 
     res.json({
       transactions: transactions.map(tx => ({
@@ -225,7 +206,7 @@ router.get('/transactions', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error'});
   }
 });
 

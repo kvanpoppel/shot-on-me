@@ -152,6 +152,22 @@ connectDB();
 const emailService = require('./utils/emailService');
 setTimeout(() => { emailService.testEmailConnection(); }, 2000);
 
+// Hourly job: delete expired stories and their Cloudinary assets
+const { cleanupExpiredStories } = require('./jobs/cleanupExpiredStories');
+const startStoryCleanupJob = () => {
+  setTimeout(async () => {
+    try { await cleanupExpiredStories(); } catch (e) { console.error('Story cleanup error:', e.message); }
+    setInterval(async () => {
+      try { await cleanupExpiredStories(); } catch (e) { console.error('Story cleanup error:', e.message); }
+    }, 60 * 60 * 1000); // every hour
+  }, 30000); // 30s after boot
+};
+if (mongoose.connection.readyState === 1) {
+  startStoryCleanupJob();
+} else {
+  mongoose.connection.once('connected', startStoryCleanupJob);
+}
+
 // Daily job: refund pending payments whose recipient never signed up
 const { refundExpiredPendingPayments } = require('./jobs/refundExpiredPendingPayments');
 const startRefundJob = () => {

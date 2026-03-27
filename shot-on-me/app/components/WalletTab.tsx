@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone, Calculator } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -876,23 +876,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               </div>
             )}
 
-            {/* Quick Amount Buttons */}
-            <div>
-              <p className="text-primary-400/70 text-sm mb-2 font-medium">Quick Amount</p>
-              <div className="grid grid-cols-4 gap-2">
-                {['5', '10', '20', '50'].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => handleQuickAmount(value)}
-                    className="bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 rounded-lg py-2.5 px-3 text-center transition-colors text-primary-500 font-semibold"
-                  >
-                    ${value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Recent Recipients */}
             {recentRecipients.length > 0 && !recipientPhone && (
               <div>
@@ -934,19 +917,18 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                   placeholder="Search by name or phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/60 border border-primary-500/30 rounded-lg pl-10 pr-4 py-3 text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full bg-black/60 border border-primary-500/30 rounded-lg pl-10 pr-10 py-3 text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
-              </div>
-
-              {/* Import from Contacts Button */}
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    if ('contacts' in navigator && 'ContactsManager' in window) {
-                      const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
-                      if (contacts && contacts.length > 0) {
-                        // Find the first contact with a phone number
+                {/* Import from Contacts — icon button inside search field */}
+                <button
+                  type="button"
+                  title="Import from Contacts"
+                  onClick={async () => {
+                    try {
+                      if ('contacts' in navigator && 'ContactsManager' in window) {
+                        const contacts = await (navigator as any).contacts.select(['name', 'tel', 'email'], { multiple: true })
+                        if (contacts && contacts.length > 0) {
+                          // Find the first contact with a phone number
                         const contactWithPhone = contacts.find((c: any) => c.tel && (c.tel[0] || c.tel))
                         if (contactWithPhone) {
                           const phoneNumber = contactWithPhone.tel[0] || contactWithPhone.tel
@@ -968,10 +950,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                     }
                   }
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-primary-500/10 border border-primary-500/30 text-primary-500 py-2.5 rounded-lg font-medium hover:bg-primary-500/20 transition-all mb-3"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-400/60 hover:text-primary-500 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                <span>Import from Contacts</span>
               </button>
 
               {/* Search Results */}
@@ -1192,20 +1173,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           >
             <Radio className="w-5 h-5" />
             <span>Tap & Pay</span>
-          </button>
-        </div>
-        {/* Calculator - Small Utility Button */}
-        <div className="mt-2">
-          <button
-            onClick={() => {
-              // Open calculator in new tab (similar to weather link)
-              window.open('https://www.google.com/search?q=calculator', '_blank', 'noopener,noreferrer')
-            }}
-            className="w-full bg-black/40 border border-primary-500/20 text-primary-400 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/40 hover:text-primary-500 transition-all"
-            title="Open Calculator"
-          >
-            <Calculator className="w-4 h-4" />
-            <span>Calculator</span>
           </button>
         </div>
       </div>
