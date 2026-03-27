@@ -265,6 +265,17 @@ const userSchema = new mongoose.Schema({
   paymentOtp: {
     hash: { type: String },
     expiresAt: { type: Date }
+  },
+  // KYC / identity verification
+  kyc: {
+    status: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'failed'],
+      default: 'unverified'
+    },
+    stripeVerificationSessionId: { type: String },
+    verifiedAt: { type: Date },
+    failureReason: { type: String }
   }
 }, {
   timestamps: true

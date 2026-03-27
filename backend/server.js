@@ -66,9 +66,12 @@ app.use(helmet({
   frameguard: { action: 'deny' },
 }));
 
-// Stripe webhook route must be BEFORE express.json() middleware
+// Stripe webhook routes must be BEFORE express.json() middleware (need raw body)
 const paymentsRouter = require('./routes/payments');
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), paymentsRouter.webhook);
+
+const kycRouter = require('./routes/kyc');
+app.post('/api/kyc/webhook', express.raw({ type: 'application/json' }), kycRouter.kycWebhook);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -312,6 +315,9 @@ app.use('/api/personalized-promotions', require('./routes/personalizedPromotions
 app.use('/api/predictive-analytics', require('./routes/predictiveAnalytics'));
 app.use('/api/ai-automation', require('./routes/aiAutomation'));
 app.use('/api/search', require('./routes/search'));
+app.use('/api/disputes', require('./routes/disputes'));
+app.use('/api/kyc', kycRouter);
+app.use('/api/wallet-provisioning', require('./routes/wallet-provisioning'));
 
 const tapAndPayRouter = require('./routes/tap-and-pay');
 app.use('/api/owner', require('./routes/owner'));

@@ -77,6 +77,18 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [otp, setOtp] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
 
+  // Disputes
+  const [disputePayment, setDisputePayment] = useState<any>(null)
+  const [disputeReason, setDisputeReason] = useState('')
+  const [disputeDescription, setDisputeDescription] = useState('')
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false)
+  const [disputeSuccess, setDisputeSuccess] = useState(false)
+
+  // KYC
+  const [kycStatus, setKycStatus] = useState<'unverified' | 'pending' | 'verified' | 'failed' | null>(null)
+  const [kycLimits, setKycLimits] = useState<{ maxBalance: number; dailyAddFunds: number; label: string } | null>(null)
+  const [kycStarting, setKycStarting] = useState(false)
+
   // Define functions BEFORE useEffects that use them
   const fetchDefaultPaymentMethod = async () => {
     try {
@@ -164,6 +176,61 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     setShowSendForm(true)
   }
 
+  const fetchKycStatus = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/kyc/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setKycStatus(res.data.kyc?.status || 'unverified')
+      setKycLimits(res.data.limits)
+    } catch {
+      // Non-critical — don't show error
+    }
+  }, [token, API_URL])
+
+  const handleStartKyc = async () => {
+    if (!token) return
+    setKycStarting(true)
+    try {
+      const res = await axios.post(`${API_URL}/kyc/start`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.alreadyVerified) {
+        setKycStatus('verified')
+        return
+      }
+      if (res.data.url) {
+        window.location.href = res.data.url
+      } else {
+        setKycStatus('pending')
+        setSuccess('Verification request submitted! We\'ll review within 1–2 business days.')
+      }
+    } catch {
+      setError('Failed to start identity verification. Please try again.')
+    } finally {
+      setKycStarting(false)
+    }
+  }
+
+  const handleDisputeSubmit = async () => {
+    if (!disputePayment || !disputeReason) return
+    setDisputeSubmitting(true)
+    try {
+      await axios.post(`${API_URL}/disputes`, {
+        paymentId: disputePayment._id,
+        reason: disputeReason,
+        description: disputeDescription
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      setDisputeSuccess(true)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to file dispute')
+      setDisputePayment(null)
+    } finally {
+      setDisputeSubmitting(false)
+    }
+  }
+
   const fetchPayments = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token) return
     try {
@@ -224,6 +291,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       fetchPayments(1, true)
       fetchPoints()
       fetchDefaultPaymentMethod()
+      fetchKycStatus()
       fetchRecentRecipients()
       fetchFavoriteVenues()
       
@@ -751,6 +819,37 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             {balance > 0 && balance < 10 && (
               <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-2">
                 <span className="text-yellow-400 text-xs">⚠️ Low balance — <button onClick={() => setShowAddFunds(true)} className="underline hover:text-yellow-300">Add funds</button></span>
+              </div>
+            )}
+
+            {/* KYC verification banner */}
+            {kycStatus && kycStatus !== 'verified' && (
+              <div className={`mt-2 p-3 rounded-lg border flex items-center justify-between gap-3 ${
+                kycStatus === 'pending'
+                  ? 'bg-yellow-500/10 border-yellow-500/30'
+                  : kycStatus === 'failed'
+                  ? 'bg-red-500/10 border-red-500/30'
+                  : 'bg-primary-500/10 border-primary-500/30'
+              }`}>
+                <div>
+                  <p className="text-xs font-semibold text-primary-400">
+                    {kycStatus === 'pending' ? '🕐 Verification in progress' : kycStatus === 'failed' ? '❌ Verification failed' : '🔒 Unverified — limits apply'}
+                  </p>
+                  {kycLimits && (
+                    <p className="text-xs text-primary-400/60 mt-0.5">
+                      ${kycLimits.dailyAddFunds}/day · ${kycLimits.maxBalance} max balance
+                    </p>
+                  )}
+                </div>
+                {kycStatus !== 'pending' && (
+                  <button
+                    onClick={handleStartKyc}
+                    disabled={kycStarting}
+                    className="text-xs bg-primary-500 text-black font-bold px-3 py-1.5 rounded-lg flex-shrink-0 disabled:opacity-50"
+                  >
+                    {kycStarting ? '...' : 'Verify ID'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -1292,6 +1391,23 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                       <p className="text-primary-400/50 text-xs mt-1">
                         {formatDate(payment.createdAt)}
                       </p>
+                      {payment.status === 'succeeded' && !payment.refunded && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDisputePayment(payment)
+                            setDisputeReason('')
+                            setDisputeDescription('')
+                            setDisputeSuccess(false)
+                          }}
+                          className="text-xs text-primary-400/40 hover:text-red-400 mt-1 underline transition-colors"
+                        >
+                          Dispute
+                        </button>
+                      )}
+                      {payment.refunded && (
+                        <span className="text-xs text-green-400/60 mt-1 block">Refunded</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1345,10 +1461,32 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                   setShowPaymentMethods(!showPaymentMethods)
                   setShowMoreMenu(false)
                 }}
-                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3"
+                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3 border-b border-primary-500/10"
               >
                 <CreditCard className="w-5 h-5" />
                 <span>{showPaymentMethods ? 'Hide' : 'Manage'} Payment Methods</span>
+              </button>
+              <button
+                onClick={async () => {
+                  setShowMoreMenu(false)
+                  if (!token) return
+                  try {
+                    const res = await axios.get(`${API_URL}/wallet-provisioning/status`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    })
+                    if (!res.data.hasCard) {
+                      setError('You need an active virtual card to add to Apple/Google Wallet.')
+                    } else if (!res.data.apple?.available) {
+                      setError('Apple/Google Pay wallet provisioning is coming soon! We\'re finalizing this feature.')
+                    }
+                  } catch {
+                    setError('Apple/Google Pay provisioning — coming soon!')
+                  }
+                }}
+                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3"
+              >
+                <WalletIcon className="w-5 h-5" />
+                <span>Add to Apple / Google Wallet</span>
               </button>
             </div>
           )}
@@ -1601,6 +1739,86 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         recipientId={cardPaymentRecipient?.id}
         message={cardPaymentRecipient?.message}
       />
+
+      {/* Dispute Modal */}
+      {disputePayment && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <div className="bg-black border-2 border-primary-500/40 rounded-2xl p-6 max-w-md w-full backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-primary-500">Dispute Transaction</h2>
+              <button onClick={() => setDisputePayment(null)} className="text-primary-400 hover:text-primary-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {disputeSuccess ? (
+              <div className="text-center py-6">
+                <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                <p className="text-primary-500 font-bold">Dispute Filed</p>
+                <p className="text-primary-400/70 text-sm mt-1">We'll review within 3–5 business days and contact you by email.</p>
+                <button
+                  onClick={() => setDisputePayment(null)}
+                  className="mt-4 w-full bg-primary-500 text-black font-bold py-3 rounded-xl"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3 mb-4">
+                  <p className="text-primary-400/60 text-xs">Transaction</p>
+                  <p className="text-primary-500 font-bold">${disputePayment.amount?.toFixed(2)} · {new Date(disputePayment.createdAt).toLocaleDateString()}</p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-primary-400 text-sm font-semibold mb-2">Reason *</label>
+                  <select
+                    value={disputeReason}
+                    onChange={(e) => setDisputeReason(e.target.value)}
+                    className="w-full bg-black/60 border border-primary-500/30 text-primary-400 rounded-xl p-3 text-sm"
+                  >
+                    <option value="">Select a reason</option>
+                    <option value="unauthorized">Unauthorized charge</option>
+                    <option value="not_received">Shot not received</option>
+                    <option value="duplicate">Duplicate transaction</option>
+                    <option value="wrong_amount">Wrong amount charged</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="mb-5">
+                  <label className="block text-primary-400 text-sm font-semibold mb-2">Additional details (optional)</label>
+                  <textarea
+                    value={disputeDescription}
+                    onChange={(e) => setDisputeDescription(e.target.value.slice(0, 500))}
+                    placeholder="Describe what happened..."
+                    rows={3}
+                    className="w-full bg-black/60 border border-primary-500/30 text-primary-400 placeholder-primary-400/30 rounded-xl p-3 text-sm resize-none"
+                  />
+                  <p className="text-primary-400/40 text-xs mt-1 text-right">{disputeDescription.length}/500</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDisputePayment(null)}
+                    className="flex-1 bg-black/40 border border-primary-500/30 text-primary-400 py-3 rounded-xl font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDisputeSubmit}
+                    disabled={!disputeReason || disputeSubmitting}
+                    className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {disputeSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {disputeSubmitting ? 'Filing...' : 'File Dispute'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* QR Code Modal */}
       {showQRCode && qrCodeData && (

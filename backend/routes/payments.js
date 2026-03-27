@@ -840,6 +840,9 @@ router.post('/redeem', auth, async (req, res) => {
   }
 });
 
+// KYC limits helper (imported lazily to avoid circular deps)
+const { KYC_LIMITS } = require('./kyc');
+
 // Create Stripe Payment Intent for adding funds to wallet
 router.post('/create-intent', auth, async (req, res) => {
   try {
@@ -853,8 +856,31 @@ router.post('/create-intent', auth, async (req, res) => {
         error: `Amount must be a positive number. Received: ${amount} (type: ${typeof amount})`
       });
     }
-    if (amountNum > 500) {
-      return res.status(400).json({ message: 'Amount exceeds the maximum of $500 per transaction' });
+
+    // Enforce KYC-based per-transaction and balance limits
+    const userForKyc = await User.findById(req.user.userId).select('kyc wallet');
+    if (userForKyc) {
+      const kycStatus = userForKyc.kyc?.status || 'unverified';
+      const limits = KYC_LIMITS[kycStatus] || KYC_LIMITS.unverified;
+
+      if (amountNum > limits.dailyAddFunds) {
+        return res.status(400).json({
+          message: `Amount exceeds your daily add-funds limit of $${limits.dailyAddFunds}. Verify your identity to increase limits.`,
+          kycRequired: kycStatus === 'unverified' || kycStatus === 'failed'
+        });
+      }
+
+      const projectedBalance = (userForKyc.wallet?.balance || 0) + amountNum;
+      if (projectedBalance > limits.maxBalance) {
+        return res.status(400).json({
+          message: `This would exceed your wallet balance limit of $${limits.maxBalance}. Verify your identity to increase limits.`,
+          kycRequired: kycStatus === 'unverified' || kycStatus === 'failed'
+        });
+      }
+    }
+
+    if (amountNum > 2000) {
+      return res.status(400).json({ message: 'Amount exceeds the maximum of $2,000 per transaction' });
     }
 
     // Check if Stripe is configured
