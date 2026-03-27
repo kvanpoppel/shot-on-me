@@ -188,6 +188,28 @@ if (mongoose.connection.readyState === 1) {
   mongoose.connection.once('connected', startRefundJob);
 }
 
+// Weekly AI learning loop — runs every Monday at 3am (approximated via interval after boot)
+const { runAiLearningLoop } = require('./services/aiLearningLoop');
+const startAiLearningJob = () => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const run = async () => {
+    try {
+      const result = await runAiLearningLoop();
+      console.log(`[AILearning] Weekly run: ${result.venuesWithData} venues updated`);
+    } catch (e) { console.error('AI learning loop error:', e.message); }
+  };
+  // First run: 2 min after boot, then weekly
+  setTimeout(() => {
+    run();
+    setInterval(run, WEEK_MS);
+  }, 2 * 60 * 1000);
+};
+if (mongoose.connection.readyState === 1) {
+  startAiLearningJob();
+} else {
+  mongoose.connection.once('connected', startAiLearningJob);
+}
+
 // Every 15 minutes: scan for viral promotion moments
 const { detectViralMoments } = require('./services/viralMomentDetector');
 const startViralDetectorJob = () => {
@@ -340,6 +362,8 @@ app.use('/api/search', require('./routes/search'));
 app.use('/api/disputes', require('./routes/disputes'));
 app.use('/api/kyc', kycRouter);
 app.use('/api/wallet-provisioning', require('./routes/wallet-provisioning'));
+app.use('/api/squads', require('./routes/squads'));
+app.use('/api/sms-bot', require('./routes/sms-bot'));
 
 const tapAndPayRouter = require('./routes/tap-and-pay');
 app.use('/api/owner', require('./routes/owner'));

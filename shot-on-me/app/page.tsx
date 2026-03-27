@@ -23,6 +23,7 @@ import RewardsScreen from './components/RewardsScreen'
 import ReferralScreen from './components/ReferralScreen'
 import MyVenuesTab from './components/MyVenuesTab'
 import WhatsHappeningTab from './components/WhatsHappeningTab'
+import SquadsTab from './components/SquadsTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
@@ -246,6 +247,7 @@ function Home() {
         {activeTab === 'referrals' && <ReferralScreen />}
         {activeTab === 'venues' && <MyVenuesTab />}
         {activeTab === 'happening' && <WhatsHappeningTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
+        {activeTab === 'squads' && <SquadsTab />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
       {viewingProfile && (

@@ -277,6 +277,12 @@ router.post('/', auth, async (req, res) => {
     // Handle gamification (async, don't wait)
     handleCheckIn(req.user.userId, venueId).catch(err => console.error('Gamification error:', err));
 
+    // Award squad territory points (async, don't wait)
+    const { awardSquadTerritoryPoints } = require('./squads');
+    awardSquadTerritoryPoints(req.user.userId, venueId, venue.name, 5).catch(err =>
+      console.error('Squad territory error:', err.message)
+    );
+
     // Process venue referral if this check-in was via referral (async, don't wait)
     // Check if user came from a venue referral link
     const venueReferralModule = require('./venue-referrals');

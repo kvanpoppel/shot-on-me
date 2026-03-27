@@ -3,6 +3,7 @@ const User = require('../models/User')
 const Notification = require('../models/Notification')
 const CheckIn = require('../models/CheckIn')
 const { pushTargetedPromotionNotification } = require('../routes/venue-notifications')
+const { getConfidenceMultiplier } = require('./aiLearningLoop')
 
 /**
  * AI Automation Service
@@ -14,8 +15,9 @@ const { pushTargetedPromotionNotification } = require('../routes/venue-notificat
  */
 async function generatePromotionSuggestions(venueId) {
   try {
-    const venue = await Venue.findById(venueId).populate('owner')
+    const venue = await Venue.findById(venueId).populate('owner').select('+aiLearning')
     if (!venue) throw new Error('Venue not found')
+    const aiLearning = venue.aiLearning || {}
 
     // Get historical data
     const last30Days = new Date()
@@ -145,15 +147,32 @@ async function generatePromotionSuggestions(venueId) {
       })
     }
 
+    // Apply AI learning multipliers to confidence scores
+    const learnedSuggestions = suggestions.map(s => {
+      const promoType = s.suggestedPromotion?.type || s.type || 'other'
+      const multiplier = getConfidenceMultiplier(aiLearning, promoType)
+      return {
+        ...s,
+        confidence: Math.min(0.99, Math.max(0.5, (s.confidence || 0.75) * multiplier)),
+        learnedBoost: multiplier !== 1.0 ? multiplier : undefined
+      }
+    })
+
+    // Sort by learned confidence descending
+    learnedSuggestions.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+
     return {
-      suggestions,
+      suggestions: learnedSuggestions,
       insights: {
         averageCheckIns: checkIns.length / 30,
-        bestPerformingDay: Object.keys(dayOfWeekActivity).reduce((a, b) => 
+        bestPerformingDay: Object.keys(dayOfWeekActivity).reduce((a, b) =>
           dayOfWeekActivity[a] > dayOfWeekActivity[b] ? a : b
         ),
         peakHours: peakHours,
-        topPromotionType: promotionPerformance[0]?.type || 'happy-hour'
+        topPromotionType: aiLearning.bestType || promotionPerformance[0]?.type || 'happy-hour',
+        learnedBestDay: aiLearning.bestDay || null,
+        learnedBestHour: aiLearning.bestHour ?? null,
+        lastTrained: aiLearning.lastTrainedAt || null
       }
     }
   } catch (error) {

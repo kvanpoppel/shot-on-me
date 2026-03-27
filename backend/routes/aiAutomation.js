@@ -362,4 +362,36 @@ router.get('/status', auth, async (req, res) => {
   }
 });
 
+// GET /api/ai-automation/learning
+// Returns AI learning data for this venue (what the model has learned)
+router.get('/learning', auth, async (req, res) => {
+  try {
+    const venue = await Venue.findOne({ owner: req.user.userId })
+      .select('aiLearning name');
+    if (!venue) return res.status(404).json({ message: 'Venue not found' });
+
+    res.json({
+      success: true,
+      learning: venue.aiLearning || {},
+      hasData: !!venue.aiLearning?.lastTrainedAt
+    });
+  } catch (error) {
+    console.error('Error fetching AI learning:', error);
+    res.status(500).json({ message: 'Failed to fetch learning data', error: undefined });
+  }
+});
+
+// POST /api/ai-automation/learning/run
+// Manually trigger the learning loop for this venue (admin or owner)
+router.post('/learning/run', auth, async (req, res) => {
+  try {
+    const { runAiLearningLoop } = require('../services/aiLearningLoop');
+    const result = await runAiLearningLoop();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error running learning loop:', error);
+    res.status(500).json({ message: 'Failed to run learning loop', error: undefined });
+  }
+});
+
 module.exports = router;

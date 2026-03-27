@@ -189,6 +189,15 @@ const venueSchema = new mongoose.Schema({
       default: true // Venue can disable referrals
     }
   },
+  // AI learning feedback loop results (updated weekly)
+  aiLearning: {
+    typePerformance: { type: mongoose.Schema.Types.Mixed, default: {} },
+    bestType: String,
+    bestDay: String,
+    bestHour: Number,
+    promotionsAnalyzed: { type: Number, default: 0 },
+    lastTrainedAt: Date
+  },
   // Viral moment event log (last 30 events, capped in service layer)
   viralEvents: [{
     promotionId: mongoose.Schema.Types.ObjectId,
