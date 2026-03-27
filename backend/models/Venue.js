@@ -95,7 +95,8 @@ const venueSchema = new mongoose.Schema({
       viewHistory: [{
         date: Date,
         count: Number
-      }]
+      }],
+      lastViralAt: Date  // Timestamp of last viral moment detection (prevents re-trigger within 2h)
     },
     // Recurring promotion features
     isRecurring: { type: Boolean, default: false }, // Is this a recurring promotion
@@ -187,7 +188,15 @@ const venueSchema = new mongoose.Schema({
       type: Boolean,
       default: true // Venue can disable referrals
     }
-  }
+  },
+  // Viral moment event log (last 30 events, capped in service layer)
+  viralEvents: [{
+    promotionId: mongoose.Schema.Types.ObjectId,
+    promotionTitle: String,
+    detectedAt: { type: Date, default: Date.now },
+    recentViews: Number,
+    multiplier: mongoose.Schema.Types.Mixed
+  }]
 }, {
   timestamps: true
 });

@@ -12,6 +12,7 @@ import {
   CreditCard,
   Activity,
   BarChart3,
+  AlertTriangle,
   Settings,
   LogOut,
   Menu,
@@ -40,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard/venues', label: 'Venues', icon: Building2 },
     { href: '/dashboard/virtual-cards', label: 'Virtual Cards', icon: CreditCard },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/dashboard/disputes', label: 'Disputes', icon: AlertTriangle },
     { href: '/dashboard/system-health', label: 'System Health', icon: Activity },
   ]
 

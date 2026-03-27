@@ -188,6 +188,28 @@ if (mongoose.connection.readyState === 1) {
   mongoose.connection.once('connected', startRefundJob);
 }
 
+// Every 15 minutes: scan for viral promotion moments
+const { detectViralMoments } = require('./services/viralMomentDetector');
+const startViralDetectorJob = () => {
+  const run = async () => {
+    try {
+      const result = await detectViralMoments(io);
+      if (result.detected > 0) {
+        console.log(`[ViralDetector] Found ${result.detected} viral moment(s)`);
+      }
+    } catch (e) { console.error('Viral detector error:', e.message); }
+  };
+  setTimeout(() => {
+    run();
+    setInterval(run, 15 * 60 * 1000); // every 15 minutes
+  }, 60000); // start 1 min after boot
+};
+if (mongoose.connection.readyState === 1) {
+  startViralDetectorJob();
+} else {
+  mongoose.connection.once('connected', startViralDetectorJob);
+}
+
 // Seed test venues (dev only)
 if (process.env.SEED_TEST_VENUES === 'true') {
   const seedTestVenuesOnConnect = async () => {

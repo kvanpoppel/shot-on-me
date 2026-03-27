@@ -28,6 +28,18 @@ const referralSchema = new mongoose.Schema({
     firstPayment: { type: Boolean, default: false },
     firstCheckIn: { type: Boolean, default: false }
   },
+  // Referral depth: 1 = direct, 2 = L2 (referrer's referral brought someone)
+  level: {
+    type: Number,
+    default: 1,
+    min: 1,
+    max: 3
+  },
+  // L2 chain: who referred the referrer (enables L2 revenue share)
+  referrerParentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   rewards: {
     referrerReward: {
       type: Number,
@@ -44,6 +56,14 @@ const referralSchema = new mongoose.Schema({
     referredRewarded: {
       type: Boolean,
       default: false
+    },
+    // Revenue share earned (5% of referee's purchases as points for 12 months)
+    revenueShareEarned: {
+      type: Number,
+      default: 0
+    },
+    revenueShareExpiresAt: {
+      type: Date
     }
   }
 }, {

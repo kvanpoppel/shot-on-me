@@ -125,7 +125,59 @@ router.post('/apply', auth, async (req, res) => {
   }
 });
 
-// Get referral history
+// Referral tier thresholds
+const TIERS = [
+  { name: 'Bronze', min: 0, max: 4, revenueSharePct: 0.03, l2SharePct: 0.01 },
+  { name: 'Silver', min: 5, max: 9, revenueSharePct: 0.05, l2SharePct: 0.02 },
+  { name: 'Gold',   min: 10, max: Infinity, revenueSharePct: 0.05, l2SharePct: 0.02 }
+];
+
+const getTier = (completedCount) =>
+  TIERS.find(t => completedCount >= t.min && completedCount <= t.max) || TIERS[0];
+
+// GET /api/referrals/stats — tier + earnings summary
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('referralCode stats');
+
+    const referrals = await Referral.find({ referrer: req.user.userId });
+    const completedCount = referrals.filter(r => r.status === 'completed' || r.status === 'rewarded').length;
+    const pendingCount = referrals.filter(r => r.status === 'pending').length;
+    const totalRevenueShare = referrals.reduce((sum, r) => sum + (r.rewards.revenueShareEarned || 0), 0);
+    const totalPointsEarned = referrals.reduce((sum, r) => sum + (r.rewards.referrerReward || 0), 0);
+
+    const tier = getTier(completedCount);
+    const nextTier = TIERS[TIERS.indexOf(tier) + 1] || null;
+    const toNextTier = nextTier ? nextTier.min - completedCount : 0;
+
+    // Gold milestone: unlock exclusive deal (triggered at 10 completed)
+    const goldUnlocked = completedCount >= 10;
+
+    res.json({
+      referralCode: user?.referralCode,
+      tier: {
+        name: tier.name,
+        revenueSharePct: tier.revenueSharePct,
+        l2SharePct: tier.l2SharePct,
+        nextTierName: nextTier?.name || null,
+        referralsToNextTier: toNextTier
+      },
+      stats: {
+        total: referrals.length,
+        completed: completedCount,
+        pending: pendingCount,
+        totalPointsEarned,
+        totalRevenueShareEarned: Math.round(totalRevenueShare * 100) / 100,
+        goldUnlocked
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching referral stats:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /api/referrals/history
 router.get('/history', auth, async (req, res) => {
   try {
     const referrals = await Referral.find({ referrer: req.user.userId })
@@ -137,6 +189,7 @@ router.get('/history', auth, async (req, res) => {
         id: r._id,
         referred: r.referred,
         status: r.status,
+        level: r.level || 1,
         completedActions: r.completedActions,
         rewards: r.rewards,
         createdAt: r.createdAt
@@ -174,17 +227,40 @@ const checkReferralCompletion = async (referredUserId, actionType) => {
       referral.completedActions.firstCheckIn;
 
     if (allCompleted && !referral.rewards.referrerRewarded) {
-      // Award additional rewards
       const referrer = await User.findById(referral.referrer);
-      referrer.points = (referrer.points || 0) + 10; // Additional 10 points
-      await referrer.save();
 
+      // Determine tier bonus based on completed count
+      const completedSoFar = await Referral.countDocuments({
+        referrer: referral.referrer,
+        status: { $in: ['completed', 'rewarded'] }
+      });
+      const tier = getTier(completedSoFar);
+
+      // Completion bonus: 10 pts base + tier multiplier
+      const tierBonus = tier.name === 'Gold' ? 25 : tier.name === 'Silver' ? 15 : 10;
+      referrer.points = (referrer.points || 0) + tierBonus;
+
+      // Set up 12-month revenue share window
+      const revenueShareExpiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      referral.rewards.revenueShareExpiresAt = revenueShareExpiry;
+      referral.rewards.referrerReward = (referral.rewards.referrerReward || 0) + tierBonus;
       referral.rewards.referrerRewarded = true;
       referral.status = 'completed';
       await referral.save();
-    }
+      await referrer.save();
 
-    await referral.save();
+      // Gold milestone: update stats for unlock tracking
+      if (completedSoFar + 1 >= 10) {
+        referrer.stats = referrer.stats || {};
+        // Flag can be read by frontend to show Gold unlock celebration
+        if (!referrer.goldReferralUnlockedAt) {
+          referrer.goldReferralUnlockedAt = new Date();
+          await referrer.save();
+        }
+      }
+    } else {
+      await referral.save();
+    }
   } catch (error) {
     console.error('Error checking referral completion:', error);
   }

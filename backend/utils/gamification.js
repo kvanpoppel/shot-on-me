@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const UserBadge = require('../models/UserBadge');
 const Badge = require('../models/Badge');
+const Referral = require('../models/Referral');
 const { checkReferralCompletion } = require('../routes/referrals');
 
 // Award points to user
@@ -239,6 +240,49 @@ const handlePaymentSent = async (senderId, amount) => {
   }
 };
 
+// Award tiered revenue share to referrers when a payment is made
+const awardReferralRevenueShare = async (payerId, amountDollars) => {
+  try {
+    const now = new Date();
+    // L1: find who referred the payer
+    const l1Referral = await Referral.findOne({
+      referred: payerId,
+      status: { $in: ['completed', 'rewarded'] },
+      'rewards.revenueShareExpiresAt': { $gt: now }
+    });
+
+    if (l1Referral) {
+      // L1 share: 5% of payment as points (min 1 pt)
+      const l1Points = Math.max(1, Math.round(amountDollars * 0.05));
+      await User.findByIdAndUpdate(l1Referral.referrer, {
+        $inc: { points: l1Points }
+      });
+      await Referral.findByIdAndUpdate(l1Referral._id, {
+        $inc: { 'rewards.revenueShareEarned': l1Points }
+      });
+
+      // L2 share: 2% to whoever referred the L1 referrer
+      const l2Referral = await Referral.findOne({
+        referred: l1Referral.referrer,
+        status: { $in: ['completed', 'rewarded'] },
+        'rewards.revenueShareExpiresAt': { $gt: now }
+      });
+
+      if (l2Referral) {
+        const l2Points = Math.max(1, Math.round(amountDollars * 0.02));
+        await User.findByIdAndUpdate(l2Referral.referrer, {
+          $inc: { points: l2Points }
+        });
+        await Referral.findByIdAndUpdate(l2Referral._id, {
+          $inc: { 'rewards.revenueShareEarned': l2Points }
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Referral revenue share error:', err.message);
+  }
+};
+
 // Handle payment received - award points and update stats
 const handlePaymentReceived = async (recipientId, amount) => {
   try {
@@ -254,6 +298,11 @@ const handlePaymentReceived = async (recipientId, amount) => {
 
     // Check for referral completion
     await checkReferralCompletion(recipientId, 'first_payment');
+
+    // Award revenue share to whoever referred the recipient
+    awardReferralRevenueShare(recipientId, amount).catch(err =>
+      console.error('Revenue share async error:', err.message)
+    );
 
     // Check badges
     await checkBadges(recipientId);
@@ -306,6 +355,7 @@ module.exports = {
   checkBadges,
   handlePaymentSent,
   handlePaymentReceived,
-  handleCheckIn
+  handleCheckIn,
+  awardReferralRevenueShare
 };
 
