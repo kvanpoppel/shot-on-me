@@ -1113,6 +1113,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               >
                 <Phone className="w-4 h-4" />
               </button>
+              </div>
 
               {/* Search Results */}
               {searchResults.length > 0 && (
