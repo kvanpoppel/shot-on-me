@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { useRouter } from 'next/navigation'
-import { User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users, Trophy, Calendar, Gift, Share2, Sparkles, Building2, MessageSquare, ArrowRight, ChevronDown, Mail, Phone, Search } from 'lucide-react'
+import { User, Wallet, Bell, MapPin, Settings, LogOut, Camera, Users, Calendar, Gift, Share2, Sparkles, Building2, MessageSquare, ArrowRight, ChevronDown, Mail, Phone, Search } from 'lucide-react'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import LocationFinder from './LocationFinder'
@@ -242,9 +242,8 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
       ]
     },
          {
-           title: 'Rewards & Achievements',
+           title: 'Rewards',
            items: [
-             { icon: Trophy, label: 'Badges & Achievements', action: () => { setActiveTab('badges'); }, description: 'Social accomplishments & showcase' },
              { icon: Gift, label: 'Rewards Program', action: () => { setActiveTab('rewards'); }, description: 'Engagement incentives: 100 pts = $5' },
            ]
          }
