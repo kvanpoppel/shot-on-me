@@ -489,7 +489,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
     const isGroup = !!selectedGroup
 
     return (
-      <div className="flex flex-col bg-black" style={{ height: 'calc(100dvh - 64px)' }}>
+      <div className="flex flex-col bg-black mt-14" style={{ height: 'calc(100dvh - 64px - 56px)' }}>
         {/* Chat Header */}
         <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4 flex items-center gap-3">
           <button
@@ -804,7 +804,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
   // New Chat Modal
   if (showNewChat) {
     return (
-      <div className="flex flex-col h-screen bg-black">
+      <div className="flex flex-col bg-black mt-14" style={{ height: 'calc(100dvh - 64px - 56px)' }}>
         <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4 flex items-center gap-3">
           <button
             onClick={() => {
@@ -873,7 +873,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
 
   // Conversations List
   return (
-    <div className="flex flex-col bg-black" style={{ height: 'calc(100dvh - 64px)' }}>
+    <div className="flex flex-col bg-black mt-14" style={{ height: 'calc(100dvh - 64px - 56px)' }}>
       {/* Header */}
       <div className="bg-black/95 backdrop-blur-sm border-b border-primary-500/10 p-4 flex items-center justify-between">
         <h2 className="text-xl font-bold text-primary-500">Messages</h2>
