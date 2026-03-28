@@ -64,9 +64,9 @@ function AnalyticsPageContent() {
         title="Earnings & Analytics"
         subtitle="Track revenue, monitor performance, and act faster with AI insights."
         metrics={[
-          { label: 'Active View', value: activeTabLabel, detail: 'Current analytics workspace.' },
-          { label: 'Revenue', tone: 'success' as const, value: 'Earnings + ROI', detail: 'Track all income and forecast.' },
-          { label: 'AI', value: 'Analytics + Suggestions', detail: 'Personalized insights and next steps.' }
+          { label: 'Earnings', value: 'Revenue + ROI + Payments', detail: 'Track income, forecast, and history.' },
+          { label: 'AI Insights', value: 'Suggestions + Analytics', detail: 'Actionable recommendations.' },
+          { label: 'Guests', value: 'Live + Check-ins', detail: 'Who\'s at your venue right now.' }
         ]}
       >
 

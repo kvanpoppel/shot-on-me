@@ -28,10 +28,24 @@ async function predictBusyTimes(venueId) {
   }
 
   const sorted = [...slots].sort((a, b) => b.count - a.count)
-  const busiestSlots = sorted.slice(0, 5)
-  const slowestSlots = sorted.slice(-5).reverse()
-
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const dayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const maxCount = sorted[0]?.count || 1
+
+  const busiestSlots = sorted.slice(0, 5).map(s => ({
+    ...s, label: `${dayNames[s.day]} ${s.hour}:00`
+  }))
+  const slowestSlots = sorted.filter(s => s.count === 0 || s.count < maxCount * 0.2).slice(0, 5).map(s => ({
+    ...s, label: `${dayNames[s.day]} ${s.hour}:00`
+  }))
+
+  // Labeled slots for heatmap widget — top 21 slots with level
+  const labeledSlots = sorted.slice(0, 21).map(s => ({
+    day: dayShort[s.day],
+    hour: s.hour,
+    count: s.count,
+    level: s.count >= maxCount * 0.6 ? 'high' : s.count >= maxCount * 0.25 ? 'medium' : 'low'
+  }))
 
   const suggestions = []
 
@@ -57,7 +71,7 @@ async function predictBusyTimes(venueId) {
     }
   }
 
-  return { heatmap, busiestSlots, slowestSlots, suggestions, totalCheckIns }
+  return { heatmap, slots: labeledSlots, busiestSlots, slowestSlots, suggestions, totalCheckIns }
 }
 
 module.exports = { predictBusyTimes }

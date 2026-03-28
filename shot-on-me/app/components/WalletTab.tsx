@@ -818,14 +818,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       )}
 
-      {/* Header Section */}
-      <div className="sticky top-20 z-10 bg-black backdrop-blur-md border-b border-primary-500/10">
-        <div className="px-4 py-4">
-          <h2 className="text-2xl font-bold text-primary-500 mb-0.5 text-center">Wallet</h2>
-          <p className="text-primary-400/70 text-sm text-center">Manage your balance and payments</p>
-        </div>
-      </div>
-
       {/* Balance Card - Hero Section */}
       <div className="px-4 pt-6 pb-4">
         <div className="relative bg-gradient-to-br from-primary-500/25 via-primary-500/15 to-primary-500/5 border-2 border-primary-500/40 rounded-2xl p-5 shadow-2xl shadow-primary-500/10 overflow-hidden">
@@ -890,79 +882,48 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               </div>
             )}
 
-            {/* Points Display with Redemption */}
-            <div className="pt-3 border-t border-primary-500/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 flex-1">
-                  <div className="w-7 h-7 bg-primary-500/20 rounded-lg flex items-center justify-center border border-primary-500/30 flex-shrink-0">
-                    <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-primary-400/60 text-xs uppercase tracking-wider font-semibold">Reward Points</p>
-                    <p className="text-primary-500 font-bold text-lg">{points.toLocaleString()}</p>
-                  </div>
-                </div>
-                {points >= 100 && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        setRedeeming(true)
-                        const response = await axios.post(
-                          `${API_URL}/rewards/redeem-cash`,
-                          { pointsToRedeem: 100 },
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        )
-                        await fetchPoints()
-                        if (updateUser) {
-                          await updateUser({})
-                        }
-                        setSuccess(`🎉 $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
-                        setTimeout(() => setSuccess(null), 5000)
-                      } catch (error: any) {
-                        setError(error.response?.data?.message || 'Failed to redeem cash reward')
-                        setTimeout(() => setError(null), 5000)
-                      } finally {
-                        setRedeeming(false)
-                      }
-                    }}
-                    disabled={redeeming || points < 100}
-                    className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-yellow-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Redeem $5</span>
-                  </button>
-                )}
-              </div>
-              
-              {/* Progress to $5 */}
-              {points < 100 && (
-                <div className="bg-black/40 rounded-lg p-2.5 border border-primary-500/20">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs text-primary-400/70 font-medium">Progress to $5 Cash</p>
-                    <p className="text-xs text-purple-400 font-bold">{points}/100 pts</p>
-                  </div>
-                  <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min((points / 100) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-primary-400/60 mt-1.5 text-center">
-                    {100 - points} more points needed for $5 cash reward
-                  </p>
-                </div>
-              )}
-              
-              {/* Info Text */}
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
-                <p className="text-xs text-primary-400/80 leading-relaxed">
-                  <span className="text-yellow-500 font-semibold">⭐ Earn 2 points</span> per Tap n Pay, <span className="text-yellow-500 font-semibold">1 point</span> per check-in. 
-                  <span className="text-yellow-500 font-semibold"> 100 points = $5 cash</span> added to wallet. 
-                  Different from <span className="text-primary-500 font-semibold">Badges</span> (non-monetary achievements).
-                </p>
-              </div>
-            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Points Row — compact, outside the card */}
+      <div className="px-4 mb-3">
+        <div className="flex items-center justify-between bg-black/40 border border-primary-500/15 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-primary-500 flex-shrink-0" />
+            <span className="text-primary-400 text-sm font-semibold">{points.toLocaleString()} pts</span>
+            {points < 100 ? (
+              <>
+                <div className="w-16 bg-black/60 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-1.5 rounded-full transition-all" style={{ width: `${(points / 100) * 100}%` }} />
+                </div>
+                <span className="text-primary-400/40 text-xs">{100 - points} to $5</span>
+              </>
+            ) : (
+              <span className="text-yellow-400 text-xs font-semibold">· Ready to redeem!</span>
+            )}
+          </div>
+          {points >= 100 && (
+            <button
+              onClick={async () => {
+                try {
+                  setRedeeming(true)
+                  const response = await axios.post(`${API_URL}/rewards/redeem-cash`, { pointsToRedeem: 100 }, { headers: { Authorization: `Bearer ${token}` } })
+                  await fetchPoints()
+                  if (updateUser) await updateUser({})
+                  setSuccess(`🎉 $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
+                  setTimeout(() => setSuccess(null), 5000)
+                } catch (error: any) {
+                  setError(error.response?.data?.message || 'Failed to redeem cash reward')
+                  setTimeout(() => setError(null), 5000)
+                } finally { setRedeeming(false) }
+              }}
+              disabled={redeeming}
+              className="text-xs bg-yellow-500 text-black font-bold px-3 py-1.5 rounded-lg hover:bg-yellow-400 transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+            >
+              <Sparkles className="w-3 h-3" />Redeem $5
+            </button>
+          )}
         </div>
       </div>
 
@@ -1380,26 +1341,22 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         <VirtualCardManager />
       </div>
 
-      {/* Loyalty Partnerships */}
+      {/* Loyalty Partnerships — only shown when data exists */}
+      {(loyaltyLoading || loyaltyPartnerships.length > 0) && (
       <div className="px-4 mb-4">
-        <h3 className="text-lg font-bold text-primary-500 mb-3 flex items-center gap-2">
-          <Sparkles className="w-5 h-5" />
-          Loyalty Partnerships
+        <h3 className="text-sm font-semibold text-primary-400/70 uppercase tracking-widest mb-2 flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          Partnerships
         </h3>
         {loyaltyLoading ? (
           <div className="flex gap-3 overflow-x-auto pb-1">
             {[0, 1].map((i) => (
-              <div key={i} className="flex-shrink-0 w-56 bg-black/40 border border-primary-500/20 rounded-xl px-4 py-3 animate-pulse">
-                <div className="h-4 bg-primary-500/20 rounded mb-2 w-3/4" />
-                <div className="h-3 bg-primary-500/10 rounded mb-3 w-1/2" />
-                <div className="h-2 bg-primary-500/10 rounded-full mb-2" />
-                <div className="h-3 bg-primary-500/10 rounded w-2/3" />
+              <div key={i} className="flex-shrink-0 w-52 bg-black/40 border border-primary-500/15 rounded-xl px-4 py-3 animate-pulse">
+                <div className="h-3.5 bg-primary-500/20 rounded mb-2 w-3/4" />
+                <div className="h-2.5 bg-primary-500/10 rounded mb-3 w-1/2" />
+                <div className="h-1.5 bg-primary-500/10 rounded-full mb-2" />
               </div>
             ))}
-          </div>
-        ) : loyaltyPartnerships.length === 0 ? (
-          <div className="bg-black/40 border border-primary-500/20 rounded-xl px-4 py-3 text-center">
-            <p className="text-primary-400/50 text-sm">No active partnerships</p>
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-1">
@@ -1446,6 +1403,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           </div>
         )}
       </div>
+      )}
 
       {/* Transaction History Section */}
       <div className="px-4 mb-5">
@@ -1479,16 +1437,20 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
 
         {/* Transactions List */}
-        {activeFilter === null ? (
-          <div className="text-center py-16 bg-black/30 border border-primary-500/10 rounded-2xl">
-            <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-primary-500/20">
-              <History className="w-8 h-8 text-primary-500/40" />
-            </div>
-          </div>
-        ) : loadingPayments ? (
-          <div className="flex items-center justify-center py-16 bg-black/30 border border-primary-500/10 rounded-2xl">
-            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
-            <span className="ml-3 text-primary-400">Loading transactions...</span>
+        {loadingPayments ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-black/40 border border-primary-500/10 rounded-xl p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary-500/15 flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-primary-500/15 rounded w-2/5" />
+                    <div className="h-2.5 bg-primary-500/10 rounded w-1/4" />
+                  </div>
+                  <div className="h-4 w-14 bg-primary-500/15 rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredPayments.length === 0 ? (
           <div className="text-center py-16 bg-black/30 border border-primary-500/10 rounded-2xl">
