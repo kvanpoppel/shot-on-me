@@ -13,7 +13,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://res.cloudinary.com",
-      "connect-src 'self'",
+      "connect-src 'self' https://shot-on-me.onrender.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
