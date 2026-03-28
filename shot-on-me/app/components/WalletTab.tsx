@@ -1461,8 +1461,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             <p className="text-primary-400/60 text-sm">No {activeFilter === 'all' ? '' : activeFilter} transactions yet</p>
           </div>
         ) : (
-          <div ref={paymentsContainerRef} className="space-y-2">
-            {filteredPayments.map((payment) => {
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {filteredPayments.slice(0, 5).map((payment) => {
               const isSent = payment.senderId?._id === user?.id || payment.senderId === user?.id || payment.sender?._id === user?.id || payment.sender === user?.id
               const otherUser = isSent 
                 ? (payment.recipient || payment.recipientId)
@@ -1542,18 +1542,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                 </div>
               )
             })}
-            {/* Loading More Indicator */}
-            {loadingMorePayments && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
-                <span className="ml-3 text-primary-400">Loading more transactions...</span>
-              </div>
-            )}
-            {/* End of List Indicator */}
-            {!paymentsHasMore && filteredPayments.length > 0 && (
-              <div className="text-center py-8 text-primary-400/50 text-sm">
-                No more transactions
-              </div>
+            {filteredPayments.length > 5 && (
+              <p className="text-center text-primary-400/40 text-xs py-2">Showing 5 most recent</p>
             )}
           </div>
         )}
