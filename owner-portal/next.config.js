@@ -23,6 +23,7 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {},
   images: {
     domains: ['localhost'],
   },
