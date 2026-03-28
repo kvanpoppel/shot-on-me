@@ -205,7 +205,12 @@ const venueSchema = new mongoose.Schema({
     detectedAt: { type: Date, default: Date.now },
     recentViews: Number,
     multiplier: mongoose.Schema.Types.Mixed
-  }]
+  }],
+  branding: {
+    frameColor: { type: String, default: '#00FF88' },
+    tagline: { type: String, maxlength: 60, default: '' },
+    logoUrl: { type: String, default: '' }
+  },
 }, {
   timestamps: true
 });

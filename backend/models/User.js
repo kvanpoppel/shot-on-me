@@ -184,6 +184,16 @@ const userSchema = new mongoose.Schema({
     venuesVisited: { type: Number, default: 0 },
     referralsCount: { type: Number, default: 0 }
   },
+  loyaltyProgress: [{
+    partnershipId: { type: mongoose.Schema.Types.ObjectId, ref: 'LoyaltyPartnership' },
+    visitedVenueIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Venue' }],
+    rewardClaimed: { type: Boolean, default: false },
+    claimedAt: { type: Date }
+  }],
+  influencerStats: {
+    totalEarned: { type: Number, default: 0 },
+    completedOffers: { type: Number, default: 0 }
+  },
   // Stripe integration
   stripeCustomerId: {
     type: String,

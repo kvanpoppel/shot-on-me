@@ -1,14 +1,22 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Type, PenTool, Crop, Music, Filter, Save, Undo, Redo, Trash2, Sparkles, Palette, Move } from 'lucide-react'
+import { X, Type, PenTool, Crop, Music, Filter, Save, Undo, Redo, Trash2, Sparkles, Palette, Move, MapPin } from 'lucide-react'
 import Cropper, { Area } from 'react-easy-crop'
+
+interface VenueBranding {
+  frameColor: string
+  tagline: string
+  logoUrl: string
+  venueName: string
+}
 
 interface StoryEditorProps {
   file: File
   preview: string
   onSave: (editedFile: File, caption: string, metadata?: any) => void
   onCancel: () => void
+  venueBranding?: VenueBranding | null
 }
 
 type Tool = 'none' | 'text' | 'draw' | 'crop' | 'filter' | 'music'
@@ -61,8 +69,9 @@ const FILTERS = [
   { name: 'Dramatic', value: 'dramatic', preview: 'contrast(1.5) brightness(0.8) saturate(1.3)' }
 ]
 
-export default function StoryEditor({ file, preview, onSave, onCancel }: StoryEditorProps) {
+export default function StoryEditor({ file, preview, onSave, onCancel, venueBranding }: StoryEditorProps) {
   const [activeTool, setActiveTool] = useState<Tool>('none')
+  const [applyVenueBrand, setApplyVenueBrand] = useState(false)
   const [caption, setCaption] = useState('')
   const [textElements, setTextElements] = useState<TextElement[]>([])
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null)
@@ -463,7 +472,8 @@ export default function StoryEditor({ file, preview, onSave, onCancel }: StoryEd
           filter: currentFilter,
           music: selectedMusic,
           textElements,
-          hasDrawing: activeTool === 'draw'
+          hasDrawing: activeTool === 'draw',
+          venueBranding: applyVenueBrand ? venueBranding : null
         })
       }, file.type, 0.95)
     } catch (error) {
@@ -602,6 +612,17 @@ export default function StoryEditor({ file, preview, onSave, onCancel }: StoryEd
                   </div>
                 </div>
               )}
+              {applyVenueBrand && venueBranding && (
+                <div
+                  className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                  style={{ height: 48, backgroundColor: `${venueBranding.frameColor}cc` }}
+                >
+                  <div className="flex flex-col justify-center h-full px-3">
+                    <p className="text-white font-bold text-sm leading-tight truncate">{venueBranding.venueName}</p>
+                    <p className="text-white/80 text-xs leading-tight truncate">{venueBranding.tagline}</p>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -661,8 +682,8 @@ export default function StoryEditor({ file, preview, onSave, onCancel }: StoryEd
                 <button
                   onClick={() => setActiveTool(activeTool === 'filter' ? 'none' : 'filter')}
                   className={`relative p-3.5 rounded-xl transition-all ${
-                    activeTool === 'filter' 
-                      ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/50' 
+                    activeTool === 'filter'
+                      ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/50'
                       : 'bg-primary-500/10 text-primary-500 hover:bg-primary-500/20'
                   }`}
                 >
@@ -671,6 +692,21 @@ export default function StoryEditor({ file, preview, onSave, onCancel }: StoryEd
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
                   )}
                 </button>
+                {venueBranding && (
+                  <button
+                    onClick={() => setApplyVenueBrand(!applyVenueBrand)}
+                    className={`relative p-3.5 rounded-xl transition-all ${
+                      applyVenueBrand
+                        ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/50'
+                        : 'bg-primary-500/10 text-primary-500 hover:bg-primary-500/20'
+                    }`}
+                  >
+                    <MapPin size={22} />
+                    {applyVenueBrand && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
+                    )}
+                  </button>
+                )}
               </>
             )}
             <button

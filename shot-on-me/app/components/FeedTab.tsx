@@ -2889,6 +2889,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         <StoryEditor
           file={storyFile}
           preview={storyPreview}
+          venueBranding={null}
           onSave={async (editedFile, caption, metadata) => {
             setCreatingStory(true)
             try {

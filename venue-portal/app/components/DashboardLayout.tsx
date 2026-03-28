@@ -129,6 +129,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/promotions', label: 'Promotions' },
     { href: '/dashboard/automation', label: 'AI Auto' },
+    { href: '/dashboard/influencers', label: 'Influencers' },
     { href: '/dashboard/analytics', label: 'Earnings' },
     { href: '/dashboard/redemptions', label: 'Activity' },
     { href: '/dashboard/profile', label: 'Profile' },

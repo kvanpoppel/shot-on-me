@@ -8,7 +8,7 @@ import DashboardLayout from '../components/DashboardLayout'
 import DashboardPageShell from '../components/DashboardPageShell'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
-import { Activity, ArrowRight, Sparkles, BarChart3, Users, Bot, CheckCircle2, Circle, X, TrendingUp } from 'lucide-react'
+import { Activity, ArrowRight, Sparkles, BarChart3, Users, Bot, CheckCircle2, Circle, X, TrendingUp, Clock } from 'lucide-react'
 
 interface ImpactSummary {
   headline: string
@@ -17,6 +17,19 @@ interface ImpactSummary {
   confidence: number
   nextActionLabel: string
   nextActionHref: string
+}
+
+interface BusySlot {
+  day: string
+  hour: number
+  level: 'low' | 'medium' | 'high'
+}
+
+interface BusyTimesData {
+  slots?: BusySlot[]
+  busiestSlots?: { day: string; hour: number; label?: string }[]
+  slowestSlots?: { day: string; hour: number; label?: string }[]
+  suggestions?: string[]
 }
 
 export default function Dashboard() {
@@ -39,6 +52,8 @@ export default function Dashboard() {
     payoutsConnected: false,
     firstDealLaunched: false
   })
+  const [busyTimes, setBusyTimes] = useState<BusyTimesData | null>(null)
+  const [loadingBusy, setLoadingBusy] = useState(false)
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -74,7 +89,11 @@ export default function Dashboard() {
 
       const venues = Array.isArray(venuesRes.data) ? venuesRes.data : venuesRes.data?.venues || []
       const myVenue = venues[0]
-      setVenueId(myVenue?._id || null)
+      const resolvedVenueId = myVenue?._id || null
+      setVenueId(resolvedVenueId)
+      if (resolvedVenueId) {
+        fetchBusyTimes(resolvedVenueId)
+      }
 
       setStats({
         totalRevenue: `$${statsRes.data.totalRevenue}`,
@@ -96,6 +115,22 @@ export default function Dashboard() {
       // Keep default values on error
     } finally {
       setLoadingStats(false)
+    }
+  }
+
+  const fetchBusyTimes = async (vid: string) => {
+    if (!token) return
+    setLoadingBusy(true)
+    try {
+      const apiUrl = getApiUrl()
+      const res = await axios.get(`${apiUrl}/busy-times/${vid}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setBusyTimes(res.data || null)
+    } catch {
+      setBusyTimes(null)
+    } finally {
+      setLoadingBusy(false)
     }
   }
 
@@ -283,6 +318,110 @@ export default function Dashboard() {
             <p className="text-sm font-semibold text-primary-500">Guest Activity</p>
             <p className="mt-1 text-xs text-primary-400/75">Monitor followers, check-ins, and payment activity.</p>
           </button>
+        </div>
+
+        {/* Busy Times Card */}
+        <div className="rounded-xl border border-primary-500/20 bg-black/35 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary-500" />
+              <p className="text-sm font-semibold text-primary-500">Busy Times</p>
+            </div>
+            {!loadingBusy && busyTimes && (
+              <p className="text-xs text-primary-400/50">When your venue is most active</p>
+            )}
+          </div>
+
+          {!venueId || loadingBusy ? (
+            <div className="space-y-2">
+              <div className="h-3 animate-pulse rounded-full bg-primary-500/10 w-3/4" />
+              <div className="flex gap-1 overflow-hidden">
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="h-6 flex-1 animate-pulse rounded bg-primary-500/10" />
+                ))}
+              </div>
+              <div className="h-3 animate-pulse rounded-full bg-primary-500/10 w-1/2" />
+            </div>
+          ) : !busyTimes ? (
+            <p className="text-sm text-primary-400/50 py-4 text-center">No busy times data available yet.</p>
+          ) : (
+            <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
+              {/* Mini heatmap — scrollable row of day columns */}
+              {Array.isArray(busyTimes.slots) && busyTimes.slots.length > 0 && (
+                <div className="overflow-x-auto">
+                  <div className="flex gap-1 min-w-max pb-1">
+                    {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const).map((day) => {
+                      const daySlots = busyTimes.slots!.filter((s) => s.day === day)
+                      if (daySlots.length === 0) return null
+                      return (
+                        <div key={day} className="flex flex-col gap-0.5 items-center">
+                          <p className="text-[10px] text-primary-400/50 mb-0.5">{day}</p>
+                          {daySlots.slice(0, 3).map((slot, i) => (
+                            <div
+                              key={i}
+                              title={`${slot.day} ${slot.hour}:00 — ${slot.level}`}
+                              className={`rounded px-2 py-1 text-[9px] font-medium whitespace-nowrap ${
+                                slot.level === 'high'
+                                  ? 'bg-emerald-400/25 text-emerald-300'
+                                  : slot.level === 'medium'
+                                  ? 'bg-amber-400/20 text-amber-300'
+                                  : 'bg-primary-500/10 text-primary-400/50'
+                              }`}
+                            >
+                              {slot.hour}:00
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Busiest and slowest slots */}
+              <div className="grid grid-cols-2 gap-2">
+                {Array.isArray(busyTimes.busiestSlots) && busyTimes.busiestSlots.length > 0 && (
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                    <p className="text-[11px] font-semibold text-emerald-400 mb-1.5">Top Busy Slots</p>
+                    <div className="space-y-1">
+                      {busyTimes.busiestSlots.slice(0, 3).map((slot, i) => (
+                        <p key={i} className="text-[11px] text-primary-400/70">
+                          {slot.label || `${slot.day} ${slot.hour}:00`}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {Array.isArray(busyTimes.slowestSlots) && busyTimes.slowestSlots.length > 0 && (
+                  <div className="rounded-lg border border-primary-500/15 bg-black/30 p-2">
+                    <p className="text-[11px] font-semibold text-primary-400/60 mb-1.5">Slowest Slots</p>
+                    <div className="space-y-1">
+                      {busyTimes.slowestSlots.slice(0, 3).map((slot, i) => (
+                        <p key={i} className="text-[11px] text-primary-400/50">
+                          {slot.label || `${slot.day} ${slot.hour}:00`}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI suggestions */}
+              {Array.isArray(busyTimes.suggestions) && busyTimes.suggestions.length > 0 && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2.5">
+                  <p className="text-[11px] font-semibold text-cyan-400 mb-1.5">AI Suggestions</p>
+                  <ul className="space-y-1">
+                    {busyTimes.suggestions.map((s, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-[11px] text-primary-400/70">
+                        <span className="mt-0.5 flex-shrink-0 text-cyan-400">·</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {showAIDealModal ? (
