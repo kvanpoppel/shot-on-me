@@ -185,15 +185,20 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="fixed inset-0 bg-black z-[70] flex flex-col">
+        <div className="p-4">
+          <BackButton onClick={onClose} label="Back" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
       </div>
     )
   }
 
   if (!friend) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black z-[70] flex items-center justify-center">
         <div className="text-center">
           <p className="text-primary-400 mb-4">User not found</p>
           <button
@@ -211,11 +216,11 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
   const checkIns = posts.filter(p => p.checkIn)
 
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black z-[70] overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-black/95 backdrop-blur-sm border-b border-primary-500/10 z-10 p-4">
         <div className="flex items-center justify-between mb-4">
-          <BackButton onClick={onClose} />
+          <BackButton onClick={onClose} label="Back" />
           <h1 className="text-lg font-semibold text-primary-500 tracking-tight">Profile</h1>
           <div className="w-9"></div>
         </div>
