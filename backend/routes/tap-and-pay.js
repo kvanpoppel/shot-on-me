@@ -134,6 +134,27 @@ router.post('/process', auth, paymentLimiter, async (req, res) => {
     });
     await payment.save();
 
+    // Award 2 points for tap-and-pay
+    try {
+      const DailyVenuePoints = require('../models/DailyVenuePoints');
+      const startOfDay = DailyVenuePoints.getStartOfDay();
+      let dailyPoints = await DailyVenuePoints.findOne({ user: userId, venue: venueId, date: startOfDay });
+      if (!dailyPoints) {
+        dailyPoints = new DailyVenuePoints({ user: userId, venue: venueId, date: startOfDay, tapAndPayPoints: 0, checkInPoints: 0, totalPoints: 0 });
+      }
+      const pointsResult = dailyPoints.awardPoints('tap_and_pay', 2, payment._id);
+      if (pointsResult.awarded > 0) {
+        await dailyPoints.save();
+        await User.findByIdAndUpdate(userId, { $inc: { points: pointsResult.awarded, totalPointsEarned: pointsResult.awarded } });
+        if (io) {
+          io.to(`user-${userId}`).emit('points-updated', { userId: userId.toString(), pointsEarned: pointsResult.awarded, source: 'tap_and_pay' });
+        }
+        console.log(`⭐ Awarded ${pointsResult.awarded} point(s) for tap-and-pay at ${venue.name}`);
+      }
+    } catch (pointsError) {
+      console.error('Error awarding tap-and-pay points:', pointsError);
+    }
+
     // Audit log — fire and forget
     AuditLog.create({
       action: 'tap_and_pay',

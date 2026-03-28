@@ -4,21 +4,21 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
-import { 
-  MapPin, 
-  Clock, 
-  Star, 
-  Users, 
-  Calendar, 
+import {
+  MapPin,
+  Clock,
+  Star,
+  Users,
   Sparkles,
   Crown,
-  ArrowLeft,
   CheckCircle,
   X,
   Loader,
   MapPin as CheckInIcon,
   Navigation,
-  Share2
+  Share2,
+  Wine,
+  Info
 } from 'lucide-react'
 import BackButton from './BackButton'
 import CheckInSuccessModal from './CheckInSuccessModal'
@@ -43,6 +43,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
   const [checkInResult, setCheckInResult] = useState<any>(null)
   const [loyaltyData, setLoyaltyData] = useState<any>(null)
   const [showReferralInvite, setShowReferralInvite] = useState(false)
+  const [activeVenueTab, setActiveVenueTab] = useState<'info' | 'wine' | 'reviews'>('info')
 
   useEffect(() => {
     if (token && venueId && API_URL) {
@@ -312,6 +313,28 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         </div>
       </div>
 
+      {/* Tab Bar */}
+      <div className="flex border-b border-primary-500/20 bg-black/60">
+        {([
+          { id: 'info', label: 'Info', icon: Info },
+          { id: 'wine', label: 'Wine', icon: Wine },
+          { id: 'reviews', label: 'Reviews', icon: Star },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveVenueTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
+              activeVenueTab === tab.id
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-primary-400/60 hover:text-primary-400'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Venue Info */}
       <div className="p-4 space-y-4">
         {/* Rating & Followers */}
@@ -482,7 +505,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         )}
 
         {/* Hours */}
-        {venue?.schedule && typeof venue.schedule === 'object' && (
+        {activeVenueTab === 'info' && venue?.schedule && typeof venue.schedule === 'object' && (
           <div className="flex items-start gap-2 text-primary-400">
             <Clock className="w-5 h-5 text-primary-500 mt-0.5" />
             <div className="text-sm">
@@ -502,8 +525,8 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
           </div>
         )}
 
-        {/* Active Promotions */}
-        {activePromotions.length > 0 && (
+        {/* Active Promotions — Info tab only */}
+        {activeVenueTab === 'info' && activePromotions.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
@@ -511,16 +534,11 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
             </h2>
             <div className="space-y-3">
               {activePromotions.map((promo: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-4"
-                >
+                <div key={idx} className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-semibold text-primary-500">{promo.title}</h3>
                     {promo.discount && (
-                      <span className="text-green-500 font-bold">
-                        {promo.discount}% OFF
-                      </span>
+                      <span className="text-green-500 font-bold">{promo.discount}% OFF</span>
                     )}
                   </div>
                   {promo.description && (
@@ -537,56 +555,80 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
           </div>
         )}
 
-        {/* Reviews */}
-        <div>
-          <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
-            <Star className="w-5 h-5" />
-            Reviews ({reviews.length})
-          </h2>
-          {reviews.length === 0 ? (
-            <p className="text-primary-400 text-sm">No reviews yet</p>
-          ) : (
-            <div className="space-y-3">
-              {reviews.slice(0, 5).map((review: any) => (
-                <div
-                  key={review._id}
-                  className="bg-black/40 border border-primary-500/10 rounded-lg p-3"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary-500/20 rounded-full flex items-center justify-center">
-                        <span className="text-primary-500 text-sm font-semibold">
-                          {((review.user as any)?.name || (review.user as any)?.firstName || 'U').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="text-primary-500 font-medium text-sm">
-                        {(review.user as any)?.name || (review.user as any)?.firstName || 'Unknown User'}
-                      </span>
-                      {review.isVerified && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+        {/* Wine Tab */}
+        {activeVenueTab === 'wine' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <Wine className="w-5 h-5" />
+              Wine Menu
+            </h2>
+            {venue?.wineMenu && venue.wineMenu.length > 0 ? (
+              <div className="space-y-3">
+                {venue.wineMenu.map((item: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/10 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-1">
+                      <p className="text-primary-400 font-semibold">{item.name}</p>
+                      {item.price && (
+                        <span className="text-primary-500 font-bold">${item.price}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < review.rating
-                              ? 'text-yellow-500 fill-yellow-500'
-                              : 'text-primary-500/20'
-                          }`}
-                        />
-                      ))}
-                    </div>
+                    {item.description && (
+                      <p className="text-primary-400/70 text-sm">{item.description}</p>
+                    )}
+                    {item.varietal && (
+                      <p className="text-primary-400/50 text-xs mt-1">{item.varietal}</p>
+                    )}
                   </div>
-                  {review.review && (
-                    <p className="text-primary-400 text-sm">{review.review}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <Wine className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">Wine menu coming soon</p>
+                <p className="text-primary-400/40 text-xs mt-1">Check back or ask your server</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reviews Tab */}
+        {activeVenueTab === 'reviews' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <Star className="w-5 h-5" />
+              Reviews ({reviews.length})
+            </h2>
+            {reviews.length === 0 ? (
+              <p className="text-primary-400 text-sm">No reviews yet</p>
+            ) : (
+              <div className="space-y-3">
+                {reviews.slice(0, 5).map((review: any) => (
+                  <div key={review._id} className="bg-black/40 border border-primary-500/10 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-primary-500/20 rounded-full flex items-center justify-center">
+                          <span className="text-primary-500 text-sm font-semibold">
+                            {((review.user as any)?.name || (review.user as any)?.firstName || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-primary-500 font-medium text-sm">
+                          {(review.user as any)?.name || (review.user as any)?.firstName || 'Unknown User'}
+                        </span>
+                        {review.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-primary-500/20'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    {review.review && <p className="text-primary-400 text-sm">{review.review}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Check-in Success Modal */}

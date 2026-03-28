@@ -411,10 +411,10 @@ export default function Dashboard() {
                 <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2.5">
                   <p className="text-[11px] font-semibold text-cyan-400 mb-1.5">AI Suggestions</p>
                   <ul className="space-y-1">
-                    {busyTimes.suggestions.map((s, i) => (
+                    {busyTimes.suggestions.map((s: any, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-[11px] text-primary-400/70">
                         <span className="mt-0.5 flex-shrink-0 text-cyan-400">·</span>
-                        {s}
+                        {typeof s === 'string' ? s : s.message}
                       </li>
                     ))}
                   </ul>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, MapPin, Wallet, User, MessageSquare, Bell, Camera, Send, LayoutGrid, Search, Shield } from 'lucide-react'
+import { Home, MapPin, Wallet, MessageSquare, LayoutGrid, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -20,7 +20,7 @@ export default function BottomNav({ activeTab, setActiveTab, isSearchOpen = fals
     { id: 'feed' as Tab, icon: LayoutGrid, label: 'Feed' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
     { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },
-    { id: 'squads' as Tab, icon: Shield, label: 'Squads' },
+    { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages' },
     {
       id: 'search' as any, 
       icon: Search, 

@@ -17,13 +17,10 @@ import FriendProfile from './components/FriendProfile'
 import ProximityNotifications from './components/ProximityNotifications'
 import PermissionsManager from './components/PermissionsManager'
 import TonightTab from './components/TonightTab'
-import BadgesScreen from './components/BadgesScreen'
-import LeaderboardsScreen from './components/LeaderboardsScreen'
 import RewardsScreen from './components/RewardsScreen'
 import ReferralScreen from './components/ReferralScreen'
 import MyVenuesTab from './components/MyVenuesTab'
 import WhatsHappeningTab from './components/WhatsHappeningTab'
-import SquadsTab from './components/SquadsTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
@@ -236,18 +233,14 @@ function Home() {
             }}
           />
         )}
-        {/* Messages are now in header modal, not a tab */}
+        {activeTab === 'messages' && <MessagesTab setActiveTab={setActiveTab} activeTab={activeTab} onViewProfile={setViewingProfile} />}
         {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} setActiveTab={setActiveTab} />}
-        {/* Menu items from hamburger menu */}
         {activeTab === 'tonight' && <TonightTab />}
-        {activeTab === 'badges' && <BadgesScreen />}
-        {activeTab === 'leaderboards' && <LeaderboardsScreen />}
         {activeTab === 'rewards' && <RewardsScreen />}
         {activeTab === 'referrals' && <ReferralScreen />}
         {activeTab === 'venues' && <MyVenuesTab />}
         {activeTab === 'happening' && <WhatsHappeningTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
-        {activeTab === 'squads' && <SquadsTab />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
       {viewingProfile && (
