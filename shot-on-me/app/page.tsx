@@ -12,6 +12,7 @@ import MapTab from './components/MapTab'
 import ProfileTab from './components/ProfileTab'
 import HomeTab from './components/HomeTab'
 import MessagesTab from './components/MessagesTab'
+import { usePushNotifications } from './hooks/usePushNotifications'
 import GroupChatsTab from './components/GroupChatsTab'
 import FriendProfile from './components/FriendProfile'
 import ProximityNotifications from './components/ProximityNotifications'
@@ -26,6 +27,7 @@ import { Tab } from '@/app/types'
 
 function Home() {
   const { user, loading } = useAuth()
+  usePushNotifications()
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
   const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
@@ -133,6 +135,16 @@ function Home() {
     
     window.addEventListener('open-post-form', handleOpenPostForm)
     return () => window.removeEventListener('open-post-form', handleOpenPostForm)
+  }, [])
+
+  // Listen for push notification deep links
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleNavigate = (e: CustomEvent) => {
+      if (e.detail?.tab) setActiveTab(e.detail.tab)
+    }
+    window.addEventListener('navigate-tab', handleNavigate as EventListener)
+    return () => window.removeEventListener('navigate-tab', handleNavigate as EventListener)
   }, [])
 
   // Listen for search modal open/close events

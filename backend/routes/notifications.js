@@ -137,5 +137,21 @@ router.createNotification = async (data) => {
   }
 };
 
+// Save device push token for native app notifications
+router.post('/push-token', auth, async (req, res) => {
+  try {
+    const { token: pushToken, platform } = req.body;
+    if (!pushToken) return res.status(400).json({ message: 'Push token required' });
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(req.user.userId, {
+      $set: { pushToken, pushPlatform: platform || 'unknown' }
+    });
+    res.json({ message: 'Push token saved' });
+  } catch (error) {
+    console.error('Error saving push token:', error);
+    res.status(500).json({ message: 'Failed to save push token' });
+  }
+});
+
 module.exports = router;
 

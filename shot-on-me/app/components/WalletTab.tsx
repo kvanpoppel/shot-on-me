@@ -539,6 +539,15 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setError('Please enter the 6-digit code sent to your phone.')
       return
     }
+    // Biometric confirmation before sending money
+    try {
+      const { authenticateWithBiometrics, isBiometricAvailable } = await import('../services/native')
+      const bioAvailable = await isBiometricAvailable()
+      if (bioAvailable) {
+        const passed = await authenticateWithBiometrics('Confirm payment with Face ID or fingerprint')
+        if (!passed) return
+      }
+    } catch {}
     setSending(true)
     setError(null)
     setSuccess(null)

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft, Share2 } from 'lucide-react'
+import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, ArrowLeft, Share2, BookUser } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
 import InviteFriendsModal from './InviteFriendsModal'
@@ -29,7 +29,10 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [currentFriends, setCurrentFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'search' | 'suggestions' | 'friends' | 'invite'>('suggestions')
+  const [activeTab, setActiveTab] = useState<'search' | 'suggestions' | 'friends' | 'contacts' | 'invite'>('suggestions')
+  const [nativeContacts, setNativeContacts] = useState<Array<{ id: string; name: string; phone: string }>>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [contactSearch, setContactSearch] = useState('')
   const [aiSignals, setAiSignals] = useState<{ viewedProfileIds: string[]; addedFriendIds: string[] }>({
     viewedProfileIds: [],
     addedFriendIds: []
@@ -312,6 +315,26 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
             <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1.5" />
             <span className="hidden sm:inline">My Friends ({currentFriends.length})</span>
             <span className="sm:hidden">Friends ({currentFriends.length})</span>
+          </button>
+          <button
+            onClick={async () => {
+              setActiveTab('contacts')
+              if (nativeContacts.length === 0) {
+                setContactsLoading(true)
+                const { getContacts } = await import('../services/native')
+                const contacts = await getContacts()
+                setNativeContacts(contacts)
+                setContactsLoading(false)
+              }
+            }}
+            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+              activeTab === 'contacts'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-primary-400/70 hover:text-primary-500'
+            }`}
+          >
+            <BookUser className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1.5" />
+            <span>Contacts</span>
           </button>
           <button
             onClick={() => setActiveTab('invite')}
@@ -603,6 +626,56 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'contacts' && (
+          <div>
+            <div className="mb-3 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-400/50" />
+              <input
+                type="text"
+                value={contactSearch}
+                onChange={(e) => setContactSearch(e.target.value)}
+                placeholder="Search your contacts..."
+                className="w-full bg-black/40 border border-primary-500/20 rounded-lg pl-9 pr-4 py-2 text-sm text-primary-300 placeholder-primary-400/50 focus:outline-none focus:border-primary-500"
+              />
+            </div>
+            {contactsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+              </div>
+            ) : nativeContacts.length === 0 ? (
+              <div className="text-center py-10">
+                <BookUser className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
+                <p className="text-primary-400 text-sm mb-1">No contacts found</p>
+                <p className="text-primary-400/50 text-xs">Allow contacts access to find friends from your phone</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {nativeContacts
+                  .filter((c) => !contactSearch || c.name.toLowerCase().includes(contactSearch.toLowerCase()) || c.phone.includes(contactSearch))
+                  .map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-3 bg-primary-500/5 rounded-xl border border-primary-500/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-primary-500 font-semibold text-sm">{contact.name[0]}</span>
+                        </div>
+                        <div>
+                          <p className="text-primary-300 text-sm font-medium">{contact.name}</p>
+                          <p className="text-primary-400/60 text-xs">{contact.phone}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSearchQuery(contact.phone)}
+                        className="bg-primary-500 text-black text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      >
+                        Find
+                      </button>
+                    </div>
+                  ))}
               </div>
             )}
           </div>
