@@ -129,7 +129,7 @@ export default function Dashboard() {
   }
 
   const topAppliedInsights = Object.entries(dashboardData?.aiInsights?.insightCounts || {})
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
     .slice(0, 3)
 
   const trackInsightApply = async (insight: AIInsight) => {

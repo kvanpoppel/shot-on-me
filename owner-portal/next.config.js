@@ -25,7 +25,7 @@ const nextConfig = {
   reactStrictMode: true,
   turbopack: {},
   images: {
-    domains: ['localhost'],
+    remotePatterns: [{ protocol: 'http', hostname: 'localhost' }, { protocol: 'https', hostname: 'res.cloudinary.com' }],
   },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
