@@ -86,6 +86,9 @@ router.post('/', auth, async (req, res) => {
 
     // Calculate points using new rewards system (1 point for check-in)
     const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     let points = 0;
     let reward = '';
     

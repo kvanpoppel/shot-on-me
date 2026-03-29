@@ -20,24 +20,38 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS Configuration
+// Build Vercel origin regex from VERCEL_PROJECT_PATTERN env var (e.g. "shot-on-me")
+// This allows all Vercel preview and production deployments for this project
+const vercelPattern = process.env.VERCEL_PROJECT_PATTERN;
+const vercelOriginRegex = vercelPattern
+  ? new RegExp(`^https://${vercelPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[a-zA-Z0-9\\-]*\\.vercel\\.app$`)
+  : null;
+
 const corsOptions = {
-  origin: [
-    'http://localhost:3001',
-    'http://localhost:3000',
-    'http://localhost:3002', // Owner Portal
-    'https://www.shotonme.com', // Primary production domain (www only)
-    'https://shotonme.com', // Production domain (without www)
-    'https://venue.shotonme.com', // Venue portal production subdomain
-    // Explicit Vercel preview URLs — set VERCEL_ALLOWED_ORIGINS in .env as a comma-separated list
-    // e.g. "https://shot-on-me-abc123.vercel.app,https://shot-on-me-xyz.vercel.app"
-    ...(process.env.VERCEL_ALLOWED_ORIGINS
-      ? process.env.VERCEL_ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
-      : []
-    ),
-    /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
-    /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/, // Local network
-    /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/ // Local network
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    const allowed = [
+      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'https://www.shotonme.com',
+      'https://shotonme.com',
+      'https://venue.shotonme.com',
+      'https://owner.shotonme.com',
+      ...(process.env.VERCEL_ALLOWED_ORIGINS
+        ? process.env.VERCEL_ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+        : []
+      ),
+    ];
+
+    if (allowed.includes(origin)) return callback(null, true);
+    if (vercelOriginRegex && vercelOriginRegex.test(origin)) return callback(null, true);
+    if (/^http:\/\/(192\.168|10\.|172\.(1[6-9]|2\d|3[0-1]))\./.test(origin)) return callback(null, true);
+
+    callback(new Error(`CORS: origin not allowed: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

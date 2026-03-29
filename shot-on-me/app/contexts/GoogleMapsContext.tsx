@@ -1,13 +1,15 @@
 'use client'
 import { createContext, useContext, ReactNode, useEffect } from 'react'
 import { useJsApiLoader } from '@react-google-maps/api'
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-if (!GOOGLE_MAPS_API_KEY) { throw new Error('[GoogleMapsContext] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.') }
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 const GOOGLE_MAPS_LIBRARIES: ('places' | 'geometry' | 'drawing' | 'visualization')[] = ['places']
 const GoogleMapsContext = createContext<{ isLoaded: boolean; loadError: Error | undefined } | undefined>(undefined)
 export function GoogleMapsProvider({ children }: { children: ReactNode }) {
-  const { isLoaded, loadError } = useJsApiLoader({ id: 'google-maps-script-loader-app', googleMapsApiKey: GOOGLE_MAPS_API_KEY!, libraries: GOOGLE_MAPS_LIBRARIES })
+  const { isLoaded, loadError } = useJsApiLoader({ id: 'google-maps-script-loader-app', googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: GOOGLE_MAPS_LIBRARIES })
   useEffect(() => { if (loadError) console.error('Google Maps API Error:', loadError) }, [loadError])
+  if (!GOOGLE_MAPS_API_KEY) {
+    return <GoogleMapsContext.Provider value={{ isLoaded: false, loadError: new Error('Google Maps API key not configured') }}>{children}</GoogleMapsContext.Provider>
+  }
   return <GoogleMapsContext.Provider value={{ isLoaded, loadError }}>{children}</GoogleMapsContext.Provider>
 }
 export function useGoogleMaps() {
