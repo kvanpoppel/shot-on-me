@@ -127,14 +127,25 @@ function Home() {
   // Listen for open-post-form event
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
+
     const handleOpenPostForm = () => {
       setAutoOpenPostForm(true)
       setActiveTab('feed')
     }
-    
+
     window.addEventListener('open-post-form', handleOpenPostForm)
     return () => window.removeEventListener('open-post-form', handleOpenPostForm)
+  }, [])
+
+  // Listen for send-drink event (from feed or find-friends modal)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleSendDrink = () => {
+      setAutoOpenSendForm(true)
+      setActiveTab('wallet')
+    }
+    window.addEventListener('send-drink', handleSendDrink as EventListener)
+    return () => window.removeEventListener('send-drink', handleSendDrink as EventListener)
   }, [])
 
   // Listen for push notification deep links
@@ -226,10 +237,14 @@ function Home() {
         />}
         {activeTab === 'feed' && (
           <ErrorBoundary>
-            <FeedTab 
-              onViewProfile={setViewingProfile} 
+            <FeedTab
+              onViewProfile={setViewingProfile}
               autoOpenPostForm={autoOpenPostForm}
               onPostFormOpened={() => setAutoOpenPostForm(false)}
+              onSendDrink={(userId) => {
+                setAutoOpenSendForm(true)
+                setActiveTab('wallet')
+              }}
             />
           </ErrorBoundary>
         )}

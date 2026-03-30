@@ -84,9 +84,10 @@ interface FeedTabProps {
   onViewProfile?: (userId: string) => void
   autoOpenPostForm?: boolean
   onPostFormOpened?: () => void
+  onSendDrink?: (userId: string) => void
 }
 
-export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPostFormOpened }: FeedTabProps) {
+export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPostFormOpened, onSendDrink }: FeedTabProps) {
   const { token, user } = useAuth()
   const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
@@ -1585,7 +1586,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               </div>
             </div>
             {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
                 onClick={() => {
                   setPage(1)
@@ -1600,18 +1601,25 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
               </button>
               <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-find-friends'))}
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
+                title="Friends"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => setShowFriendInvite(true)}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-3 py-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
                 title="Invite Friends"
               >
                 <UserPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">Invite</span>
               </button>
               <button
                 onClick={() => setShowPostForm(!showPostForm)}
-                className="bg-primary-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
+                className="bg-primary-500 text-black px-3 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm flex items-center gap-1.5"
               >
-                Post
+                <Camera className="w-4 h-4" />
+                <span className="hidden sm:inline">Post</span>
               </button>
             </div>
           </div>
@@ -2356,18 +2364,27 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       <Share2 className="w-4 h-4" />
                       <span className="text-xs font-semibold">Share</span>
                     </button>
+                    {isFriend && authorId && authorId !== user?.id && authorId !== (user as any)?._id && (
+                      <button
+                        onClick={() => onSendDrink?.(authorId)}
+                        className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
+                      >
+                        <span className="text-base leading-none">🍺</span>
+                        <span className="text-xs font-semibold">Send Drink</span>
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {post.reactionCounts && Object.keys(post.reactionCounts).length > 0 && (
                       <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary-500/5 border border-primary-500/15">
-                        {Object.keys(post.reactionCounts).slice(0, 4).map((emoji) => (
+                        {Object.keys(post.reactionCounts).slice(0, 2).map((emoji) => (
                           <span key={emoji} className="text-sm leading-none" title={emoji}>
                             {emoji}
                           </span>
                         ))}
-                        {Object.keys(post.reactionCounts).length > 4 && (
+                        {Object.keys(post.reactionCounts).length > 2 && (
                           <span className="text-[11px] text-primary-400/80 font-semibold ml-0.5">
-                            +{Object.keys(post.reactionCounts).length - 4}
+                            +{Object.keys(post.reactionCounts).length - 2}
                           </span>
                         )}
                       </div>

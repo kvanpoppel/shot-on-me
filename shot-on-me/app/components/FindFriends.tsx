@@ -202,7 +202,6 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Friend added!')
       trackFriendAdd(friendId)
       fetchSuggestions()
       fetchCurrentFriends()
@@ -437,14 +436,14 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                 </p>
               </div>
             )}
-            {aiEnabled && aiFriendPicks.length > 0 && (
+            {aiEnabled && aiFriendPicks.filter(p => !isFriend(p.user._id || p.user.id)).length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-primary-500" />
                   <h3 className="text-sm font-semibold text-primary-500">AI Friend Picks</h3>
                 </div>
                 <div className="space-y-2">
-                  {aiFriendPicks.map((pick) => {
+                  {aiFriendPicks.filter(p => !isFriend(p.user._id || p.user.id)).map((pick) => {
                     const pickId = pick.user._id || pick.user.id
                     return (
                       <div
@@ -503,7 +502,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                 </div>
               </div>
             )}
-            {suggestions.length === 0 ? (
+            {suggestions.filter(s => !isFriend(s._id || s.id)).length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
                 <p className="text-primary-400/80 font-light">No suggestions yet</p>
@@ -511,7 +510,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
               </div>
             ) : (
               <div className="space-y-2">
-                {suggestions.map((suggestion) => (
+                {suggestions.filter(s => !isFriend(s._id || s.id)).map((suggestion) => (
                   <div
                     key={suggestion._id || suggestion.id}
                     className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm"
@@ -619,10 +618,16 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-1 text-primary-500/60 text-xs">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="font-medium">Friends</span>
-                      </div>
+                      <button
+                        onClick={() => {
+                          onClose()
+                          window.dispatchEvent(new CustomEvent('send-drink'))
+                        }}
+                        className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      >
+                        <span>🍺</span>
+                        <span>Send Drink</span>
+                      </button>
                     </div>
                   </div>
                 ))}
