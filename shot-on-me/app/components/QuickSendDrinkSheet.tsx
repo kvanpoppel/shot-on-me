@@ -187,22 +187,20 @@ export default function QuickSendDrinkSheet({
 
   return (
     <>
-      {/* Backdrop */}
+      {/*
+        Single full-screen wrapper — tapping the dark area above the sheet closes it.
+        The sheet sits at the bottom. No separate z-layered backdrop fighting scroll events.
+      */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm"
         onClick={onClose}
-      />
-
-      {/* Sheet — outer positions at bottom, inner constrains height */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-[51] max-w-lg mx-auto flex flex-col"
-        style={{ maxHeight: '90dvh' }}
-        onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
+        {/* Sheet — stopPropagation so taps inside don't close */}
+        <div
+          className="relative w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl flex flex-col"
           style={{ maxHeight: '90dvh' }}
+          onClick={(e) => e.stopPropagation()}
         >
-
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-primary-500/30" />
@@ -216,7 +214,7 @@ export default function QuickSendDrinkSheet({
             <X className="w-4 h-4" />
           </button>
 
-          {/* Recipient header — never scrolls away */}
+          {/* Recipient header — pinned, never scrolls */}
           <div className="flex items-center gap-3 px-5 pb-4 pt-2 flex-shrink-0">
             <div className="w-12 h-12 rounded-full border-2 border-primary-500/40 overflow-hidden flex-shrink-0">
               {recipientAvatar ? (
@@ -235,10 +233,10 @@ export default function QuickSendDrinkSheet({
 
           <div className="h-px bg-primary-500/10 mx-5 flex-shrink-0" />
 
-          {/* Scrollable step content — min-h-0 is critical for flex shrink on iOS */}
+          {/* Scrollable content — min-h-0 lets flex shrink on iOS, webkit enables momentum scroll */}
           <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch' }}
+            className="flex-1 min-h-0 overflow-y-auto"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
 
           {/* ─── STEP: Amount ─── */}
@@ -496,8 +494,8 @@ export default function QuickSendDrinkSheet({
           )}
 
           </div>{/* end scrollable */}
-        </div>
-      </div>
+        </div>{/* end sheet */}
+      </div>{/* end full-screen wrapper */}
 
       {/* Float-up keyframe */}
       <style jsx global>{`
