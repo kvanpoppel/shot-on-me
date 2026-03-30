@@ -18,7 +18,12 @@ import {
   Navigation,
   Share2,
   Wine,
-  Info
+  Info,
+  Tag,
+  TrendingUp,
+  Moon,
+  CalendarDays,
+  Flame
 } from 'lucide-react'
 import BackButton from './BackButton'
 import CheckInSuccessModal from './CheckInSuccessModal'
@@ -43,7 +48,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
   const [checkInResult, setCheckInResult] = useState<any>(null)
   const [loyaltyData, setLoyaltyData] = useState<any>(null)
   const [showReferralInvite, setShowReferralInvite] = useState(false)
-  const [activeVenueTab, setActiveVenueTab] = useState<'info' | 'wine' | 'reviews'>('info')
+  const [activeVenueTab, setActiveVenueTab] = useState<'info' | 'happyhour' | 'special' | 'wine' | 'weekend' | 'trending' | 'tonight' | 'reviews'>('info')
 
   useEffect(() => {
     if (token && venueId && API_URL) {
@@ -313,26 +318,33 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex border-b border-primary-500/20 bg-black/60">
-        {([
-          { id: 'info', label: 'Info', icon: Info },
-          { id: 'wine', label: 'Wine', icon: Wine },
-          { id: 'reviews', label: 'Reviews', icon: Star },
-        ] as const).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveVenueTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
-              activeVenueTab === tab.id
-                ? 'border-primary-500 text-primary-500'
-                : 'border-transparent text-primary-400/60 hover:text-primary-400'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
+      {/* Tab Bar — horizontally scrollable */}
+      <div className="border-b border-primary-500/20 bg-black/60 overflow-x-auto scrollbar-hide">
+        <div className="flex min-w-max">
+          {([
+            { id: 'info',      label: 'Info',          icon: Info },
+            { id: 'happyhour', label: 'Happy Hour',     icon: Clock },
+            { id: 'special',   label: 'Special',        icon: Tag },
+            { id: 'wine',      label: 'Wine',           icon: Wine },
+            { id: 'weekend',   label: 'Weekend',        icon: CalendarDays },
+            { id: 'trending',  label: 'Trending',       icon: TrendingUp },
+            { id: 'tonight',   label: 'Tonight',        icon: Moon },
+            { id: 'reviews',   label: 'Reviews',        icon: Star },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveVenueTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${
+                activeVenueTab === tab.id
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-primary-400/60 hover:text-primary-400'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Venue Info */}
@@ -555,6 +567,86 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
           </div>
         )}
 
+        {/* Happy Hour Tab */}
+        {activeVenueTab === 'happyhour' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Happy Hour
+            </h2>
+            {venue?.happyHour || venue?.happyHourDetails ? (
+              <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                {venue.happyHour?.times && (
+                  <p className="text-primary-400 font-semibold mb-2 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-primary-500" />
+                    {venue.happyHour.times}
+                  </p>
+                )}
+                {(venue.happyHour?.description || venue.happyHourDetails) && (
+                  <p className="text-primary-400/80 text-sm">{venue.happyHour?.description || venue.happyHourDetails}</p>
+                )}
+              </div>
+            ) : activePromotions.filter((p: any) => p.type === 'happy_hour' || p.title?.toLowerCase().includes('happy')).length > 0 ? (
+              <div className="space-y-3">
+                {activePromotions.filter((p: any) => p.type === 'happy_hour' || p.title?.toLowerCase().includes('happy')).map((promo: any, idx: number) => (
+                  <div key={idx} className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{promo.title}</p>
+                    {promo.description && <p className="text-primary-400/80 text-sm mt-1">{promo.description}</p>}
+                    {promo.discount && <p className="text-green-400 font-bold text-sm mt-1">{promo.discount}% OFF</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <Clock className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">Happy hour details coming soon</p>
+                <p className="text-primary-400/40 text-xs mt-1">Ask your server for today's specials</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Current Special Tab */}
+        {activeVenueTab === 'special' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <Tag className="w-5 h-5" />
+              Current Specials
+            </h2>
+            {venue?.currentSpecial || venue?.specials?.length > 0 || activePromotions.length > 0 ? (
+              <div className="space-y-3">
+                {venue?.currentSpecial && (
+                  <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                    <p className="text-primary-400/80 text-sm">{venue.currentSpecial}</p>
+                  </div>
+                )}
+                {venue?.specials?.map((s: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/15 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{s.name || s.title}</p>
+                    {s.description && <p className="text-primary-400/70 text-sm mt-1">{s.description}</p>}
+                    {s.price && <p className="text-primary-400 font-bold mt-1">${s.price}</p>}
+                  </div>
+                ))}
+                {!venue?.currentSpecial && !venue?.specials?.length && activePromotions.map((promo: any, idx: number) => (
+                  <div key={idx} className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-1">
+                      <p className="font-semibold text-primary-500">{promo.title}</p>
+                      {promo.discount && <span className="text-green-400 font-bold text-sm">{promo.discount}% OFF</span>}
+                    </div>
+                    {promo.description && <p className="text-primary-400/70 text-sm">{promo.description}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <Tag className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">No active specials right now</p>
+                <p className="text-primary-400/40 text-xs mt-1">Check back soon or follow this venue</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Wine Tab */}
         {activeVenueTab === 'wine' && (
           <div>
@@ -586,6 +678,117 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
                 <Wine className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
                 <p className="text-primary-400/60 text-sm">Wine menu coming soon</p>
                 <p className="text-primary-400/40 text-xs mt-1">Check back or ask your server</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Weekend Tab */}
+        {activeVenueTab === 'weekend' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <CalendarDays className="w-5 h-5" />
+              Weekend Specials
+            </h2>
+            {venue?.weekendSpecials?.length > 0 ? (
+              <div className="space-y-3">
+                {venue.weekendSpecials.map((s: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/15 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{s.name || s.title}</p>
+                    {s.description && <p className="text-primary-400/70 text-sm mt-1">{s.description}</p>}
+                    {s.price && <p className="text-primary-400 font-bold mt-1">${s.price}</p>}
+                    {s.days && <p className="text-primary-400/50 text-xs mt-1">{s.days}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : activePromotions.filter((p: any) => p.type === 'weekend' || p.title?.toLowerCase().includes('weekend') || p.days?.toLowerCase().includes('sat') || p.days?.toLowerCase().includes('sun')).length > 0 ? (
+              <div className="space-y-3">
+                {activePromotions.filter((p: any) => p.type === 'weekend' || p.title?.toLowerCase().includes('weekend')).map((promo: any, idx: number) => (
+                  <div key={idx} className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{promo.title}</p>
+                    {promo.description && <p className="text-primary-400/70 text-sm mt-1">{promo.description}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <CalendarDays className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">Weekend specials coming soon</p>
+                <p className="text-primary-400/40 text-xs mt-1">Follow this venue to get notified</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Trending Tab */}
+        {activeVenueTab === 'trending' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Trending Here
+            </h2>
+            {venue?.trending?.length > 0 ? (
+              <div className="space-y-3">
+                {venue.trending.map((item: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/15 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-primary-500">{item.name}</p>
+                      {item.description && <p className="text-primary-400/70 text-sm mt-0.5">{item.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-primary-500/60 text-xs font-semibold ml-3">
+                      <Flame className="w-3.5 h-3.5 text-orange-400" />
+                      {item.orders || item.count || 'Hot'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <TrendingUp className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">Trending items loading soon</p>
+                <p className="text-primary-400/40 text-xs mt-1">Most ordered drinks & food will appear here</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tonight Tab */}
+        {activeVenueTab === 'tonight' && (
+          <div>
+            <h2 className="text-lg font-semibold text-primary-500 mb-3 flex items-center gap-2">
+              <Moon className="w-5 h-5" />
+              Tonight
+            </h2>
+            {venue?.tonight || venue?.tonightSpecials?.length > 0 || venue?.events?.length > 0 ? (
+              <div className="space-y-3">
+                {venue.tonight && (
+                  <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4">
+                    <p className="text-primary-400/80 text-sm">{venue.tonight}</p>
+                  </div>
+                )}
+                {venue?.tonightSpecials?.map((s: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/15 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{s.name || s.title}</p>
+                    {s.description && <p className="text-primary-400/70 text-sm mt-1">{s.description}</p>}
+                    {s.time && <p className="text-primary-400/50 text-xs mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{s.time}</p>}
+                  </div>
+                ))}
+                {venue?.events?.filter((e: any) => {
+                  const today = new Date().toDateString()
+                  return new Date(e.date).toDateString() === today
+                }).map((event: any, idx: number) => (
+                  <div key={idx} className="bg-black/40 border border-primary-500/15 rounded-xl p-4">
+                    <p className="font-semibold text-primary-500">{event.name || event.title}</p>
+                    {event.description && <p className="text-primary-400/70 text-sm mt-1">{event.description}</p>}
+                    {event.time && <p className="text-primary-400/50 text-xs mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{event.time}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-black/40 border border-primary-500/10 rounded-xl p-6 text-center">
+                <Moon className="w-10 h-10 text-primary-500/40 mx-auto mb-3" />
+                <p className="text-primary-400/60 text-sm">Nothing posted for tonight yet</p>
+                <p className="text-primary-400/40 text-xs mt-1">Check back later or follow this venue</p>
               </div>
             )}
           </div>
