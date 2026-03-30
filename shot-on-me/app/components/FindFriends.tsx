@@ -7,6 +7,7 @@ import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, Arro
 
 import { useApiUrl } from '../utils/api'
 import InviteFriendsModal from './InviteFriendsModal'
+import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 
 interface FindFriendsProps {
   isOpen: boolean
@@ -221,6 +222,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [invitePhoneNumber, setInvitePhoneNumber] = useState<string>('')
   const [inviteEmail, setInviteEmail] = useState<string>('')
+  const [sendDrinkTarget, setSendDrinkTarget] = useState<{ id: string; name: string; firstName: string; avatar?: string } | null>(null)
 
   const handleInviteFriend = async (e?: React.MouseEvent, phoneNumber?: string, email?: string) => {
     if (e) {
@@ -619,10 +621,12 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                         </div>
                       </div>
                       <button
-                        onClick={() => {
-                          onClose()
-                          window.dispatchEvent(new CustomEvent('send-drink'))
-                        }}
+                        onClick={() => setSendDrinkTarget({
+                          id: friend._id || friend.id,
+                          name: `${friend.firstName} ${friend.lastName || ''}`.trim(),
+                          firstName: friend.firstName,
+                          avatar: friend.profilePicture,
+                        })}
                         className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                       >
                         <span>🍺</span>
@@ -715,6 +719,18 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
         initialPhoneNumber={invitePhoneNumber}
         initialEmail={inviteEmail}
       />
+
+      {sendDrinkTarget && (
+        <QuickSendDrinkSheet
+          recipientId={sendDrinkTarget.id}
+          recipientName={sendDrinkTarget.name}
+          recipientFirstName={sendDrinkTarget.firstName}
+          recipientAvatar={sendDrinkTarget.avatar}
+          isOpen={!!sendDrinkTarget}
+          onClose={() => setSendDrinkTarget(null)}
+          onSuccess={() => setSendDrinkTarget(null)}
+        />
+      )}
     </div>
   )
 }

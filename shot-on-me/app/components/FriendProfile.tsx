@@ -18,6 +18,7 @@ import {
   Share2
 } from 'lucide-react'
 import BackButton from './BackButton'
+import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 import { useApiUrl } from '../utils/api'
 
 interface FriendProfileProps {
@@ -60,6 +61,7 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
   const [isFriend, setIsFriend] = useState(false)
   const [addingFriend, setAddingFriend] = useState(false)
   const [removingFriend, setRemovingFriend] = useState(false)
+  const [showSendDrink, setShowSendDrink] = useState(false)
 
   useEffect(() => {
     if (token && userId) {
@@ -286,12 +288,13 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
                   <span>Get Directions</span>
                 </button>
               )}
-              {onSendShot && (
+              {isFriend && (
                 <button
-                  onClick={() => onSendShot(userId)}
-                  className="flex-1 bg-primary-500 text-black py-2 rounded-lg font-medium hover:bg-primary-600 transition-all"
+                  onClick={() => setShowSendDrink(true)}
+                  className="flex-1 bg-primary-500 text-black py-2 rounded-lg font-bold hover:bg-primary-400 transition-all flex items-center justify-center gap-2"
                 >
-                  Send Shot
+                  <span>🍺</span>
+                  <span>Send Drink</span>
                 </button>
               )}
               <button
@@ -472,6 +475,18 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
           </div>
         )}
       </div>
+
+      {friend && showSendDrink && (
+        <QuickSendDrinkSheet
+          recipientId={userId}
+          recipientName={`${friend.firstName} ${friend.lastName || ''}`.trim()}
+          recipientFirstName={friend.firstName}
+          recipientAvatar={friend.profilePicture}
+          isOpen={showSendDrink}
+          onClose={() => setShowSendDrink(false)}
+          onSuccess={() => setShowSendDrink(false)}
+        />
+      )}
     </div>
   )
 }

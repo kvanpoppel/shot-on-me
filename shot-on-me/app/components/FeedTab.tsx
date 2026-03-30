@@ -11,6 +11,7 @@ import StoryEditor from './StoryEditor'
 import AIFeedSuggestions from './AIFeedSuggestions'
 import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
+import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 
 import { useApiUrl } from '../utils/api'
 
@@ -106,6 +107,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [showingReactionPicker, setShowingReactionPicker] = useState<{ postId: string; commentId: string } | null>(null)
   const [posting, setPosting] = useState(false)
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
+  const [sendDrinkTarget, setSendDrinkTarget] = useState<{ id: string; name: string; firstName: string; avatar?: string } | null>(null)
   const [showFriendInvite, setShowFriendInvite] = useState(false)
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -2366,7 +2368,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     </button>
                     {isFriend && authorId && authorId !== user?.id && authorId !== (user as any)?._id && (
                       <button
-                        onClick={() => onSendDrink?.(authorId)}
+                        onClick={() => setSendDrinkTarget({
+                          id: authorId,
+                          name: `${post.author.firstName} ${post.author.lastName}`,
+                          firstName: post.author.firstName,
+                          avatar: post.author.profilePicture,
+                        })}
                         className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
                       >
                         <span className="text-base leading-none">🍺</span>
@@ -2955,6 +2962,21 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             setStoryFile(null)
             setStoryPreview(null)
             setStoryCaption('')
+          }}
+        />
+      )}
+
+      {/* Quick Send Drink Sheet */}
+      {sendDrinkTarget && (
+        <QuickSendDrinkSheet
+          recipientId={sendDrinkTarget.id}
+          recipientName={sendDrinkTarget.name}
+          recipientFirstName={sendDrinkTarget.firstName}
+          recipientAvatar={sendDrinkTarget.avatar}
+          isOpen={!!sendDrinkTarget}
+          onClose={() => setSendDrinkTarget(null)}
+          onSuccess={(amount) => {
+            setSendDrinkTarget(null)
           }}
         />
       )}
