@@ -194,38 +194,26 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }, [commentMenuOpen, activePostReactionPicker])
 
-  // Scroll restoration + infinite scroll — listener on <main>, not window
+  // Infinite scroll — listen on <main> which is the actual scroll container
   useEffect(() => {
     const mainEl = document.querySelector('main')
     if (!mainEl) return
 
-    const savedScroll = sessionStorage.getItem('feed-scroll-position')
-    if (savedScroll) {
-      setTimeout(() => { mainEl.scrollTop = parseInt(savedScroll) }, 100)
-    }
-
     const handleScroll = () => {
-      sessionStorage.setItem('feed-scroll-position', mainEl.scrollTop.toString())
+      if (loadingMore || !hasMore) return
       const { scrollTop, scrollHeight, clientHeight } = mainEl
-      if (scrollTop + clientHeight >= scrollHeight - 500) {
-        setLoadingMore(prev => {
-          if (prev) return prev
-          setPage(p => {
-            const next = p + 1
-            fetchFeed(next, feedFilter)
-            return next
-          })
-          return true
+      if (scrollTop + clientHeight >= scrollHeight - 600) {
+        setLoadingMore(true)
+        setPage(prev => {
+          fetchFeed(prev + 1, feedFilter)
+          return prev + 1
         })
       }
     }
 
     mainEl.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      sessionStorage.setItem('feed-scroll-position', mainEl.scrollTop.toString())
-      mainEl.removeEventListener('scroll', handleScroll)
-    }
-  }, [hasMore, feedFilter])
+    return () => mainEl.removeEventListener('scroll', handleScroll)
+  }, [loadingMore, hasMore, feedFilter])
 
   useEffect(() => {
     if (token) {
