@@ -202,19 +202,18 @@ export default function QuickSendDrinkSheet({
         onClick={onClose}
       />
 
-      {/* Sheet — sits above the bottom nav bar */}
+      {/* Sheet — fixed panel above nav, flex column so inner div can scroll */}
       <div
-        className="fixed left-0 right-0 w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl overflow-y-auto overscroll-contain"
+        className="fixed left-0 right-0 flex flex-col w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl"
         style={{
           zIndex: 9999,
-          bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
-          maxHeight: 'calc(100vh - 80px - env(safe-area-inset-bottom, 0px))',
-          WebkitOverflowScrolling: 'touch',
+          bottom: 60,
+          maxHeight: 'calc(100svh - 80px)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-          {/* Handle */}
-          <div className="flex justify-center pt-3 pb-1">
+          {/* Handle — pinned, never scrolls */}
+          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-primary-500/30" />
           </div>
 
@@ -227,8 +226,8 @@ export default function QuickSendDrinkSheet({
             <X className="w-4 h-4" />
           </button>
 
-          {/* Recipient */}
-          <div className="flex items-center gap-3 px-5 pb-4 pt-2">
+          {/* Recipient — pinned, never scrolls */}
+          <div className="flex items-center gap-3 px-5 pb-4 pt-2 flex-shrink-0">
             <div className="w-12 h-12 rounded-full border-2 border-primary-500/40 overflow-hidden flex-shrink-0">
               {recipientAvatar ? (
                 <img src={recipientAvatar} alt={recipientName} className="w-full h-full object-cover" />
@@ -244,7 +243,13 @@ export default function QuickSendDrinkSheet({
             </div>
           </div>
 
-          <div className="h-px bg-primary-500/10 mx-5" />
+          <div className="h-px bg-primary-500/10 mx-5 flex-shrink-0" />
+
+          {/* ↓ THIS div scrolls — flex-1 min-h-0 is the magic combo */}
+          <div
+            className="flex-1 min-h-0 overflow-y-scroll"
+            style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+          >
 
           {/* ─── STEP: Amount ─── */}
           {step === 'amount' && (
@@ -431,7 +436,8 @@ export default function QuickSendDrinkSheet({
             </div>
           )}
 
-      </div>
+          </div>{/* end scrollable inner */}
+      </div>{/* end fixed sheet */}
 
       <style jsx global>{`
         @keyframes float-up {
