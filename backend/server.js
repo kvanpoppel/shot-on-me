@@ -556,6 +556,18 @@ server.listen(PORT, HOST, () => {
 
   console.log('📢 Venue promotion notification checks initialized');
   console.log(`🤖 AI automation scheduler initialized (${aiSchedulerIntervalMinutes} min interval)`);
+
+  // Keep-alive ping — prevents Render free tier from spinning down
+  if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+    const axios = require('axios');
+    setInterval(async () => {
+      try {
+        await axios.get(`${process.env.RENDER_EXTERNAL_URL}/health`);
+        console.log('💓 Keep-alive ping sent');
+      } catch (e) { /* silent */ }
+    }, 10 * 60 * 1000); // every 10 minutes
+    console.log('💓 Keep-alive initialized');
+  }
 }).on('error', (err) => {
   console.error('❌ Server error:', err);
   if (err.code === 'EADDRINUSE') console.error(`⚠️ Port ${PORT} is already in use`);
