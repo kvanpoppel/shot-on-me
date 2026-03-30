@@ -30,27 +30,17 @@ export const getApiUrl = (): string => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     
-    // For localhost, use local backend
+    // Only use localhost when actually running on localhost
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:5000/api'
     }
-    
-    // For IP addresses (mobile devices on same network), use that IP
-    // Mobile devices accessing via IP address (e.g., 192.168.1.100:3001)
-    // Should connect to backend at that same IP on port 5000
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-      const apiUrl = `http://${hostname}:5000/api`
-      console.log('📱 Mobile device detected, using IP-based API URL:', apiUrl)
-      return apiUrl
-    }
-    
-    // For any other hostname in production (should not happen if env var is set),
-    // fallback to Render URL
+
+    // Everything else (production, mobile, IP) → production backend
     return 'https://shot-on-me.onrender.com/api'
   }
-  
-  // Default for server-side rendering when env var is not set
-  return 'http://localhost:5000/api'
+
+  // Server-side rendering fallback → production backend
+  return 'https://shot-on-me.onrender.com/api'
 }
 
 /**
@@ -80,23 +70,17 @@ export const getSocketUrl = (): string => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     
-    // For localhost, use local backend
+    // Only use localhost when actually running on localhost
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:5000'
     }
-    
-    // For IP addresses (mobile devices), extract IP and use port 5000
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-      return `http://${hostname}:5000`
-    }
-    
-    // For any other hostname in production (should not happen if env var is set),
-    // fallback to Render URL - Socket.io will convert https:// to wss:// automatically
+
+    // Everything else → production backend
     return 'https://shot-on-me.onrender.com'
   }
-  
-  // Default for server-side rendering when env var is not set
-  return 'http://localhost:5000'
+
+  // Server-side rendering fallback → production backend
+  return 'https://shot-on-me.onrender.com'
 }
 
 // For backward compatibility
