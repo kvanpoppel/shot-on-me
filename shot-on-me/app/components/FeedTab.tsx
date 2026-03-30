@@ -194,26 +194,33 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }, [commentMenuOpen, activePostReactionPicker])
 
-  // Infinite scroll — listen on <main> which is the actual scroll container
-  useEffect(() => {
-    const mainEl = document.querySelector('main')
-    if (!mainEl) return
+  // Refs so the scroll handler always sees current values without stale closures
+  const loadingMoreRef = useRef(false)
+  const hasMoreRef = useRef(true)
+  const feedFilterRef = useRef(feedFilter)
+  useEffect(() => { loadingMoreRef.current = loadingMore }, [loadingMore])
+  useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
+  useEffect(() => { feedFilterRef.current = feedFilter }, [feedFilter])
 
+  // Infinite scroll — window is the actual scroll container (main has no fixed height)
+  useEffect(() => {
     const handleScroll = () => {
-      if (loadingMore || !hasMore) return
-      const { scrollTop, scrollHeight, clientHeight } = mainEl
+      if (loadingMoreRef.current || !hasMoreRef.current) return
+      const scrollTop = window.scrollY
+      const scrollHeight = document.documentElement.scrollHeight
+      const clientHeight = window.innerHeight
       if (scrollTop + clientHeight >= scrollHeight - 600) {
+        loadingMoreRef.current = true
         setLoadingMore(true)
         setPage(prev => {
-          fetchFeed(prev + 1, feedFilter)
+          fetchFeed(prev + 1, feedFilterRef.current)
           return prev + 1
         })
       }
     }
-
-    mainEl.addEventListener('scroll', handleScroll, { passive: true })
-    return () => mainEl.removeEventListener('scroll', handleScroll)
-  }, [loadingMore, hasMore, feedFilter])
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     if (token) {
