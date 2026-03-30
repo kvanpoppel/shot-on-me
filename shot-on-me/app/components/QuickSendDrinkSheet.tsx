@@ -59,6 +59,21 @@ export default function QuickSendDrinkSheet({
   const drinkLabel = activeDrink ? `${activeDrink.drinkWord} ${activeDrink.emoji}` : isCustom ? '💸' : '🍺'
   const successLabel = activeDrink ? activeDrink.successWord : 'Cheers!'
 
+  // Lock body scroll when sheet is open so the page behind doesn't scroll
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      document.body.style.touchAction = 'none'
+    } else {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+  }, [isOpen])
+
   // Reset state when sheet opens
   useEffect(() => {
     if (isOpen) {
@@ -233,10 +248,11 @@ export default function QuickSendDrinkSheet({
 
           <div className="h-px bg-primary-500/10 mx-5 flex-shrink-0" />
 
-          {/* Scrollable content — min-h-0 lets flex shrink on iOS, webkit enables momentum scroll */}
+          {/* Scrollable content */}
           <div
             className="flex-1 min-h-0 overflow-y-auto"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+            onTouchMove={(e) => e.stopPropagation()}
           >
 
           {/* ─── STEP: Amount ─── */}
