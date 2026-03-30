@@ -218,15 +218,17 @@ export default function QuickSendDrinkSheet({
         className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       >
-        {/* Sheet — stopPropagation so taps inside don't close */}
+        {/* Sheet — scrollable panel, no nested flex tricks needed */}
         <div
-          className="relative w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl flex flex-col"
+          className="relative w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl overflow-y-auto"
           style={{
-            maxHeight: '88dvh',
-            paddingBottom: 'env(safe-area-inset-bottom, 12px)',
-            marginBottom: '60px',
+            maxHeight: 'calc(88dvh - 64px)',
+            marginBottom: '64px',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 'env(safe-area-inset-bottom, 8px)',
           }}
           onClick={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -260,12 +262,8 @@ export default function QuickSendDrinkSheet({
 
           <div className="h-px bg-primary-500/10 mx-5 flex-shrink-0" />
 
-          {/* Scrollable content */}
-          <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            onTouchMove={(e) => e.stopPropagation()}
-          >
+          {/* Step content */}
+          <div>
 
           {/* ─── STEP: Amount ─── */}
           {step === 'amount' && (
