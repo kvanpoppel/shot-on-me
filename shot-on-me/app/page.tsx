@@ -235,7 +235,8 @@ function Home() {
           autoOpenAddFunds={autoOpenAddFunds}
           onAddFundsOpened={() => setAutoOpenAddFunds(false)}
         />}
-        {activeTab === 'feed' && (
+        {/* FeedTab stays mounted once visited so posts are never lost on tab switch */}
+        <div className={activeTab === 'feed' ? '' : 'hidden'}>
           <ErrorBoundary>
             <FeedTab
               onViewProfile={setViewingProfile}
@@ -247,7 +248,7 @@ function Home() {
               }}
             />
           </ErrorBoundary>
-        )}
+        </div>
         {activeTab === 'map' && (
           <MapTab 
             setActiveTab={setActiveTab} 

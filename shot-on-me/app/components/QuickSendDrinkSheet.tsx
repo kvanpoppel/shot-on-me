@@ -59,19 +59,15 @@ export default function QuickSendDrinkSheet({
   const drinkLabel = activeDrink ? `${activeDrink.drinkWord} ${activeDrink.emoji}` : isCustom ? '💸' : '🍺'
   const successLabel = activeDrink ? activeDrink.successWord : 'Cheers!'
 
-  // Lock body scroll when sheet is open so the page behind doesn't scroll
+  // Lock body scroll when sheet is open — overflow:hidden only, NOT touchAction:none
+  // touchAction:none kills ALL touch events including scrolling inside the sheet itself
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
-      document.body.style.touchAction = 'none'
     } else {
       document.body.style.overflow = ''
-      document.body.style.touchAction = ''
     }
-    return () => {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-    }
+    return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
   // Reset state when sheet opens

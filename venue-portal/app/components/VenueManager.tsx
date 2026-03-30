@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown } from 'lucide-react'
+import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, Wine, Tag, CalendarDays, TrendingUp, Moon, Plus, Trash2 } from 'lucide-react'
 import VenueMap from './VenueMap'
 
 import { getApiUrl } from '../utils/api'
@@ -53,6 +53,15 @@ export default function VenueManager() {
     featuredUntil: '',
     subscriptionExpiresAt: ''
   })
+  const [activeSection, setActiveSection] = useState<'info' | 'wine' | 'happyhour' | 'special' | 'weekend' | 'trending' | 'tonight'>('info')
+  const [menuSaving, setMenuSaving] = useState(false)
+  const [wineMenu, setWineMenu] = useState<Array<{ name: string; description: string; price: string; varietal: string }>>([])
+  const [happyHour, setHappyHour] = useState({ times: '', description: '' })
+  const [currentSpecial, setCurrentSpecial] = useState('')
+  const [weekendSpecials, setWeekendSpecials] = useState<Array<{ name: string; description: string; price: string }>>([])
+  const [trending, setTrending] = useState<Array<{ name: string; description: string }>>([])
+  const [tonight, setTonight] = useState('')
+
   const [schedule, setSchedule] = useState<{ [key: string]: { open: string; close: string; isOpen: boolean } }>({
     monday: { open: '11:00', close: '22:00', isOpen: true },
     tuesday: { open: '11:00', close: '22:00', isOpen: true },
@@ -132,6 +141,12 @@ export default function VenueManager() {
         if (myVenue.schedule) {
           setSchedule({ ...schedule, ...myVenue.schedule })
         }
+        if (myVenue.wineMenu) setWineMenu(myVenue.wineMenu)
+        if (myVenue.happyHour) setHappyHour({ times: myVenue.happyHour.times || '', description: myVenue.happyHour.description || '' })
+        if (myVenue.currentSpecial) setCurrentSpecial(myVenue.currentSpecial)
+        if (myVenue.weekendSpecials) setWeekendSpecials(myVenue.weekendSpecials)
+        if (myVenue.trending) setTrending(myVenue.trending)
+        if (myVenue.tonight) setTonight(myVenue.tonight)
       } else {
         if (process.env.NODE_ENV === 'development') {
           console.debug('No venue found for user:', user.id)
@@ -200,6 +215,23 @@ export default function VenueManager() {
       alert(error.response?.data?.error || 'Failed to update venue')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleMenuSave = async () => {
+    if (!token || !venue) return
+    setMenuSaving(true)
+    try {
+      await axios.put(
+        `${getApiUrl()}/venues/${venue._id}`,
+        { wineMenu, happyHour, currentSpecial, weekendSpecials, trending, tonight },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      alert('Saved!')
+    } catch {
+      alert('Failed to save. Try again.')
+    } finally {
+      setMenuSaving(false)
     }
   }
 
@@ -758,6 +790,131 @@ export default function VenueManager() {
             <Share2 className="w-4 h-4" />
             <span>Share Venue</span>
           </button>
+        </div>
+      </div>
+
+      {/* ─── Menu & Specials Tabs ─── */}
+      <div className="border border-primary-500/20 rounded-xl overflow-hidden">
+        {/* Tab Bar */}
+        <div className="flex overflow-x-auto scrollbar-hide bg-black/60 border-b border-primary-500/15">
+          {([
+            { id: 'info',      label: 'Info',         icon: MapPin },
+            { id: 'wine',      label: 'Wine',         icon: Wine },
+            { id: 'happyhour', label: 'Happy Hour',   icon: Clock },
+            { id: 'special',   label: 'Special',      icon: Tag },
+            { id: 'weekend',   label: 'Weekend',      icon: CalendarDays },
+            { id: 'trending',  label: 'Trending',     icon: TrendingUp },
+            { id: 'tonight',   label: 'Tonight',      icon: Moon },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${
+                activeSection === tab.id
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-primary-400/60 hover:text-primary-400'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4">
+
+          {/* Info — placeholder pointing to edit above */}
+          {activeSection === 'info' && (
+            <p className="text-primary-400/60 text-sm">Edit your venue info, hours, and address using the Edit button above.</p>
+          )}
+
+          {/* Wine Menu */}
+          {activeSection === 'wine' && (
+            <div className="space-y-3">
+              <p className="text-xs text-primary-400/60 mb-3">Add wines that appear on your venue's Wine tab in the app.</p>
+              {wineMenu.map((item, i) => (
+                <div key={i} className="bg-black/40 border border-primary-500/15 rounded-lg p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={item.name} onChange={e => { const w=[...wineMenu]; w[i]={...w[i],name:e.target.value}; setWineMenu(w) }} placeholder="Wine name" className="bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                    <input value={item.price} onChange={e => { const w=[...wineMenu]; w[i]={...w[i],price:e.target.value}; setWineMenu(w) }} placeholder="Price (e.g. 12)" className="bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                  </div>
+                  <input value={item.varietal} onChange={e => { const w=[...wineMenu]; w[i]={...w[i],varietal:e.target.value}; setWineMenu(w) }} placeholder="Varietal (e.g. Cabernet Sauvignon)" className="w-full bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                  <div className="flex gap-2">
+                    <input value={item.description} onChange={e => { const w=[...wineMenu]; w[i]={...w[i],description:e.target.value}; setWineMenu(w) }} placeholder="Description" className="flex-1 bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                    <button onClick={() => setWineMenu(wineMenu.filter((_,j)=>j!==i))} className="text-red-400 hover:text-red-300 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setWineMenu([...wineMenu, { name:'', description:'', price:'', varietal:'' }])} className="flex items-center gap-2 text-primary-500 text-sm hover:text-primary-400 transition-colors">
+                <Plus className="w-4 h-4" /> Add wine
+              </button>
+            </div>
+          )}
+
+          {/* Happy Hour */}
+          {activeSection === 'happyhour' && (
+            <div className="space-y-3">
+              <input value={happyHour.times} onChange={e => setHappyHour({...happyHour, times: e.target.value})} placeholder="Times (e.g. Mon–Fri 4–7 PM)" className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+              <textarea value={happyHour.description} onChange={e => setHappyHour({...happyHour, description: e.target.value})} placeholder="Details (e.g. $2 off all drafts, half-price appetizers)" rows={3} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+            </div>
+          )}
+
+          {/* Current Special */}
+          {activeSection === 'special' && (
+            <textarea value={currentSpecial} onChange={e => setCurrentSpecial(e.target.value)} placeholder="Describe your current special (e.g. $5 margaritas all week)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+          )}
+
+          {/* Weekend Specials */}
+          {activeSection === 'weekend' && (
+            <div className="space-y-3">
+              {weekendSpecials.map((item, i) => (
+                <div key={i} className="bg-black/40 border border-primary-500/15 rounded-lg p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={item.name} onChange={e => { const w=[...weekendSpecials]; w[i]={...w[i],name:e.target.value}; setWeekendSpecials(w) }} placeholder="Name" className="flex-1 bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                    <input value={item.price} onChange={e => { const w=[...weekendSpecials]; w[i]={...w[i],price:e.target.value}; setWeekendSpecials(w) }} placeholder="Price" className="w-20 bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                    <button onClick={() => setWeekendSpecials(weekendSpecials.filter((_,j)=>j!==i))} className="text-red-400 hover:text-red-300 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <input value={item.description} onChange={e => { const w=[...weekendSpecials]; w[i]={...w[i],description:e.target.value}; setWeekendSpecials(w) }} placeholder="Description" className="w-full bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                </div>
+              ))}
+              <button onClick={() => setWeekendSpecials([...weekendSpecials, {name:'',description:'',price:''}])} className="flex items-center gap-2 text-primary-500 text-sm hover:text-primary-400 transition-colors">
+                <Plus className="w-4 h-4" /> Add weekend special
+              </button>
+            </div>
+          )}
+
+          {/* Trending */}
+          {activeSection === 'trending' && (
+            <div className="space-y-3">
+              <p className="text-xs text-primary-400/60 mb-2">Pin your most popular items so guests know what to order.</p>
+              {trending.map((item, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input value={item.name} onChange={e => { const t=[...trending]; t[i]={...t[i],name:e.target.value}; setTrending(t) }} placeholder="Item name (e.g. Spicy Marg)" className="flex-1 bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                  <input value={item.description} onChange={e => { const t=[...trending]; t[i]={...t[i],description:e.target.value}; setTrending(t) }} placeholder="Short note" className="flex-1 bg-black border border-primary-500/30 rounded px-3 py-1.5 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500" />
+                  <button onClick={() => setTrending(trending.filter((_,j)=>j!==i))} className="text-red-400 hover:text-red-300 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))}
+              <button onClick={() => setTrending([...trending, {name:'',description:''}])} className="flex items-center gap-2 text-primary-500 text-sm hover:text-primary-400 transition-colors">
+                <Plus className="w-4 h-4" /> Add item
+              </button>
+            </div>
+          )}
+
+          {/* Tonight */}
+          {activeSection === 'tonight' && (
+            <textarea value={tonight} onChange={e => setTonight(e.target.value)} placeholder="What's happening tonight? (e.g. Live DJ 9 PM, $3 shot specials)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+          )}
+
+          {activeSection !== 'info' && (
+            <button
+              onClick={handleMenuSave}
+              disabled={menuSaving}
+              className="mt-4 flex items-center gap-2 bg-primary-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 transition-all text-sm"
+            >
+              <Save className="w-4 h-4" />
+              {menuSaving ? 'Saving...' : 'Save'}
+            </button>
+          )}
         </div>
       </div>
     </div>
