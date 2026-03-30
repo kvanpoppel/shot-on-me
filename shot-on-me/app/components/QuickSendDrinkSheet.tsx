@@ -193,11 +193,17 @@ export default function QuickSendDrinkSheet({
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className="bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      {/* Sheet — outer positions at bottom, inner constrains height */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[51] max-w-lg mx-auto flex flex-col"
+        style={{ maxHeight: '90dvh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
+          style={{ maxHeight: '90dvh' }}
+        >
 
-          {/* Handle bar — sticky */}
+          {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-primary-500/30" />
           </div>
@@ -210,7 +216,7 @@ export default function QuickSendDrinkSheet({
             <X className="w-4 h-4" />
           </button>
 
-          {/* Recipient header — sticky */}
+          {/* Recipient header — never scrolls away */}
           <div className="flex items-center gap-3 px-5 pb-4 pt-2 flex-shrink-0">
             <div className="w-12 h-12 rounded-full border-2 border-primary-500/40 overflow-hidden flex-shrink-0">
               {recipientAvatar ? (
@@ -229,8 +235,11 @@ export default function QuickSendDrinkSheet({
 
           <div className="h-px bg-primary-500/10 mx-5 flex-shrink-0" />
 
-          {/* Scrollable step content */}
-          <div className="overflow-y-auto flex-1 overscroll-contain">
+          {/* Scrollable step content — min-h-0 is critical for flex shrink on iOS */}
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
 
           {/* ─── STEP: Amount ─── */}
           {step === 'amount' && (
