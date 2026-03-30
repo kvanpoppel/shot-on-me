@@ -17,9 +17,9 @@ interface QuickSendDrinkSheetProps {
 }
 
 const QUICK_AMOUNTS = [
-  { value: 5,  label: '$5',  tagline: 'Buy a drink',    emoji: '🍺' },
-  { value: 10, label: '$10', tagline: "Round's on you",  emoji: '🍻' },
-  { value: 25, label: '$25', tagline: 'Big night out',   emoji: '🥂' },
+  { value: 5,  label: '$5',  tagline: 'Buy a drink',   emoji: '🍺', drinkWord: 'a drink',   successWord: 'Cheers!' },
+  { value: 10, label: '$10', tagline: "Round's on you", emoji: '🍻', drinkWord: 'a round',   successWord: 'Round on you!' },
+  { value: 25, label: '$25', tagline: 'Big night out',  emoji: '🥂', drinkWord: 'some bubbly', successWord: 'Living large!' },
 ]
 
 type Step = 'amount' | 'otp' | 'success'
@@ -55,6 +55,9 @@ export default function QuickSendDrinkSheet({
   const balance = (user as any)?.wallet?.balance || 0
   const displayName = recipientFirstName || recipientName.split(' ')[0]
   const finalAmount = isCustom ? parseFloat(customAmount) : selectedAmount
+  const activeDrink = QUICK_AMOUNTS.find(a => a.value === selectedAmount && !isCustom)
+  const drinkLabel = activeDrink ? `${activeDrink.drinkWord} ${activeDrink.emoji}` : isCustom ? '💸' : '🍺'
+  const successLabel = activeDrink ? activeDrink.successWord : 'Cheers!'
 
   // Reset state when sheet opens
   useEffect(() => {
@@ -151,7 +154,7 @@ export default function QuickSendDrinkSheet({
       if (postToFeed) {
         try {
           const fd = new FormData()
-          fd.append('content', `🍺 Just bought ${displayName} a drink! ${note || 'Cheers 🥂'}`)
+          fd.append('content', `${activeDrink?.emoji || '🍺'} Just sent ${displayName} ${activeDrink?.drinkWord || 'a drink'}! ${note || 'Cheers 🥂'}`)
           await axios.post(`${API_URL}/feed/posts`, fd, {
             headers: { Authorization: `Bearer ${token}` }
           })
@@ -342,7 +345,7 @@ export default function QuickSendDrinkSheet({
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <span>Send 🍺</span>
+                    <span>Send {drinkLabel}</span>
                     {finalAmount && finalAmount > 0 && <span className="font-semibold">${finalAmount.toFixed(2)}</span>}
                   </>
                 )}
@@ -428,7 +431,7 @@ export default function QuickSendDrinkSheet({
               {/* Floating beer emojis */}
               {celebrationActive && (
                 <div className="absolute inset-0 pointer-events-none" aria-hidden>
-                  {['🍺', '🍻', '🥂', '🍺', '🍻'].map((emoji, i) => (
+                  {[activeDrink?.emoji || '🍺', '🎉', activeDrink?.emoji || '🍺', '✨', activeDrink?.emoji || '🍺'].map((emoji, i) => (
                     <span
                       key={i}
                       className="absolute text-2xl animate-float-up"
@@ -450,9 +453,10 @@ export default function QuickSendDrinkSheet({
                 <CheckCircle2 className="w-10 h-10 text-primary-500" />
               </div>
 
-              <p className="text-2xl font-bold text-white mb-1">Cheers! 🥂</p>
+              <p className="text-2xl font-bold text-white mb-1">{successLabel} {activeDrink?.emoji || '🥂'}</p>
               <p className="text-primary-400/80 text-sm mb-1">
-                <span className="text-primary-400 font-semibold">${finalAmount?.toFixed(2)}</span> sent to {displayName}
+                Sent {displayName} {activeDrink?.drinkWord || 'a drink'} —{' '}
+                <span className="text-primary-400 font-semibold">${finalAmount?.toFixed(2)}</span>
               </p>
               {postToFeed && (
                 <p className="text-primary-500/60 text-xs mb-6">Posted to your feed 🍺</p>
