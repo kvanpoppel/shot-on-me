@@ -194,46 +194,38 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }, [commentMenuOpen, activePostReactionPicker])
 
-  // Scroll restoration - remember scroll position when switching tabs
+  // Scroll restoration + infinite scroll — listener on <main>, not window
   useEffect(() => {
+    const mainEl = document.querySelector('main')
+    if (!mainEl) return
+
     const savedScroll = sessionStorage.getItem('feed-scroll-position')
     if (savedScroll) {
-      setTimeout(() => {
-        window.scrollTo(0, parseInt(savedScroll))
-      }, 100)
+      setTimeout(() => { mainEl.scrollTop = parseInt(savedScroll) }, 100)
     }
 
-    return () => {
-      // Save scroll position when component unmounts
-      sessionStorage.setItem('feed-scroll-position', window.scrollY.toString())
-    }
-  }, [])
-
-  // Save scroll position on scroll
-  useEffect(() => {
     const handleScroll = () => {
-      sessionStorage.setItem('feed-scroll-position', window.scrollY.toString())
-      
-      // Infinite scroll - load more when near bottom
-      if (!loadingMore && hasMore && feedContainerRef.current) {
-        const scrollHeight = document.documentElement.scrollHeight
-        const scrollTop = window.innerHeight + window.scrollY
-        const threshold = 500 // Load when 500px from bottom
-        
-        if (scrollTop >= scrollHeight - threshold) {
-          setLoadingMore(true)
-          setPage(prev => {
-            const nextPage = prev + 1
-            fetchFeed(nextPage, feedFilter)
-            return nextPage
+      sessionStorage.setItem('feed-scroll-position', mainEl.scrollTop.toString())
+      const { scrollTop, scrollHeight, clientHeight } = mainEl
+      if (scrollTop + clientHeight >= scrollHeight - 500) {
+        setLoadingMore(prev => {
+          if (prev) return prev
+          setPage(p => {
+            const next = p + 1
+            fetchFeed(next, feedFilter)
+            return next
           })
-        }
+          return true
+        })
       }
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    mainEl.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      sessionStorage.setItem('feed-scroll-position', mainEl.scrollTop.toString())
+      mainEl.removeEventListener('scroll', handleScroll)
+    }
+  }, [hasMore, feedFilter])
 
   useEffect(() => {
     if (token) {
