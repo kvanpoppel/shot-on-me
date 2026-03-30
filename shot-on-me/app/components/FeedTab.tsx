@@ -194,7 +194,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }, [commentMenuOpen, activePostReactionPicker])
 
-  // Refs so the scroll handler always sees current values without stale closures
+  // Sentinel ref for IntersectionObserver infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const hasMoreRef = useRef(true)
   const feedFilterRef = useRef(feedFilter)
@@ -202,24 +203,23 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
   useEffect(() => { feedFilterRef.current = feedFilter }, [feedFilter])
 
-  // Infinite scroll — window is the actual scroll container (main has no fixed height)
+  // IntersectionObserver — fires when sentinel div enters viewport, works on any scroll container
   useEffect(() => {
-    const handleScroll = () => {
-      if (loadingMoreRef.current || !hasMoreRef.current) return
-      const scrollTop = window.scrollY
-      const scrollHeight = document.documentElement.scrollHeight
-      const clientHeight = window.innerHeight
-      if (scrollTop + clientHeight >= scrollHeight - 600) {
-        loadingMoreRef.current = true
-        setLoadingMore(true)
-        setPage(prev => {
-          fetchFeed(prev + 1, feedFilterRef.current)
-          return prev + 1
-        })
-      }
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMoreRef.current && hasMoreRef.current) {
+          loadingMoreRef.current = true
+          setLoadingMore(true)
+          setPage(prev => {
+            fetchFeed(prev + 1, feedFilterRef.current)
+            return prev + 1
+          })
+        }
+      },
+      { rootMargin: '400px' }
+    )
+    if (sentinelRef.current) observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -2742,6 +2742,17 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               </div>
             )
           })
+        )}
+
+        {/* Infinite scroll sentinel — IntersectionObserver watches this */}
+        <div ref={sentinelRef} className="h-4" />
+        {loadingMore && (
+          <div className="flex justify-center py-4">
+            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        {!hasMore && posts.length > 0 && (
+          <p className="text-center text-primary-500/40 text-xs py-4">You're all caught up 🥂</p>
         )}
       </div>
 
