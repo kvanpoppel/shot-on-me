@@ -4,7 +4,17 @@ const feedPostSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null
+  },
+  venueAuthor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Venue',
+    default: null
+  },
+  postType: {
+    type: String,
+    enum: ['user', 'venue_update', 'venue_tonight', 'venue_special', 'drink_sent'],
+    default: 'user'
   },
   content: {
     type: String,
@@ -92,5 +102,6 @@ feedPostSchema.index({ createdAt: -1 });
 feedPostSchema.index({ author: 1, createdAt: -1 }); // Compound index for author + time queries
 feedPostSchema.index({ 'reactions.user': 1 }); // Index for reaction queries
 feedPostSchema.index({ 'comments.user': 1 }); // Index for comment queries
+feedPostSchema.index({ venueAuthor: 1, createdAt: -1 }); // Venue post queries
 
 module.exports = mongoose.model('FeedPost', feedPostSchema);

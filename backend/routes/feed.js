@@ -44,28 +44,35 @@ router.get('/', auth, async (req, res) => {
     
     const User = require('../models/User');
     const FeedPost = require('../models/FeedPost');
-    const currentUser = await User.findById(req.user.userId).select('friends');
-    
+    const currentUser = await User.findById(req.user.userId).select('friends followedVenues');
+
     // Build query
     let query = {};
-    
+
     // If userId is provided, filter to only that user's posts (for profile pages)
     if (userId) {
       query = { author: userId };
     } else {
-      // Default: show posts from friends OR user's own posts
-      // If user has no friends, show all posts (for discovery)
+      // Default: show posts from friends OR user's own posts OR followed venue posts
       const friendIds = currentUser?.friends || [];
-      query = friendIds.length > 0 
-        ? { author: { $in: [...friendIds, req.user.userId] } }
-        : {}; // Show all posts if no friends (for new users)
+      const followedVenueIds = currentUser?.followedVenues || [];
+
+      if (friendIds.length > 0 || followedVenueIds.length > 0) {
+        const orConditions = [{ author: req.user.userId }];
+        if (friendIds.length > 0) orConditions.push({ author: { $in: friendIds } });
+        if (followedVenueIds.length > 0) orConditions.push({ venueAuthor: { $in: followedVenueIds } });
+        query = { $or: orConditions };
+      } else {
+        query = {}; // Show all posts if no friends/follows (new users)
+      }
     }
-    
+
     // Get total count for pagination
     const totalCount = await FeedPost.countDocuments(query);
-    
+
     const posts = await FeedPost.find(query)
       .populate('author', 'name firstName lastName profilePicture')
+      .populate('venueAuthor', 'name logo city state')
       .populate('comments.user', 'name firstName lastName profilePicture')
       .populate('comments.reactions.user', 'name firstName lastName profilePicture')
       .populate('likes.user', 'name firstName lastName profilePicture')

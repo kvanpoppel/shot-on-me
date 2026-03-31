@@ -939,6 +939,19 @@ router.post('/:venueId/notify-followers', auth, async (req, res) => {
     const io = req.app.get('io');
     let sent = 0;
 
+    // Create a feed post visible to all followers
+    try {
+      const FeedPost = require('../models/FeedPost');
+      const postType = type === 'venue_tonight' ? 'venue_tonight' : type === 'venue_special' ? 'venue_special' : 'venue_update';
+      await FeedPost.create({
+        venueAuthor: venue._id,
+        content: message,
+        postType
+      });
+    } catch (feedErr) {
+      console.error('Venue feed post error (non-fatal):', feedErr);
+    }
+
     await Promise.all(followers.map(async (follower) => {
       try {
         const notif = await Notification.create({

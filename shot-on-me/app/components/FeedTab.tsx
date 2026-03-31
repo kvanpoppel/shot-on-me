@@ -17,14 +17,22 @@ import { useApiUrl } from '../utils/api'
 
 interface FeedPost {
   _id: string
-  author: {
+  author?: {
     _id?: string
     id?: string
     firstName: string
     lastName: string
     profilePicture?: string
     username?: string
-  }
+  } | null
+  venueAuthor?: {
+    _id: string
+    name: string
+    logo?: string
+    city?: string
+    state?: string
+  } | null
+  postType?: string
   content: string
   media: Array<{ type: string; url: string; thumbnail?: string }>
   likes: Array<{ user: string | { _id: string; firstName: string; profilePicture?: string } }>
@@ -458,15 +466,16 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       // This is more efficient and reduces redundant requests
       const activity: FriendActivity[] = posts
         .filter((post: FeedPost) => {
-          const authorId = post.author._id || post.author.id
+          if (post.venueAuthor) return false // skip venue posts in friend activity
+          const authorId = post.author?._id || post.author?.id
           const userId = user?.id || (user as any)?._id
           return authorId !== userId
         })
         .slice(0, 5)
         .map((post: FeedPost) => ({
-          userId: post.author._id || post.author.id || '',
-          name: `${post.author.firstName} ${post.author.lastName || ''}`.trim(),
-          profilePicture: post.author.profilePicture,
+          userId: post.author?._id || post.author?.id || '',
+          name: `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim(),
+          profilePicture: post.author?.profilePicture,
           action: post.checkIn ? 'checked-in' : 'posted',
           venue: post.checkIn?.venue?.name || post.location?.venue?.name,
           time: post.createdAt
@@ -1277,7 +1286,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       if (navigator.share) {
         try {
           await navigator.share({
-            title: `${post.author.firstName} ${post.author.lastName} on Shot On Me`,
+            title: `${post.venueAuthor?.name || `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim()} on Shot On Me`,
             text: shareText,
             url: shareUrl,
           })
@@ -2120,28 +2129,36 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           </div>
         ) : (
           posts.map((post, index) => {
-            const authorId = post.author._id || post.author.id
-            const isFriend = (user as any)?.friends?.includes(authorId) || authorId === user?.id
+            const isVenuePost = !!post.venueAuthor
+            const authorId = isVenuePost ? null : (post.author?._id || post.author?.id)
+            const isFriend = !isVenuePost && ((user as any)?.friends?.includes(authorId) || authorId === user?.id)
             const liked = post.userReaction === '❤️' || isLiked(post)
-            
+
             // Use a combination of post ID and index to ensure unique keys
             const uniqueKey = post._id ? `${post._id}-${index}` : `post-${index}`
-            
+
             return (
-              <div key={uniqueKey} className="bg-gradient-to-b from-black via-black to-black/80 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg">
+              <div key={uniqueKey} className={`bg-gradient-to-b from-black via-black to-black/80 border rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg ${isVenuePost ? 'border-yellow-500/30' : 'border-primary-500/20'}`}>
                 {/* Author Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div 
-                      className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:border-primary-500/70 transition-all"
+                    <div
+                      className={`w-12 h-12 border-2 rounded-full overflow-hidden flex-shrink-0 ${isVenuePost ? 'border-yellow-500/50 cursor-default' : 'border-primary-500/30 cursor-pointer hover:border-primary-500/70'} transition-all`}
                       onClick={() => {
-                        const authorId = post.author._id || post.author.id
-                        if (authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
+                        if (!isVenuePost && authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
                           onViewProfile?.(authorId)
                         }
                       }}
                     >
-                      {post.author.profilePicture ? (
+                      {isVenuePost ? (
+                        post.venueAuthor?.logo ? (
+                          <img src={post.venueAuthor.logo} alt={post.venueAuthor.name} className="w-full h-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-yellow-500/10">
+                            <span className="text-yellow-400 font-semibold">{post.venueAuthor?.name?.[0] || 'V'}</span>
+                          </div>
+                        )
+                      ) : post.author?.profilePicture ? (
                         <img
                           src={post.author.profilePicture}
                           alt={post.author.firstName}
@@ -2156,7 +2173,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                               wrapper.className = 'w-full h-full flex items-center justify-center bg-primary-500/10'
                               const span = document.createElement('span')
                               span.className = 'text-primary-500 font-semibold'
-                              span.textContent = post.author.firstName?.[0] || '?'
+                              span.textContent = post.author?.firstName?.[0] || '?'
                               wrapper.appendChild(span)
                               parent.appendChild(wrapper)
                             }
@@ -2165,31 +2182,35 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
                           <span className="text-primary-500 font-semibold">
-                            {post.author.firstName[0]}
+                            {post.author?.firstName?.[0] || '?'}
                           </span>
                         </div>
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <p 
-                          className="font-semibold text-primary-500 tracking-tight cursor-pointer hover:text-primary-400 transition-all"
+                        <p
+                          className={`font-semibold tracking-tight ${isVenuePost ? 'text-yellow-400 cursor-default' : 'text-primary-500 cursor-pointer hover:text-primary-400'} transition-all`}
                           onClick={() => {
-                            const authorId = post.author._id || post.author.id
-                            if (authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
+                            if (!isVenuePost && authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
                               onViewProfile?.(authorId)
                             }
                           }}
                         >
-                          {post.author.firstName} {post.author.lastName}
+                          {isVenuePost ? post.venueAuthor?.name : `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim()}
                         </p>
-                        {isFriend && (post.author._id || post.author.id) && (
-                          <StatusIndicator 
-                            userId={(post.author._id || post.author.id) as string} 
-                            size="sm" 
+                        {isVenuePost && (
+                          <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                            Venue
+                          </span>
+                        )}
+                        {!isVenuePost && isFriend && authorId && (
+                          <StatusIndicator
+                            userId={authorId as string}
+                            size="sm"
                           />
                         )}
-                        {isFriend && (
+                        {!isVenuePost && isFriend && (
                           <span className="text-xs bg-primary-500/10 border border-primary-500/20 text-primary-500 px-2 py-0.5 rounded-full font-medium">
                             Friend
                           </span>
@@ -2207,6 +2228,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                             </span>
                           </>
                         )}
+                        {isVenuePost && post.venueAuthor?.city && (
+                          <>
+                            <span>•</span>
+                            <span>{post.venueAuthor.city}{post.venueAuthor.state ? `, ${post.venueAuthor.state}` : ''}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2219,7 +2246,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     <span className="text-primary-500 font-medium text-sm tracking-tight">
                       {post.checkIn?.venue?.name || post.location?.venue?.name}
                     </span>
-                    {nearbyFriends.some(f => f.firstName === post.author.firstName) && (
+                    {!isVenuePost && nearbyFriends.some(f => f.firstName === post.author?.firstName) && (
                       <span className="ml-auto text-xs bg-primary-500/10 border border-primary-500/20 text-primary-400 px-2 py-0.5 rounded font-medium">
                         Friend nearby
                       </span>
@@ -2353,13 +2380,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       <Share2 className="w-4 h-4" />
                       <span className="text-xs font-semibold">Share</span>
                     </button>
-                    {isFriend && authorId && authorId !== user?.id && authorId !== (user as any)?._id && (
+                    {!isVenuePost && isFriend && authorId && authorId !== user?.id && authorId !== (user as any)?._id && (
                       <button
                         onClick={() => setSendDrinkTarget({
                           id: authorId,
-                          name: `${post.author.firstName} ${post.author.lastName}`,
-                          firstName: post.author.firstName,
-                          avatar: post.author.profilePicture,
+                          name: `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim(),
+                          firstName: post.author?.firstName || '',
+                          avatar: post.author?.profilePicture,
                         })}
                         className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
                       >
