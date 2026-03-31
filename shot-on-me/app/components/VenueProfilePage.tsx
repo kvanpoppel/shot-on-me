@@ -17,7 +17,7 @@ import {
   MapPin as CheckInIcon,
   Navigation,
   Share2,
-  Wine,
+  GlassWater as Wine,
   Info,
   Tag,
   TrendingUp,
