@@ -598,13 +598,29 @@ router.post('/:postId/reaction', auth, async (req, res) => {
 });
 
 // Comment on a post (supports nested replies)
-router.post('/:postId/comment', auth, async (req, res) => {
+router.post('/:postId/comment', auth, upload.single('media'), async (req, res) => {
   try {
     const { postId } = req.params;
-    const { content, replyTo } = req.body;
-    
-    if (!content || !content.trim()) {
-      return res.status(400).json({ message: 'Comment content is required' });
+    const { content, replyTo, locationName, locationPlaceId } = req.body;
+    let mediaUrl = req.body.mediaUrl || null;
+
+    if (!content?.trim() && !req.file && !mediaUrl) {
+      return res.status(400).json({ message: 'Comment must have content, image, or location' });
+    }
+
+    // Upload comment media to Cloudinary if file attached
+    if (req.file) {
+      try {
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { resource_type: 'image', folder: 'shot-on-me/comments' },
+            (error, result) => error ? reject(error) : resolve(result)
+          ).end(req.file.buffer);
+        });
+        mediaUrl = uploadResult.secure_url;
+      } catch (uploadErr) {
+        console.error('Comment media upload error:', uploadErr);
+      }
     }
 
     const post = await FeedPost.findById(postId);
@@ -621,11 +637,13 @@ router.post('/:postId/comment', auth, async (req, res) => {
       }
     }
 
-    // Add comment (with optional replyTo)
+    // Add comment (with optional replyTo, media, location)
     post.comments.push({
       user: req.user.userId,
-      content: content.trim(),
+      content: content?.trim() || '',
       replyTo: replyTo || null,
+      mediaUrl: mediaUrl || null,
+      location: locationName ? { name: locationName, placeId: locationPlaceId || null } : undefined,
       createdAt: new Date()
     });
 

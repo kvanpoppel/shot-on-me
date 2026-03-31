@@ -114,6 +114,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const postTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [commentText, setCommentText] = useState('')
+  const [commentMedia, setCommentMedia] = useState<File | null>(null)
+  const [commentMediaPreview, setCommentMediaPreview] = useState<string | null>(null)
+  const [commentLocation, setCommentLocation] = useState<{ name: string; placeId: string } | null>(null)
+  const [locationSearch, setLocationSearch] = useState('')
+  const [locationResults, setLocationResults] = useState<any[]>([])
+  const [showLocationSearch, setShowLocationSearch] = useState(false)
+  const commentFileRef = useRef<HTMLInputElement>(null)
   const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string; userName: string } | null>(null)
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [showingReactionPicker, setShowingReactionPicker] = useState<{ postId: string; commentId: string } | null>(null)
@@ -908,18 +915,29 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     // Clear input immediately
     setCommentText('')
     const previousReplyingTo = replyingTo
+    const prevMedia = commentMedia
+    const prevLocation = commentLocation
     setReplyingTo(null)
+    setCommentMedia(null)
+    setCommentMediaPreview(null)
+    setCommentLocation(null)
+    setShowLocationSearch(false)
 
     try {
+      const formData = new FormData()
+      formData.append('content', commentContent)
+      if (previousReplyingTo?.commentId) formData.append('replyTo', previousReplyingTo.commentId)
+      if (prevMedia) formData.append('media', prevMedia)
+      if (prevLocation) {
+        formData.append('locationName', prevLocation.name)
+        formData.append('locationPlaceId', prevLocation.placeId)
+      }
       const response = await axios.post(
         `${API_URL}/feed/${postId}/comment`,
-        { 
-          content: commentContent,
-          replyTo: previousReplyingTo?.commentId || null
-        },
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+          timeout: 30000
         }
       )
       
@@ -1087,12 +1105,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     const val = e.target.value
     setNewPostContent(val)
     const cursor = e.target.selectionStart ?? val.length
-    // Find last @ before cursor that hasn't been closed by a space
+    // Detect any word being typed at cursor (no @ needed)
     const textBeforeCursor = val.slice(0, cursor)
-    const match = textBeforeCursor.match(/@(\w*)$/)
-    if (match) {
-      setMentionQuery(match[1])
-      setMentionAnchor(cursor - match[0].length)
+    const wordMatch = textBeforeCursor.match(/(\w{2,})$/)
+    if (wordMatch) {
+      setMentionQuery(wordMatch[1])
+      setMentionAnchor(cursor - wordMatch[1].length)
     } else {
       setMentionQuery(null)
     }
@@ -1102,11 +1120,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     const firstName = friend.firstName || friend.name?.split(' ')[0] || ''
     const tag = `@${firstName} `
     const before = newPostContent.slice(0, mentionAnchor)
-    const after = newPostContent.slice(mentionAnchor + (mentionQuery?.length ?? 0) + 1) // +1 for the @
+    const after = newPostContent.slice(mentionAnchor + (mentionQuery?.length ?? 0))
     const updated = before + tag + after
     setNewPostContent(updated)
     setMentionQuery(null)
-    // Restore focus
     setTimeout(() => {
       if (postTextareaRef.current) {
         const pos = before.length + tag.length
@@ -1116,7 +1133,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }, 0)
   }
 
-  const mentionResults = mentionQuery !== null
+  const mentionResults = mentionQuery !== null && mentionQuery.length >= 2
     ? friendsList.filter(f => {
         const q = mentionQuery.toLowerCase()
         return (
@@ -1126,6 +1143,26 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         )
       }).slice(0, 6)
     : []
+
+  const handleCommentMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCommentMedia(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setCommentMediaPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const searchPlaces = async (query: string) => {
+    if (!query.trim() || query.length < 2) { setLocationResults([]); return }
+    try {
+      const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      const res = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=establishment&key=${key}`)
+      const data = await res.json()
+      setLocationResults(data.predictions?.slice(0, 5) || [])
+    } catch { setLocationResults([]) }
+  }
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2496,18 +2533,86 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                         </button>
                       </div>
                     )}
-                    <div className="flex space-x-2">
+                    {/* Media preview */}
+                    {commentMediaPreview && (
+                      <div className="relative mb-2 inline-block">
+                        <img src={commentMediaPreview} className="h-20 rounded-lg object-cover border border-primary-500/30" alt="preview" />
+                        <button type="button" onClick={() => { setCommentMedia(null); setCommentMediaPreview(null) }} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-black border border-primary-500/40 rounded-full flex items-center justify-center text-primary-400 hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Location chip */}
+                    {commentLocation && (
+                      <div className="flex items-center gap-1.5 mb-2 bg-primary-500/10 border border-primary-500/20 rounded-lg px-2 py-1 w-fit">
+                        <MapPin className="w-3 h-3 text-primary-500" />
+                        <span className="text-xs text-primary-400 font-medium">{commentLocation.name}</span>
+                        <button type="button" onClick={() => setCommentLocation(null)} className="text-primary-500/50 hover:text-primary-400 ml-1"><X className="w-3 h-3" /></button>
+                      </div>
+                    )}
+
+                    {/* Location search */}
+                    {showLocationSearch && !commentLocation && (
+                      <div className="relative mb-2">
+                        <input
+                          type="text"
+                          value={locationSearch}
+                          onChange={(e) => { setLocationSearch(e.target.value); searchPlaces(e.target.value) }}
+                          placeholder="Search for a venue..."
+                          className="w-full px-3 py-1.5 bg-black border border-primary-500/40 rounded-lg text-sm text-primary-500 placeholder-primary-600 focus:outline-none focus:border-primary-500"
+                          autoFocus
+                        />
+                        {locationResults.length > 0 && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-gray-950 border border-primary-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
+                            {locationResults.map((place: any) => (
+                              <button
+                                key={place.place_id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  setCommentLocation({ name: place.structured_formatting?.main_text || place.description, placeId: place.place_id })
+                                  setShowLocationSearch(false)
+                                  setLocationSearch('')
+                                  setLocationResults([])
+                                }}
+                                className="w-full flex items-start gap-2 px-3 py-2 hover:bg-primary-500/10 text-left transition-colors"
+                              >
+                                <MapPin className="w-3.5 h-3.5 text-primary-500 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="text-sm text-white font-medium">{place.structured_formatting?.main_text || place.description}</p>
+                                  {place.structured_formatting?.secondary_text && <p className="text-xs text-primary-400/60">{place.structured_formatting.secondary_text}</p>}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
                       <input
                         type="text"
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         placeholder={replyingTo ? `Reply to ${replyingTo.userName}...` : "Add a comment..."}
-                        className="flex-1 px-3 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
+                        className="flex-1 px-3 py-2 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 text-sm"
                       />
+                      {/* Toolbar */}
+                      <input ref={commentFileRef} type="file" accept="image/*" className="hidden" onChange={handleCommentMediaSelect} />
+                      <button type="button" onClick={() => { if (commentFileRef.current) { commentFileRef.current.removeAttribute('capture'); commentFileRef.current.click() }}} className="p-2 text-primary-500/60 hover:text-primary-500 transition-colors" title="Add photo">
+                        <Camera className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => { if (commentFileRef.current) { commentFileRef.current.setAttribute('capture', 'environment'); commentFileRef.current.click() }}} className="p-2 text-primary-500/60 hover:text-primary-500 transition-colors" title="Take photo">
+                        <Video className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => setShowLocationSearch(v => !v)} className={`p-2 transition-colors ${showLocationSearch || commentLocation ? 'text-primary-500' : 'text-primary-500/60 hover:text-primary-500'}`} title="Add location">
+                        <MapPin className="w-4 h-4" />
+                      </button>
                       <button
                         type="submit"
-                        disabled={!commentText.trim()}
-                        className="bg-primary-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50"
+                        disabled={!commentText.trim() && !commentMedia && !commentLocation}
+                        className="bg-primary-500 text-black px-3 py-2 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 text-sm"
                       >
                         {replyingTo ? 'Reply' : 'Post'}
                       </button>
@@ -2554,8 +2659,17 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                   <span className="font-semibold text-primary-500 text-sm">
                                     {comment.user.firstName} {comment.user.lastName || ''}
                                   </span>
-                                  <span className="text-primary-300 text-sm break-words">{comment.content}</span>
+                                  {comment.content && <span className="text-primary-300 text-sm break-words">{comment.content}</span>}
                                 </div>
+                                {(comment as any).mediaUrl && (
+                                  <img src={(comment as any).mediaUrl} className="mt-1.5 rounded-lg max-h-40 object-cover border border-primary-500/20" alt="comment media" />
+                                )}
+                                {(comment as any).location?.name && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <MapPin className="w-3 h-3 text-primary-500" />
+                                    <span className="text-xs text-primary-400">{(comment as any).location.name}</span>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-3 mt-1">
                                   <span className="text-xs text-primary-400/70">{getTimeAgo(comment.createdAt)}</span>
                                   

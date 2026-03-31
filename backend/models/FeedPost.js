@@ -64,8 +64,13 @@ const feedPostSchema = new mongoose.Schema({
     },
     content: {
       type: String,
-      required: true,
+      default: '',
       maxlength: 500
+    },
+    mediaUrl: { type: String, default: null },
+    location: {
+      name: { type: String, default: null },
+      placeId: { type: String, default: null }
     },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
