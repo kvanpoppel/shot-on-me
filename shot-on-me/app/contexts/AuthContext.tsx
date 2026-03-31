@@ -144,29 +144,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        // More helpful error message
-        errorMessage = 'Connection timeout. The backend server may not be running or is not responding. Please check the backend PowerShell window and ensure MongoDB is connected.'
+        errorMessage = 'Connection timeout. Please try again.'
       } else if (error.code === 'ECONNREFUSED' || error.message?.includes('refused')) {
-        errorMessage = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
+        errorMessage = 'Cannot connect to server. Please try again shortly.'
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
       } else if (error.response?.status === 405) {
-        const attemptedUrl = error.config?.url || 'unknown'
-        errorMessage = `Method Not Allowed (405). The API endpoint may not exist.
-
-Attempted URL: ${attemptedUrl}
-
-For PRODUCTION (shotonme.com):
-- Set NEXT_PUBLIC_API_URL in Vercel environment variables
-- Go to: Vercel Dashboard → Settings → Environment Variables
-- Add: NEXT_PUBLIC_API_URL = https://your-backend-url.com/api
-- Then redeploy
-
-For LOCAL development:
-- Make sure backend is running on port 5000
-- Check: http://localhost:5000/api/health`
+        errorMessage = 'Server error. Please try again.'
       } else if (error.response?.status === 0 || error.message?.includes('Network Error') || error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
-        errorMessage = 'Cannot connect to server. Make sure the backend is running on port 5000.'
+        errorMessage = 'Cannot connect to server. Please try again shortly.'
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error
       } else if (error.message) {

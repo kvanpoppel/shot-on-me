@@ -107,13 +107,13 @@ export default function LoginScreen() {
       
       // Provide more helpful error messages
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-        errorMsg = 'Connection timeout. The backend server may not be running. Please check the backend PowerShell window.'
+        errorMsg = 'Connection timeout. Please try again.'
       } else if (err.code === 'ECONNREFUSED' || err.message?.includes('refused')) {
-        errorMsg = 'Cannot connect to backend server. Please ensure the backend is running on port 5000.'
+        errorMsg = 'Cannot connect to server. Please try again shortly.'
       } else if (err.response?.status === 401) {
         errorMsg = 'Invalid email or password. Please check your credentials.'
       } else if (err.response?.status === 503) {
-        errorMsg = 'Backend server is unavailable. Please check if the server is running and MongoDB is connected.'
+        errorMsg = 'Server unavailable. Please try again shortly.'
       }
       
       setError(errorMsg)
