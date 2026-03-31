@@ -108,6 +108,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [loading, setLoading] = useState(true)
   const [newPostContent, setNewPostContent] = useState('')
   const [showPostForm, setShowPostForm] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionAnchor, setMentionAnchor] = useState(0)
+  const [friendsList, setFriendsList] = useState<any[]>([])
+  const postTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [commentText, setCommentText] = useState('')
   const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string; userName: string } | null>(null)
@@ -1071,6 +1075,58 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     return reaction?.emoji || null
   }
 
+  // Load friends list for mention picker when post form opens
+  useEffect(() => {
+    if (!showPostForm || !token || friendsList.length > 0) return
+    axios.get(`${API_URL}/users/friends`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setFriendsList(res.data.friends || res.data || []))
+      .catch(() => {})
+  }, [showPostForm, token, API_URL])
+
+  const handlePostContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setNewPostContent(val)
+    const cursor = e.target.selectionStart ?? val.length
+    // Find last @ before cursor that hasn't been closed by a space
+    const textBeforeCursor = val.slice(0, cursor)
+    const match = textBeforeCursor.match(/@(\w*)$/)
+    if (match) {
+      setMentionQuery(match[1])
+      setMentionAnchor(cursor - match[0].length)
+    } else {
+      setMentionQuery(null)
+    }
+  }
+
+  const insertMention = (friend: any) => {
+    const firstName = friend.firstName || friend.name?.split(' ')[0] || ''
+    const tag = `@${firstName} `
+    const before = newPostContent.slice(0, mentionAnchor)
+    const after = newPostContent.slice(mentionAnchor + (mentionQuery?.length ?? 0) + 1) // +1 for the @
+    const updated = before + tag + after
+    setNewPostContent(updated)
+    setMentionQuery(null)
+    // Restore focus
+    setTimeout(() => {
+      if (postTextareaRef.current) {
+        const pos = before.length + tag.length
+        postTextareaRef.current.focus()
+        postTextareaRef.current.setSelectionRange(pos, pos)
+      }
+    }, 0)
+  }
+
+  const mentionResults = mentionQuery !== null
+    ? friendsList.filter(f => {
+        const q = mentionQuery.toLowerCase()
+        return (
+          (f.firstName || '').toLowerCase().startsWith(q) ||
+          (f.lastName || '').toLowerCase().startsWith(q) ||
+          (f.name || '').toLowerCase().startsWith(q)
+        )
+      }).slice(0, 6)
+    : []
+
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newPostContent.trim() && !selectedVenue && selectedMedia.length === 0) {
@@ -1118,6 +1174,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       setSelectedVenue(null)
       setSelectedMedia([])
       setMediaPreviews([])
+      setMentionQuery(null)
       setShowPostForm(false)
       
       // Refresh feed to show new post
@@ -1857,14 +1914,43 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       {/* New Post Form */}
       {showPostForm && (
         <form onSubmit={handlePost} className="bg-black border-b border-primary-500/20 p-4">
-          <div className="mb-3">
+          <div className="mb-3 relative">
             <textarea
+              ref={postTextareaRef}
               value={newPostContent}
-              onChange={(e) => setNewPostContent(e.target.value)}
-              placeholder="What's happening? Share your moment..."
-              className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg mb-3 text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
+              onChange={handlePostContentChange}
+              placeholder="What's happening? Tag friends with @name..."
+              className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg mb-1 text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
+            {/* @ mention picker */}
+            {mentionQuery !== null && mentionResults.length > 0 && (
+              <div className="absolute left-0 right-0 bg-gray-950 border border-primary-500/40 rounded-xl shadow-2xl z-50 overflow-hidden" style={{ bottom: 'calc(100% - 4px)' }}>
+                <p className="text-xs text-primary-500/50 px-3 pt-2 pb-1 font-medium uppercase tracking-wide">Tag a friend</p>
+                {mentionResults.map(friend => (
+                  <button
+                    key={friend._id || friend.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); insertMention(friend) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-primary-500/10 active:bg-primary-500/20 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary-500/30">
+                      {friend.profilePicture ? (
+                        <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary-500/20">
+                          <span className="text-primary-500 text-xs font-bold">{(friend.firstName || friend.name || '?')[0]}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-white font-semibold">{friend.firstName} {friend.lastName}</p>
+                      {friend.username && <p className="text-xs text-primary-500/60">@{friend.username}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             {selectedVenue && (
               <div className="flex items-center space-x-2 bg-primary-500/10 border border-primary-500/30 rounded-lg p-2 mb-3">
                 <MapPin className="w-4 h-4 text-primary-500" />
@@ -2214,7 +2300,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
                 {/* Content */}
                 {post.content && (
-                  <p className="text-primary-400/90 mb-3 leading-relaxed font-light">{post.content}</p>
+                  <p className="text-primary-400/90 mb-3 leading-relaxed font-light">
+                    {post.content.split(/(@\w+)/g).map((part, i) =>
+                      /^@\w+/.test(part) ? (
+                        <span key={i} className="text-primary-400 font-semibold">{part}</span>
+                      ) : part
+                    )}
+                  </p>
                 )}
 
                 {/* Media */}
