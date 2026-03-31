@@ -323,12 +323,12 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
         <div className="flex min-w-max">
           {([
             { id: 'info',      label: 'Info',          icon: Info },
+            { id: 'tonight',   label: 'Tonight',        icon: Moon },
             { id: 'happyhour', label: 'Happy Hour',     icon: Clock },
             { id: 'special',   label: 'Special',        icon: Tag },
             { id: 'wine',      label: 'Wine',           icon: Wine },
             { id: 'weekend',   label: 'Weekend',        icon: CalendarDays },
             { id: 'trending',  label: 'Trending',       icon: TrendingUp },
-            { id: 'tonight',   label: 'Tonight',        icon: Moon },
             { id: 'reviews',   label: 'Reviews',        icon: Star },
           ] as const).map((tab) => (
             <button
