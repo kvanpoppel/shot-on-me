@@ -48,6 +48,7 @@ const corsOptions = {
 
     if (allowed.includes(origin)) return callback(null, true);
     if (vercelOriginRegex && vercelOriginRegex.test(origin)) return callback(null, true);
+    if (/^https:\/\/[a-zA-Z0-9\-]+\.vercel\.app$/.test(origin)) return callback(null, true);
     if (/^http:\/\/(192\.168|10\.|172\.(1[6-9]|2\d|3[0-1]))\./.test(origin)) return callback(null, true);
 
     callback(new Error(`CORS: origin not allowed: ${origin}`));
