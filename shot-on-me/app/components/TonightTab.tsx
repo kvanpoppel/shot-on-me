@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import { MapPin, Users, Calendar, Sparkles, TrendingUp, Clock } from 'lucide-react'
+import UserAvatarButton from './UserAvatarButton'
 
 interface FriendOut {
   user: {
@@ -78,7 +79,7 @@ interface TonightData {
   usersOut: number
 }
 
-export default function TonightTab() {
+export default function TonightTab({ onViewProfile, onSendDrink }: { onViewProfile?: (id: string) => void; onSendDrink?: (id: string, name: string) => void } = {}) {
   const { token, user } = useAuth()
   const API_URL = useApiUrl()
   const [data, setData] = useState<TonightData | null>(null)
@@ -144,19 +145,16 @@ export default function TonightTab() {
                   key={index}
                   className="flex items-center gap-3 p-3 bg-black/40 border border-primary-500/10 rounded-lg"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center overflow-hidden">
-                    {friend.user.profilePicture ? (
-                      <img
-                        src={friend.user.profilePicture}
-                        alt={(friend.user as any)?.name || (friend.user as any)?.firstName || 'Friend'}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-primary-500 font-semibold">
-                        {((friend.user as any)?.name || (friend.user as any)?.firstName || 'F').charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
+                  <UserAvatarButton
+                    userId={friend.user._id}
+                    firstName={(friend.user as any)?.firstName || (friend.user as any)?.name?.split(' ')[0] || 'Friend'}
+                    lastName={(friend.user as any)?.lastName || (friend.user as any)?.name?.split(' ').slice(1).join(' ') || ''}
+                    profilePicture={friend.user.profilePicture}
+                    size="md"
+                    isFriend={true}
+                    onViewProfile={onViewProfile}
+                    onSendDrink={onSendDrink}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{(friend.user as any)?.name || (friend.user as any)?.firstName || 'Friend'}</p>
                     <div className="flex items-center gap-1 text-sm text-primary-400">

@@ -268,7 +268,7 @@ function Home() {
         {activeTab === 'messages' && <MessagesTab setActiveTab={setActiveTab} activeTab={activeTab} onViewProfile={setViewingProfile} />}
         {activeTab === 'groups' && <GroupChatsTab onViewProfile={setViewingProfile} />}
         {activeTab === 'profile' && <ProfileTab onViewProfile={setViewingProfile} setActiveTab={setActiveTab} />}
-        {activeTab === 'tonight' && <TonightTab />}
+        {activeTab === 'tonight' && <TonightTab onViewProfile={setViewingProfile} onSendDrink={(userId, name) => { setPrefilledRecipient({ id: userId, name }); setAutoOpenSendForm(true); setActiveTab('wallet') }} />}
         {activeTab === 'rewards' && <RewardsScreen />}
         {activeTab === 'referrals' && <ReferralScreen />}
         {activeTab === 'venues' && <MyVenuesTab />}

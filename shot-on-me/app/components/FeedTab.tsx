@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, RefreshCw, Flame, Compass, UserCheck, Eye, MoreVertical, Flag, Trash2, ThumbsUp } from 'lucide-react'
+import UserAvatarButton from './UserAvatarButton'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
 import StoryEditor from './StoryEditor'
@@ -2113,51 +2114,28 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 {/* Author Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-12 h-12 border-2 rounded-full overflow-hidden flex-shrink-0 ${isVenuePost ? 'border-yellow-500/50 cursor-default' : 'border-primary-500/30 cursor-pointer hover:border-primary-500/70'} transition-all`}
-                      onClick={() => {
-                        if (!isVenuePost && authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
-                          onViewProfile?.(authorId)
-                        }
-                      }}
-                    >
-                      {isVenuePost ? (
-                        post.venueAuthor?.logo ? (
+                    {isVenuePost ? (
+                      <div className="w-12 h-12 border-2 border-yellow-500/50 rounded-full overflow-hidden flex-shrink-0">
+                        {post.venueAuthor?.logo ? (
                           <img src={post.venueAuthor.logo} alt={post.venueAuthor.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-yellow-500/10">
                             <span className="text-yellow-400 font-semibold">{post.venueAuthor?.name?.[0] || 'V'}</span>
                           </div>
-                        )
-                      ) : post.author?.profilePicture ? (
-                        <img
-                          src={post.author.profilePicture}
-                          alt={post.author.firstName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            // Fallback to default avatar on error
-                            e.currentTarget.style.display = 'none'
-                            const parent = e.currentTarget.parentElement
-                            if (parent) {
-                              const wrapper = document.createElement('div')
-                              wrapper.className = 'w-full h-full flex items-center justify-center bg-primary-500/10'
-                              const span = document.createElement('span')
-                              span.className = 'text-primary-500 font-semibold'
-                              span.textContent = post.author?.firstName?.[0] || '?'
-                              wrapper.appendChild(span)
-                              parent.appendChild(wrapper)
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                          <span className="text-primary-500 font-semibold">
-                            {post.author?.firstName?.[0] || '?'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    ) : (
+                      <UserAvatarButton
+                        userId={authorId as string}
+                        firstName={post.author?.firstName || ''}
+                        lastName={post.author?.lastName}
+                        profilePicture={post.author?.profilePicture}
+                        size="lg"
+                        isFriend={isFriend}
+                        onViewProfile={onViewProfile}
+                        onSendDrink={isFriend ? (uid, name) => { onSendDrink?.(uid, name) } : undefined}
+                      />
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <p
@@ -2469,15 +2447,16 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                           <div key={comment._id || idx} className="space-y-2">
                             {/* Main Comment */}
                             <div className="flex items-start space-x-2">
-                              <div className="w-6 h-6 border border-primary-500 rounded-full overflow-hidden flex-shrink-0">
-                                {comment.user.profilePicture ? (
-                                  <img src={comment.user.profilePicture} alt={comment.user.firstName} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-primary-500/20">
-                                    <span className="text-primary-500 text-xs font-bold">{comment.user.firstName[0]}</span>
-                                  </div>
-                                )}
-                              </div>
+                              <UserAvatarButton
+                                userId={comment.user._id || ''}
+                                firstName={comment.user.firstName}
+                                lastName={comment.user.lastName}
+                                profilePicture={comment.user.profilePicture}
+                                size="xs"
+                                isFriend={(user as any)?.friends?.includes(comment.user._id)}
+                                onViewProfile={onViewProfile}
+                                onSendDrink={(uid, name) => { onSendDrink?.(uid, name) }}
+                              />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold text-primary-500 text-sm">
@@ -2626,15 +2605,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                   <div className="ml-4 mt-2 space-y-2 border-l-2 border-primary-500/20 pl-3">
                                     {replies.map((reply, replyIdx) => (
                                       <div key={reply._id || replyIdx} className="flex items-start space-x-2">
-                                        <div className="w-5 h-5 border border-primary-500/50 rounded-full overflow-hidden flex-shrink-0">
-                                          {reply.user.profilePicture ? (
-                                            <img src={reply.user.profilePicture} alt={reply.user.firstName} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                                              <span className="text-primary-500 text-[10px] font-bold">{reply.user.firstName[0]}</span>
-                                            </div>
-                                          )}
-                                        </div>
+                                        <UserAvatarButton
+                                          userId={(reply.user as any)._id || ''}
+                                          firstName={reply.user.firstName}
+                                          profilePicture={reply.user.profilePicture}
+                                          size="xs"
+                                          isFriend={(user as any)?.friends?.includes((reply.user as any)._id)}
+                                          onViewProfile={onViewProfile}
+                                          onSendDrink={(uid, name) => { onSendDrink?.(uid, name) }}
+                                        />
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 flex-wrap">
                                             <span className="font-semibold text-primary-500 text-xs">
