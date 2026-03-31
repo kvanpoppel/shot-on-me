@@ -220,13 +220,13 @@ export default function VenueManager() {
 
   const [notifying, setNotifying] = useState(false)
 
-  const handleNotifyFollowers = async (message: string) => {
+  const handleNotifyFollowers = async (message: string, type: string = 'venue_update') => {
     if (!token || !venue || !message.trim()) return
     setNotifying(true)
     try {
       const res = await axios.post(
         `${getApiUrl()}/venues/${venue._id}/notify-followers`,
-        { message, type: 'venue_update' },
+        { message, type },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       alert(`Notified ${res.data.sent} followers!`)
@@ -924,7 +924,7 @@ export default function VenueManager() {
             <div className="space-y-3">
               <textarea value={tonight} onChange={e => setTonight(e.target.value)} placeholder="What's happening tonight? (e.g. Live DJ 9 PM, $3 shot specials)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
               <button
-                onClick={() => tonight.trim() && handleNotifyFollowers(tonight)}
+                onClick={() => tonight.trim() && handleNotifyFollowers(tonight, 'venue_tonight')}
                 disabled={notifying || !tonight.trim()}
                 className="flex items-center gap-2 bg-primary-500/20 border border-primary-500/40 text-primary-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-500/30 disabled:opacity-40 transition-all"
               >

@@ -2254,6 +2254,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   </div>
                 )}
 
+                {/* Venue post type label */}
+                {isVenuePost && post.postType && post.postType !== 'user' && (
+                  <div className="mb-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                      {post.postType === 'venue_tonight' ? '🌙 Tonight' : post.postType === 'venue_special' ? '⭐ Special' : '📢 Update'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Content */}
                 {post.content && (
                   <p className="text-primary-400/90 mb-3 leading-relaxed font-light">{post.content}</p>
