@@ -218,6 +218,25 @@ export default function VenueManager() {
     }
   }
 
+  const [notifying, setNotifying] = useState(false)
+
+  const handleNotifyFollowers = async (message: string) => {
+    if (!token || !venue || !message.trim()) return
+    setNotifying(true)
+    try {
+      const res = await axios.post(
+        `${getApiUrl()}/venues/${venue._id}/notify-followers`,
+        { message, type: 'venue_update' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      alert(`Notified ${res.data.sent} followers!`)
+    } catch {
+      alert('Failed to send notifications. Try again.')
+    } finally {
+      setNotifying(false)
+    }
+  }
+
   const handleMenuSave = async () => {
     if (!token || !venue) return
     setMenuSaving(true)
@@ -902,7 +921,17 @@ export default function VenueManager() {
 
           {/* Tonight */}
           {activeSection === 'tonight' && (
-            <textarea value={tonight} onChange={e => setTonight(e.target.value)} placeholder="What's happening tonight? (e.g. Live DJ 9 PM, $3 shot specials)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+            <div className="space-y-3">
+              <textarea value={tonight} onChange={e => setTonight(e.target.value)} placeholder="What's happening tonight? (e.g. Live DJ 9 PM, $3 shot specials)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+              <button
+                onClick={() => tonight.trim() && handleNotifyFollowers(tonight)}
+                disabled={notifying || !tonight.trim()}
+                className="flex items-center gap-2 bg-primary-500/20 border border-primary-500/40 text-primary-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-500/30 disabled:opacity-40 transition-all"
+              >
+                🔔 {notifying ? 'Notifying...' : 'Notify Followers'}
+              </button>
+              <p className="text-xs text-primary-400/40">Sends a push notification to all your followers with tonight's info.</p>
+            </div>
           )}
 
           {activeSection !== 'info' && (

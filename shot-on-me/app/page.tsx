@@ -32,6 +32,7 @@ function Home() {
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
   const [autoOpenSendForm, setAutoOpenSendForm] = useState(false)
   const [autoOpenAddFunds, setAutoOpenAddFunds] = useState(false)
+  const [prefilledRecipient, setPrefilledRecipient] = useState<{ id: string; name: string } | null>(null)
   const [autoOpenPostForm, setAutoOpenPostForm] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -229,11 +230,13 @@ function Home() {
             }} 
           />
         )}
-        {activeTab === 'wallet' && <WalletTab 
-          autoOpenSendForm={autoOpenSendForm} 
-          onSendFormOpened={() => setAutoOpenSendForm(false)}
+        {activeTab === 'wallet' && <WalletTab
+          autoOpenSendForm={autoOpenSendForm}
+          onSendFormOpened={() => { setAutoOpenSendForm(false); setPrefilledRecipient(null) }}
           autoOpenAddFunds={autoOpenAddFunds}
           onAddFundsOpened={() => setAutoOpenAddFunds(false)}
+          prefilledRecipientId={prefilledRecipient?.id}
+          prefilledRecipientName={prefilledRecipient?.name}
         />}
         {/* FeedTab stays mounted once visited so posts are never lost on tab switch */}
         <div className={activeTab === 'feed' ? '' : 'hidden'}>
@@ -242,7 +245,8 @@ function Home() {
               onViewProfile={setViewingProfile}
               autoOpenPostForm={autoOpenPostForm}
               onPostFormOpened={() => setAutoOpenPostForm(false)}
-              onSendDrink={(userId) => {
+              onSendDrink={(userId, name) => {
+                setPrefilledRecipient(userId ? { id: userId, name: name || '' } : null)
                 setAutoOpenSendForm(true)
                 setActiveTab('wallet')
               }}

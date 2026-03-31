@@ -20,9 +20,11 @@ interface WalletTabProps {
   onSendFormOpened?: () => void
   autoOpenAddFunds?: boolean
   onAddFundsOpened?: () => void
+  prefilledRecipientId?: string
+  prefilledRecipientName?: string
 }
 
-export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, autoOpenAddFunds = false, onAddFundsOpened }: WalletTabProps) {
+export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, autoOpenAddFunds = false, onAddFundsOpened, prefilledRecipientId, prefilledRecipientName }: WalletTabProps) {
   const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
   const { socket } = useSocket()
@@ -375,13 +377,17 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     return () => clearTimeout(debounceTimer)
   }, [searchQuery])
 
-  // Auto-open send form if requested (e.g., from Home tab)
+  // Auto-open send form if requested (e.g., from Home tab or Send Drink)
   useEffect(() => {
     if (autoOpenSendForm && !hasAutoOpenedRef.current) {
       hasAutoOpenedRef.current = true
       setShowSendForm(true)
       setShowRedeemForm(false)
       setShowMoreMenu(false)
+      // Pre-fill recipient if passed (e.g., from Send Drink fallback)
+      if (prefilledRecipientId) {
+        setSearchQuery(prefilledRecipientName || '')
+      }
       // Scroll to send form after a brief delay to ensure DOM is ready
       setTimeout(() => {
         const sendButton = document.querySelector('[data-send-money-button]')

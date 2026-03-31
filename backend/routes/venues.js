@@ -912,6 +912,58 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
   }
 });
 
+// POST /:venueId/notify-followers — venue owner sends update to all followers
+router.post('/:venueId/notify-followers', auth, async (req, res) => {
+  try {
+    const { venueId } = req.params;
+    const { message, type = 'venue_update' } = req.body;
+    if (!message) return res.status(400).json({ error: 'Message is required' });
+
+    const Venue = require('../models/Venue');
+    const Notification = require('../models/Notification');
+    const User = require('../models/User');
+
+    const venue = await Venue.findById(venueId);
+    if (!venue) return res.status(404).json({ error: 'Venue not found' });
+    if (venue.owner.toString() !== req.user.userId) return res.status(403).json({ error: 'Not authorized' });
+
+    if (!venue.followers || venue.followers.length === 0) {
+      return res.json({ sent: 0, message: 'No followers yet' });
+    }
+
+    const followers = await User.find({
+      _id: { $in: venue.followers },
+      'notificationPreferences.pushEnabled': { $ne: false }
+    }).select('_id');
+
+    const io = req.app.get('io');
+    let sent = 0;
+
+    await Promise.all(followers.map(async (follower) => {
+      try {
+        const notif = await Notification.create({
+          recipient: follower._id,
+          actor: venue.owner,
+          type,
+          content: `${venue.name}: ${message}`,
+          relatedVenue: venueId
+        });
+        sent++;
+        if (io) {
+          io.to(`user-${follower._id}`).emit('new-notification', {
+            notification: { _id: notif._id, type, content: notif.content, relatedVenue: { _id: venue._id, name: venue.name }, createdAt: notif.createdAt }
+          });
+        }
+      } catch (e) { /* skip individual failures */ }
+    }));
+
+    res.json({ sent, total: venue.followers.length });
+  } catch (err) {
+    console.error('Notify followers error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
 
 

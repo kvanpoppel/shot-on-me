@@ -287,6 +287,18 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     handlePaymentSent(req.user.userId, amount).catch(err => console.error('Gamification error:', err));
     handlePaymentReceived(recipient._id, amount).catch(err => console.error('Gamification error:', err));
 
+    // Auto-post to feed (fire and forget)
+    try {
+      const FeedPost = require('../models/FeedPost');
+      const drinkEmoji = amountNum >= 25 ? '🥂' : amountNum >= 10 ? '🍻' : '🍺';
+      const drinkWord = amountNum >= 25 ? 'some bubbly' : amountNum >= 10 ? 'a round' : 'a drink';
+      const recipientFirst = recipient.firstName || recipient.name?.split(' ')[0] || 'someone';
+      const postContent = `${drinkEmoji} Just sent ${recipientFirst} ${drinkWord}! ${message || 'Cheers 🥂'}`;
+      await FeedPost.create({ author: req.user.userId, content: postContent });
+    } catch (feedErr) {
+      console.error('Feed post error (non-fatal):', feedErr);
+    }
+
     // Send SMS notification to recipient (if phone number available)
     // Money transfers use tap-and-pay, not redemption codes
     if (recipient.phoneNumber) {
