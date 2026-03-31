@@ -8,7 +8,6 @@ import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, T
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
 import StoryEditor from './StoryEditor'
-import AIFeedSuggestions from './AIFeedSuggestions'
 import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
@@ -1623,34 +1622,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           </div>
         </div>
       </div>
-
-      {/* AI Suggestions */}
-      {aiEnabled && (
-        <AIFeedSuggestions
-          nearbyVenues={trendingVenues}
-          recentFriendActivity={friendActivity}
-          onSuggestionClick={(suggestion: any) => {
-            if (suggestion?.type === 'checkin' && suggestion?.venueId) {
-              const matchedVenue = trendingVenues.find((v: any) => v._id === suggestion.venueId)
-              if (matchedVenue) {
-                setSelectedVenue(matchedVenue)
-              }
-              setShowPostForm(true)
-              return
-            }
-            setShowPostForm(true)
-          }}
-        />
-      )}
-      {!aiEnabled && (
-        <div className="px-4 py-2 border-b border-primary-500/10">
-          <div className="bg-black/40 border border-primary-500/20 rounded-lg px-3 py-2">
-            <p className="text-xs text-primary-400/80">
-              AI feed suggestions are off. Turn them on in `Settings {'>'} AI Personalization`.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Friend Suggestions - Collapsible */}
       {friendSuggestions.length > 0 && (
