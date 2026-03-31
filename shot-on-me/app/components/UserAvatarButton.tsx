@@ -151,30 +151,22 @@ export default function UserAvatarButton({
           </button>
         </div>
 
-        {/* Quick send amounts */}
-        {onSendDrink && (
-          <div className="px-3 pt-2.5 pb-1">
-            <p className="text-xs text-gray-600 mb-2 font-medium uppercase tracking-wide">Send a drink</p>
-            <div className="flex gap-2">
-              {[{ emoji: '🍺', label: '$5', amount: 5 }, { emoji: '🍻', label: '$10', amount: 10 }, { emoji: '🥂', label: '$25', amount: 25 }].map(({ emoji, label, amount }) => (
-                <button
-                  key={amount}
-                  onClick={() => {
-                    setOpen(false)
-                    onSendDrink(userId, fullName)
-                  }}
-                  className="flex-1 flex flex-col items-center gap-0.5 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 active:scale-95 rounded-xl py-2 transition-all"
-                >
-                  <span className="text-base leading-none">{emoji}</span>
-                  <span className="text-xs text-yellow-400 font-semibold">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Action buttons */}
         <div className="flex gap-2 p-3">
+          {onSendDrink && (
+            <button
+              onClick={() => {
+                setOpen(false)
+                onSendDrink(userId, fullName)
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 border border-yellow-500/20 rounded-xl py-2 transition-all"
+            >
+              <span className="text-base leading-none">🍺</span>
+              <span className="text-xs text-yellow-400 font-semibold">Send Drink</span>
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2 px-3 pb-3">
           {onMessage && (
             <button
               onClick={() => {
