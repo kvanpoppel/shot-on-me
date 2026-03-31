@@ -26,7 +26,7 @@ export const getApiUrl = (): string => {
         }
       } else {
         // Production - Backend is deployed at: https://api.shotonme.com
-        return 'https://api.shotonme.com/api'
+        return 'https://shot-on-me.onrender.com/api'
       }
     }
     
@@ -36,10 +36,10 @@ export const getApiUrl = (): string => {
     }
     
     // Fallback for any other hostname - use production API
-    return 'https://api.shotonme.com/api'
+    return 'https://shot-on-me.onrender.com/api'
   }
   
-  return 'http://localhost:5000/api'
+  return 'https://shot-on-me.onrender.com/api'
 }
 
 export function useApiUrl() {

@@ -15,7 +15,8 @@ export const getApiUrl = (): string => {
     }
     return url
   }
-  return 'http://localhost:5000/api'
+  // No env var set — use production backend
+  return 'https://shot-on-me.onrender.com/api'
 }
 
 /**
@@ -26,7 +27,7 @@ export const getSocketUrl = (): string => {
     let url = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/?$/, '')
     return url
   }
-  return 'http://localhost:5000'
+  return 'https://shot-on-me.onrender.com'
 }
 
 /**

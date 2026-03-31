@@ -17,7 +17,7 @@ const getApiUrl = () => {
     }
     return url
   }
-  return 'http://localhost:5000/api'
+  return 'https://shot-on-me.onrender.com/api'
 }
 
 export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProps) {

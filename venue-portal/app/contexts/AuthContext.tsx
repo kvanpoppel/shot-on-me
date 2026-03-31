@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return url
     }
-    return 'http://localhost:5000/api'
+    return 'https://shot-on-me.onrender.com/api'
   }
 
   const login = async (email: string, password: string) => {
@@ -123,11 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let errorMessage = 'Login failed'
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = 'Connection timeout. Please check if the backend server is running on port 5000.'
+        errorMessage = 'Connection timeout. Please try again.'
       } else if (error.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
       } else if (error.response?.status === 0 || error.message?.includes('Network Error') || error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
-        errorMessage = 'Cannot connect to server. Make sure the backend is running on port 5000.'
+        errorMessage = 'Cannot connect to server. Please try again shortly.'
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error
       } else if (error.message) {
