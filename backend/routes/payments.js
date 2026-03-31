@@ -294,7 +294,18 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       const drinkWord = amountNum >= 25 ? 'some bubbly' : amountNum >= 10 ? 'a round' : 'a drink';
       const recipientFirst = recipient.firstName || recipient.name?.split(' ')[0] || 'someone';
       const postContent = `${drinkEmoji} Just sent ${recipientFirst} ${drinkWord}! ${message || 'Cheers 🥂'}`;
-      await FeedPost.create({ author: req.user.userId, content: postContent });
+      await FeedPost.create({
+        author: req.user.userId,
+        postType: 'drink_sent',
+        content: postContent,
+        drinkInfo: {
+          recipientId: recipient._id,
+          recipientName: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim(),
+          amount: finalAmount,
+          emoji: drinkEmoji,
+          message: message || ''
+        }
+      });
     } catch (feedErr) {
       console.error('Feed post error (non-fatal):', feedErr);
     }

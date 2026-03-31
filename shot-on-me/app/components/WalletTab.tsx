@@ -91,13 +91,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [kycLimits, setKycLimits] = useState<{ maxBalance: number; dailyAddFunds: number; label: string } | null>(null)
   const [kycStarting, setKycStarting] = useState(false)
 
-  // Loyalty Partnerships
-  const [loyaltyPartnerships, setLoyaltyPartnerships] = useState<any[]>([])
-  const [loyaltyLoading, setLoyaltyLoading] = useState(false)
-
-  // Influencer Offers
-  const [influencerOffers, setInfluencerOffers] = useState<any[]>([])
-  const [showOffersPanel, setShowOffersPanel] = useState(false)
 
   // Define functions BEFORE useEffects that use them
   const fetchDefaultPaymentMethod = async () => {
@@ -186,32 +179,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
     setShowSendForm(true)
   }
 
-  const fetchLoyaltyPartnerships = useCallback(async () => {
-    if (!token) return
-    setLoyaltyLoading(true)
-    try {
-      const response = await axios.get(`${API_URL}/loyalty-partnerships/progress`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setLoyaltyPartnerships(response.data.partnerships || [])
-    } catch (error) {
-      console.error('Failed to fetch loyalty partnerships:', error)
-    } finally {
-      setLoyaltyLoading(false)
-    }
-  }, [token, API_URL])
-
-  const fetchInfluencerOffers = useCallback(async () => {
-    if (!token) return
-    try {
-      const response = await axios.get(`${API_URL}/influencer/my-offers`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setInfluencerOffers(response.data.offers || [])
-    } catch (error) {
-      console.error('Failed to fetch influencer offers:', error)
-    }
-  }, [token, API_URL])
 
   const fetchKycStatus = useCallback(async () => {
     if (!token) return
@@ -331,9 +298,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       fetchKycStatus()
       fetchRecentRecipients()
       fetchFavoriteVenues()
-      fetchLoyaltyPartnerships()
-      fetchInfluencerOffers()
-      
       // Check for pre-selected venue from MapTab or other components
       const storedVenue = localStorage.getItem('selectedVenue')
       const profileAction = localStorage.getItem('profileAction')
@@ -942,68 +906,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       </div>
 
-      {/* Influencer Offers Banner */}
-      {influencerOffers.filter(o => o.status === 'pending').length > 0 && (
-        <div className="px-4 mb-4">
-          <div className="bg-black/40 border border-primary-500/20 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setShowOffersPanel(!showOffersPanel)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-primary-500/5 transition-colors"
-            >
-              <span className="text-sm font-semibold text-primary-400">
-                💰 You have {influencerOffers.filter(o => o.status === 'pending').length} sponsorship offer{influencerOffers.filter(o => o.status === 'pending').length !== 1 ? 's' : ''}! Tap to review.
-              </span>
-              <span className="text-primary-500 text-xs font-bold">{showOffersPanel ? '▲' : '▼'}</span>
-            </button>
-            {showOffersPanel && (
-              <div className="border-t border-primary-500/20 divide-y divide-primary-500/10">
-                {influencerOffers.filter(o => o.status === 'pending').map((offer) => (
-                  <div key={offer._id} className="px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-primary-400 font-semibold text-sm truncate">{offer.venueName || 'Venue'}</p>
-                      <p className="text-primary-400/70 text-xs truncate">{offer.title}</p>
-                      <p className="text-primary-500 text-xs font-bold mt-0.5">${typeof offer.payout === 'number' ? offer.payout.toFixed(2) : offer.payout}</p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={async () => {
-                          try {
-                            await axios.put(`${API_URL}/influencer/${offer._id}/respond`, { action: 'accept' }, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            })
-                            await fetchInfluencerOffers()
-                          } catch (e) {
-                            console.error('Failed to accept offer:', e)
-                          }
-                        }}
-                        className="bg-primary-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-primary-400 transition-colors"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await axios.put(`${API_URL}/influencer/${offer._id}/respond`, { action: 'decline' }, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            })
-                            await fetchInfluencerOffers()
-                          } catch (e) {
-                            console.error('Failed to decline offer:', e)
-                          }
-                        }}
-                        className="bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-colors"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Primary Action: Send Money */}
       <div className="px-4 mb-4">
         <button
@@ -1356,70 +1258,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       <div className="px-4 mb-4">
         <VirtualCardManager />
       </div>
-
-      {/* Loyalty Partnerships — only shown when data exists */}
-      {(loyaltyLoading || loyaltyPartnerships.length > 0) && (
-      <div className="px-4 mb-4">
-        <h3 className="text-sm font-semibold text-primary-400/70 uppercase tracking-widest mb-2 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5" />
-          Partnerships
-        </h3>
-        {loyaltyLoading ? (
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {[0, 1].map((i) => (
-              <div key={i} className="flex-shrink-0 w-52 bg-black/40 border border-primary-500/15 rounded-xl px-4 py-3 animate-pulse">
-                <div className="h-3.5 bg-primary-500/20 rounded mb-2 w-3/4" />
-                <div className="h-2.5 bg-primary-500/10 rounded mb-3 w-1/2" />
-                <div className="h-1.5 bg-primary-500/10 rounded-full mb-2" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {loyaltyPartnerships.map((partnership) => {
-              const visited = partnership.progress?.visited ?? 0
-              const required = partnership.progress?.required ?? 1
-              const pct = Math.min((visited / required) * 100, 100)
-              const completed = visited >= required
-              return (
-                <div key={partnership._id} className="flex-shrink-0 w-56 bg-black/40 border border-primary-500/20 rounded-xl px-4 py-3">
-                  <p className="text-primary-400 font-bold text-sm truncate mb-1">{partnership.name}</p>
-                  <p className="text-primary-400/60 text-xs mb-2">{visited} of {required} venues visited</p>
-                  <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden mb-2">
-                    <div
-                      className="bg-primary-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <p className="text-primary-500 text-xs font-semibold mb-2">{partnership.rewardDescription}</p>
-                  {completed && !partnership.claimed ? (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await axios.post(`${API_URL}/loyalty-partnerships/claim/${partnership._id}`, {}, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          })
-                          await fetchLoyaltyPartnerships()
-                        } catch (e) {
-                          console.error('Failed to claim reward:', e)
-                        }
-                      }}
-                      className="w-full bg-green-500 text-black text-xs font-bold py-1.5 rounded-lg hover:bg-green-400 transition-colors"
-                    >
-                      Claim Reward
-                    </button>
-                  ) : partnership.claimed ? (
-                    <div className="w-full bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold py-1.5 rounded-lg text-center">
-                      ✓ Claimed
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-      )}
 
       {/* Transaction History Section */}
       <div className="px-4 mb-5">

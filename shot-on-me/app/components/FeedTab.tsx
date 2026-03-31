@@ -33,6 +33,13 @@ interface FeedPost {
     state?: string
   } | null
   postType?: string
+  drinkInfo?: {
+    recipientId?: string
+    recipientName?: string
+    amount?: number
+    emoji?: string
+    message?: string
+  }
   content: string
   media: Array<{ type: string; url: string; thumbnail?: string }>
   likes: Array<{ user: string | { _id: string; firstName: string; profilePicture?: string } }>
@@ -2335,15 +2342,40 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   </div>
                 )}
 
-                {/* Content */}
-                {post.content && (
-                  <p className="text-primary-400/90 mb-3 leading-relaxed font-light">
-                    {post.content.split(/(@\w+)/g).map((part, i) =>
-                      /^@\w+/.test(part) ? (
-                        <span key={i} className="text-primary-400 font-semibold">{part}</span>
-                      ) : part
-                    )}
-                  </p>
+                {/* Drink Receipt Card */}
+                {post.postType === 'drink_sent' && post.drinkInfo ? (
+                  <div className="mb-3 rounded-xl overflow-hidden border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-black/40">
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-yellow-500/10 bg-yellow-500/5">
+                      <span className="text-yellow-400/70 text-[10px] font-bold uppercase tracking-widest">Drink Sent</span>
+                      <span className="text-yellow-400/50 text-[10px]">Shot On Me</span>
+                    </div>
+                    <div className="px-4 py-3 flex items-center gap-4">
+                      <span className="text-4xl leading-none">{post.drinkInfo.emoji || '🍺'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold text-sm truncate">
+                          To {post.drinkInfo.recipientName || 'a friend'}
+                        </p>
+                        {post.drinkInfo.message && (
+                          <p className="text-primary-400/70 text-xs mt-0.5 italic truncate">"{post.drinkInfo.message}"</p>
+                        )}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-yellow-400 font-bold text-lg">${post.drinkInfo.amount?.toFixed(2)}</p>
+                        <p className="text-yellow-400/50 text-[10px]">Cheers 🥂</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Content */
+                  post.content && (
+                    <p className="text-primary-400/90 mb-3 leading-relaxed font-light">
+                      {post.content.split(/(@\w+)/g).map((part, i) =>
+                        /^@\w+/.test(part) ? (
+                          <span key={i} className="text-primary-400 font-semibold">{part}</span>
+                        ) : part
+                      )}
+                    </p>
+                  )
                 )}
 
                 {/* Media */}

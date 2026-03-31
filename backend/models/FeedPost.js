@@ -31,6 +31,13 @@ const feedPostSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number
   },
+  drinkInfo: {
+    recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    recipientName: { type: String, default: '' },
+    amount: { type: Number, default: 0 },
+    emoji: { type: String, default: '🍺' },
+    message: { type: String, default: '' }
+  },
   reactions: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

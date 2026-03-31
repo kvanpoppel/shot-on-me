@@ -3,19 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { 
-  Grid3x3, 
-  MapPin, 
-  Users, 
-  Heart, 
-  MessageCircle, 
-  Share2,
+import {
+  Grid3x3,
+  MapPin,
+  Users,
+  Heart,
+  MessageCircle,
   Camera,
   CheckCircle2,
   Clock,
-  TrendingUp,
-  Flame,
-  Sparkles,
   Loader2
 } from 'lucide-react'
 
@@ -65,12 +61,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     checkInsCount: 0,
     friendsCount: 0,
     venuesVisited: 0
-  })
-  const [gamificationStats, setGamificationStats] = useState({
-    points: 0,
-    checkInStreak: { current: 0, longest: 0 },
-    loginStreak: { current: 0, longest: 0 },
-    badgesUnlocked: 0
   })
 
   const fetchPosts = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
@@ -171,16 +161,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     if (!token || !user) return
 
     try {
-      // Fetch gamification stats
-      try {
-        const gamificationResponse = await axios.get(`${API_URL}/gamification/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setGamificationStats(gamificationResponse.data)
-      } catch (error) {
-        console.error('Failed to fetch gamification stats:', error)
-      }
-
       // Fetch the current user's friend list
       const userResponse = await axios.get(`${API_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -269,24 +249,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
             <div className="text-center">
               <p className="text-lg font-semibold text-primary-500">{stats.venuesVisited}</p>
               <p className="text-xs text-primary-400/70 font-light">Venues</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Sparkles className="w-4 h-4 text-yellow-500" />
-                <p className="text-lg font-semibold text-yellow-500">{gamificationStats.points}</p>
-              </div>
-              <p className="text-xs text-primary-400/70 font-light">Points</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Flame className="w-4 h-4 text-orange-500" />
-                <p className="text-lg font-semibold text-orange-500">{gamificationStats.checkInStreak.current}</p>
-              </div>
-              <p className="text-xs text-primary-400/70 font-light">Streak</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary-500">{gamificationStats.badgesUnlocked}</p>
-              <p className="text-xs text-primary-400/70 font-light">Badges</p>
             </div>
           </div>
         </div>

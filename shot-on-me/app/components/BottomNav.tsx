@@ -14,13 +14,33 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ activeTab, setActiveTab, isSearchOpen = false }: BottomNavProps) {
+  const { token } = useAuth()
+  const API_URL = useApiUrl()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+
+  useEffect(() => {
+    if (!token || !API_URL) return
+    const fetchUnread = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/messages/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setUnreadMessages(res.data.unreadCount || 0)
+      } catch {
+        // Non-critical
+      }
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [token, API_URL])
 
   const tabs: Array<{ id: Tab | 'search'; icon: any; label: string; badge?: number; action?: () => void }> = [
     { id: 'home' as Tab, icon: Home, label: 'Home' },
     { id: 'feed' as Tab, icon: LayoutGrid, label: 'Feed' },
     { id: 'map' as Tab, icon: MapPin, label: 'Venues' },
     { id: 'wallet' as Tab, icon: Wallet, label: 'Wallet' },
-    { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages' },
+    { id: 'messages' as Tab, icon: MessageSquare, label: 'Messages', badge: unreadMessages },
     {
       id: 'search' as any, 
       icon: Search, 
