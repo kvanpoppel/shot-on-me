@@ -92,7 +92,7 @@ interface FeedTabProps {
   onViewProfile?: (userId: string) => void
   autoOpenPostForm?: boolean
   onPostFormOpened?: () => void
-  onSendDrink?: (userId: string) => void
+  onSendDrink?: (userId: string, name?: string) => void
 }
 
 export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPostFormOpened, onSendDrink }: FeedTabProps) {
