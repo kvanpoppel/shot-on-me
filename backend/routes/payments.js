@@ -393,6 +393,118 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
   }
 });
 
+// Send a round — one OTP, batch drink send to multiple friends
+router.post('/send-round', auth, paymentLimiter, async (req, res) => {
+  try {
+    const { recipientIds, amount, emoji = '🥂', message = '', otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: 'A verification code is required.', requiresVerification: true });
+    }
+    if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+      return res.status(400).json({ message: 'Select at least one friend for the round.' });
+    }
+    if (recipientIds.length > 20) {
+      return res.status(400).json({ message: 'Maximum 20 friends per round.' });
+    }
+
+    // Verify OTP once for the entire round
+    const senderForOtp = await User.findById(req.user.userId).select('paymentOtp');
+    if (!senderForOtp?.paymentOtp?.hash || !senderForOtp?.paymentOtp?.expiresAt) {
+      return res.status(400).json({ message: 'No active verification code. Request a new one.', requiresVerification: true });
+    }
+    if (new Date() > senderForOtp.paymentOtp.expiresAt) {
+      return res.status(400).json({ message: 'Verification code expired. Request a new one.', requiresVerification: true });
+    }
+    const otpValid = await bcrypt.compare(String(otp), senderForOtp.paymentOtp.hash);
+    if (!otpValid) {
+      return res.status(400).json({ message: 'Invalid verification code.' });
+    }
+    await User.findByIdAndUpdate(req.user.userId, { $unset: { paymentOtp: 1 } });
+
+    const cents = Math.round(parseFloat(amount) * 100);
+    if (!Number.isFinite(cents) || cents <= 0 || cents > 50000) {
+      return res.status(400).json({ message: 'Invalid amount.' });
+    }
+    const amountNum = cents / 100;
+    const totalAmount = amountNum * recipientIds.length;
+
+    const sender = await User.findById(req.user.userId);
+    if (!sender) return res.status(404).json({ message: 'User not found' });
+    if ((sender.wallet?.balance || 0) < totalAmount) {
+      return res.status(402).json({
+        message: `Insufficient balance. Need $${totalAmount.toFixed(2)} for ${recipientIds.length} drinks.`,
+        insufficientBalance: true,
+        required: totalAmount,
+        balance: sender.wallet?.balance || 0
+      });
+    }
+
+    // Deduct full round amount from sender atomically
+    const updatedSender = await User.findOneAndUpdate(
+      { _id: req.user.userId, 'wallet.balance': { $gte: totalAmount } },
+      { $inc: { 'wallet.balance': -totalAmount } },
+      { new: true }
+    );
+    if (!updatedSender) {
+      return res.status(402).json({ message: 'Insufficient balance.', insufficientBalance: true });
+    }
+
+    const results = [];
+    const FeedPost = require('../models/FeedPost');
+    const senderName = sender.firstName || sender.name?.split(' ')[0] || 'Someone';
+    const drinkEmoji = ['🍺', '🍻', '🥂', '🍹', '🥃'].includes(emoji) ? emoji : '🥂';
+
+    for (const recipientId of recipientIds) {
+      try {
+        const recipient = await User.findById(recipientId);
+        if (!recipient) { results.push({ recipientId, success: false, reason: 'Not found' }); continue; }
+        if (recipient._id.toString() === req.user.userId) { results.push({ recipientId, success: false, reason: 'Cannot send to yourself' }); continue; }
+
+        await User.findByIdAndUpdate(recipientId, { $inc: { 'wallet.balance': amountNum } });
+
+        const Payment = require('../models/Payment');
+        await Payment.create({
+          senderId: req.user.userId,
+          recipientId: recipient._id,
+          amount: amountNum,
+          type: 'drink',
+          status: 'completed',
+          description: message || `Round from ${senderName} ${drinkEmoji}`,
+        });
+
+        const recipientName = recipient.firstName || recipient.name?.split(' ')[0] || 'Friend';
+        await FeedPost.create({
+          author: req.user.userId,
+          postType: 'drink_sent',
+          content: `${senderName} sent ${recipientName} a drink ${drinkEmoji}`,
+          drinkInfo: {
+            recipientId: recipient._id,
+            recipientName,
+            amount: amountNum,
+            emoji: drinkEmoji,
+            message,
+          },
+        });
+
+        results.push({ recipientId, success: true, recipientName });
+      } catch (e) {
+        results.push({ recipientId, success: false, reason: e.message });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    res.json({
+      message: `Round sent to ${successCount} of ${recipientIds.length} friends!`,
+      results,
+      newBalance: (updatedSender.wallet?.balance || 0) - ((recipientIds.length - successCount) * amountNum),
+    });
+  } catch (error) {
+    console.error('Send round error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get payment history
 router.get('/history', auth, async (req, res) => {
   try {

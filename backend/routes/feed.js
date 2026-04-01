@@ -1013,4 +1013,37 @@ router.post('/:postId/comment/:commentId/report', auth, async (req, res) => {
   }
 });
 
+// GET /api/feed/activity-strip — last 30 events for the live activity ticker
+// Returns drink_sent + checkin posts from the past 12 hours, formatted as one-liners
+router.get('/activity-strip', auth, async (req, res) => {
+  try {
+    const since = new Date(Date.now() - 12 * 60 * 60 * 1000); // last 12h
+    const posts = await FeedPost.find({
+      postType: { $in: ['drink_sent', 'checkin'] },
+      createdAt: { $gte: since },
+    })
+      .populate('author', 'firstName name')
+      .populate('venueAuthor', 'name')
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+
+    const events = posts.map(p => {
+      const authorName = p.author?.firstName || p.author?.name?.split(' ')[0] || 'Someone';
+      if (p.postType === 'drink_sent' && p.drinkInfo?.recipientName) {
+        return `${authorName} sent ${p.drinkInfo.recipientName} a drink ${p.drinkInfo.emoji || '🍺'}`;
+      }
+      if (p.postType === 'checkin' && p.checkInInfo?.venueName) {
+        return `${authorName} checked in at ${p.checkInInfo.venueName} 📍`;
+      }
+      return null;
+    }).filter(Boolean);
+
+    res.json({ events });
+  } catch (err) {
+    console.error('Activity strip error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

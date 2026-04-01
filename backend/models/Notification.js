@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema({
   actor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null
   },
   type: {
     type: String,
@@ -38,7 +38,8 @@ const notificationSchema = new mongoose.Schema({
       'post_share',          // Someone shared your post
       'achievement',         // Achievement unlocked
       'birthday',            // Friend's birthday
-      'milestone'            // Milestone reached (e.g., 100 followers)
+      'milestone',           // Milestone reached (e.g., 100 followers)
+      'system'               // System-generated broadcast (e.g., Who's Out Tonight)
     ]
   },
   content: {

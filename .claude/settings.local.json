@@ -43,7 +43,24 @@
       "Bash(ls -1 /c/Users/kvanpoppel/shot-on-me-venue-portal/shot-on-me/app/components/*.tsx)",
       "Bash(xargs -I {} basename {} .tsx)",
       "Bash(ls /c/Users/kvanpoppel/shot-on-me-venue-portal/backend/routes/*.js)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(find C:Userskvanpoppelshot-on-me-venue-portalshot-on-meapppages -o -path */[*])",
+      "Bash(grep:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(/tmp/api_check.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(vercel:*)",
+      "Read(//c/Users/kvanpoppel/.local/share/com.vercel.cli/**)",
+      "Read(//c/Users/kvanpoppel/.vercel/**)",
+      "Read(//c/Users/kvanpoppel/AppData/Roaming/com.vercel.cli/**)",
+      "Read(//c/Users/kvanpoppel/AppData/Local/**)",
+      "Bash(for env:*)",
+      "Bash(do echo:*)",
+      "Bash(1 echo:*)",
+      "Bash(1 done:*)",
+      "Bash(npx cap:*)",
+      "Bash(winget install:*)",
+      "Bash(./gradlew assembleDebug)"
     ]
   }
 }

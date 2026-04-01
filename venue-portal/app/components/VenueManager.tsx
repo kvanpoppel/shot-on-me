@@ -219,6 +219,35 @@ export default function VenueManager() {
   }
 
   const [notifying, setNotifying] = useState(false)
+  const [posting, setPosting] = useState(false)
+  const [postSuccess, setPostSuccess] = useState(false)
+
+  const handlePostTonight = async () => {
+    if (!token || !venue || !tonight.trim()) return
+    setPosting(true)
+    setPostSuccess(false)
+    try {
+      // Save tonight text first
+      await axios.put(
+        `${getApiUrl()}/venues/${venue._id}`,
+        { tonight },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      // Post to feed + notify followers in one shot
+      const res = await axios.post(
+        `${getApiUrl()}/venues/${venue._id}/notify-followers`,
+        { message: tonight, type: 'venue_tonight' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setPostSuccess(true)
+      setTimeout(() => setPostSuccess(false), 3000)
+      if (res.data.sent === 0) return // no followers yet, still success
+    } catch {
+      alert('Failed to post. Try again.')
+    } finally {
+      setPosting(false)
+    }
+  }
 
   const handleNotifyFollowers = async (message: string, type: string = 'venue_update') => {
     if (!token || !venue || !message.trim()) return
@@ -923,14 +952,19 @@ export default function VenueManager() {
           {activeSection === 'tonight' && (
             <div className="space-y-3">
               <textarea value={tonight} onChange={e => setTonight(e.target.value)} placeholder="What's happening tonight? (e.g. Live DJ 9 PM, $3 shot specials)" rows={4} className="w-full bg-black border border-primary-500/30 rounded px-3 py-2 text-sm text-primary-300 placeholder-primary-500/30 focus:outline-none focus:border-primary-500 resize-none" />
+
+              {/* One-tap Post Tonight button */}
               <button
-                onClick={() => tonight.trim() && handleNotifyFollowers(tonight, 'venue_tonight')}
-                disabled={notifying || !tonight.trim()}
-                className="flex items-center gap-2 bg-primary-500/20 border border-primary-500/40 text-primary-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-500/30 disabled:opacity-40 transition-all"
+                onClick={handlePostTonight}
+                disabled={posting || !tonight.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-primary-500 text-black px-4 py-3 rounded-xl font-bold text-sm hover:bg-primary-400 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
               >
-                🔔 {notifying ? 'Notifying...' : 'Notify Followers'}
+                {postSuccess ? '✅ Posted!' : posting ? 'Posting...' : '🌙 Post Tonight'}
               </button>
-              <p className="text-xs text-primary-400/40">Sends a push notification to all your followers with tonight's info.</p>
+              {postSuccess && (
+                <p className="text-xs text-primary-400/60 text-center">Saved and posted to your followers' feeds.</p>
+              )}
+              <p className="text-xs text-primary-400/30 text-center">One tap saves + posts to all followers</p>
             </div>
           )}
 

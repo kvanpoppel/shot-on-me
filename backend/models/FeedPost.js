@@ -13,7 +13,7 @@ const feedPostSchema = new mongoose.Schema({
   },
   postType: {
     type: String,
-    enum: ['user', 'venue_update', 'venue_tonight', 'venue_special', 'drink_sent'],
+    enum: ['user', 'venue_update', 'venue_tonight', 'venue_special', 'drink_sent', 'checkin'],
     default: 'user'
   },
   content: {
@@ -37,6 +37,12 @@ const feedPostSchema = new mongoose.Schema({
     amount: { type: Number, default: 0 },
     emoji: { type: String, default: '🍺' },
     message: { type: String, default: '' }
+  },
+  checkInInfo: {
+    venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', default: null },
+    venueName: { type: String, default: '' },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null }
   },
   reactions: [{
     user: {

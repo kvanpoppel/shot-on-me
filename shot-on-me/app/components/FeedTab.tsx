@@ -12,6 +12,7 @@ import StoryEditor from './StoryEditor'
 import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
+import RoundModeSheet from './RoundModeSheet'
 
 import { useApiUrl } from '../utils/api'
 
@@ -39,6 +40,12 @@ interface FeedPost {
     amount?: number
     emoji?: string
     message?: string
+  }
+  checkInInfo?: {
+    venueId?: string
+    venueName?: string
+    latitude?: number
+    longitude?: number
   }
   content: string
   media: Array<{ type: string; url: string; thumbnail?: string }>
@@ -135,6 +142,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [sendDrinkTarget, setSendDrinkTarget] = useState<{ id: string; name: string; firstName: string; avatar?: string } | null>(null)
   const [showFriendInvite, setShowFriendInvite] = useState(false)
+  const [showRoundMode, setShowRoundMode] = useState(false)
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([])
@@ -1707,6 +1715,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 <Users className="w-4 h-4" />
               </button>
               <button
+                onClick={() => setShowRoundMode(true)}
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-2.5 py-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1 font-medium text-sm"
+                title="Round Mode — send a drink to everyone"
+              >
+                <span className="text-base leading-none">🥂</span>
+              </button>
+              <button
                 onClick={() => setShowFriendInvite(true)}
                 className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
                 title="Invite Friends"
@@ -1878,6 +1893,9 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           )}
         </div>
       )}
+
+      {/* Round Mode Sheet */}
+      <RoundModeSheet isOpen={showRoundMode} onClose={() => setShowRoundMode(false)} />
 
       {/* Friend Invite Modal */}
       {showFriendInvite && (
@@ -2362,6 +2380,17 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       <div className="text-right flex-shrink-0">
                         <p className="text-yellow-400 font-bold text-lg">${post.drinkInfo.amount?.toFixed(2)}</p>
                         <p className="text-yellow-400/50 text-[10px]">Cheers 🥂</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : post.postType === 'checkin' && post.checkInInfo ? (
+                  /* Check-in Card */
+                  <div className="mb-3 rounded-xl overflow-hidden border border-primary-500/20 bg-gradient-to-br from-primary-500/5 to-black/40">
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <span className="text-3xl leading-none">📍</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold text-sm">Checked in at</p>
+                        <p className="text-primary-400 font-bold text-base truncate">{post.checkInInfo.venueName}</p>
                       </div>
                     </div>
                   </div>

@@ -559,6 +559,11 @@ server.listen(PORT, HOST, () => {
   console.log('📢 Venue promotion notification checks initialized');
   console.log(`🤖 AI automation scheduler initialized (${aiSchedulerIntervalMinutes} min interval)`);
 
+  // Daily 8pm "Who's Out Tonight" notification job — polls every minute
+  const { runWhoIsOutTonight } = require('./jobs/whoIsOutTonight');
+  setInterval(() => { runWhoIsOutTonight().catch(e => console.error('WhoIsOutTonight error:', e.message)); }, 60 * 1000);
+  console.log('🌙 Who\'s Out Tonight job initialized (polls every minute for 8pm window)');
+
   // Keep-alive ping — prevents Render free tier from spinning down
   if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
     const axios = require('axios');

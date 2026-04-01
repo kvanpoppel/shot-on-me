@@ -90,6 +90,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
   const [publicVenues, setPublicVenues] = useState<any[]>([])
   const [venueCity, setVenueCity] = useState('All')
+  const [activityStrip, setActivityStrip] = useState<string[]>([])
   const [showFriendsMap, setShowFriendsMap] = useState(false) // Toggle between list and map view for friends
   const [showFindFriends, setShowFindFriends] = useState(false) // Control FindFriends modal
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -288,8 +289,19 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       fetchTrendingFriendActivity() // Friend activity aggregation
       fetchFeaturedVenues() // Featured venues for Spotlight
       fetchPublicVenues('All')
+      fetchActivityStrip()
     }
   }, [token])
+
+  const fetchActivityStrip = async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/feed/activity-strip`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setActivityStrip(res.data.events || [])
+    } catch {}
+  }
 
   // Fetch venue-specific events for "What's Happening Now"
   const fetchLiveActivity = async () => {
@@ -1144,6 +1156,23 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                   <ArrowRight className="w-4 h-4 text-primary-400/70 flex-shrink-0 mt-1" />
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Live Activity Strip */}
+      {!searchQuery && activityStrip.length > 0 && (
+        <div className="px-0 mb-4 overflow-hidden border-y border-primary-500/10 bg-primary-500/3">
+          <div
+            className="flex gap-0 py-2"
+            style={{ animation: 'marquee 30s linear infinite', whiteSpace: 'nowrap', width: 'max-content' }}
+          >
+            {[...activityStrip, ...activityStrip].map((event, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 px-5 text-xs text-primary-400/70 flex-shrink-0">
+                <span className="w-1 h-1 rounded-full bg-primary-500/50 flex-shrink-0" />
+                {event}
+              </span>
             ))}
           </div>
         </div>

@@ -231,3 +231,9 @@ input, textarea, select {
   animation: slide-down 0.3s ease-out;
 }
 
+/* Live activity strip marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+

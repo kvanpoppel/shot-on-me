@@ -383,6 +383,25 @@ router.post('/', auth, async (req, res) => {
       console.error('⚠️ Failed to auto-create story for check-in:', storyError);
     }
     
+    // Create a FeedPost for the check-in so it shows up in friends' feeds
+    try {
+      const FeedPost = require('../models/FeedPost');
+      const authorName = user.firstName || user.name?.split(' ')[0] || 'Someone';
+      await FeedPost.create({
+        author: req.user.userId,
+        postType: 'checkin',
+        content: `${authorName} checked in at ${venue.name} 📍`,
+        checkInInfo: {
+          venueId: venue._id,
+          venueName: venue.name,
+          latitude: latitude || null,
+          longitude: longitude || null,
+        },
+      });
+    } catch (feedErr) {
+      console.error('⚠️ Failed to create check-in feed post:', feedErr.message);
+    }
+
     // Notify friends about check-in
     if (user.friends && user.friends.length > 0) {
       const Notification = require('../models/Notification');
