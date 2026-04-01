@@ -254,11 +254,36 @@ const sendPaymentOTP = async (phone, otp) => {
   }
 };
 
+// General-purpose SMS sender
+const sendSMS = async (phone, body) => {
+  if (!twilioClient) {
+    twilioClient = initializeTwilio();
+    if (!twilioClient) return false;
+  }
+  if (!phone) return false;
+  // Format phone to E.164
+  let formatted = phone.replace(/\D/g, '');
+  if (formatted.length === 10) formatted = `+1${formatted}`;
+  else if (!formatted.startsWith('+')) formatted = `+${formatted}`;
+  try {
+    const result = await twilioClient.messages.create({
+      body,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: formatted
+    });
+    return !!result.sid;
+  } catch (error) {
+    console.error('Error sending SMS:', error.message);
+    return false;
+  }
+};
+
 module.exports = {
   sendPaymentSMS,
   sendPaymentOTP,
   sendFriendInviteSMS,
   sendMentionSMS,
+  sendSMS,
   isTwilioConfigured,
   initializeTwilio,
   reinitializeTwilio

@@ -35,6 +35,7 @@ const venueSchema = new mongoose.Schema({
     }
   },
   description: String,
+  coverPhoto: { type: String, default: '' },
   category: {
     type: String,
     enum: ['restaurant', 'bar', 'cafe', 'club', 'other'],

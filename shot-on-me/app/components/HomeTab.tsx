@@ -88,6 +88,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [liveActivity, setLiveActivity] = useState<any[]>([]) // Venue-specific events
   const [trendingFriendActivity, setTrendingFriendActivity] = useState<any[]>([]) // Aggregated friend activity
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
+  const [publicVenues, setPublicVenues] = useState<any[]>([])
+  const [venueCity, setVenueCity] = useState('All')
   const [showFriendsMap, setShowFriendsMap] = useState(false) // Toggle between list and map view for friends
   const [showFindFriends, setShowFindFriends] = useState(false) // Control FindFriends modal
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -285,6 +287,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       fetchLiveActivity() // Venue-specific events
       fetchTrendingFriendActivity() // Friend activity aggregation
       fetchFeaturedVenues() // Featured venues for Spotlight
+      fetchPublicVenues('All')
     }
   }, [token])
 
@@ -359,6 +362,16 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     } catch (error) {
       console.error('Failed to fetch featured venues:', error)
       setFeaturedVenues([])
+    }
+  }
+
+  const fetchPublicVenues = async (city: string) => {
+    try {
+      const params = city && city !== 'All' ? `?city=${encodeURIComponent(city)}` : ''
+      const response = await axios.get(`${API_URL}/venues/public${params}`)
+      setPublicVenues(response.data.venues || [])
+    } catch {
+      setPublicVenues([])
     }
   }
 
@@ -1133,6 +1146,101 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Discover Venues — photo-forward city guide grid */}
+      {!searchQuery && (
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2.5">
+              <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5">
+                <MapPin className="w-4 h-4 text-primary-500" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-primary-500 tracking-tight">Discover Venues</h2>
+                <p className="text-xs text-primary-400/70 font-normal">Partner venues near you</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
+            >
+              Map <ArrowRight className="w-4 h-4 ml-1" />
+            </button>
+          </div>
+
+          {/* City filter tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+            {['All', 'Indianapolis', 'Chicago', 'Louisville', 'Nashville', 'Detroit', 'Columbus'].map(city => (
+              <button
+                key={city}
+                onClick={() => { setVenueCity(city); fetchPublicVenues(city) }}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  venueCity === city
+                    ? 'bg-primary-500 text-black border-primary-500'
+                    : 'bg-black/40 text-primary-400/70 border-primary-500/20 hover:border-primary-500/40 hover:text-primary-400'
+                }`}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
+
+          {/* Venue grid */}
+          {publicVenues.length === 0 ? (
+            <div className="text-center py-8 text-primary-400/40">
+              <MapPin className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm font-medium">Coming Soon to {venueCity === 'All' ? 'your area' : venueCity}</p>
+              <p className="text-xs mt-1">We're expanding — check back soon.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {publicVenues.map((venue: any) => {
+                const photo = venue.coverPhoto || venue.branding?.logoUrl
+                const categoryLabel: Record<string, string> = {
+                  bar: 'Bar', restaurant: 'Restaurant', club: 'Nightclub', cafe: 'Coffee Shop', other: 'Lounge'
+                }
+                return (
+                  <div
+                    key={venue._id}
+                    onClick={() => {
+                      if (venue._id) localStorage.setItem('highlightVenue', venue._id)
+                      setActiveTab?.('map')
+                    }}
+                    className="cursor-pointer rounded-xl overflow-hidden border border-primary-500/15 bg-black/40 hover:border-primary-500/40 transition-all active:scale-95 group"
+                  >
+                    {/* Photo */}
+                    <div className="aspect-[4/3] bg-primary-500/5 relative overflow-hidden">
+                      {photo ? (
+                        <img
+                          src={photo}
+                          alt={venue.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary-500/5">
+                          <MapPin className="w-6 h-6 text-primary-500/30" />
+                        </div>
+                      )}
+                      {/* Type badge */}
+                      <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/70 text-primary-400 border border-primary-500/20 backdrop-blur-sm">
+                        {categoryLabel[venue.category] || 'Venue'}
+                      </span>
+                    </div>
+                    {/* Info */}
+                    <div className="p-2.5">
+                      <p className="text-white font-semibold text-xs truncate">{venue.name}</p>
+                      <p className="text-primary-400/50 text-[10px] mt-0.5 truncate">
+                        {venue.address?.city}{venue.address?.state ? `, ${venue.address.state}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

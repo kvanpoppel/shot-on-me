@@ -227,11 +227,114 @@ async function testEmailConnection() {
   }
 }
 
+async function sendVenueRequestAdminEmail(adminEmail, venueData) {
+  if (!transporter) return { success: false, error: 'Email service not configured' };
+  const mailOptions = {
+    from: `"Shot On Me" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
+    to: adminEmail,
+    subject: `New Venue Request: ${venueData.venueName}`,
+    html: `<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
+      <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:24px;border-radius:10px;margin-bottom:20px">
+        <h1 style="color:#D4AF37;margin:0;font-size:24px">Shot On Me</h1>
+        <p style="color:#999;margin:4px 0 0;font-size:14px">New Venue Request</p>
+      </div>
+      <div style="background:#f9f9f9;padding:24px;border-radius:10px;border:1px solid #e0e0e0">
+        <h2 style="margin-top:0">📍 ${venueData.venueName}</h2>
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:#666;width:130px">Type</td><td style="font-weight:bold">${venueData.venueType}</td></tr>
+          <tr><td style="padding:6px 0;color:#666">Location</td><td style="font-weight:bold">${venueData.city}, ${venueData.state}</td></tr>
+          <tr><td style="padding:6px 0;color:#666">Address</td><td>${venueData.address}</td></tr>
+          <tr><td style="padding:6px 0;color:#666">Owner</td><td>${venueData.ownerName}</td></tr>
+          <tr><td style="padding:6px 0;color:#666">Email</td><td>${venueData.email}</td></tr>
+          <tr><td style="padding:6px 0;color:#666">Phone</td><td>${venueData.phone}</td></tr>
+          ${venueData.website ? `<tr><td style="padding:6px 0;color:#666">Website</td><td>${venueData.website}</td></tr>` : ''}
+        </table>
+        ${venueData.description ? `<p style="margin-top:16px;font-size:13px;color:#555;font-style:italic">"${venueData.description}"</p>` : ''}
+        ${venueData.photoUrl ? `<img src="${venueData.photoUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:16px" />` : ''}
+        <div style="text-align:center;margin-top:24px">
+          <a href="https://owner.shotonme.com/dashboard/pending-venues" style="display:inline-block;background:#D4AF37;color:#000;padding:12px 28px;border-radius:6px;font-weight:bold;text-decoration:none">Review Request</a>
+        </div>
+      </div>
+    </body>`,
+    text: `New venue request: ${venueData.venueName} in ${venueData.city}, ${venueData.state}. Owner: ${venueData.ownerName} (${venueData.email}). Log in to owner.shotonme.com to review.`
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Failed to send venue request admin email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function sendVenueApprovalEmail(ownerEmail, ownerName, venueName) {
+  if (!transporter) return { success: false, error: 'Email service not configured' };
+  const mailOptions = {
+    from: `"Shot On Me" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
+    to: ownerEmail,
+    subject: `🎉 ${venueName} has been approved on Shot On Me!`,
+    html: `<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
+      <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:24px;border-radius:10px;margin-bottom:20px">
+        <h1 style="color:#D4AF37;margin:0;font-size:24px">Shot On Me</h1>
+      </div>
+      <div style="background:#f9f9f9;padding:24px;border-radius:10px;border:1px solid #e0e0e0">
+        <h2 style="margin-top:0">Congratulations, ${ownerName}! 🎉</h2>
+        <p>Your venue <strong>${venueName}</strong> has been approved and is now live on Shot On Me.</p>
+        <p>Sign in to your dashboard to manage promotions, view analytics, and connect with customers.</p>
+        <div style="text-align:center;margin:28px 0">
+          <a href="https://venue.shotonme.com" style="display:inline-block;background:#D4AF37;color:#000;padding:14px 32px;border-radius:6px;font-weight:bold;text-decoration:none;font-size:16px">Sign In to Your Dashboard</a>
+        </div>
+        <p style="color:#666;font-size:13px">Login email: <strong>${ownerEmail}</strong><br>Use "Forgot Password" if you need to set your password.</p>
+      </div>
+    </body>`,
+    text: `Congratulations! Your venue ${venueName} has been approved on Shot On Me. Sign in at venue.shotonme.com to get started.`
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Failed to send venue approval email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function sendVenueDenialEmail(ownerEmail, ownerName, venueName, note) {
+  if (!transporter) return { success: false, error: 'Email service not configured' };
+  const mailOptions = {
+    from: `"Shot On Me" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
+    to: ownerEmail,
+    subject: `Update on your Shot On Me venue request`,
+    html: `<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
+      <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:24px;border-radius:10px;margin-bottom:20px">
+        <h1 style="color:#D4AF37;margin:0;font-size:24px">Shot On Me</h1>
+      </div>
+      <div style="background:#f9f9f9;padding:24px;border-radius:10px;border:1px solid #e0e0e0">
+        <h2 style="margin-top:0">Hi ${ownerName},</h2>
+        <p>Thank you for your interest in bringing <strong>${venueName}</strong> to Shot On Me.</p>
+        <p>After reviewing your request, we're unable to approve your venue at this time.</p>
+        ${note ? `<div style="background:#fff3cd;border:1px solid #ffc107;padding:14px;border-radius:6px;margin:16px 0"><p style="margin:0;font-size:14px;color:#856404"><strong>Note:</strong> ${note}</p></div>` : ''}
+        <p style="color:#666;font-size:13px">Questions? Email <a href="mailto:shotonme@yahoo.com">shotonme@yahoo.com</a></p>
+      </div>
+    </body>`,
+    text: `Hi ${ownerName}, we were unable to approve your venue ${venueName} at this time.${note ? ` Note: ${note}` : ''} Questions? Email shotonme@yahoo.com.`
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Failed to send venue denial email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendInviteEmail,
   testEmailConnection,
-  initializeEmailService
+  initializeEmailService,
+  sendVenueRequestAdminEmail,
+  sendVenueApprovalEmail,
+  sendVenueDenialEmail
 };
 
 

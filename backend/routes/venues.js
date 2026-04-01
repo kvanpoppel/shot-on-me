@@ -42,6 +42,26 @@ router.get('/slug/:slug/public', async (req, res) => {
   }
 });
 
+// GET /api/venues/public — public venue discovery for consumer app
+router.get('/public', async (req, res) => {
+  try {
+    const { city, limit = 50 } = req.query;
+    const filter = { isActive: true };
+    if (city && city !== 'All') {
+      filter['address.city'] = { $regex: new RegExp(`^${city}$`, 'i') };
+    }
+    const venues = await Venue.find(filter)
+      .select('name category address.city address.state coverPhoto branding.logoUrl description')
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .limit(parseInt(limit))
+      .lean();
+    res.json({ venues });
+  } catch (error) {
+    console.error('Public venues error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /api/venues
 // - For venue owners: only their own venues
 // - For regular users: all active venues

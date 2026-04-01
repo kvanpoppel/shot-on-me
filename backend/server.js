@@ -385,6 +385,7 @@ app.use('/api/loyalty-partnerships', require('./routes/loyaltyPartnerships'));
 
 const tapAndPayRouter = require('./routes/tap-and-pay');
 app.use('/api/owner', require('./routes/owner'));
+app.use('/api/venue-requests', require('./routes/venue-requests'));
 tapAndPayRouter.setIO(io);
 app.use('/api/tap-and-pay', tapAndPayRouter);
 
