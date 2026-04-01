@@ -123,9 +123,12 @@ router.put('/:id/approve', auth, isAdmin, async (req, res) => {
     const firstName = nameParts[0] || venueReq.ownerName;
     const lastName = nameParts.slice(1).join(' ') || '';
 
+    const fullName = `${firstName} ${lastName}`.trim();
+
     let ownerUser = await User.findOne({ email: venueReq.email.toLowerCase() });
     if (!ownerUser) {
       ownerUser = await User.create({
+        name: fullName,
         firstName,
         lastName,
         email: venueReq.email.toLowerCase(),

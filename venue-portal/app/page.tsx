@@ -138,7 +138,7 @@ function HomeContent() {
                   >
                     ← Back
                   </button>
-                  <LoginForm initialMode="login" />
+                  <LoginForm initialMode="login" hideRegister={true} />
                 </>
               )}
               {mode === 'request' && (

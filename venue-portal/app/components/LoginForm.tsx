@@ -14,9 +14,10 @@ type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
 interface LoginFormProps {
   initialMode: Mode
+  hideRegister?: boolean
 }
 
-export default function LoginForm({ initialMode }: LoginFormProps) {
+export default function LoginForm({ initialMode, hideRegister = false }: LoginFormProps) {
   const [mode, setMode] = useState<Mode>(initialMode)
 
   // Login state
@@ -218,17 +219,19 @@ export default function LoginForm({ initialMode }: LoginFormProps) {
         >
           Sign In
         </button>
-        <button
-          type="button"
-          onClick={() => setMode('register')}
-          className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
-            !isLogin
-              ? 'bg-primary-500 text-black'
-              : 'text-primary-400 hover:text-primary-300'
-          }`}
-        >
-          Create Account
-        </button>
+        {!hideRegister && (
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+              !isLogin
+                ? 'bg-primary-500 text-black'
+                : 'text-primary-400 hover:text-primary-300'
+            }`}
+          >
+            Create Account
+          </button>
+        )}
       </div>
 
       {/* Error Message - Enhanced with ARIA */}
