@@ -150,7 +150,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white" style={{ background: '#080604' }}>
 
       {/* ── Floating drink bubbles ── */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
@@ -168,7 +168,7 @@ export default function LoginScreen() {
               animationName: 'bubble-rise',
               animationDuration: `${b.duration}s`,
               animationDelay: `${b.delay}s`,
-              animationTimingFunction: 'ease-in',
+              animationTimingFunction: 'linear',
               animationIterationCount: 'infinite',
               animationFillMode: 'both',
             }}
@@ -207,7 +207,7 @@ export default function LoginScreen() {
             Shot On Me
           </h1>
           <div className="h-px w-20 bg-gradient-to-r from-transparent via-primary-500/50 to-transparent mx-auto mb-4" />
-          <p className="text-xl font-bold text-white leading-snug mb-1">
+          <p className="text-xl font-bold text-white/82 leading-snug mb-1">
             Buy someone a drink.<br />
             <span className="text-primary-400">Make a night to remember.</span>
           </p>
@@ -220,7 +220,7 @@ export default function LoginScreen() {
               <MapPin className="w-3.5 h-3.5 text-primary-500" />
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-none">Discover Venues</p>
+              <p className="text-white/85 font-bold text-sm leading-none">Discover Venues</p>
               <p className="text-white/38 text-[11px] mt-0.5">Works at any tap &amp; pay venue</p>
             </div>
           </div>
@@ -300,7 +300,7 @@ export default function LoginScreen() {
                         {CATEGORY_LABEL[venue.category] || 'Venue'}
                       </span>
                       <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5">
-                        <p className="text-white font-bold text-xs leading-tight truncate">{venue.name}</p>
+                        <p className="text-white/88 font-bold text-xs leading-tight truncate">{venue.name}</p>
                         <p className="text-white/48 text-[10px] mt-0.5 truncate">
                           {venue.address?.city}{venue.address?.state ? `, ${venue.address.state}` : ''}
                         </p>
@@ -317,7 +317,7 @@ export default function LoginScreen() {
         <div className="mb-10 space-y-5">
           {FEATURES.map((f, i) => (
             <div key={i} className="group cursor-default">
-              <p className="text-white/72 font-semibold text-sm mb-0.5 leading-snug group-hover:text-white transition-colors duration-200">
+              <p className="text-white/78 font-semibold text-sm mb-0.5 leading-snug group-hover:text-white/90 transition-colors duration-200">
                 {f.title}
               </p>
               <p className="text-white/30 text-xs leading-relaxed">{f.desc}</p>
@@ -358,7 +358,7 @@ export default function LoginScreen() {
             {/* Sheet header */}
             <div className="flex items-center justify-between px-5 pb-4 flex-shrink-0">
               <div>
-                <h2 className="text-white font-bold text-lg leading-none">
+                <h2 className="text-white/88 font-bold text-lg leading-none">
                   {isLogin ? 'Welcome back' : 'Create your account'}
                 </h2>
                 <p className="text-white/38 text-xs mt-1">

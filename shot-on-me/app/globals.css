@@ -246,10 +246,10 @@ input, textarea, select {
 /* Floating drink bubbles */
 @keyframes bubble-rise {
   0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-  6%   { opacity: 1; }
-  48%  { transform: translateY(-42vh) translateX(7px) scale(0.88); }
-  94%  { opacity: 0.5; }
-  100% { transform: translateY(-105vh) translateX(-5px) scale(0.65); opacity: 0; }
+  4%   { opacity: 0.9; }
+  50%  { transform: translateY(-50vh) translateX(6px) scale(0.9); opacity: 0.75; }
+  96%  { opacity: 0.3; }
+  100% { transform: translateY(-108vh) translateX(-4px) scale(0.65); opacity: 0; }
 }
 
 /* Subtle logo pulse glow */
