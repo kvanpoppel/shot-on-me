@@ -349,7 +349,7 @@ export default function LoginScreen() {
           />
 
           {/* Sheet */}
-          <div className="relative bg-zinc-950 border-t border-primary-500/25 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col">
+          <div className="relative bg-zinc-950 border-t border-primary-500/25 rounded-t-3xl shadow-2xl">
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-white/15" />
@@ -374,7 +374,7 @@ export default function LoginScreen() {
             </div>
 
             {/* Form */}
-            <div className="overflow-y-auto overscroll-contain px-5 pb-6">
+            <div className="overflow-y-auto overscroll-contain px-5 pb-6 max-h-[340px]">
               <form onSubmit={handleSubmit} className="space-y-3">
                 {!isLogin && (
                   <>
