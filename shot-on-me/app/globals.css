@@ -6,7 +6,7 @@
 
 :root {
   --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
-  --background-rgb: 0, 0, 0; /* Black background */
+  --background-rgb: 8, 6, 4; /* Warm-black — removes cold harshness */
   --primary-gold: #B8945A; /* Soft, mature gold */
   --primary-gold-light: #C9A875; /* Lighter gold for accents */
   --primary-gold-dark: #9A7A4A; /* Darker gold for hover states */
@@ -43,6 +43,12 @@ input[type="radio"] {
 /* Override any browser default yellow colors */
 * {
   --tw-accent-color: #B8945A;
+}
+
+/* Soften pure-white text throughout the app — reduces harsh contrast on dark bg.
+   Opacity variants (text-white/50 etc.) are unaffected; this targets only text-white. */
+.text-white {
+  color: rgba(255, 248, 240, 0.88) !important;
 }
 
 /* Script font for logo only - keep it elegant */

@@ -8,6 +8,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Warm-black: barely perceptible warmth, prevents stark cold contrast
+        black: '#080604',
         primary: {
           50: '#faf8f3',
           100: '#f5f0e6',

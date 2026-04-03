@@ -150,7 +150,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen text-white" style={{ background: '#080604' }}>
+    <div className="min-h-screen bg-black text-white">
 
       {/* ── Floating drink bubbles ── */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
