@@ -2258,17 +2258,17 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             const uniqueKey = post._id ? `${post._id}-${index}` : `post-${index}`
 
             return (
-              <div key={uniqueKey} className={`bg-gradient-to-b from-black via-black to-black/80 border rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg ${isVenuePost ? 'border-yellow-500/30' : 'border-primary-500/20'}`}>
+              <div key={uniqueKey} className={`bg-gradient-to-b from-black via-black to-black/80 border rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg ${isVenuePost ? 'border-primary-500/30' : 'border-primary-500/20'}`}>
                 {/* Author Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     {isVenuePost ? (
-                      <div className="w-12 h-12 border-2 border-yellow-500/50 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="w-12 h-12 border-2 border-primary-500/50 rounded-full overflow-hidden flex-shrink-0">
                         {post.venueAuthor?.logo ? (
                           <img src={post.venueAuthor.logo} alt={post.venueAuthor.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-yellow-500/10">
-                            <span className="text-yellow-400 font-semibold">{post.venueAuthor?.name?.[0] || 'V'}</span>
+                          <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                            <span className="text-primary-400 font-semibold">{post.venueAuthor?.name?.[0] || 'V'}</span>
                           </div>
                         )}
                       </div>
@@ -2287,7 +2287,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <p
-                          className={`font-semibold tracking-tight ${isVenuePost ? 'text-yellow-400 cursor-default' : 'text-primary-500 cursor-pointer hover:text-primary-400'} transition-all`}
+                          className={`font-semibold tracking-tight ${isVenuePost ? 'text-primary-400 cursor-default' : 'text-primary-500 cursor-pointer hover:text-primary-400'} transition-all`}
                           onClick={() => {
                             if (!isVenuePost && authorId && authorId !== user?.id && authorId !== (user as any)?._id) {
                               onViewProfile?.(authorId)
@@ -2297,7 +2297,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                           {isVenuePost ? post.venueAuthor?.name : `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim()}
                         </p>
                         {isVenuePost && (
-                          <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                          <span className="text-xs bg-primary-500/10 border border-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full font-medium">
                             Venue
                           </span>
                         )}
@@ -2354,7 +2354,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 {/* Venue post type label */}
                 {isVenuePost && post.postType && post.postType !== 'user' && (
                   <div className="mb-2">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-primary-500/10 border-primary-500/30 text-primary-400">
                       {post.postType === 'venue_tonight' ? '🌙 Tonight' : post.postType === 'venue_special' ? '⭐ Special' : '📢 Update'}
                     </span>
                   </div>
@@ -2362,10 +2362,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
                 {/* Drink Receipt Card */}
                 {post.postType === 'drink_sent' && post.drinkInfo ? (
-                  <div className="mb-3 rounded-xl overflow-hidden border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-black/40">
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-yellow-500/10 bg-yellow-500/5">
-                      <span className="text-yellow-400/70 text-[10px] font-bold uppercase tracking-widest">Drink Sent</span>
-                      <span className="text-yellow-400/50 text-[10px]">Shot On Me</span>
+                  <div className="mb-3 rounded-xl overflow-hidden border border-primary-500/20 bg-gradient-to-br from-primary-500/5 to-black/40">
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-primary-500/10 bg-primary-500/5">
+                      <span className="text-primary-400/70 text-[10px] font-bold uppercase tracking-widest">Drink Sent</span>
+                      <span className="text-primary-400/50 text-[10px]">Shot On Me</span>
                     </div>
                     <div className="px-4 py-3 flex items-center gap-4">
                       <span className="text-4xl leading-none">{post.drinkInfo.emoji || '🍺'}</span>
@@ -2378,8 +2378,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                         )}
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-yellow-400 font-bold text-lg">${post.drinkInfo.amount?.toFixed(2)}</p>
-                        <p className="text-yellow-400/50 text-[10px]">Cheers 🥂</p>
+                        <p className="text-primary-400 font-bold text-lg">${post.drinkInfo.amount?.toFixed(2)}</p>
+                        <p className="text-primary-400/50 text-[10px]">Cheers 🥂</p>
                       </div>
                     </div>
                   </div>
@@ -2536,7 +2536,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                           firstName: post.author?.firstName || '',
                           avatar: post.author?.profilePicture,
                         })}
-                        className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
+                        className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors border border-primary-500/20"
                       >
                         <span className="text-base leading-none">🍺</span>
                         <span className="text-xs font-semibold">Send Drink</span>
@@ -3077,7 +3077,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     {selectedStoryGroup.author.firstName} {selectedStoryGroup.author.lastName}
                   </div>
                   {selectedStoryGroup.stories[currentStoryIndex].venue && (
-                    <div className="text-yellow-400 text-sm">
+                    <div className="text-primary-400 text-sm">
                       📍 {selectedStoryGroup.stories[currentStoryIndex].venue.name}
                     </div>
                   )}

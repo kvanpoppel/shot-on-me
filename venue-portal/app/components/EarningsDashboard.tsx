@@ -117,24 +117,6 @@ export default function EarningsDashboard() {
     )
   }
 
-  if (!data.connected) {
-    return (
-      <div className="text-center py-12">
-        <DollarSign className="w-16 h-16 mx-auto mb-4 text-primary-500/50" />
-        <h3 className="text-xl font-semibold text-primary-500 mb-2">Connect Stripe to Receive Payments</h3>
-        <p className="text-primary-400 mb-6">
-          Connect your Stripe account to start receiving payments from customers
-        </p>
-        <a
-          href="/dashboard/settings"
-          className="inline-block px-6 py-3 bg-primary-500 text-black rounded-lg font-semibold hover:bg-primary-400 transition-all"
-        >
-          Connect Stripe Account
-        </a>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       {/* Earnings Summary */}
