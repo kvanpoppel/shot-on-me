@@ -131,6 +131,14 @@ const userSchema = new mongoose.Schema({
     expirationWarningHours: { type: Number, default: 24 }, // Hours before expiration to warn (default 24h)
     launchWarningHours: { type: Number, default: 1 } // Hours before launch to notify (default 1h)
   },
+  privacySettings: {
+    profileVisibility:    { type: String, enum: ['everyone', 'friends', 'private'], default: 'everyone' },
+    showCheckInsOnFeed:   { type: Boolean, default: true },
+    showActivityOnFeed:   { type: Boolean, default: true },  // drink sends/receives
+    showInVenueActivity:  { type: Boolean, default: true },  // appear in venue live/check-in list
+    shareNameWithVenue:   { type: Boolean, default: false }, // first name vs Guest code for venue portal
+    showFriendsList:      { type: Boolean, default: true },
+  },
   favoritePosts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'FeedPost'

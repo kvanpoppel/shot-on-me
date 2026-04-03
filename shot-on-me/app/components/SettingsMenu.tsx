@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { X, Camera, CreditCard, Settings, User, Shield, Trash2, Check, Plus } from 'lucide-react'
+import { X, Camera, CreditCard, Settings, User, Shield, Trash2, Check, Plus, Lock, ChevronRight } from 'lucide-react'
 import SecureCardElement from './CardElement'
 import PermissionsManager from './PermissionsManager'
 import BackButton from './BackButton'
@@ -40,6 +40,15 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   const [saving, setSaving] = useState(false)
   const [locationVisible, setLocationVisible] = useState((user as any)?.location?.isVisible ?? true)
   const [aiPersonalizationEnabled, setAiPersonalizationEnabled] = useState((user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true)
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false)
+  const [privacy, setPrivacy] = useState({
+    profileVisibility:   ((user as any)?.privacySettings?.profileVisibility   ?? 'everyone') as 'everyone' | 'friends' | 'private',
+    showCheckInsOnFeed:  ((user as any)?.privacySettings?.showCheckInsOnFeed  ?? true)  as boolean,
+    showActivityOnFeed:  ((user as any)?.privacySettings?.showActivityOnFeed  ?? true)  as boolean,
+    showInVenueActivity: ((user as any)?.privacySettings?.showInVenueActivity ?? true)  as boolean,
+    shareNameWithVenue:  ((user as any)?.privacySettings?.shareNameWithVenue  ?? false) as boolean,
+    showFriendsList:     ((user as any)?.privacySettings?.showFriendsList     ?? true)  as boolean,
+  })
   const [stripeAvailable, setStripeAvailable] = useState<boolean>(false)
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null)
   
@@ -51,8 +60,32 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       setLastName(user.lastName || '')
       setLocationVisible((user as any).location?.isVisible ?? true)
       setAiPersonalizationEnabled((user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true)
+      const ps = (user as any)?.privacySettings || {}
+      setPrivacy({
+        profileVisibility:   ps.profileVisibility   ?? 'everyone',
+        showCheckInsOnFeed:  ps.showCheckInsOnFeed   ?? true,
+        showActivityOnFeed:  ps.showActivityOnFeed   ?? true,
+        showInVenueActivity: ps.showInVenueActivity  ?? true,
+        shareNameWithVenue:  ps.shareNameWithVenue   ?? false,
+        showFriendsList:     ps.showFriendsList      ?? true,
+      })
     }
   }, [user])
+
+  const savePrivacy = async (patch: Partial<typeof privacy>) => {
+    if (!token) return
+    const next = { ...privacy, ...patch }
+    setPrivacy(next)
+    try {
+      await axios.put(
+        `${API_URL}/users/me/privacy-settings`,
+        { privacySettings: next },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    } catch {
+      setPrivacy(privacy) // revert on error
+    }
+  }
 
   // Fetch payment methods when settings menu opens or payment methods modal opens
   useEffect(() => {
@@ -626,6 +659,21 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
               )}
             </button>
 
+            {/* Privacy Settings */}
+            <button
+              onClick={() => setShowPrivacySettings(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left text-primary-400/80 hover:bg-primary-500/10 hover:text-primary-500 rounded-lg transition-all font-light"
+            >
+              <div className="flex items-center space-x-3">
+                <Lock className="w-5 h-5" />
+                <div>
+                  <span className="block">Privacy</span>
+                  <span className="text-xs text-primary-400/60 font-light">Profile, activity & venue visibility</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-primary-500/40" />
+            </button>
+
             {/* Device Permissions - Browser/OS Level */}
             <button
               onClick={() => setShowPermissions(true)}
@@ -841,9 +889,102 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         document.body
       ) : null}
 
+      {/* Privacy Settings Panel */}
+      {showPrivacySettings && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-end justify-center sm:items-center">
+          <div className="bg-black/95 border border-primary-500/15 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[88vh] flex flex-col backdrop-blur-md">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/10 flex-shrink-0">
+              <button onClick={() => setShowPrivacySettings(false)} className="text-primary-400/60 hover:text-primary-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-base font-semibold text-primary-500 tracking-tight">Privacy</h3>
+              <div className="w-5" />
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-8 pt-4 space-y-6">
+
+              {/* Profile Visibility */}
+              <div>
+                <p className="text-xs font-semibold text-primary-500/70 uppercase tracking-wider mb-1">Profile Visibility</p>
+                <p className="text-xs text-primary-400/50 mb-3">Who can view your full profile and posts</p>
+                <div className="flex gap-2">
+                  {(['everyone', 'friends', 'private'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => savePrivacy({ profileVisibility: opt })}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                        privacy.profileVisibility === opt
+                          ? 'bg-primary-500 text-black border-primary-500'
+                          : 'bg-black/40 text-primary-400/60 border-primary-500/20 hover:border-primary-500/40'
+                      }`}
+                    >
+                      {opt === 'everyone' ? 'Everyone' : opt === 'friends' ? 'Friends' : 'Only Me'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity */}
+              <div>
+                <p className="text-xs font-semibold text-primary-500/70 uppercase tracking-wider mb-3">Activity Feed</p>
+                <div className="space-y-2">
+                  {[
+                    { key: 'showCheckInsOnFeed' as const,  label: 'Show check-ins on feed',      desc: 'Friends can see where you check in' },
+                    { key: 'showActivityOnFeed' as const,  label: 'Show drink activity on feed',  desc: 'Drinks sent & received appear in feed' },
+                    { key: 'showFriendsList' as const,     label: 'Show my friends list',         desc: 'Others can see who you\'re friends with' },
+                  ].map(({ key, label, desc }) => (
+                    <label key={key} className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg cursor-pointer hover:bg-black/50 transition-all">
+                      <div>
+                        <p className="text-sm font-medium text-primary-500">{label}</p>
+                        <p className="text-xs text-primary-400/55 font-light">{desc}</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={privacy[key]}
+                        onChange={(e) => savePrivacy({ [key]: e.target.checked })}
+                        className="w-5 h-5 rounded border-primary-500/30 bg-black/40"
+                        style={{ accentColor: '#B8945A' }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Venues */}
+              <div>
+                <p className="text-xs font-semibold text-primary-500/70 uppercase tracking-wider mb-3">Venues</p>
+                <div className="space-y-2">
+                  {[
+                    { key: 'showInVenueActivity' as const, label: 'Appear in venue activity',  desc: 'Venues can see you checked in (as anonymous code)' },
+                    { key: 'shareNameWithVenue'  as const, label: 'Share name with venues',    desc: 'Show your first name instead of a guest code' },
+                  ].map(({ key, label, desc }) => (
+                    <label key={key} className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg cursor-pointer hover:bg-black/50 transition-all">
+                      <div>
+                        <p className="text-sm font-medium text-primary-500">{label}</p>
+                        <p className="text-xs text-primary-400/55 font-light">{desc}</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={privacy[key]}
+                        onChange={(e) => savePrivacy({ [key]: e.target.checked })}
+                        className="w-5 h-5 rounded border-primary-500/30 bg-black/40"
+                        style={{ accentColor: '#B8945A' }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Permissions Manager */}
       {showPermissions && (
-        <PermissionsManager 
+        <PermissionsManager
           showOnMount={false}
           onComplete={() => setShowPermissions(false)}
         />

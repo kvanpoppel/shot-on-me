@@ -246,6 +246,28 @@ router.put('/me', auth, async (req, res) => {
   }
 });
 
+// Update privacy settings
+router.put('/me/privacy-settings', auth, async (req, res) => {
+  try {
+    const { privacySettings } = req.body;
+    if (!privacySettings) return res.status(400).json({ message: 'privacySettings required' });
+
+    const allowed = ['profileVisibility', 'showCheckInsOnFeed', 'showActivityOnFeed', 'showInVenueActivity', 'shareNameWithVenue', 'showFriendsList'];
+    const update = {};
+    for (const key of allowed) {
+      if (privacySettings[key] !== undefined) update[`privacySettings.${key}`] = privacySettings[key];
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.userId, { $set: update }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json({ privacySettings: user.privacySettings });
+  } catch (error) {
+    console.error('Privacy settings update error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update notification preferences
 router.put('/me/notification-preferences', auth, async (req, res) => {
   try {
