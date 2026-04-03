@@ -180,8 +180,8 @@ export default function LoginScreen() {
         <div className="absolute bottom-1/3 -right-20 w-64 h-64 rounded-full bg-primary-500/5 blur-[80px]" />
       </div>
 
-      {/* ── Top-left auth buttons ── */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+      {/* ── Top-right auth buttons ── */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <button
           onClick={() => openSheet(true)}
           className="text-white/55 text-xs font-semibold hover:text-white transition-colors px-2 py-1.5"
@@ -221,7 +221,7 @@ export default function LoginScreen() {
             </div>
             <div>
               <p className="text-white font-bold text-sm leading-none">Discover Venues</p>
-              <p className="text-white/38 text-[11px] mt-0.5">Partner venues near you</p>
+              <p className="text-white/38 text-[11px] mt-0.5">Works at any tap &amp; pay venue</p>
             </div>
           </div>
 
@@ -327,7 +327,7 @@ export default function LoginScreen() {
 
         {/* ── Footer ── */}
         <p className="text-center text-xs text-white/18 pb-10 leading-relaxed">
-          Available in IN · IL · KY · TN · MI · OH
+          Available at any tap &amp; pay venue in IN · IL · KY · TN · MI · OH
           {venuePortalLoginUrl && (
             <>
               {' · '}
