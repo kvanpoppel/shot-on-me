@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
-import { Eye, EyeOff, MapPin, X, ArrowRight, Zap, Star, Building2, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -31,23 +31,30 @@ const CATEGORY_LABEL: Record<string, string> = {
   bar: 'Bar', restaurant: 'Restaurant', club: 'Nightclub', cafe: 'Coffee Shop', other: 'Lounge',
 }
 
-// Bubble positions + timing — predetermined so SSR is stable
+// Negative delays so every bubble is already mid-rise on page load — truly continuous
 const BUBBLES = [
-  { size: 5,  left: 7,  delay: 0,   duration: 8  },
-  { size: 8,  left: 14, delay: 2.1, duration: 11 },
-  { size: 4,  left: 23, delay: 0.8, duration: 7  },
-  { size: 11, left: 31, delay: 3.5, duration: 13 },
-  { size: 5,  left: 42, delay: 1.2, duration: 9  },
-  { size: 7,  left: 50, delay: 4.8, duration: 10 },
-  { size: 4,  left: 58, delay: 0.5, duration: 8  },
-  { size: 9,  left: 66, delay: 2.8, duration: 12 },
-  { size: 6,  left: 75, delay: 1.6, duration: 9  },
-  { size: 4,  left: 82, delay: 3.2, duration: 7  },
-  { size: 12, left: 88, delay: 0.3, duration: 14 },
-  { size: 5,  left: 93, delay: 4.0, duration: 8  },
-  { size: 7,  left: 35, delay: 5.5, duration: 11 },
-  { size: 4,  left: 55, delay: 1.9, duration: 9  },
-  { size: 6,  left: 20, delay: 6.2, duration: 10 },
+  { size: 5,  left: 4,  delay: -2,    duration: 8  },
+  { size: 8,  left: 9,  delay: -5.5,  duration: 11 },
+  { size: 4,  left: 15, delay: -1,    duration: 7  },
+  { size: 11, left: 21, delay: -8,    duration: 13 },
+  { size: 5,  left: 28, delay: -3.5,  duration: 9  },
+  { size: 6,  left: 34, delay: -6,    duration: 10 },
+  { size: 9,  left: 40, delay: -0.5,  duration: 12 },
+  { size: 4,  left: 46, delay: -4,    duration: 7  },
+  { size: 7,  left: 52, delay: -7,    duration: 10 },
+  { size: 5,  left: 58, delay: -2.5,  duration: 8  },
+  { size: 10, left: 63, delay: -9,    duration: 13 },
+  { size: 4,  left: 69, delay: -1.5,  duration: 7  },
+  { size: 8,  left: 74, delay: -5,    duration: 11 },
+  { size: 6,  left: 79, delay: -3,    duration: 9  },
+  { size: 12, left: 84, delay: -7.5,  duration: 14 },
+  { size: 5,  left: 89, delay: -0.8,  duration: 8  },
+  { size: 7,  left: 93, delay: -4.5,  duration: 10 },
+  { size: 4,  left: 11, delay: -6.5,  duration: 8  },
+  { size: 6,  left: 37, delay: -10,   duration: 12 },
+  { size: 9,  left: 55, delay: -3.8,  duration: 11 },
+  { size: 5,  left: 72, delay: -8.5,  duration: 9  },
+  { size: 7,  left: 96, delay: -2.2,  duration: 10 },
 ]
 
 export default function LoginScreen() {
@@ -143,7 +150,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24">
+    <div className="min-h-screen bg-black text-white">
 
       {/* ── Floating drink bubbles ── */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
@@ -156,8 +163,8 @@ export default function LoginScreen() {
               height: b.size,
               left: `${b.left}%`,
               bottom: '-20px',
-              background: 'radial-gradient(circle at 35% 35%, rgba(184,148,90,0.4), rgba(184,148,90,0.06))',
-              border: '1px solid rgba(184,148,90,0.22)',
+              background: 'radial-gradient(circle at 35% 35%, rgba(184,148,90,0.45), rgba(184,148,90,0.06))',
+              border: '1px solid rgba(184,148,90,0.25)',
               animationName: 'bubble-rise',
               animationDuration: `${b.duration}s`,
               animationDelay: `${b.delay}s`,
@@ -173,10 +180,26 @@ export default function LoginScreen() {
         <div className="absolute bottom-1/3 -right-20 w-64 h-64 rounded-full bg-primary-500/5 blur-[80px]" />
       </div>
 
+      {/* ── Top-left auth buttons ── */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+        <button
+          onClick={() => openSheet(true)}
+          className="text-white/55 text-xs font-semibold hover:text-white transition-colors px-2 py-1.5"
+        >
+          Sign In
+        </button>
+        <button
+          onClick={() => openSheet(false)}
+          className="bg-primary-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-primary-400 active:scale-[0.97] transition-all shadow-md shadow-primary-500/25 flex items-center gap-1"
+        >
+          Join Free <ArrowRight className="w-3 h-3" />
+        </button>
+      </div>
+
       <div className="relative z-10 max-w-lg mx-auto px-5">
 
         {/* ── Hero ── */}
-        <div className="pt-12 pb-8 text-center">
+        <div className="pt-20 pb-6 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-primary-500/55 font-semibold mb-4">
             The Nightlife Social App
           </p>
@@ -184,55 +207,14 @@ export default function LoginScreen() {
             Shot On Me
           </h1>
           <div className="h-px w-20 bg-gradient-to-r from-transparent via-primary-500/50 to-transparent mx-auto mb-4" />
-          <p className="text-xl font-bold text-white leading-snug mb-2">
+          <p className="text-xl font-bold text-white leading-snug mb-1">
             Buy someone a drink.<br />
             <span className="text-primary-400">Make a night to remember.</span>
           </p>
-          <p className="text-sm text-white/45 max-w-xs mx-auto leading-relaxed mb-5">
-            Send drinks, discover venues, and connect with the people around you — all in one tap.
-          </p>
-
-          {/* Social proof pills */}
-          <div className="flex items-center justify-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 text-xs text-primary-400/70 bg-primary-500/8 border border-primary-500/15 rounded-full px-3 py-1.5">
-              <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
-              Free to join
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-primary-400/70 bg-primary-500/8 border border-primary-500/15 rounded-full px-3 py-1.5">
-              <MapPin className="w-3 h-3 text-primary-500" />
-              6 cities &amp; growing
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-primary-400/70 bg-primary-500/8 border border-primary-500/15 rounded-full px-3 py-1.5">
-              <Zap className="w-3 h-3 text-primary-500" />
-              Instant transfers
-            </span>
-          </div>
         </div>
 
-        {/* ── Features ── */}
+        {/* ── Discover Venues — directly under slogan ── */}
         <div className="mb-10">
-          {FEATURES.map((f, i) => (
-            <div key={i}>
-              <div className="py-4 flex items-start gap-4 group cursor-default">
-                <span className="text-[11px] font-bold text-primary-500/38 tracking-[0.18em] mt-0.5 w-5 flex-shrink-0 select-none group-hover:text-primary-500/65 transition-colors duration-200">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white/75 font-semibold text-sm mb-0.5 leading-snug group-hover:text-white transition-colors duration-200">
-                    {f.title}
-                  </p>
-                  <p className="text-white/32 text-xs leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
-              {i < FEATURES.length - 1 && (
-                <div className="h-px bg-gradient-to-r from-transparent via-white/6 to-transparent" />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* ── Discover Venues ── */}
-        <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-primary-500/15 border border-primary-500/20 flex items-center justify-center">
               <MapPin className="w-3.5 h-3.5 text-primary-500" />
@@ -243,7 +225,7 @@ export default function LoginScreen() {
             </div>
           </div>
 
-          {/* Auto-scrolling city carousel — pauses on hover */}
+          {/* Auto-scrolling city carousel */}
           <div
             className="relative overflow-hidden mb-4 py-0.5"
             style={{
@@ -313,13 +295,10 @@ export default function LoginScreen() {
                           <MapPin className="w-6 h-6 text-white/10" />
                         </div>
                       )}
-                      {/* Gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                      {/* Category badge */}
                       <span className="absolute top-2 left-2 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-black/70 text-primary-400 border border-primary-500/20 backdrop-blur-sm leading-tight">
                         {CATEGORY_LABEL[venue.category] || 'Venue'}
                       </span>
-                      {/* Name pinned to bottom */}
                       <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5">
                         <p className="text-white font-bold text-xs leading-tight truncate">{venue.name}</p>
                         <p className="text-white/48 text-[10px] mt-0.5 truncate">
@@ -334,8 +313,20 @@ export default function LoginScreen() {
           )}
         </div>
 
+        {/* ── Features ── */}
+        <div className="mb-10 space-y-5">
+          {FEATURES.map((f, i) => (
+            <div key={i} className="group cursor-default">
+              <p className="text-white/72 font-semibold text-sm mb-0.5 leading-snug group-hover:text-white transition-colors duration-200">
+                {f.title}
+              </p>
+              <p className="text-white/30 text-xs leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+
         {/* ── Footer ── */}
-        <p className="text-center text-xs text-white/18 pb-6 leading-relaxed">
+        <p className="text-center text-xs text-white/18 pb-10 leading-relaxed">
           Available in IN · IL · KY · TN · MI · OH
           {venuePortalLoginUrl && (
             <>
@@ -346,25 +337,6 @@ export default function LoginScreen() {
             </>
           )}
         </p>
-      </div>
-
-      {/* ── Fixed bottom CTA bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-t border-white/8 px-5 py-4">
-        <div className="max-w-lg mx-auto flex gap-3">
-          <button
-            onClick={() => openSheet(true)}
-            className="flex-1 py-3 rounded-xl border border-primary-500/38 text-primary-400 font-semibold text-sm hover:bg-primary-500/10 hover:border-primary-500/60 active:scale-[0.97] transition-all"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => openSheet(false)}
-            className="flex-[2] py-3 rounded-xl bg-primary-500 text-black font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 active:scale-[0.97] transition-all shadow-lg shadow-primary-500/28"
-          >
-            Join Free
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {/* ── Auth Bottom Sheet ── */}
