@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
-import { Eye, EyeOff, MapPin, X, ArrowRight, Zap, Users, Star } from 'lucide-react'
+import { Eye, EyeOff, MapPin, X, ArrowRight, Zap, Star, Building2, AlertCircle } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -12,17 +12,14 @@ import { createPortal } from 'react-dom'
 
 const FEATURES = [
   {
-    icon: '🍺',
     title: 'Send a drink to anyone',
     desc: 'Buy a round for the table or surprise a stranger — all from your phone.',
   },
   {
-    icon: '📍',
     title: 'Discover where to be tonight',
     desc: 'See which venues your crew is at and what\'s happening right now.',
   },
   {
-    icon: '🎉',
     title: 'Make every night a story',
     desc: 'Check in, connect with friends, and share the moments that matter.',
   },
@@ -171,18 +168,22 @@ export default function LoginScreen() {
           </div>
         </div>
 
-        {/* ── Feature cards ── */}
-        <div className="grid grid-cols-1 gap-3 mb-10">
+        {/* ── Features ── */}
+        <div className="mb-12">
           {FEATURES.map((f, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-4 rounded-2xl border border-primary-500/12 bg-white/[0.02] backdrop-blur-sm px-4 py-4 hover:border-primary-500/25 hover:bg-white/[0.04] transition-all"
-            >
-              <span className="text-3xl leading-none flex-shrink-0 mt-0.5">{f.icon}</span>
-              <div>
-                <p className="text-white font-semibold text-sm mb-0.5">{f.title}</p>
-                <p className="text-white/45 text-xs leading-relaxed">{f.desc}</p>
+            <div key={i}>
+              <div className="py-5 flex items-start gap-4">
+                <span className="text-[11px] font-bold text-primary-500/40 tracking-[0.18em] mt-0.5 w-5 flex-shrink-0 select-none">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm mb-1 leading-snug">{f.title}</p>
+                  <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
+                </div>
               </div>
+              {i < FEATURES.length - 1 && (
+                <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+              )}
             </div>
           ))}
         </div>
@@ -219,7 +220,7 @@ export default function LoginScreen() {
           {/* Venue grid */}
           {publicVenues.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.02] py-10 text-center">
-              <div className="text-3xl mb-3">🌆</div>
+              <Building2 className="w-8 h-8 text-white/12 mx-auto mb-3" />
               <p className="text-white/50 text-sm font-medium">Coming Soon to {venueCity === 'All' ? 'your area' : venueCity}</p>
               <p className="text-white/25 text-xs mt-1">We're expanding fast — check back soon.</p>
             </div>
@@ -482,8 +483,9 @@ export default function LoginScreen() {
                 )}
 
                 {error && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-xs">
-                    ⚠️ {error}
+                  <div className="bg-red-500/8 border border-red-500/25 text-red-300 px-4 py-3 rounded-xl text-xs flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    {error}
                   </div>
                 )}
 
