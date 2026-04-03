@@ -379,7 +379,6 @@ app.use('/api/kyc', kycRouter);
 app.use('/api/wallet-provisioning', require('./routes/wallet-provisioning'));
 app.use('/api/squads', require('./routes/squads'));
 app.use('/api/sms-bot', require('./routes/sms-bot'));
-app.use('/api/influencer', require('./routes/influencer'));
 app.use('/api/busy-times', require('./routes/busyTimes'));
 app.use('/api/loyalty-partnerships', require('./routes/loyaltyPartnerships'));
 

@@ -96,7 +96,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
   const getVenueBadge = (venue: any) => {
     if (!venue) return null
-    if (venue.isFeatured) return { label: 'Featured', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' }
+    if (venue.isFeatured) return { label: 'Featured', className: 'bg-primary-500/20 text-primary-400 border-primary-500/40' }
     if (venue.subscriptionTier === 'enterprise') return { label: 'Enterprise', className: 'bg-purple-500/20 text-purple-300 border-purple-500/40' }
     if (venue.subscriptionTier === 'premium') return { label: 'AI Optimized', className: 'bg-primary-500/20 text-primary-400 border-primary-500/40' }
     return null
@@ -996,7 +996,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           </div>
           
           {/* Real-Time Promotions Highlight */}
-          <div className="bg-gradient-to-r from-primary-500/15 to-yellow-500/10 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
+          <div className="bg-gradient-to-r from-primary-500/15 to-primary-500/8 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
             <div className="flex items-start gap-2">
               <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
@@ -1227,7 +1227,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                         )}
                         {activity.event?.type && (
                           <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-2 ${
-                            activity.event.type === 'happy-hour' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                            activity.event.type === 'happy-hour' ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30' :
                             activity.event.type === 'flash-deal' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                             'bg-primary-500/20 text-primary-400 border border-primary-500/30'
                           }`}>

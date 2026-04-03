@@ -10,15 +10,17 @@ interface CheckIn {
   _id: string
   user: {
     _id: string
-    name: string
-    email?: string
-    profilePicture?: string
   }
   venue: {
     _id: string
     name: string
   }
   createdAt: string
+}
+
+// Generates a consistent anonymous code from the user's ID
+function guestCode(userId: string) {
+  return `#${userId.slice(-5).toUpperCase()}`
 }
 
 export default function CheckInsHistory() {
@@ -28,49 +30,34 @@ export default function CheckInsHistory() {
   const [venueId, setVenueId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (token) {
-      fetchVenueId()
-    }
+    if (token) fetchVenueId()
   }, [token])
 
   useEffect(() => {
-    if (venueId && token) {
-      fetchCheckIns()
-    }
+    if (venueId && token) fetchCheckIns()
   }, [venueId, token])
 
   const fetchVenueId = async () => {
-    if (!token) return
-    
     try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues`, {
+      const res = await axios.get(`${getApiUrl()}/venues`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
-      const venueId = Array.isArray(response.data) 
-        ? response.data[0]?._id 
-        : response.data?.venues?.[0]?._id
-      
-      setVenueId(venueId)
-    } catch (error) {
-      console.error('Error fetching venue:', error)
-    }
+      const id = Array.isArray(res.data)
+        ? res.data[0]?._id
+        : res.data?.venues?.[0]?._id
+      setVenueId(id)
+    } catch {}
   }
 
   const fetchCheckIns = async () => {
     if (!venueId || !token) return
-
     try {
       setLoading(true)
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/checkins?venueId=${venueId}&limit=100`, {
+      const res = await axios.get(`${getApiUrl()}/checkins?venueId=${venueId}&limit=100`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setCheckIns(response.data.checkIns || [])
-    } catch (error) {
-      console.error('Failed to fetch check-ins:', error)
-    } finally {
+      setCheckIns(res.data.checkIns || [])
+    } catch {} finally {
       setLoading(false)
     }
   }
@@ -110,19 +97,13 @@ export default function CheckInsHistory() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center">
-                    {checkIn.user.profilePicture ? (
-                      <img
-                        src={checkIn.user.profilePicture}
-                        alt={checkIn.user.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-5 h-5 text-primary-500" />
-                    )}
+                  <div className="w-10 h-10 bg-primary-500/15 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary-500/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-primary-500">{checkIn.user.name || 'Customer'}</p>
+                    <p className="text-sm font-semibold text-primary-500">
+                      Guest {guestCode(checkIn.user._id)}
+                    </p>
                     <div className="flex items-center space-x-2 mt-1">
                       <Clock className="w-3 h-3 text-primary-400/70" />
                       <p className="text-xs text-primary-400/70">
@@ -145,4 +126,3 @@ export default function CheckInsHistory() {
     </div>
   )
 }
-

@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 210, 163, 79; /* Rich amber gold */
-  --background-rgb: 0, 0, 0; /* Black background */
-  --primary-gold: #D2A34F; /* Main luxury amber */
-  --primary-gold-light: #E5C17A; /* Highlight accents */
-  --primary-gold-dark: #A7782D; /* Hover states */
+  --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
+  --background-rgb: 8, 6, 4; /* Warm-black */
+  --primary-gold: #B8945A;
+  --primary-gold-light: #C9A875;
+  --primary-gold-dark: #9A7A4A;
 }
 
 body {
