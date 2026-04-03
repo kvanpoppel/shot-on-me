@@ -237,3 +237,28 @@ input, textarea, select {
   100% { transform: translateX(-50%); }
 }
 
+/* City carousel scroll */
+@keyframes city-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Floating drink bubbles */
+@keyframes bubble-rise {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  6%   { opacity: 1; }
+  48%  { transform: translateY(-42vh) translateX(7px) scale(0.88); }
+  94%  { opacity: 0.5; }
+  100% { transform: translateY(-105vh) translateX(-5px) scale(0.65); opacity: 0; }
+}
+
+/* Subtle logo pulse glow */
+@keyframes logo-glow {
+  0%, 100% { text-shadow: 0 0 18px rgba(184,148,90,0.18); }
+  50%       { text-shadow: 0 0 38px rgba(184,148,90,0.48), 0 0 72px rgba(184,148,90,0.12); }
+}
+
+.logo-glow {
+  animation: logo-glow 3.5s ease-in-out infinite;
+}
+
