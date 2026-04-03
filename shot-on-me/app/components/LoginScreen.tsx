@@ -373,28 +373,8 @@ export default function LoginScreen() {
               </button>
             </div>
 
-            {/* Sign In / Join tabs */}
-            <div className="flex mx-5 mb-4 bg-white/5 rounded-xl p-1 flex-shrink-0">
-              <button
-                onClick={() => { setIsLogin(true); setError('') }}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isLogin ? 'bg-primary-500 text-black shadow-sm' : 'text-white/48 hover:text-white/68'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => { setIsLogin(false); setError('') }}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  !isLogin ? 'bg-primary-500 text-black shadow-sm' : 'text-white/48 hover:text-white/68'
-                }`}
-              >
-                Join Free
-              </button>
-            </div>
-
             {/* Form */}
-            <div className="overflow-y-auto overscroll-contain px-5 pb-8">
+            <div className="overflow-y-auto overscroll-contain px-5 pb-6">
               <form onSubmit={handleSubmit} className="space-y-3">
                 {!isLogin && (
                   <>
@@ -546,6 +526,23 @@ export default function LoginScreen() {
                     <>Create Account <ArrowRight className="w-4 h-4" /></>
                   )}
                 </button>
+
+                {/* Switch mode */}
+                <p className="text-center text-xs text-white/30 pt-4">
+                  {isLogin ? (
+                    <>New here?{' '}
+                      <button type="button" onClick={() => { setIsLogin(false); setError('') }} className="text-primary-400/80 hover:text-primary-400 font-semibold transition-colors">
+                        Join Free
+                      </button>
+                    </>
+                  ) : (
+                    <>Already have an account?{' '}
+                      <button type="button" onClick={() => { setIsLogin(true); setError('') }} className="text-primary-400/80 hover:text-primary-400 font-semibold transition-colors">
+                        Sign In
+                      </button>
+                    </>
+                  )}
+                </p>
               </form>
             </div>
           </div>
