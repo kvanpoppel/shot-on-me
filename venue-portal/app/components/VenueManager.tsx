@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, Wine, Tag, CalendarDays, TrendingUp, Moon, Plus, Trash2 } from 'lucide-react'
+import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, Wine, Tag, CalendarDays, TrendingUp, Moon, Plus, Trash2, Camera } from 'lucide-react'
 import VenueMap from './VenueMap'
 
 import { getApiUrl } from '../utils/api'
@@ -11,6 +11,7 @@ import { getApiUrl } from '../utils/api'
 interface Venue {
   _id: string
   name: string
+  coverPhoto?: string
   address: {
     street?: string
     city?: string
@@ -61,6 +62,9 @@ export default function VenueManager() {
   const [weekendSpecials, setWeekendSpecials] = useState<Array<{ name: string; description: string; price: string }>>([])
   const [trending, setTrending] = useState<Array<{ name: string; description: string }>>([])
   const [tonight, setTonight] = useState('')
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState('')
+  const [coverPhotoUploading, setCoverPhotoUploading] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const [schedule, setSchedule] = useState<{ [key: string]: { open: string; close: string; isOpen: boolean } }>({
     monday: { open: '11:00', close: '22:00', isOpen: true },
@@ -147,6 +151,7 @@ export default function VenueManager() {
         if (myVenue.weekendSpecials) setWeekendSpecials(myVenue.weekendSpecials)
         if (myVenue.trending) setTrending(myVenue.trending)
         if (myVenue.tonight) setTonight(myVenue.tonight)
+        if (myVenue.coverPhoto) setCoverPhotoUrl(myVenue.coverPhoto)
       } else {
         if (process.env.NODE_ENV === 'development') {
           console.debug('No venue found for user:', user.id)
@@ -221,6 +226,27 @@ export default function VenueManager() {
   const [notifying, setNotifying] = useState(false)
   const [posting, setPosting] = useState(false)
   const [postSuccess, setPostSuccess] = useState(false)
+
+  const handleCoverPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !venue) return
+    setCoverPhotoUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const res = await axios.post(
+        `${getApiUrl()}/venues/${venue._id}/cover-photo`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      )
+      setCoverPhotoUrl(res.data.coverPhotoUrl)
+    } catch (err) {
+      console.error('Cover photo upload failed:', err)
+    } finally {
+      setCoverPhotoUploading(false)
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
 
   const handlePostTonight = async () => {
     if (!token || !venue || !tonight.trim()) return
@@ -873,7 +899,47 @@ export default function VenueManager() {
 
           {/* Info — placeholder pointing to edit above */}
           {activeSection === 'info' && (
-            <p className="text-primary-400/60 text-sm">Edit your venue info, hours, and address using the Edit button above.</p>
+            <div className="space-y-4">
+              <p className="text-primary-400/60 text-xs">Edit venue info, hours, and address using the Edit button above.</p>
+
+              {/* Cover Photo Upload */}
+              <div>
+                <p className="text-primary-400/80 text-xs font-semibold uppercase tracking-wider mb-2">Cover Photo</p>
+                <p className="text-primary-400/45 text-xs mb-3">This photo appears in the Shot On Me app when users discover your venue.</p>
+
+                {/* Current photo preview */}
+                {coverPhotoUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-primary-500/20 mb-3 aspect-video">
+                    <img src={coverPhotoUrl} alt="Cover" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-primary-500/25 bg-primary-500/5 aspect-video flex flex-col items-center justify-center mb-3 gap-2">
+                    <Camera className="w-8 h-8 text-primary-500/30" />
+                    <p className="text-primary-400/40 text-xs">No cover photo yet</p>
+                  </div>
+                )}
+
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleCoverPhotoUpload}
+                />
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={coverPhotoUploading}
+                  className="flex items-center gap-2 bg-primary-500/10 border border-primary-500/30 text-primary-400 text-xs font-semibold px-4 py-2.5 rounded-lg hover:bg-primary-500/20 hover:border-primary-500/50 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {coverPhotoUploading ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-primary-400/30 border-t-primary-400 rounded-full animate-spin" />Uploading...</>
+                  ) : (
+                    <><Camera className="w-3.5 h-3.5" />{coverPhotoUrl ? 'Change Photo' : 'Upload Photo'}</>
+                  )}
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Wine Menu */}

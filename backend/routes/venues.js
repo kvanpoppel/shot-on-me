@@ -3,6 +3,23 @@ const Venue = require('../models/Venue');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const stripeUtils = require('../utils/stripe');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const venuePhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Images only'));
+    cb(null, true);
+  }
+});
 
 const router = express.Router();
 
@@ -310,6 +327,41 @@ router.put('/:venueId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error updating venue:', error);
     res.status(500).json({ message: 'Server error'});
+  }
+});
+
+// POST /api/venues/:venueId/cover-photo
+// Upload a cover photo to Cloudinary and save the URL on the venue
+router.post('/:venueId/cover-photo', auth, venuePhotoUpload.single('photo'), async (req, res) => {
+  try {
+    const venue = await Venue.findById(req.params.venueId);
+    if (!venue) return res.status(404).json({ message: 'Venue not found' });
+    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (!req.file) return res.status(400).json({ message: 'No image file provided' });
+
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'shot-on-me/venues',
+          transformation: [
+            { width: 1200, height: 900, crop: 'fill', gravity: 'auto' },
+            { quality: 'auto', fetch_format: 'auto' }
+          ]
+        },
+        (error, res) => { if (error) reject(error); else resolve(res); }
+      ).end(req.file.buffer);
+    });
+
+    venue.coverPhoto = result.secure_url;
+    await venue.save();
+
+    res.json({ coverPhotoUrl: result.secure_url });
+  } catch (error) {
+    console.error('Cover photo upload error:', error);
+    res.status(500).json({ message: 'Upload failed' });
   }
 });
 
