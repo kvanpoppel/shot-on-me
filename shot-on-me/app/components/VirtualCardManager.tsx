@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { CreditCard, Plus, X, AlertTriangle, CheckCircle, Wallet, Apple, Smartphone } from 'lucide-react'
+import { CreditCard, X, AlertTriangle, CheckCircle, Wallet, Apple, Smartphone } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
 import CustomCardDesign from './CustomCardDesign'
 
@@ -34,6 +34,7 @@ export default function VirtualCardManager() {
   const [showDeleteWarning, setShowDeleteWarning] = useState(false)
   const [deleteWarningsShown, setDeleteWarningsShown] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const autoCreateAttempted = useRef(false)
 
   useEffect(() => {
     if (token) {
@@ -54,6 +55,20 @@ export default function VirtualCardManager() {
       return () => clearInterval(pollInterval)
     }
   }, [token, user])
+
+  // Auto-create card as soon as we know it doesn't exist and issuing is enabled
+  useEffect(() => {
+    if (
+      cardStatus &&
+      !cardStatus.hasCard &&
+      cardStatus.issuingEnabled !== false &&
+      !autoCreateAttempted.current &&
+      !creating
+    ) {
+      autoCreateAttempted.current = true
+      handleCreateCard()
+    }
+  }, [cardStatus])
 
   const fetchCardStatus = async () => {
     if (!token) return
@@ -245,7 +260,6 @@ export default function VirtualCardManager() {
   if (!cardStatus.hasCard) {
     // Always allow creation if issuing is enabled (we removed the balance requirement)
     const canCreate = cardStatus.issuingEnabled !== false
-    const balance = cardStatus.balance || 0
 
     return (
       <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border-2 border-primary-500/30 rounded-lg p-5 space-y-4 shadow-lg">
@@ -259,32 +273,14 @@ export default function VirtualCardManager() {
               Your virtual card is being set up automatically. This usually takes just a few seconds. You'll be able to use it at venues once it's ready!
             </p>
             
-            {error && (
-              <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
-                {error}
-              </div>
-            )}
-
             {!cardStatus.issuingEnabled && (
-              <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400 text-sm">
+              <div className="mb-3 p-3 bg-primary-500/10 border border-primary-500/20 rounded-lg text-primary-400 text-sm">
                 <div className="flex items-start gap-2 mb-2">
                   <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold mb-1">Stripe Issuing Not Enabled</p>
+                    <p className="font-semibold mb-1">Tap & Pay Unavailable</p>
                     <p className="text-xs mb-2">
-                      Virtual card creation requires Stripe Issuing to be enabled in your Stripe Dashboard.
-                    </p>
-                    <p className="text-xs">
-                      <strong>To enable:</strong> Go to{' '}
-                      <a 
-                        href="https://dashboard.stripe.com/issuing" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="underline hover:text-yellow-300"
-                      >
-                        https://dashboard.stripe.com/issuing
-                      </a>
-                      {' '}and click "Enable Issuing"
+                      Virtual cards are not available in your region yet. We're working on expanding.
                     </p>
                   </div>
                 </div>
@@ -293,39 +289,25 @@ export default function VirtualCardManager() {
 
             {canCreate && (
               <>
-                {loading ? (
-                  <div className="w-full bg-primary-500/20 border-2 border-primary-500/30 px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-primary-400">
-                    <div className="w-5 h-5 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
-                    <span className="text-sm">Setting up your card...</span>
+                {error ? (
+                  <div className="space-y-2">
+                    <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
+                      {error}
+                    </div>
+                    <button
+                      onClick={() => { setError(null); autoCreateAttempted.current = false; handleCreateCard() }}
+                      className="w-full bg-primary-500/20 border border-primary-500/40 px-4 py-2 rounded-lg text-primary-400 text-sm hover:bg-primary-500/30 transition-colors"
+                    >
+                      Retry Setup
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={handleCreateCard}
-                    disabled={creating}
-                    className="w-full bg-primary-500 text-black px-4 py-3 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-base"
-                  >
-                    {creating ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                        <span>Creating Your Card...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-5 h-5" />
-                        <span>Create Tap & Pay Card</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="w-full bg-primary-500/20 border-2 border-primary-500/30 px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-primary-400">
+                    <div className="w-5 h-5 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
+                    <span className="text-sm">Setting up your tap & pay card...</span>
+                  </div>
                 )}
               </>
-            )}
-            
-            {!canCreate && cardStatus.issuingEnabled && (
-              <div className="mb-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-400 text-sm">
-                <p className="font-semibold mb-1">💡 Get Started</p>
-                <p className="text-xs mb-2">Create your Tap & Pay card to start using your wallet at venues!</p>
-                <p className="text-xs">You can add funds after creating your card.</p>
-              </div>
             )}
           </div>
         </div>
@@ -420,7 +402,7 @@ export default function VirtualCardManager() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setShowDeleteWarning(false)}>
           <div className="bg-black border-2 border-primary-500/30 rounded-lg p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="w-6 h-6 text-yellow-500" />
+              <AlertTriangle className="w-6 h-6 text-primary-500" />
               <h3 className="text-primary-500 font-semibold text-lg">
                 {deleteWarningsShown === 1 ? 'First Warning' : 'Final Warning'}
               </h3>
