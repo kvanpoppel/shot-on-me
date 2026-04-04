@@ -15,12 +15,13 @@ router.get('/status', auth, async (req, res) => {
     const user = await User.findById(userId);
     
     if (!card) {
-      // Allow card creation even with $0 balance (user can add funds after)
+      const issuingEnabled = await stripeUtils.isIssuingEnabled();
       return res.json({
         hasCard: false,
-        canCreate: true, // Always allow first card creation
+        canCreate: issuingEnabled,
+        issuingEnabled,
         balance: user?.wallet?.balance || 0,
-        minimumRequired: 0 // No minimum for first card
+        minimumRequired: 0
       });
     }
 
@@ -66,12 +67,19 @@ router.post('/create', auth, async (req, res) => {
       });
     }
 
-    // Check if user already has a card
+    // Check if user already has a card — return it silently (idempotent)
     const existingCard = await VirtualCard.findOne({ user: userId });
     if (existingCard && existingCard.status === 'active') {
-      return res.status(400).json({
-        message: 'User already has an active virtual card',
-        card: existingCard
+      return res.status(200).json({
+        message: 'Virtual card already exists',
+        card: {
+          id: existingCard._id,
+          last4: existingCard.last4,
+          brand: existingCard.brand,
+          expirationMonth: existingCard.expirationMonth,
+          expirationYear: existingCard.expirationYear,
+          status: existingCard.status
+        }
       });
     }
 
