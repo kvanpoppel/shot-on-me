@@ -1716,10 +1716,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               </button>
               <button
                 onClick={() => setShowRoundMode(true)}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-2.5 py-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1 font-medium text-sm"
+                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-2.5 py-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
                 title="Round Mode — send a drink to everyone"
               >
-                <span className="text-base leading-none">🥂</span>
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs">Round</span>
               </button>
               <button
                 onClick={() => setShowFriendInvite(true)}
@@ -2235,18 +2236,76 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       {/* Posts */}
       <div className="space-y-4 p-4">
         {posts.length === 0 ? (
-          <div className="text-center py-12">
-            <Sparkles className="w-16 h-16 text-primary-500/50 mx-auto mb-4" />
-            <p className="text-lg text-primary-400 mb-2">No posts yet</p>
-            <p className="text-sm text-primary-500/70 mb-6">Start following friends and venues to see posts!</p>
-            <button
-              onClick={() => setShowFriendInvite(true)}
-              className="bg-primary-500 text-black px-6 py-3 rounded-lg font-semibold hover:bg-primary-600"
-            >
-              <UserPlus className="w-5 h-5 inline mr-2" />
-              Invite Friends
-            </button>
-          </div>
+          feedFilter === 'following' ? (
+            /* ── Following feed empty — new user onboarding ── */
+            <div className="space-y-4 pt-2">
+              <div className="text-center px-6 py-6">
+                <p className="text-white font-bold text-lg mb-1">Your feed is wide open</p>
+                <p className="text-primary-400/60 text-sm">Follow friends to see their shots, check-ins, and nights out — right here.</p>
+              </div>
+
+              {/* Discover CTA */}
+              <div className="mx-4 bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Flame className="w-4 h-4 text-primary-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">See what's trending now</p>
+                    <p className="text-primary-400/50 text-xs">Shots being sent, venues popping off, live deals</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setFeedFilter('trending')
+                    setPage(1)
+                    setHasMore(true)
+                    setLoading(true)
+                  }}
+                  className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Flame className="w-4 h-4" />
+                  Browse Trending Feed
+                </button>
+              </div>
+
+              {/* Find Friends CTA */}
+              <div className="mx-4 bg-black/40 border border-primary-500/15 rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4 text-primary-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Find people you know</p>
+                    <p className="text-primary-400/50 text-xs">Follow them and their activity fills your feed</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-find-friends'))}
+                    className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-2.5 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  >
+                    <Users className="w-4 h-4" />
+                    Find Friends
+                  </button>
+                  <button
+                    onClick={() => setShowFriendInvite(true)}
+                    className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-2.5 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Invite Friends
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── Other filters empty ── */
+            <div className="text-center py-16 px-6">
+              <Compass className="w-12 h-12 text-primary-500/30 mx-auto mb-3" />
+              <p className="text-white font-semibold mb-1">Nothing here right now</p>
+              <p className="text-primary-400/50 text-sm">Check back later or try a different filter</p>
+            </div>
+          )
         ) : (
           posts.map((post, index) => {
             const isVenuePost = !!post.venueAuthor
