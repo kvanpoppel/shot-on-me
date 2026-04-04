@@ -862,15 +862,55 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-visible pt-16" suppressHydrationWarning>
-      {/* Enhanced Hero Section - Positioned below header */}
-      <div className="bg-gradient-to-b from-primary-500/15 via-primary-500/5 to-transparent p-6 pb-8">
-        {/* Centered "Shot on me" title */}
-        <div className="text-center mb-6">
-          <h1 className="text-5xl md:text-6xl logo-script text-primary-500 mb-3 tracking-wide drop-shadow-lg">
-            Shot on me
-          </h1>
-          <p className="text-primary-400/80 text-sm font-light">Discover exclusive deals and connect with friends</p>
-        </div>
+      {/* Wallet Hero Card — adapts to balance state */}
+      <div className="px-4 pt-2 mb-5">
+        {walletBalance === 0 ? (
+          /* ── New / empty wallet ── */
+          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
+            <p className="text-primary-400/70 text-sm mb-0.5">
+              Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋
+            </p>
+            <p className="text-white font-semibold text-base mb-1">Ready to send your first shot?</p>
+            <p className="text-primary-400/60 text-xs mb-4">Add money to your wallet to buy drinks for friends at the bar.</p>
+            <button
+              onClick={() => setActiveTab?.('wallet')}
+              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98]"
+            >
+              + Add Money to Get Started
+            </button>
+            <p className="text-center text-primary-400/40 text-xs mt-3">You can also receive shots — no balance needed</p>
+          </div>
+        ) : (
+          /* ── Funded wallet ── */
+          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
+            <p className="text-primary-400/70 text-sm mb-0.5">
+              Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋
+            </p>
+            <p className="text-primary-400/60 text-xs">Wallet balance</p>
+            <p className="text-4xl font-bold text-white mt-1 mb-4">${walletBalance.toFixed(2)}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (onSendMoney) onSendMoney()
+                  else setActiveTab?.('wallet')
+                }}
+                className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Send className="w-4 h-4" />
+                Send a Shot
+              </button>
+              <button
+                onClick={() => setActiveTab?.('wallet')}
+                className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Wallet className="w-4 h-4" />
+                Add Money
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search Modal - Shown when search icon is clicked */}
@@ -916,58 +956,36 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Quick Actions - Enhanced */}
+      {/* Quick Actions — Find & Invite Friends */}
       <div className="px-4 mb-6">
-        <div className="grid grid-cols-3 gap-3">
-          {/* Send Money - Primary Action */}
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              if (onSendMoney) {
-                onSendMoney()
-              } else {
-                setActiveTab?.('wallet')
-              }
-            }}
-            className="group relative bg-gradient-to-br from-primary-500 to-primary-600 text-black rounded-2xl p-4 hover:from-primary-500 hover:to-primary-500 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
-          >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full blur-2xl"></div>
-            <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
-              <Send className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-tight leading-tight">Send Money</h3>
-            </div>
-          </button>
-
-          {/* Find Friends - Opens Friend Search */}
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
               setShowFindFriends(true)
             }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all shadow-lg shadow-primary-500/10 hover:shadow-primary-500/20 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
+            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
           >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl"></div>
+            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
             <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
               <Users className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-tight leading-tight">Find Friends</h3>
+              <h3 className="text-xs font-bold tracking-tight">Find Friends</h3>
             </div>
           </button>
 
-          {/* Invite Friends - Easy access */}
           <button
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
               setShowInviteModal(true)
             }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all shadow-lg shadow-primary-500/10 hover:shadow-primary-500/20 hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
+            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
           >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl"></div>
+            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
             <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
               <UserPlus className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-tight leading-tight">Invite Friends</h3>
+              <h3 className="text-xs font-bold tracking-tight">Invite Friends</h3>
             </div>
           </button>
         </div>
