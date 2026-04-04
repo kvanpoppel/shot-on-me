@@ -1019,8 +1019,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs text-primary-400 font-medium leading-relaxed">
-                  <span className="text-primary-500 font-bold">🎯 Real-Time Promotions</span> - Venues send instant push notifications when they launch promotions! 
-                  Get exclusive, time-sensitive deals delivered in real-time to drive spending at your favorite spots.
+                  <span className="text-primary-500 font-bold">Real-Time Promotions</span> — Venues push instant deals straight to you. Time-sensitive, exclusive, and live right now.
                 </p>
               </div>
             </div>
@@ -1369,7 +1368,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                 <MapPin className="w-4 h-4 text-primary-500" />
               </div>
               <div className="text-left">
-                <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">🔥 Trending Now</h2>
+                <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">Trending Now</h2>
                 <p className="text-xs text-primary-400/70 font-normal">Discover venues</p>
               </div>
             </button>
@@ -1563,20 +1562,79 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       )}
 
-      {/* Empty State for Quick Deals */}
-      {quickDeals.length === 0 && !searchQuery && (
-        <div className="px-4">
-          <div className="text-center py-16 border-2 border-primary-500/10 rounded-2xl bg-black/30 backdrop-blur-sm">
-            <Gift className="w-12 h-12 text-primary-500/40 mx-auto mb-4" />
-            <p className="text-primary-400/80 mb-2 font-light text-lg">No active deals right now</p>
-            <p className="text-primary-500/60 text-sm mb-6 font-light">Check back soon for special offers</p>
+      {/* New User Experience — full engagement section when no deals + no nearby friends */}
+      {quickDeals.length === 0 && nearbyFriends.length === 0 && !searchQuery && (
+        <div className="px-4 space-y-4 pb-2">
+
+          {/* How it works — 3 step visual */}
+          <div>
+            <p className="text-primary-400/50 text-[10px] font-bold uppercase tracking-widest mb-3">How it works</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { Icon: Wallet,  label: 'Add Money',   sub: 'Fund your wallet once'       },
+                { Icon: MapPin,  label: 'Hit the Bar',  sub: 'Find a tap & pay venue'      },
+                { Icon: Send,    label: 'Send a Shot',  sub: 'Buy a drink for a friend'    },
+              ] as const).map(({ Icon, label, sub }) => (
+                <div key={label} className="bg-black/50 border border-primary-500/20 rounded-xl p-3 text-center">
+                  <div className="w-8 h-8 bg-primary-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Icon className="w-4 h-4 text-primary-500" />
+                  </div>
+                  <p className="text-primary-500 font-bold text-xs leading-tight">{label}</p>
+                  <p className="text-primary-400/50 text-[10px] mt-0.5 leading-tight">{sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FOMO — find your crew */}
+          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5">
+            <p className="text-white font-bold text-base mb-1">Your crew is out there tonight</p>
+            <p className="text-primary-400/60 text-sm mb-4">Find friends on Shot On Me and see where they're headed. Never miss a round.</p>
             <button
-              onClick={() => setActiveTab?.('map')}
-              className="bg-primary-500 text-black px-8 py-3 rounded-xl font-bold hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25"
+              onClick={() => setShowFindFriends(true)}
+              className="w-full border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
-              Browse Venues
+              <Users className="w-4 h-4" />
+              Find Your Friends
             </button>
           </div>
+
+          {/* Viral share — be the one who buys the round */}
+          <div className="relative bg-gradient-to-br from-primary-500/15 via-black/70 to-black/90 border border-primary-500/30 rounded-2xl p-5 overflow-hidden">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
+            <p className="text-white font-bold text-base mb-1 relative z-10">Be the one who buys the round</p>
+            <p className="text-primary-400/60 text-sm mb-4 relative z-10">
+              Invite friends — the more people on Shot On Me, the more shots fly.
+            </p>
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 relative z-10"
+            >
+              <UserPlus className="w-4 h-4" />
+              Invite Friends Now
+            </button>
+          </div>
+
+          {/* Venue discovery teaser */}
+          <div className="bg-black/40 border border-primary-500/15 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 text-primary-500" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Find venues near you</p>
+                <p className="text-primary-400/50 text-xs">Deals go live the moment you arrive</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="w-full border border-primary-500/25 text-primary-400 font-medium py-2.5 rounded-xl text-sm hover:border-primary-500/50 hover:text-primary-500 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              Explore the Map
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
         </div>
       )}
 
