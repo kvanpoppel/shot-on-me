@@ -12,7 +12,9 @@ import {
   Camera,
   CheckCircle2,
   Clock,
-  Loader2
+  Loader2,
+  Send,
+  UserPlus
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -46,15 +48,17 @@ interface ProfileTabProps {
 }
 
 export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabProps) {
-  const { user, token } = useAuth()
+  const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [postsPage, setPostsPage] = useState(1)
   const [postsHasMore, setPostsHasMore] = useState(true)
   const [loadingMorePosts, setLoadingMorePosts] = useState(false)
   const postsContainerRef = useRef<HTMLDivElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [friends, setFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends'>('posts')
   const [stats, setStats] = useState({
     postsCount: 0,
@@ -62,6 +66,27 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     friendsCount: 0,
     venuesVisited: 0
   })
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !token) return
+    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10MB'); return }
+
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('profilePicture', file)
+      const res = await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      })
+      if (updateUser) await updateUser({})
+    } catch (err) {
+      console.error('Photo upload failed', err)
+    } finally {
+      setUploadingPhoto(false)
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
 
   const fetchPosts = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token || !user || !API_URL) return
@@ -212,25 +237,53 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
-      {/* Profile Header - Instagram Style */}
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
+      {/* Profile Header */}
       <div className="px-4 py-6 border-b border-primary-500/10">
         <div className="flex items-center space-x-6 mb-4">
-          {/* Profile Picture */}
-          <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-            {user?.profilePicture ? (
-              <img 
-                src={user.profilePicture} 
-                alt={user.firstName} 
-                className="w-full h-full object-cover" 
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                <span className="text-2xl text-primary-500 font-semibold">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </span>
+          {/* Profile Picture — tappable to upload */}
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            className="relative w-20 h-20 flex-shrink-0 group"
+            disabled={uploadingPhoto}
+          >
+            <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.firstName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                  <span className="text-2xl text-primary-500 font-semibold">
+                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Camera overlay */}
+            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingPhoto
+                ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                : <Camera className="w-5 h-5 text-white" />
+              }
+            </div>
+            {/* Add photo badge for new users */}
+            {!user?.profilePicture && !uploadingPhoto && (
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
+                <Camera className="w-3 h-3 text-black" />
               </div>
             )}
-          </div>
+          </button>
 
           {/* Stats */}
           <div className="flex-1 flex justify-around flex-wrap gap-4">
@@ -262,6 +315,20 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
             <p className="text-sm text-primary-400/80 font-light">@{user.username}</p>
           )}
         </div>
+
+        {/* Profile completeness nudge — shown only when no photo */}
+        {!user?.profilePicture && (
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            className="w-full mt-1 border border-primary-500/25 rounded-xl px-4 py-2.5 flex items-center gap-3 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all text-left"
+          >
+            <Camera className="w-4 h-4 text-primary-500 flex-shrink-0" />
+            <div>
+              <p className="text-primary-500 text-xs font-semibold">Add a profile photo</p>
+              <p className="text-primary-400/50 text-[10px]">Friends and venues will recognize you faster</p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* View Tabs */}
@@ -320,10 +387,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
             </button>
 
             {userPosts.length === 0 ? (
-              <div className="text-center py-12">
-                <Camera className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light">No posts yet</p>
-                <p className="text-primary-400/60 text-sm mt-1 font-light">Share your first moment!</p>
+              <div className="text-center py-10 px-4">
+                <Camera className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
+                <p className="text-white font-semibold mb-1">Nothing posted yet</p>
+                <p className="text-primary-400/50 text-sm">Post a moment from your night out — check-ins, shots sent, good times.</p>
               </div>
             ) : (
               <>
@@ -384,10 +451,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
             </button>
 
             {checkIns.length === 0 ? (
-              <div className="text-center py-12">
-                <MapPin className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light">No check-ins yet</p>
-                <p className="text-primary-400/60 text-sm mt-1 font-light">Check in at your favorite venues!</p>
+              <div className="text-center py-10 px-4">
+                <MapPin className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
+                <p className="text-white font-semibold mb-1">No check-ins yet</p>
+                <p className="text-primary-400/50 text-sm">Head to a tap & pay venue and check in — your history builds here.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -445,10 +512,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
             </button>
 
             {friends.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-primary-500/40 mx-auto mb-3" />
-                <p className="text-primary-400/80 font-light">No friends yet</p>
-                <p className="text-primary-400/60 text-sm mt-1 font-light">Start connecting with people!</p>
+              <div className="text-center py-10 px-4">
+                <Users className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
+                <p className="text-white font-semibold mb-1">No friends yet</p>
+                <p className="text-primary-400/50 text-sm">Find the people you go out with — see where they are and buy them a round.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
