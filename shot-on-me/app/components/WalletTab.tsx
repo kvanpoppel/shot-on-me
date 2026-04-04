@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone, AlertTriangle, Lock } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -826,7 +826,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             {/* Low balance warning */}
             {balance > 0 && balance < 10 && (
               <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-2">
-                <span className="text-yellow-400 text-xs">⚠️ Low balance — <button onClick={() => setShowAddFunds(true)} className="underline hover:text-yellow-300">Add funds</button></span>
+                <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                <span className="text-yellow-400 text-xs">Low balance — <button onClick={() => setShowAddFunds(true)} className="underline hover:text-yellow-300">Add funds</button></span>
               </div>
             )}
 
@@ -840,9 +841,12 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                   : 'bg-primary-500/10 border-primary-500/30'
               }`}>
                 <div>
-                  <p className="text-xs font-semibold text-primary-400">
-                    {kycStatus === 'pending' ? '🕐 Verification in progress' : kycStatus === 'failed' ? '❌ Verification failed' : '🔒 Unverified — limits apply'}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {kycStatus === 'pending' ? <Clock className="w-3.5 h-3.5 text-yellow-400" /> : kycStatus === 'failed' ? <XCircle className="w-3.5 h-3.5 text-red-400" /> : <Lock className="w-3.5 h-3.5 text-primary-400" />}
+                    <p className="text-xs font-semibold text-primary-400">
+                      {kycStatus === 'pending' ? 'Verification in progress' : kycStatus === 'failed' ? 'Verification failed' : 'Unverified — limits apply'}
+                    </p>
+                  </div>
                   {kycLimits && (
                     <p className="text-xs text-primary-400/60 mt-0.5">
                       ${kycLimits.dailyAddFunds}/day · ${kycLimits.maxBalance} max balance
@@ -890,7 +894,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                   const response = await axios.post(`${API_URL}/rewards/redeem-cash`, { pointsToRedeem: 100 }, { headers: { Authorization: `Bearer ${token}` } })
                   await fetchPoints()
                   if (updateUser) await updateUser({})
-                  setSuccess(`🎉 $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
+                  setSuccess(`$${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
                   setTimeout(() => setSuccess(null), 5000)
                 } catch (error: any) {
                   setError(error.response?.data?.message || 'Failed to redeem cash reward')
@@ -906,7 +910,36 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       </div>
 
-      {/* Primary Action: Send Money */}
+      {/* Primary Actions — balance-aware */}
+      {balance === 0 && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => setShowAddFunds(true)}
+            className="w-full bg-primary-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-primary-400 transition-all shadow-lg shadow-primary-500/25 text-lg active:scale-[0.99]"
+          >
+            <Plus className="w-5 h-5" />
+            Add Funds to Send Shots
+          </button>
+          <button
+            data-send-money-button
+            onClick={() => {
+              setShowSendForm(!showSendForm)
+              setShowRedeemForm(false)
+              setShowMoreMenu(false)
+              if (!showSendForm) {
+                setSearchQuery('')
+                setSearchResults([])
+              }
+            }}
+            className="w-full mt-3 border border-primary-500/30 text-primary-500/60 py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
+          >
+            <Send className="w-4 h-4" />
+            Send Money
+          </button>
+        </div>
+      )}
+
+      {balance > 0 && (
       <div className="px-4 mb-4">
         <button
           data-send-money-button
@@ -1233,13 +1266,14 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         )}
 
       </div>
+      )}
 
-      {/* Quick Actions Grid */}
+      {/* Quick Actions Grid — always visible */}
       <div className="px-4 mb-4">
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowAddFunds(true)}
-            className="group relative bg-primary-500 text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>Add Funds</span>
@@ -1307,11 +1341,12 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             ))}
           </div>
         ) : filteredPayments.length === 0 ? (
-          <div className="text-center py-16 bg-black/30 border border-primary-500/10 rounded-2xl">
+          <div className="text-center py-12 bg-black/30 border border-primary-500/10 rounded-2xl px-6">
             <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-primary-500/20">
-              <History className="w-8 h-8 text-primary-500/40" />
+              <Send className="w-7 h-7 text-primary-500/40" />
             </div>
-            <p className="text-primary-400/60 text-sm">No {activeFilter === 'all' ? '' : activeFilter} transactions yet</p>
+            <p className="text-white font-semibold text-sm mb-1">No shots sent yet</p>
+            <p className="text-primary-400/50 text-xs">Add funds and buy a drink for a friend — it'll show up here.</p>
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
