@@ -1029,79 +1029,57 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
   // Memoize venue markers for map with enhanced styling
   const venueMarkers = useMemo(() => {
+    // Don't build markers until Google Maps is ready — google.maps.SymbolPath requires the library
+    if (!mapsLoaded || typeof google === 'undefined' || !google.maps) return []
+
+    const isActivePromotion = (venue: any) => {
+      return (venue.promotions || []).some((p: any) => {
+        if (!p.isActive) return false
+        const now = new Date()
+        const dayOfWeek = now.getDay()
+        if (p.schedule && Array.isArray(p.schedule)) {
+          const todaySchedule = p.schedule.find((s: any) => {
+            const scheduleDays = s.days?.toLowerCase() || ''
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+            return scheduleDays.includes(dayNames[dayOfWeek])
+          })
+          if (todaySchedule) {
+            const currentTime = now.getHours() * 100 + now.getMinutes()
+            const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
+            const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
+            return currentTime >= startTime && currentTime <= endTime
+          }
+        }
+        return p.isActive
+      })
+    }
+
     return getFilteredVenues
       .filter((venue) => {
         if (!venue.location?.latitude || !venue.location?.longitude) return false
-        
-        // Check if venue has active promotions
-        const hasActivePromotions = (venue.promotions || []).some((p: any) => {
-          if (!p.isActive) return false
-          const now = new Date()
-          const dayOfWeek = now.getDay()
-          if (p.schedule && Array.isArray(p.schedule)) {
-            const todaySchedule = p.schedule.find((s: any) => {
-              const scheduleDays = s.days?.toLowerCase() || ''
-              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-              const todayName = dayNames[dayOfWeek]
-              return scheduleDays.includes(todayName)
-            })
-            if (todaySchedule) {
-              const currentTime = now.getHours() * 100 + now.getMinutes()
-              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
-              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
-              return currentTime >= startTime && currentTime <= endTime
-            }
-          }
-          return p.isActive
-        })
-        
-        // Filter based on visibility toggles
-        if (hasActivePromotions && !showActiveVenues) return false
-        if (!hasActivePromotions && !showRegularVenues) return false
-        
+        const hasActive = isActivePromotion(venue)
+        if (hasActive && !showActiveVenues) return false
+        if (!hasActive && !showRegularVenues) return false
         return true
       })
       .map((venue) => {
-        const hasActivePromotions = (venue.promotions || []).some((p: any) => {
-          if (!p.isActive) return false
-          const now = new Date()
-          const dayOfWeek = now.getDay()
-          if (p.schedule && Array.isArray(p.schedule)) {
-            const todaySchedule = p.schedule.find((s: any) => {
-              const scheduleDays = s.days?.toLowerCase() || ''
-              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-              const todayName = dayNames[dayOfWeek]
-              return scheduleDays.includes(todayName)
-            })
-            if (todaySchedule) {
-              const currentTime = now.getHours() * 100 + now.getMinutes()
-              const startTime = todaySchedule.start ? parseInt(todaySchedule.start.replace(':', '')) : 0
-              const endTime = todaySchedule.end ? parseInt(todaySchedule.end.replace(':', '')) : 2359
-              return currentTime >= startTime && currentTime <= endTime
-            }
-          }
-          return p.isActive
-        })
-        
-        // Create custom marker icon with gold color
-        // Use SVG path for better control
+        const hasActive = isActivePromotion(venue)
         const markerIcon = {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: hasActivePromotions ? 10 : 8,
-          fillColor: hasActivePromotions ? '#D4AF37' : '#B8945A',
+          scale: hasActive ? 10 : 8,
+          fillColor: hasActive ? '#D4AF37' : '#B8945A',
           fillOpacity: 1,
           strokeColor: '#000000',
           strokeWeight: 2
         }
-        
         return {
-        id: venue._id,
-        position: {
-          lat: venue.location.latitude,
-          lng: venue.location.longitude
-        },
-        title: venue.name || 'Venue',
-          label: hasActivePromotions ? {
+          id: venue._id,
+          position: {
+            lat: venue.location.latitude,
+            lng: venue.location.longitude
+          },
+          title: venue.name || 'Venue',
+          label: hasActive ? {
             text: '🔥',
             color: '#000000',
             fontWeight: 'bold',
@@ -1113,10 +1091,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             fontSize: '12px'
           },
           icon: markerIcon,
-        onClick: () => setViewingVenueId(venue._id)
+          onClick: () => setViewingVenueId(venue._id)
         }
       })
-  }, [getFilteredVenues, showActiveVenues, showRegularVenues])
+  }, [getFilteredVenues, showActiveVenues, showRegularVenues, mapsLoaded])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1436,14 +1414,11 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 <p className="text-lg font-semibold">Loading map...</p>
               </div>
             </div>
-          ) : userLocation || (venueMarkers.length > 0 && venueMarkers[0]?.position) ? (
+          ) : (
             <div className="relative w-full h-full" data-map-container>
             <GoogleMapComponent
-                center={userLocation || {
-                  lat: venueMarkers[0]?.position?.lat || 39.7684,
-                  lng: venueMarkers[0]?.position?.lng || -86.1581
-                }}
-                zoom={venueMarkers.length > 0 ? 13 : 12}
+                center={userLocation || (venueMarkers[0]?.position ? { lat: venueMarkers[0].position.lat, lng: venueMarkers[0].position.lng } : { lat: 39.7684, lng: -86.1581 })}
+                zoom={userLocation || venueMarkers.length > 0 ? 13 : 11}
               markers={[...venueMarkers, ...(showFriends ? friendMarkers : [])]}
               mapContainerStyle={{ width: '100%', height: '100%' }}
             />
@@ -1610,20 +1585,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 >
                   <List className="w-5 h-5 text-primary-500" />
                   <span className="text-xs sm:text-sm font-bold text-primary-500 hidden sm:inline">List</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <div className="text-center text-primary-400 max-w-sm mx-4">
-                <MapPin className="w-16 h-16 mx-auto mb-4 opacity-50 text-primary-500" />
-                <p className="text-lg font-semibold mb-2 text-primary-500">Location Access Needed</p>
-                <p className="text-sm mb-6 text-primary-400/80">Please allow location access to see venues on the map</p>
-                <button
-                  onClick={getCurrentLocation}
-                  className="bg-primary-500 text-black px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/30"
-                >
-                  Enable Location
                 </button>
               </div>
             </div>
