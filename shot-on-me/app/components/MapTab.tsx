@@ -1322,7 +1322,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 }`}
               >
                 <Martini className="w-3 h-3" />
-                Happy Hr
+                Happy Hour
               </button>
               <button
                 onClick={() => setFilter('specials')}
@@ -1333,7 +1333,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 }`}
               >
                 <Tag className="w-3 h-3" />
-                Specials
+                Current Specials
               </button>
               <button
                 onClick={() => setFilter('weekend')}
