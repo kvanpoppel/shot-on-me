@@ -584,24 +584,20 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
                 {!isOwn && (
                   <div className="flex-shrink-0">
                     {showAvatar ? (
-                      <img
-                        src={message.sender.profilePicture || ''}
-                        alt={message.sender.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          const parent = e.currentTarget.parentElement
-                          if (parent) {
-                            const wrapper = document.createElement('div')
-                            wrapper.className = 'w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center'
-                            const span = document.createElement('span')
-                            span.className = 'text-primary-500 text-xs font-semibold'
-                            span.textContent = message.sender.firstName?.[0] || message.sender.name?.[0] || '?'
-                            wrapper.appendChild(span)
-                            parent.appendChild(wrapper)
-                          }
-                        }}
-                      />
+                      message.sender.profilePicture ? (
+                        <img
+                          src={message.sender.profilePicture}
+                          alt={message.sender.name}
+                          className="w-8 h-8 rounded-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold">
+                            {message.sender.firstName?.[0] || message.sender.name?.[0] || '?'}
+                          </span>
+                        </div>
+                      )
                     ) : (
                       <div className="w-8" />
                     )}
@@ -610,19 +606,19 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
                 <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
                   {message.replyTo && (
                     <div className={`mb-1 px-3 py-1 rounded-lg text-xs border-l-2 ${
-                      isOwn 
-                        ? 'bg-primary-500/20 text-primary-300 border-primary-500' 
-                        : 'bg-black/40 text-primary-400 border-primary-500/50'
+                      isOwn
+                        ? 'bg-primary-600/30 text-black/70 border-black/30'
+                        : 'bg-zinc-700/60 text-zinc-400 border-zinc-500'
                     }`}>
                       <p className="font-semibold">{message.replyTo.sender.firstName || message.replyTo.sender.name}</p>
                       <p className="truncate">{message.replyTo.content}</p>
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2 ${
+                    className={`rounded-2xl px-4 py-2.5 ${
                       isOwn
-                        ? 'bg-primary-500 text-black rounded-br-sm'
-                        : 'bg-black/40 border border-primary-500/20 text-primary-300 rounded-bl-sm'
+                        ? 'bg-primary-500 text-black rounded-br-sm shadow-lg shadow-primary-500/20'
+                        : 'bg-zinc-800 text-white rounded-bl-sm border border-zinc-700/50'
                     }`}
                   >
                     {message.media && message.media.length > 0 && (
@@ -647,28 +643,28 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
                       </div>
                     )}
                     {message.content && (
-                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
                     )}
                   </div>
                   {showTime && (
-                    <div className={`flex items-center gap-2 mt-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <span className="text-primary-400/50 text-xs">
+                    <div className={`flex items-center gap-1.5 mt-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <span className="text-zinc-500 text-[11px]">
                         {formatTime(message.createdAt)}
                       </span>
                       {isOwn && (
                         <div className="flex items-center">
                           {message.read ? (
-                            <CheckCheck className="w-4 h-4 text-primary-500" />
+                            <CheckCheck className="w-3.5 h-3.5 text-primary-500" />
                           ) : (
-                            <Check className="w-4 h-4 text-primary-400/50" />
+                            <Check className="w-3.5 h-3.5 text-zinc-600" />
                           )}
                         </div>
                       )}
                       {message.likedBy && message.likedBy.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-3 h-3 text-primary-500 fill-primary-500" />
+                        <div className="flex items-center gap-0.5">
+                          <Heart className="w-3 h-3 text-rose-400 fill-rose-400" />
                           {message.likedBy.length > 1 && (
-                            <span className="text-xs text-primary-400/70">{message.likedBy.length}</span>
+                            <span className="text-[11px] text-zinc-500">{message.likedBy.length}</span>
                           )}
                         </div>
                       )}
