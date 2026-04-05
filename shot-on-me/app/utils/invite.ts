@@ -72,15 +72,41 @@ export async function shareInvite(
     }
   }
 
-  // Method 2: SMS (if phone number provided)
+  // Method 2: SMS — send via Twilio backend
   if (options?.method === 'sms' && options.phoneNumber) {
-    const smsMessage = `${shareMessage}\n\n${inviteLink}`
-    const smsLink = `sms:${options.phoneNumber}?body=${encodeURIComponent(smsMessage)}`
-    window.location.href = smsLink
-    return {
-      success: true,
-      method: 'sms',
-      message: 'Opening SMS...'
+    const { getApiUrl } = await import('./api')
+    const API_URL = getApiUrl()
+
+    let token: string | null = null
+    if (typeof window !== 'undefined') {
+      try {
+        const authData = localStorage.getItem('auth')
+        if (authData) token = JSON.parse(authData).token
+      } catch {}
+    }
+
+    if (!token) {
+      return { success: false, method: 'sms', error: 'Please log in to send SMS invites' }
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/invites/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ phoneNumber: options.phoneNumber, inviteLink })
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        return { success: true, method: 'sms', message: 'Invite sent!' }
+      }
+      // Twilio not configured — fall back to native SMS compose
+      const smsLink = `sms:${options.phoneNumber}?body=${encodeURIComponent(`${shareMessage}\n\n${inviteLink}`)}`
+      window.location.href = smsLink
+      return { success: true, method: 'sms', message: 'Opening SMS...' }
+    } catch {
+      const smsLink = `sms:${options.phoneNumber}?body=${encodeURIComponent(`${shareMessage}\n\n${inviteLink}`)}`
+      window.location.href = smsLink
+      return { success: true, method: 'sms', message: 'Opening SMS...' }
     }
   }
 
