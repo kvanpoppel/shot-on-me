@@ -1441,7 +1441,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 border border-black shadow-md"></div>
                             {showActiveVenues && (
                               <>
-                                <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full border border-black animate-pulse"></div>
+                                <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary-500 rounded-full border border-black animate-pulse"></div>
                                 <div className="absolute inset-0 rounded-full bg-primary-500/20 animate-ping"></div>
                               </>
                             )}
