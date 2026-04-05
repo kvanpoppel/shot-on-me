@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -33,7 +33,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const venuesContainerRef = useRef<HTMLDivElement>(null)
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'favorites' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight'>('all')
+  const [filter, setFilter] = useState<'all' | 'favorites' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight' | 'wine'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list') // Default to list view to show venues
   const [isMounted, setIsMounted] = useState(false)
@@ -534,6 +534,21 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         })
       }))
     }
+    if (filter === 'wine') {
+      return rankVenues(filtered.filter((venue) => {
+        const wineKeywords = ['wine', 'winery', 'vineyard', 'sommelier', 'pinot', 'cabernet', 'chardonnay', 'rosé', 'rose', 'merlot', 'prosecco', 'champagne', 'sparkling']
+        const nameMatch = wineKeywords.some(k => (venue.name || '').toLowerCase().includes(k))
+        const categoryMatch = ['wine', 'wine_bar', 'winery'].includes(venue.category)
+        const descMatch = wineKeywords.some(k => (venue.description || '').toLowerCase().includes(k))
+        const promoMatch = (venue.promotions || []).some((p: any) =>
+          wineKeywords.some(k =>
+            (p.title || '').toLowerCase().includes(k) || (p.description || '').toLowerCase().includes(k)
+          )
+        )
+        return nameMatch || categoryMatch || descMatch || promoMatch
+      }))
+    }
+
     // Filter for happy-hour or specials with improved logic
     return rankVenues(filtered.filter((venue) => {
       const promotions = venue.promotions || []
@@ -1352,6 +1367,17 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               >
                 <Moon className="w-3.5 h-3.5" />
                 Tonight
+              </button>
+              <button
+                onClick={() => setFilter('wine')}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  filter === 'wine'
+                    ? 'bg-primary-500 text-black shadow-lg'
+                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
+                }`}
+              >
+                <Wine className="w-3.5 h-3.5" />
+                Wine
               </button>
             </div>
           </div>
