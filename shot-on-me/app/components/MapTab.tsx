@@ -1291,10 +1291,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           
           {/* Horizontal Scrollable Filter Tabs - Chase Offers Style */}
           <div className="mb-2">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
               <button
                 onClick={() => setFilter('all')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
                   filter === 'all'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1304,79 +1304,79 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('favorites')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'favorites'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Heart className={`w-3.5 h-3.5 ${filter === 'favorites' ? 'fill-black' : ''}`} />
+                <Heart className={`w-3 h-3 ${filter === 'favorites' ? 'fill-black' : ''}`} />
                 Favorites
               </button>
               <button
                 onClick={() => setFilter('happy-hour')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'happy-hour'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Martini className="w-3.5 h-3.5" />
-                Happy Hour
+                <Martini className="w-3 h-3" />
+                Happy Hr
               </button>
               <button
                 onClick={() => setFilter('specials')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'specials'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Tag className="w-3.5 h-3.5" />
-                Current Specials
+                <Tag className="w-3 h-3" />
+                Specials
               </button>
               <button
                 onClick={() => setFilter('weekend')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'weekend'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Calendar className="w-3.5 h-3.5" />
+                <Calendar className="w-3 h-3" />
                 Weekend
               </button>
               <button
                 onClick={() => setFilter('trending')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'trending'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5" />
+                <TrendingUp className="w-3 h-3" />
                 Trending
               </button>
               <button
                 onClick={() => setFilter('tonight')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'tonight'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Moon className="w-3.5 h-3.5" />
+                <Moon className="w-3 h-3" />
                 Tonight
               </button>
               <button
                 onClick={() => setFilter('wine')}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   filter === 'wine'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
                 }`}
               >
-                <Wine className="w-3.5 h-3.5" />
+                <Wine className="w-3 h-3" />
                 Wine
               </button>
             </div>
