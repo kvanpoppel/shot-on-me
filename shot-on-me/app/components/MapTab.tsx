@@ -1291,10 +1291,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           
           {/* Horizontal Scrollable Filter Tabs - Chase Offers Style */}
           <div className="mb-2">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory">
               <button
                 onClick={() => setFilter('all')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
                   filter === 'all'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1304,7 +1304,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('favorites')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'favorites'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1315,7 +1315,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('happy-hour')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'happy-hour'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1326,7 +1326,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('specials')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'specials'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1337,7 +1337,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('weekend')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'weekend'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1348,7 +1348,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('trending')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'trending'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1359,7 +1359,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('tonight')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'tonight'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
@@ -1370,7 +1370,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               </button>
               <button
                 onClick={() => setFilter('wine')}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'wine'
                     ? 'bg-primary-500 text-black shadow-lg'
                     : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
