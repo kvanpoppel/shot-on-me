@@ -79,5 +79,44 @@ router.post('/email', auth, async (req, res) => {
   }
 });
 
+// Diagnostic: test Twilio by sending a real SMS to a given number
+// POST /invites/test-sms  { "to": "+12223334444" }
+router.post('/test-sms', auth, async (req, res) => {
+  try {
+    const { to } = req.body;
+    if (!to) return res.status(400).json({ message: 'Provide a "to" phone number' });
+
+    const { isTwilioConfigured } = require('../utils/sms');
+    const configured = isTwilioConfigured();
+
+    if (!configured) {
+      return res.json({
+        configured: false,
+        sid: process.env.TWILIO_ACCOUNT_SID?.substring(0, 8) + '...',
+        phone: process.env.TWILIO_PHONE_NUMBER,
+        error: 'Twilio client failed to initialize — check SID/token format'
+      });
+    }
+
+    const twilio = require('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+    const result = await client.messages.create({
+      body: 'Shot On Me test message — Twilio is working ✅',
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to
+    });
+
+    res.json({ success: true, sid: result.sid, status: result.status, to: result.to });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      errorCode: error.code,
+      errorMessage: error.message,
+      moreInfo: error.moreInfo
+    });
+  }
+});
+
 module.exports = router;
 
