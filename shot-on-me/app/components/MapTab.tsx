@@ -8,6 +8,7 @@ import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
+import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 import { useApiUrl } from '../utils/api'
@@ -65,6 +66,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [friends, setFriends] = useState<any[]>([])
   const [showFriends, setShowFriends] = useState(true)
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null)
+  const [showSendSheet, setShowSendSheet] = useState(false)
   const [currentCity, setCurrentCity] = useState<string>('Indianapolis')
   const [temperature, setTemperature] = useState<number | null>(null)
   const [weatherLoading, setWeatherLoading] = useState(false)
@@ -1970,6 +1972,22 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         </div>
       )}
 
+      {/* Quick Send Sheet — opens on top of friend modal */}
+      {selectedFriend && (
+        <QuickSendDrinkSheet
+          recipientId={selectedFriend._id || selectedFriend.id || ''}
+          recipientName={`${selectedFriend.firstName || ''} ${selectedFriend.lastName || ''}`.trim()}
+          recipientFirstName={selectedFriend.firstName}
+          recipientAvatar={selectedFriend.profilePicture}
+          isOpen={showSendSheet}
+          onClose={() => setShowSendSheet(false)}
+          onSuccess={() => {
+            setShowSendSheet(false)
+            setSelectedFriend(null)
+          }}
+        />
+      )}
+
       {/* Friend Profile Modal — bottom sheet */}
       {selectedFriend && (
         <div
@@ -2009,12 +2027,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
             {/* Primary CTA */}
             <button
-              onClick={() => {
-                if (onViewProfile && selectedFriend) {
-                  onViewProfile(selectedFriend._id || selectedFriend.id)
-                }
-                setSelectedFriend(null)
-              }}
+              onClick={() => setShowSendSheet(true)}
               className="w-full bg-primary-500 text-black py-4 rounded-2xl font-bold text-base mb-3 hover:bg-primary-400 active:scale-95 transition-all shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2"
             >
               <Martini className="w-5 h-5" />
