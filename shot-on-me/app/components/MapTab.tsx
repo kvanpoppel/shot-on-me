@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, ArrowLeft } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -1140,13 +1140,25 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 p-2 sm:p-2.5">
           {/* Top Row: Back Button, Location, Temperature, Settings - Compact */}
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
-            {/* Back Button */}
+            {/* User avatar — tap to go to profile */}
             <button
-              onClick={() => setActiveTab?.('home')}
-              className="flex-shrink-0 p-1.5 sm:p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
-              title="Go back"
+              onClick={() => setActiveTab?.('profile')}
+              className="flex-shrink-0 flex items-center justify-center active:scale-90 transition-all"
+              title="Your profile"
             >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt="You"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-primary-500 shadow-lg shadow-primary-500/30"
+                />
+              ) : (
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                  <span className="text-primary-500 text-xs font-bold leading-none">
+                    {user?.name?.[0]?.toUpperCase() || 'Y'}
+                  </span>
+                </div>
+              )}
             </button>
             
             {/* Location Bar - Compact */}
@@ -1212,6 +1224,26 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       ) : (
         <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 px-4 py-2">
           <div className="flex items-center justify-center relative mb-2">
+            {/* User avatar — tap to go to profile */}
+            <button
+              onClick={() => setActiveTab?.('profile')}
+              className="absolute left-0 flex items-center justify-center active:scale-90 transition-all"
+              title="Your profile"
+            >
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt="You"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-primary-500 shadow-lg shadow-primary-500/30"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                  <span className="text-primary-500 text-xs font-bold leading-none">
+                    {user?.name?.[0]?.toUpperCase() || 'Y'}
+                  </span>
+                </div>
+              )}
+            </button>
             <h1 className="text-xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
             <button
               onClick={handleRefresh}
@@ -1938,54 +1970,70 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         </div>
       )}
 
-      {/* Friend Profile Modal - Snapchat-style */}
+      {/* Friend Profile Modal — bottom sheet */}
       {selectedFriend && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-black/95 backdrop-blur-md border border-primary-500/30 rounded-2xl p-6 max-w-sm w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-primary-500">Friend Location</h3>
-              <button
-                onClick={() => setSelectedFriend(null)}
-                className="text-primary-400 hover:text-primary-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-4 mb-4">
-              {selectedFriend.profilePicture ? (
-                <img
-                  src={selectedFriend.profilePicture}
-                  alt={`${selectedFriend.firstName} ${selectedFriend.lastName}`}
-                  className="w-16 h-16 rounded-full border-2 border-primary-500/30"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-primary-500/20 border-2 border-primary-500/30 flex items-center justify-center">
-                  <span className="text-primary-500 font-bold text-lg">
-                    {selectedFriend.firstName?.[0]}{selectedFriend.lastName?.[0]}
-                  </span>
-                </div>
-              )}
-              <div>
-                <h4 className="text-primary-500 font-semibold">
-                  {selectedFriend.firstName} {selectedFriend.lastName}
-                </h4>
-                {selectedFriend.distance && (
-                  <p className="text-primary-400/70 text-sm">{selectedFriend.distance} away</p>
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center"
+          onClick={() => setSelectedFriend(null)}
+        >
+          <div
+            className="bg-black/95 border border-primary-500/30 rounded-t-3xl p-6 w-full max-w-sm shadow-2xl shadow-primary-500/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div className="w-10 h-1 bg-primary-500/30 rounded-full mx-auto mb-5" />
+
+            {/* Avatar + name */}
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative mb-3">
+                {selectedFriend.profilePicture ? (
+                  <img
+                    src={selectedFriend.profilePicture}
+                    alt={`${selectedFriend.firstName} ${selectedFriend.lastName}`}
+                    className="w-24 h-24 rounded-full object-cover ring-4 ring-primary-500 shadow-xl shadow-primary-500/30"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-primary-500/20 border-4 border-primary-500 flex items-center justify-center shadow-xl shadow-primary-500/20">
+                    <span className="text-primary-500 font-bold text-3xl">
+                      {selectedFriend.firstName?.[0]}{selectedFriend.lastName?.[0]}
+                    </span>
+                  </div>
                 )}
+                <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-black" />
               </div>
+              <h3 className="text-xl font-bold text-white">{selectedFriend.firstName} {selectedFriend.lastName}</h3>
+              {selectedFriend.distance && (
+                <p className="text-primary-400/60 text-sm mt-0.5">{selectedFriend.distance} away</p>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            {/* Primary CTA */}
+            <button
+              onClick={() => {
+                if (onViewProfile && selectedFriend) {
+                  onViewProfile(selectedFriend._id || selectedFriend.id)
+                }
+                setSelectedFriend(null)
+              }}
+              className="w-full bg-primary-500 text-black py-4 rounded-2xl font-bold text-base mb-3 hover:bg-primary-400 active:scale-95 transition-all shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2"
+            >
+              <Martini className="w-5 h-5" />
+              Send a Shot
+            </button>
+
+            {/* Secondary actions */}
+            <div className="flex gap-2 mb-2">
               <button
                 onClick={() => {
                   if (selectedFriend.location) {
                     const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedFriend.location.latitude},${selectedFriend.location.longitude}`
-                    window.open(url, '_blank')
+                    window.open(url, '_blank', 'noopener,noreferrer')
                   }
                 }}
-                className="flex-1 bg-primary-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-black/40 border border-primary-500/20 text-primary-400 py-3 rounded-2xl font-semibold hover:bg-primary-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-sm"
               >
                 <Navigation className="w-4 h-4" />
-                Get Directions
+                Directions
               </button>
               <button
                 onClick={() => {
@@ -1994,11 +2042,19 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                   }
                   setSelectedFriend(null)
                 }}
-                className="flex-1 bg-black/40 border border-primary-500/30 text-primary-500 px-4 py-2 rounded-lg font-semibold hover:bg-primary-500/10 transition-all"
+                className="flex-1 bg-black/40 border border-primary-500/20 text-primary-400 py-3 rounded-2xl font-semibold hover:bg-primary-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-sm"
               >
-                View Profile
+                <User className="w-4 h-4" />
+                Profile
               </button>
             </div>
+
+            <button
+              onClick={() => setSelectedFriend(null)}
+              className="w-full py-2 text-primary-400/40 text-sm"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}
