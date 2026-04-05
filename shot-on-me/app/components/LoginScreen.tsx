@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
-import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle, Send, Sparkles, Users } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import Link from 'next/link'
@@ -23,6 +23,12 @@ const FEATURES = [
     title: 'Make every night a story',
     desc: 'Check in, connect with friends, and share the moments that matter.',
   },
+]
+
+const FEATURE_ICONS = [
+  <Send className="w-5 h-5 text-primary-500" />,
+  <MapPin className="w-5 h-5 text-primary-500" />,
+  <Sparkles className="w-5 h-5 text-primary-500" />,
 ]
 
 const CITIES = ['All', 'Indianapolis', 'Chicago', 'Louisville', 'Nashville', 'Detroit', 'Columbus']
@@ -207,10 +213,34 @@ export default function LoginScreen() {
             Shot On Me
           </h1>
           <div className="h-px w-20 bg-gradient-to-r from-transparent via-primary-500/50 to-transparent mx-auto mb-4" />
-          <p className="text-xl font-bold text-white/82 leading-snug mb-1">
+          <p className="text-xl font-bold text-white/82 leading-snug mb-6">
             Buy someone a drink.<br />
             <span className="text-primary-400">Make a night to remember.</span>
           </p>
+
+          {/* Hero CTAs */}
+          <div className="flex flex-col items-center gap-3 mb-4">
+            <button
+              onClick={() => openSheet(false)}
+              className="w-full bg-primary-500 text-black px-8 py-4 rounded-2xl font-bold text-base hover:bg-primary-400 active:scale-[0.97] transition-all shadow-xl shadow-primary-500/30 flex items-center justify-center gap-2"
+            >
+              Join Free <ArrowRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => openSheet(true)}
+              className="w-full border border-primary-500/25 text-primary-400 px-8 py-3.5 rounded-2xl font-semibold text-sm hover:bg-primary-500/8 active:scale-[0.97] transition-all"
+            >
+              Already have an account? Sign In
+            </button>
+          </div>
+
+          {/* Social proof */}
+          <div className="flex items-center justify-center gap-1.5 text-sm">
+            <Users className="w-4 h-4 text-primary-500/60" />
+            <span className="text-white/35">
+              <span className="text-primary-400 font-semibold">2,400+</span> shots sent this week
+            </span>
+          </div>
         </div>
 
         {/* ── Discover Venues — directly under slogan ── */}
@@ -314,13 +344,19 @@ export default function LoginScreen() {
         </div>
 
         {/* ── Features ── */}
-        <div className="mb-10 space-y-5">
+        <div className="mb-10 space-y-3">
           {FEATURES.map((f, i) => (
-            <div key={i} className="group cursor-default">
-              <p className="text-white/78 font-semibold text-sm mb-0.5 leading-snug group-hover:text-white/90 transition-colors duration-200">
-                {f.title}
-              </p>
-              <p className="text-white/30 text-xs leading-relaxed">{f.desc}</p>
+            <div
+              key={i}
+              className="flex items-start gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/6 hover:border-primary-500/20 hover:bg-white/[0.05] transition-all group cursor-default"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary-500/15 border border-primary-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-primary-500/25 transition-colors">
+                {FEATURE_ICONS[i]}
+              </div>
+              <div className="pt-0.5">
+                <p className="text-white/85 font-semibold text-sm leading-snug mb-1">{f.title}</p>
+                <p className="text-white/35 text-xs leading-relaxed">{f.desc}</p>
+              </div>
             </div>
           ))}
         </div>
