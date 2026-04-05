@@ -561,21 +561,41 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
           </div>
         </div>
 
-        {/* Messages Thread - Mobile Text Style */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {/* Messages Thread */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
           {messages.map((message, index) => {
             const isOwn =
               message.sender._id.toString() === (user as any)?._id?.toString() ||
               message.sender._id.toString() === (user as any)?.id
-            const showAvatar = !isOwn && (index === 0 || 
-              messages[index - 1].sender._id.toString() !== message.sender._id.toString())
-            const showTime = index === messages.length - 1 || 
-              new Date(messages[index + 1].createdAt).getTime() - new Date(message.createdAt).getTime() > 300000
-            
+            const prevMsg = messages[index - 1]
+            const nextMsg = messages[index + 1]
+            const sameAsPrev = prevMsg && prevMsg.sender._id.toString() === message.sender._id.toString()
+            const sameAsNext = nextMsg && nextMsg.sender._id.toString() === message.sender._id.toString()
+            const showAvatar = !isOwn && !sameAsPrev
+            const showTime = !nextMsg ||
+              new Date(nextMsg.createdAt).getTime() - new Date(message.createdAt).getTime() > 300000 ||
+              nextMsg.sender._id.toString() !== message.sender._id.toString()
+
+            // Adjust rounding for consecutive message grouping
+            const ownRounding = sameAsPrev && sameAsNext
+              ? 'rounded-2xl rounded-r-md'
+              : sameAsPrev
+              ? 'rounded-2xl rounded-tr-md'
+              : sameAsNext
+              ? 'rounded-2xl rounded-br-md'
+              : 'rounded-2xl rounded-br-sm'
+            const otherRounding = sameAsPrev && sameAsNext
+              ? 'rounded-2xl rounded-l-md'
+              : sameAsPrev
+              ? 'rounded-2xl rounded-tl-md'
+              : sameAsNext
+              ? 'rounded-2xl rounded-bl-md'
+              : 'rounded-2xl rounded-bl-sm'
+
             return (
               <div
                 key={message._id}
-                className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`flex gap-2 ${sameAsPrev ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   setSelectedMessage(message)
@@ -615,10 +635,10 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2.5 ${
+                    className={`px-4 py-2.5 ${
                       isOwn
-                        ? 'bg-primary-500 text-black rounded-br-sm shadow-lg shadow-primary-500/20'
-                        : 'bg-zinc-800 text-white rounded-bl-sm border border-zinc-700/50'
+                        ? `${ownRounding} bg-gradient-to-br from-[#D4AF37] to-[#B8945A] text-black shadow-md shadow-primary-500/25`
+                        : `${otherRounding} bg-zinc-800 text-white border border-zinc-700/50`
                     }`}
                   >
                     {message.media && message.media.length > 0 && (
