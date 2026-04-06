@@ -37,7 +37,9 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   }, [showCreditCard, setModalOpen])
   const [firstName, setFirstName] = useState(user?.firstName || '')
   const [lastName, setLastName] = useState(user?.lastName || '')
+  const [phoneNumber, setPhoneNumber] = useState((user as any)?.phoneNumber || '')
   const [saving, setSaving] = useState(false)
+  const [testSmsStatus, setTestSmsStatus] = useState<string | null>(null)
   const [locationVisible, setLocationVisible] = useState((user as any)?.location?.isVisible ?? true)
   const [aiPersonalizationEnabled, setAiPersonalizationEnabled] = useState((user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true)
   const [showPrivacySettings, setShowPrivacySettings] = useState(false)
@@ -364,16 +366,41 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     try {
       await axios.put(
         `${API_URL}/users/me`,
-        { firstName, lastName },
+        { firstName, lastName, phoneNumber: phoneNumber.trim() || undefined },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      await updateUser({ firstName, lastName })
+      await updateUser({ firstName, lastName, phoneNumber: phoneNumber.trim() || undefined } as any)
       alert('Profile updated successfully!')
       setShowEditProfile(false)
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to update profile')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestSms = async () => {
+    if (!token) return
+    const phone = (user as any)?.phoneNumber
+    if (!phone) {
+      setTestSmsStatus('Add a phone number to your profile first, then try again.')
+      return
+    }
+    setTestSmsStatus('Sending...')
+    try {
+      const res = await axios.post(
+        `${API_URL}/invites/test-sms`,
+        { to: phone },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (res.data.success) {
+        setTestSmsStatus(`✅ Sent! Check your phone. (SID: ${res.data.sid?.substring(0, 12)}...)`)
+      } else {
+        setTestSmsStatus(`❌ ${res.data.errorMessage || res.data.message}`)
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.errorMessage || error.response?.data?.message || error.message
+      setTestSmsStatus(`❌ ${msg}`)
     }
   }
 
@@ -499,6 +526,17 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   required
                   className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30 backdrop-blur-sm font-light"
                 />
+              </div>
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1 tracking-tight">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="+1 (555) 000-0000"
+                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30 backdrop-blur-sm font-light"
+                />
+                <p className="text-xs text-primary-400/50 mt-1">Required to receive payment notifications and verify transactions</p>
               </div>
               <div className="flex space-x-3">
                 <button
@@ -638,6 +676,22 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
               <Camera className="w-5 h-5" />
               <span>Change Profile Picture</span>
             </button>
+
+            {/* SMS Test — tap to verify Twilio is working */}
+            <div className="px-4 py-2.5">
+              <button
+                onClick={handleTestSms}
+                className="w-full bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg text-sm font-medium hover:bg-primary-500/20 transition-all"
+              >
+                Send Test SMS to My Phone
+              </button>
+              {testSmsStatus && (
+                <p className="text-xs text-primary-400/70 mt-1.5 text-center">{testSmsStatus}</p>
+              )}
+              {!(user as any)?.phoneNumber && (
+                <p className="text-xs text-primary-400/50 mt-1 text-center">Add your phone number in Edit Profile first</p>
+              )}
+            </div>
 
             <button
               type="button"
