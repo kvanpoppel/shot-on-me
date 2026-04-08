@@ -910,6 +910,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       </div>
 
+      <p className="text-center text-primary-400/35 text-xs px-4 mb-3">Send shots & check in to earn points — 100 pts = $5 🥃</p>
+
       {/* Primary Actions — balance-aware */}
       {balance === 0 && (
         <div className="px-4 mb-4">

@@ -34,6 +34,27 @@ export default function CheckInSuccessModal({
   const [pointsVisible, setPointsVisible] = useState(false)
   const [streakVisible, setStreakVisible] = useState(false)
 
+  const shareCheckin = async () => {
+    const shareToSocial = (() => { try { return localStorage.getItem('som_share_to_social') === 'true' } catch { return false } })()
+    const params = new URLSearchParams({
+      venue: checkInData?.venueName || 'tonight',
+      name: 'I',
+    })
+    try {
+      const res = await fetch(`/api/og/checkin?${params}`)
+      const blob = await res.blob()
+      const file = new File([blob], 'shot-on-me-checkin.png', { type: 'image/png' })
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Shot On Me', text: `I'm out tonight at ${checkInData?.venueName || 'a great spot'} 🥃 shotonme.com` })
+      } else {
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url; a.download = 'shot-on-me-checkin.png'; a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch { /* cancelled */ }
+  }
+
   useEffect(() => {
     if (isOpen && checkInData) {
       setShowAnimation(true)
@@ -214,13 +235,21 @@ export default function CheckInSuccessModal({
           </div>
         )}
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full bg-primary-500 text-black py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors mt-4"
-        >
-          Awesome!
-        </button>
+        {/* Share + Close */}
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={shareCheckin}
+            className="flex-1 border border-primary-500/30 text-primary-400 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-colors text-sm"
+          >
+            Share 📲
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-[2] bg-primary-500 text-black py-3 rounded-xl font-semibold hover:bg-primary-400 transition-colors"
+          >
+            Awesome!
+          </button>
+        </div>
       </div>
     </div>
   )

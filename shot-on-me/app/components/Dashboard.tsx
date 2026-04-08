@@ -291,114 +291,48 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
               </button>
               
 
-              {/* Profile Dropdown Menu - Now includes all menu items */}
               {showProfileDropdown && (
-                <div 
-                  className="absolute left-0 top-full mt-2 w-80 bg-black/95 backdrop-blur-md border-2 border-primary-500/30 rounded-2xl shadow-2xl shadow-black/50 z-[60] overflow-y-auto max-h-[85vh]"
+                <div
+                  className="absolute left-0 top-full mt-2 w-52 bg-zinc-950 border border-primary-500/20 rounded-2xl shadow-xl shadow-black/60 z-[60] overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Account Header */}
-                  <div className="p-5 bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border-b border-primary-500/20">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-16 h-16 border-2 border-primary-500/40 rounded-full flex items-center justify-center overflow-hidden bg-primary-500/10">
-                        {user?.profilePicture ? (
-                          <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-primary-500 font-bold text-lg">
-                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  {/* Compact header */}
+                  <div className="px-4 py-3 border-b border-primary-500/10">
+                    <p className="text-sm font-semibold text-white/85 truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-xs text-white/35 truncate">{user?.email}</p>
+                  </div>
+
+                  {/* Items */}
+                  <div className="p-1.5 space-y-0.5">
+                    {[
+                      { icon: User,     label: 'Profile',       action: () => setActiveTab('profile') },
+                      { icon: Settings, label: 'Settings',      action: () => setShowSettings(true) },
+                      { icon: Bell,     label: 'Notifications', action: () => setShowActivityFeed(true), badge: notificationCount },
+                      { icon: Gift,     label: 'Rewards',       action: () => setActiveTab('rewards') },
+                    ].map(({ icon: Icon, label, action, badge }) => (
+                      <button
+                        key={label}
+                        onClick={() => { setShowProfileDropdown(false); action() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:bg-white/5 hover:text-primary-400 transition-all text-sm text-left"
+                      >
+                        <Icon className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                        <span className="flex-1">{label}</span>
+                        {badge && badge > 0 && (
+                          <span className="bg-primary-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                            {badge > 9 ? '9+' : badge}
                           </span>
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-primary-500 truncate">
-                          {user?.firstName} {user?.lastName}
-                        </h3>
-                        <p className="text-primary-400/70 text-sm truncate">{user?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="p-3 space-y-1">
-                    <button
-                      onClick={() => {
-                        setShowProfileDropdown(false)
-                        setActiveTab('profile')
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-left text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500 rounded-xl transition-all group"
-                    >
-                      <User className="w-5 h-5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-medium">View Profile</p>
-                        <p className="text-xs text-primary-400/60">See your posts and activity</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="border-t border-primary-500/10 my-2"></div>
-
-                  {/* All Menu Items from Hamburger Menu */}
-                  <div className="p-3 space-y-4">
-                    {menuCategories.map((category, categoryIndex) => (
-                      <div key={categoryIndex}>
-                        <h3 className="text-xs uppercase tracking-wider text-primary-400/60 font-semibold mb-2 px-2">
-                          {category.title}
-                        </h3>
-                        <div className="space-y-1">
-                          {category.items.map((item, itemIndex) => {
-                            const Icon = item.icon
-                            return (
-                              <button
-                                key={itemIndex}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  setShowProfileDropdown(false)
-                                  item.action()
-                                }}
-                                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-left rounded-xl transition-all group ${
-                                  (item as any).isDestructive
-                                    ? 'text-red-400/80 hover:bg-red-500/10 active:bg-red-500/20 hover:text-red-400'
-                                    : 'text-primary-400/80 hover:bg-primary-500/10 active:bg-primary-500/20 hover:text-primary-500'
-                                }`}
-                              >
-                                <Icon className={`w-5 h-5 flex-shrink-0 ${
-                                  (item as any).isDestructive ? 'text-red-400' : 'text-primary-500'
-                                }`} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm">{item.label}</p>
-                                  <p className="text-xs text-primary-400/60">{item.description}</p>
-                                </div>
-                                {(item as any).badge && (item as any).badge > 0 && (
-                                  <span className="bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                    {(item as any).badge > 9 ? '9+' : (item as any).badge}
-                                  </span>
-                                )}
-                                <ArrowRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
 
-                  {/* Divider */}
-                  <div className="border-t border-primary-500/10 my-2"></div>
-
-                  {/* Logout */}
-                  <div className="p-3">
+                  <div className="border-t border-primary-500/10 p-1.5">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-left text-red-400/80 hover:bg-red-500/10 active:bg-red-500/20 hover:text-red-400 rounded-xl transition-all"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all text-sm text-left"
                     >
-                      <LogOut className="w-5 h-5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-medium">Log Out</p>
-                        <p className="text-xs text-red-400/60">Sign out of your account</p>
-                      </div>
+                      <LogOut className="w-4 h-4 flex-shrink-0" />
+                      Log Out
                     </button>
                   </div>
                 </div>

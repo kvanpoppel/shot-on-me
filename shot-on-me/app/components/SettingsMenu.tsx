@@ -16,6 +16,31 @@ interface SettingsMenuProps {
   onClose: () => void
 }
 
+function SocialShareToggle() {
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem('som_share_to_social') === 'true' } catch { return false }
+  })
+  const toggle = () => {
+    const next = !enabled
+    setEnabled(next)
+    try { localStorage.setItem('som_share_to_social', next ? 'true' : 'false') } catch {}
+  }
+  return (
+    <label className="flex items-center justify-between p-3 bg-black/40 border border-primary-500/15 rounded-lg cursor-pointer hover:bg-black/50 transition-all">
+      <div>
+        <p className="text-sm font-medium text-primary-500">Share to Instagram & Facebook</p>
+        <p className="text-xs text-primary-400/55 font-light">One-tap share after buying a shot</p>
+      </div>
+      <button
+        onClick={toggle}
+        className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-primary-500' : 'bg-white/20'}`}
+      >
+        <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </label>
+  )
+}
+
 export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
@@ -1003,6 +1028,12 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* Social Sharing */}
+              <div>
+                <p className="text-xs font-semibold text-primary-500/70 uppercase tracking-wider mb-3">Social</p>
+                <SocialShareToggle />
               </div>
 
               {/* Venues */}

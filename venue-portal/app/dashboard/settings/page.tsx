@@ -12,7 +12,7 @@ import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
 import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap, Crown } from 'lucide-react'
+import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap, Crown, QrCode, Download } from 'lucide-react'
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
@@ -252,6 +252,66 @@ function SettingsPageContent() {
             <div className="pt-2">
               <VenueManager />
             </div>
+          </CollapsibleSection>
+
+          {/* Table QR Code */}
+          <CollapsibleSection
+            title="Table QR Code"
+            subtitle="Print and place on tables — guests scan to download Shot On Me"
+            defaultOpen={false}
+            icon={<QrCode className="w-4 h-4" />}
+          >
+            {(() => {
+              const venueId = (user as any)?.venueId || user?._id
+              const venueUrl = `https://www.shotonme.com?venue=${venueId}`
+              const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(venueUrl)}&size=300x300&color=B8945A&bgcolor=000000`
+              const handleDownload = async () => {
+                try {
+                  const res = await fetch(qrUrl)
+                  const blob = await res.blob()
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = 'shotonme-qr.png'
+                  a.click()
+                  URL.revokeObjectURL(a.href)
+                } catch {
+                  window.open(qrUrl, '_blank')
+                }
+              }
+              return (
+                <div className="pt-2 flex flex-col items-center gap-4">
+                  <p className="text-xs text-primary-400/70 text-center">
+                    Place this QR on your tables, menus, or bar top. Guests scan it to open Shot On Me and connect with your venue instantly.
+                  </p>
+                  {venueId ? (
+                    <>
+                      <div className="p-3 bg-black border border-primary-500/30 rounded-xl">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={qrUrl} alt="Venue QR Code" width={200} height={200} className="rounded-lg" />
+                      </div>
+                      <p className="text-xs text-primary-400/50 break-all text-center px-4">{venueUrl}</p>
+                      <div className="flex gap-3 w-full">
+                        <button
+                          onClick={handleDownload}
+                          className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 text-sm transition-all"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download PNG
+                        </button>
+                        <button
+                          onClick={() => window.print()}
+                          className="flex-1 border border-primary-500/30 text-primary-400 px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-500/10 text-sm transition-colors"
+                        >
+                          Print
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-primary-400/50 text-center">Venue ID not available. Please refresh or contact support.</p>
+                  )}
+                </div>
+              )
+            })()}
           </CollapsibleSection>
 
           {/* Staff Management - Collapsible */}
