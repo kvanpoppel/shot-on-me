@@ -39,7 +39,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const prevActiveTabRef = useRef<Tab>(activeTab)
   const { token } = useAuth()
   const API_URL = useApiUrl()
@@ -185,14 +184,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
     }
   }, [])
 
-  // Cleanup hover timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const fetchUnreadMessageCount = async () => {
     if (!token) return
@@ -267,30 +258,9 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
           {/* Left Side: Profile Picture/Name - Interactive */}
           <div className="flex items-center gap-3 pointer-events-auto">
             {/* Profile Dropdown - Top Left */}
-            <div 
-              className="relative" 
+            <div
+              className="relative"
               ref={profileDropdownRef}
-              onMouseEnter={() => {
-                // Clear any pending close timeout
-                if (hoverTimeoutRef.current) {
-                  clearTimeout(hoverTimeoutRef.current)
-                  hoverTimeoutRef.current = null
-                }
-                // Show dropdown on hover (desktop)
-                if (window.innerWidth >= 768) {
-                  setShowProfileDropdown(true)
-                }
-              }}
-              onMouseLeave={() => {
-                // Close dropdown when mouse leaves the entire area (desktop)
-                if (window.innerWidth >= 768) {
-                  // Small delay to allow moving to dropdown
-                  hoverTimeoutRef.current = setTimeout(() => {
-                    setShowProfileDropdown(false)
-                    hoverTimeoutRef.current = null
-                  }, 300)
-                }
-              }}
             >
               <button
                 onClick={(e) => {
