@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 // Removed Inter font import to prevent hydration mismatches - using CSS font instead
 import './globals.css'
+import { headers } from 'next/headers'
 import AppWrapper from './components/AppWrapper'
 import Providers from './components/Providers'
 import CookieConsent from './components/CookieConsent'
@@ -26,11 +27,15 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: ReactNode
 }) {
+  // Reading x-nonce makes Next.js apply it to its own injected inline scripts,
+  // which is required for the nonce-based CSP set in middleware.ts to work.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -58,4 +63,3 @@ export default function RootLayout({
     </html>
   )
 }
-
