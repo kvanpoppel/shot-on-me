@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { X, Send, ChevronRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
+import ShareShotSheet from './ShareShotSheet'
 
 interface QuickSendDrinkSheetProps {
   recipientId: string
@@ -50,6 +51,7 @@ export default function QuickSendDrinkSheet({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [celebrationActive, setCelebrationActive] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const customAmountRef = useRef<HTMLInputElement>(null)
@@ -416,7 +418,13 @@ export default function QuickSendDrinkSheet({
               <p className="text-primary-400/80 text-sm mb-1">
                 Sent {displayName} {activeDrink?.drinkWord || 'a drink'} — <span className="text-primary-400 font-semibold">${finalAmount?.toFixed(2)}</span>
               </p>
-              {postToFeed && <p className="text-primary-500/60 text-xs mb-6">Posted to your feed 🍺</p>}
+              {postToFeed && <p className="text-primary-500/60 text-xs mb-4">Posted to your feed 🍺</p>}
+              <button
+                onClick={() => setShowShare(true)}
+                className="w-full mb-3 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-primary-500/90 to-primary-400/90 text-black hover:from-primary-400 hover:to-primary-500 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
+              >
+                Share the moment 🎉
+              </button>
               <div className="flex gap-3">
                 <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
                 <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}
@@ -429,6 +437,16 @@ export default function QuickSendDrinkSheet({
 
         </div>{/* end sheet panel */}
       </div>{/* end full-screen scroll overlay */}
+
+      {showShare && mounted && (
+        <ShareShotSheet
+          sender={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+          recipient={displayName}
+          amount={finalAmount || 0}
+          emoji={activeDrink?.emoji}
+          onClose={() => setShowShare(false)}
+        />
+      )}
 
       <style jsx global>{`
         @keyframes float-up {
