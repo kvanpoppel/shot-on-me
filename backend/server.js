@@ -1,3 +1,13 @@
+// Sentry must be initialized before any other imports
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 1.0,
+  });
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -497,6 +507,11 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// Sentry error handler — must come before other error handlers
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // Error handling
 app.use(logger.logError);
