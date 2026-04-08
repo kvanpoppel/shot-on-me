@@ -7,7 +7,6 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const sender    = searchParams.get('sender')    || 'Someone'
   const recipient = searchParams.get('recipient') || 'a friend'
-  const amount    = searchParams.get('amount')    || '10'
   const venue     = searchParams.get('venue')     || ''
   const emoji     = searchParams.get('emoji')     || '🥃'
 
@@ -85,27 +84,6 @@ export async function GET(request: NextRequest) {
           justifyContent: 'center',
         }}>
           {sender} bought {recipient} a shot
-        </div>
-
-        {/* Amount pill */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(184,148,90,0.15)',
-          border: '1.5px solid rgba(184,148,90,0.35)',
-          borderRadius: 100,
-          padding: '10px 32px',
-          marginBottom: venue ? 16 : 0,
-        }}>
-          <div style={{
-            fontSize: 34,
-            fontWeight: 700,
-            color: '#B8945A',
-            display: 'flex',
-          }}>
-            ${parseFloat(amount).toFixed(2)}
-          </div>
         </div>
 
         {/* Venue */}

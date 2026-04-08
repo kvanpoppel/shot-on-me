@@ -50,21 +50,14 @@ export default function QuickSendDrinkSheet({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [celebrationActive, setCelebrationActive] = useState(false)
-  const [shareToSocial, setShareToSocial] = useState(() => {
-    try { return localStorage.getItem('som_share_to_social') !== 'false' } catch { return true }
-  })
-
-  const toggleShareToSocial = () => {
-    const next = !shareToSocial
-    setShareToSocial(next)
-    try { localStorage.setItem('som_share_to_social', next.toString()) } catch {}
-  }
+  const shareToSocial = (() => {
+    try { return localStorage.getItem('som_share_to_social') === 'true' } catch { return false }
+  })()
 
   const shareNow = async () => {
     const params = new URLSearchParams({
       sender: (user?.firstName || '').trim(),
       recipient: displayName,
-      amount: (finalAmount || 0).toString(),
       emoji: activeDrink?.emoji || '🥃',
     })
     try {
@@ -344,7 +337,7 @@ export default function QuickSendDrinkSheet({
                 className="w-full bg-white/5 border border-primary-500/20 rounded-xl px-4 py-3 text-sm text-primary-300 placeholder-primary-400/40 focus:outline-none focus:border-primary-500/50 mb-4"
               />
 
-              <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center justify-between mb-5 px-1">
                 <div>
                   <p className="text-sm font-medium text-primary-300">Post to feed</p>
                   <p className="text-xs text-primary-400/50">Let your friends see the good vibes</p>
@@ -354,19 +347,6 @@ export default function QuickSendDrinkSheet({
                   className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${postToFeed ? 'bg-primary-500' : 'bg-white/20'}`}
                 >
                   <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${postToFeed ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between mb-5 px-1">
-                <div>
-                  <p className="text-sm font-medium text-primary-300">Share to Instagram & Facebook</p>
-                  <p className="text-xs text-primary-400/50">Share a branded card after sending</p>
-                </div>
-                <button
-                  onClick={toggleShareToSocial}
-                  className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${shareToSocial ? 'bg-primary-500' : 'bg-white/20'}`}
-                >
-                  <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${shareToSocial ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
 
@@ -461,21 +441,44 @@ export default function QuickSendDrinkSheet({
                 Sent {displayName} {activeDrink?.drinkWord || 'a drink'} — <span className="text-primary-400 font-semibold">${finalAmount?.toFixed(2)}</span>
               </p>
               {postToFeed && <p className="text-primary-500/60 text-xs mb-4">Posted to your feed 🍺</p>}
-              {shareToSocial && (
-                <button
-                  onClick={shareNow}
-                  className="w-full mb-3 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-primary-500/90 to-primary-400/90 text-black hover:from-primary-400 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
-                >
-                  Share 📲
-                </button>
+
+              {shareToSocial ? (
+                /* Sharing enabled — prominent single button */
+                <>
+                  <button
+                    onClick={shareNow}
+                    className="w-full mb-3 py-3.5 rounded-xl font-bold text-sm bg-primary-500 text-black hover:bg-primary-400 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
+                  >
+                    Share 📲
+                  </button>
+                  <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
+                    <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}
+                      className="flex-1 bg-white/8 border border-primary-500/15 text-primary-400 py-3 rounded-xl font-bold text-sm hover:bg-white/12 transition-all">
+                      Send Another 🍺
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Sharing not enabled — soft prompt, then normal actions */
+                <>
+                  <div className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 mb-3">
+                    <p className="text-white/50 text-xs">Share on Instagram or Facebook?</p>
+                    <div className="flex gap-2">
+                      <button onClick={shareNow} className="text-primary-400 text-xs font-semibold hover:text-primary-300 transition-colors">Share</button>
+                      <span className="text-white/20 text-xs">·</span>
+                      <button onClick={() => {}} className="text-white/30 text-xs hover:text-white/50 transition-colors">Not now</button>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
+                    <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}
+                      className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm hover:bg-primary-400 transition-all">
+                      Send Another 🍺
+                    </button>
+                  </div>
+                </>
               )}
-              <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
-                <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}
-                  className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm hover:bg-primary-400 transition-all">
-                  Send Another 🍺
-                </button>
-              </div>
             </div>
           )}
 

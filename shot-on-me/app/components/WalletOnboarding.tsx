@@ -18,7 +18,7 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
   const { socket, connected } = useSocket()
   const API_URL = useApiUrl()
   const [showModal, setShowModal] = useState(false)
-  const [step, setStep] = useState<'card' | 'funds' | 'permissions' | 'complete'>('card')
+  const [step, setStep] = useState<'card' | 'funds' | 'permissions' | 'social' | 'complete'>('card')
   const [creatingCard, setCreatingCard] = useState(false)
   const [cardStatus, setCardStatus] = useState<any>(null)
   const [checkingCard, setCheckingCard] = useState(true)
@@ -139,6 +139,11 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
 
   const handlePermissionsComplete = () => {
     setShowPermissions(false)
+    setStep('social')
+  }
+
+  const handleSocialChoice = (enable: boolean) => {
+    try { localStorage.setItem('som_share_to_social', enable ? 'true' : 'false') } catch {}
     setStep('complete')
     handleCompleteOnboarding()
   }
@@ -331,7 +336,42 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
             </div>
           )}
 
-          {/* Step 4: Complete */}
+          {/* Step 4: Social Sharing */}
+          {step === 'social' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+                    <Sparkles className="w-6 h-6 text-primary-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-primary-500 mb-2">Share on Instagram & Facebook?</h3>
+                    <p className="text-primary-400/80 text-sm font-light leading-relaxed">
+                      When you buy someone a shot on Shot On Me, we'll give you a one-tap option to share the moment to your Instagram or Facebook — no dollar amounts, just good vibes.
+                    </p>
+                    <p className="text-primary-400/50 text-xs mt-3">You can change this anytime in Settings.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleSocialChoice(false)}
+                  className="flex-1 bg-black/40 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-all"
+                >
+                  Not Now
+                </button>
+                <button
+                  onClick={() => handleSocialChoice(true)}
+                  className="flex-[2] bg-primary-500 text-black py-3 rounded-xl font-bold hover:bg-primary-400 transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Yes, Let's Go Viral
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Complete */}
           {step === 'complete' && (
             <div className="space-y-6 text-center">
               <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/40">
@@ -353,7 +393,7 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
           {/* Footer */}
           <div className="mt-6 pt-4 border-t border-primary-500/10 text-center">
             <p className="text-primary-400/60 text-xs font-light">
-              Step {step === 'card' ? '1' : step === 'funds' ? '2' : step === 'permissions' ? '3' : '4'} of 4
+              Step {step === 'card' ? '1' : step === 'funds' ? '2' : step === 'permissions' ? '3' : step === 'social' ? '4' : '5'} of 5
             </p>
           </div>
         </div>
