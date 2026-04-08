@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import './globals.css'
 import AppWrapper from './components/AppWrapper'
 import Providers from './components/Providers'
+import CookieConsent from './components/CookieConsent'
 
 export const metadata: Metadata = {
   title: 'Shot On Me - Send Money, Share Moments',
@@ -51,6 +52,7 @@ export default function RootLayout({
           <Providers>
             {children}
           </Providers>
+          <CookieConsent />
         </AppWrapper>
       </body>
     </html>
