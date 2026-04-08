@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle, Send, Sparkles, Users } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
-import Link from 'next/link'
 import { getVenuePortalLoginUrl, getApiUrl } from '../utils/api'
 import { createPortal } from 'react-dom'
 
@@ -89,6 +88,7 @@ export default function LoginScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
   const [referrerId, setReferrerId] = useState('')
+  const [legalModal, setLegalModal] = useState<null | 'terms' | 'privacy'>(null)
 
   // Venue state
   const [publicVenues, setPublicVenues] = useState<any[]>([])
@@ -520,7 +520,7 @@ export default function LoginScreen() {
                       />
                       <span className="text-white/38 text-xs leading-relaxed">
                         I agree to the{' '}
-                        <Link href="/terms" target="_blank" className="text-primary-400 hover:underline">Terms of Service</Link>
+                        <button type="button" onClick={() => setLegalModal('terms')} className="text-primary-400 hover:underline">Terms of Service</button>
                       </span>
                     </label>
                     <label className="flex items-start gap-2.5 cursor-pointer">
@@ -533,7 +533,7 @@ export default function LoginScreen() {
                       />
                       <span className="text-white/38 text-xs leading-relaxed">
                         I agree to the{' '}
-                        <Link href="/privacy" target="_blank" className="text-primary-400 hover:underline">Privacy Policy</Link>
+                        <button type="button" onClick={() => setLegalModal('privacy')} className="text-primary-400 hover:underline">Privacy Policy</button>
                       </span>
                     </label>
                   </div>
@@ -581,6 +581,40 @@ export default function LoginScreen() {
                 </p>
               </form>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Legal read-only modal */}
+      {legalModal && mounted && createPortal(
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/20 flex-shrink-0">
+            <h2 className="text-primary-500 font-bold text-base">
+              {legalModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+            </h2>
+            <button
+              onClick={() => setLegalModal(null)}
+              className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/48 hover:text-white hover:bg-white/15 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Scrollable content via iframe */}
+          <iframe
+            src={legalModal === 'terms' ? '/terms' : '/privacy'}
+            className="flex-1 w-full border-none bg-black"
+            title={legalModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+          />
+          {/* Close CTA at bottom */}
+          <div className="px-5 py-4 border-t border-primary-500/20 flex-shrink-0">
+            <button
+              onClick={() => setLegalModal(null)}
+              className="w-full bg-primary-500 text-black py-3 rounded-xl font-bold text-sm hover:bg-primary-400 transition-all"
+            >
+              Done — Return to Sign Up
+            </button>
           </div>
         </div>,
         document.body
