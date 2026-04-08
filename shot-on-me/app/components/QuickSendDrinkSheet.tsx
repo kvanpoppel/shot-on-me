@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { X, Send, ChevronRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
-import ShareShotSheet from './ShareShotSheet'
 
 interface QuickSendDrinkSheetProps {
   recipientId: string
@@ -51,7 +50,37 @@ export default function QuickSendDrinkSheet({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [celebrationActive, setCelebrationActive] = useState(false)
-  const [showShare, setShowShare] = useState(false)
+  const [shareToSocial, setShareToSocial] = useState(() => {
+    try { return localStorage.getItem('som_share_to_social') !== 'false' } catch { return true }
+  })
+
+  const toggleShareToSocial = () => {
+    const next = !shareToSocial
+    setShareToSocial(next)
+    try { localStorage.setItem('som_share_to_social', next.toString()) } catch {}
+  }
+
+  const shareNow = async () => {
+    const params = new URLSearchParams({
+      sender: (user?.firstName || '').trim(),
+      recipient: displayName,
+      amount: (finalAmount || 0).toString(),
+      emoji: activeDrink?.emoji || '🥃',
+    })
+    try {
+      const res = await fetch(`/api/og/shot?${params}`)
+      const blob = await res.blob()
+      const file = new File([blob], 'shot-on-me.png', { type: 'image/png' })
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Shot On Me', text: `I just bought ${displayName} a shot on Shot On Me 🥃 shotonme.com` })
+      } else {
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url; a.download = 'shot-on-me.png'; a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch { /* cancelled */ }
+  }
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const customAmountRef = useRef<HTMLInputElement>(null)
@@ -315,7 +344,7 @@ export default function QuickSendDrinkSheet({
                 className="w-full bg-white/5 border border-primary-500/20 rounded-xl px-4 py-3 text-sm text-primary-300 placeholder-primary-400/40 focus:outline-none focus:border-primary-500/50 mb-4"
               />
 
-              <div className="flex items-center justify-between mb-5 px-1">
+              <div className="flex items-center justify-between mb-3 px-1">
                 <div>
                   <p className="text-sm font-medium text-primary-300">Post to feed</p>
                   <p className="text-xs text-primary-400/50">Let your friends see the good vibes</p>
@@ -325,6 +354,19 @@ export default function QuickSendDrinkSheet({
                   className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${postToFeed ? 'bg-primary-500' : 'bg-white/20'}`}
                 >
                   <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${postToFeed ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between mb-5 px-1">
+                <div>
+                  <p className="text-sm font-medium text-primary-300">Share to Instagram & Facebook</p>
+                  <p className="text-xs text-primary-400/50">Share a branded card after sending</p>
+                </div>
+                <button
+                  onClick={toggleShareToSocial}
+                  className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${shareToSocial ? 'bg-primary-500' : 'bg-white/20'}`}
+                >
+                  <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${shareToSocial ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
 
@@ -419,12 +461,14 @@ export default function QuickSendDrinkSheet({
                 Sent {displayName} {activeDrink?.drinkWord || 'a drink'} — <span className="text-primary-400 font-semibold">${finalAmount?.toFixed(2)}</span>
               </p>
               {postToFeed && <p className="text-primary-500/60 text-xs mb-4">Posted to your feed 🍺</p>}
-              <button
-                onClick={() => setShowShare(true)}
-                className="w-full mb-3 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-primary-500/90 to-primary-400/90 text-black hover:from-primary-400 hover:to-primary-500 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
-              >
-                Share the moment 🎉
-              </button>
+              {shareToSocial && (
+                <button
+                  onClick={shareNow}
+                  className="w-full mb-3 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-primary-500/90 to-primary-400/90 text-black hover:from-primary-400 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/20"
+                >
+                  Share 📲
+                </button>
+              )}
               <div className="flex gap-3">
                 <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
                 <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}
@@ -437,16 +481,6 @@ export default function QuickSendDrinkSheet({
 
         </div>{/* end sheet panel */}
       </div>{/* end full-screen scroll overlay */}
-
-      {showShare && mounted && (
-        <ShareShotSheet
-          sender={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
-          recipient={displayName}
-          amount={finalAmount || 0}
-          emoji={activeDrink?.emoji}
-          onClose={() => setShowShare(false)}
-        />
-      )}
 
       <style jsx global>{`
         @keyframes float-up {
