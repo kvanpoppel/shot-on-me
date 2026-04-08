@@ -47,13 +47,69 @@ export default function TermsPage() {
           </ul>
         </section>
 
-        <section className="space-y-2">
+        <section className="space-y-3">
           <h2 className="text-lg font-semibold text-primary-500">4. Refund Policy</h2>
           <p className="text-sm">
-            Wallet-to-wallet payments may be refunded within 24 hours of the transaction if the recipient has
-            sufficient balance. To request a refund, navigate to your transaction history and select the payment.
-            Refunds are not available for tap-and-pay transactions once processed at a venue, or for wallet top-ups
-            via credit/debit card (those are subject to Stripe's refund policies).
+            We want every transaction on Shot On Me to be fair and transparent. Please read this Refund Policy
+            carefully before sending or receiving payments.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4a. Wallet-to-Wallet Payments</h3>
+          <p className="text-sm">
+            Payments sent between Shot On Me wallets may be eligible for a refund if requested within <strong>24 hours</strong> of
+            the transaction, provided the recipient has sufficient wallet balance to cover the reversal. After 24 hours,
+            wallet-to-wallet payments are final.
+          </p>
+          <p className="text-sm">
+            To request a refund: go to <em>Wallet → Transaction History</em>, select the payment, and tap <em>Request Refund</em>.
+            You may also email <a href="mailto:support@shotonme.com" className="text-primary-500 underline">support@shotonme.com</a> with your
+            transaction ID and the reason for your request. Refund requests are reviewed within 1–2 business days.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4b. Tap-and-Pay Venue Transactions</h3>
+          <p className="text-sm">
+            Payments processed at a venue terminal via Tap-and-Pay are <strong>final and non-refundable</strong> once
+            the transaction is confirmed. If you believe a venue transaction was unauthorized or erroneous, contact us
+            within 7 days at <a href="mailto:support@shotonme.com" className="text-primary-500 underline">support@shotonme.com</a>. We
+            will investigate and, if the transaction is found to be in error, issue a credit to your Shot On Me wallet.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4c. Wallet Top-Ups (Credit / Debit Card Charges)</h3>
+          <p className="text-sm">
+            Funds added to your Shot On Me wallet via credit or debit card are processed by Stripe, Inc. and are
+            generally <strong>non-refundable</strong> to the original card once credited to your wallet. If you believe
+            a card charge was unauthorized, contact us immediately at{' '}
+            <a href="mailto:support@shotonme.com" className="text-primary-500 underline">support@shotonme.com</a> and we will work
+            with Stripe to investigate. Fraudulent charge claims may also be raised directly with your card issuer.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4d. Pending Payments — Automatic Refund</h3>
+          <p className="text-sm">
+            Payments sent to a phone number or email not yet registered on Shot On Me are held as pending for up to
+            30 days. If the recipient does not register within 30 days, the full amount is automatically refunded to the
+            sender's Shot On Me wallet with no action required.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4e. Account Termination</h3>
+          <p className="text-sm">
+            If your account is terminated by you or by Shot On Me for any reason, your remaining wallet balance will
+            be refunded to a verified payment method on file within 5–10 business days, subject to any outstanding
+            holds, unresolved disputes, or legal requirements.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4f. Platform Fees</h3>
+          <p className="text-sm">
+            Platform service fees charged on transactions are <strong>non-refundable</strong>, including in cases where
+            the underlying payment is refunded.
+          </p>
+
+          <h3 className="text-sm font-semibold text-primary-400">4g. Disputes</h3>
+          <p className="text-sm">
+            If you have a dispute regarding a transaction, contact us at{' '}
+            <a href="mailto:support@shotonme.com" className="text-primary-500 underline">support@shotonme.com</a>{' '}
+            within 30 days of the transaction date. Include your name, account email, transaction ID, amount, and a
+            description of the issue. We will respond within 5 business days. Unresolved disputes are subject to the
+            arbitration provisions in Section 13.
           </p>
         </section>
 
