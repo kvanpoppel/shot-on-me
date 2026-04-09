@@ -1,0 +1,226 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useApiUrl } from '../utils/api'
+import axios from 'axios'
+import { MapPin, Search, Star, Filter } from 'lucide-react'
+import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
+
+interface VenueDiscoveryProps {
+  onSendFizz?: (venueId?: string) => void
+}
+
+function isFizzVenue(venue: Venue): boolean {
+  if (!venue.category) return false
+  const cat = venue.category.toLowerCase()
+  return (
+    FIZZ_CATEGORIES.some(c => cat.includes(c.toLowerCase())) &&
+    !EXCLUDED_CATEGORIES.some(ex => cat.includes(ex.toLowerCase()))
+  )
+}
+
+export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
+  const { token } = useAuth()
+  const API_URL = useApiUrl()
+
+  const [search, setSearch] = useState('')
+  const [selectedCity, setSelectedCity] = useState(FIZZ_CITIES[0])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [venues, setVenues] = useState<Venue[]>([])
+  const [filtered, setFiltered] = useState<Venue[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchVenues = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await axios.get(`${API_URL}/venues`, {
+        params: { city: selectedCity, limit: 50 },
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const all = res.data.venues || res.data || []
+      setVenues(all.filter(isFizzVenue))
+    } catch { /* ignore */ } finally {
+      setLoading(false)
+    }
+  }, [API_URL, token, selectedCity])
+
+  useEffect(() => { fetchVenues() }, [fetchVenues])
+
+  useEffect(() => {
+    let list = [...venues]
+    if (selectedCategory) {
+      list = list.filter(v => v.category?.toLowerCase().includes(selectedCategory.toLowerCase()))
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(v =>
+        v.name?.toLowerCase().includes(q) ||
+        v.neighborhood?.toLowerCase().includes(q) ||
+        v.description?.toLowerCase().includes(q)
+      )
+    }
+    setFiltered(list)
+  }, [venues, selectedCategory, search])
+
+  const VenueCard = ({ venue }: { venue: Venue }) => {
+    const catKey = Object.keys(CATEGORY_ICONS).find(k => venue.category?.toLowerCase().includes(k.toLowerCase())) || 'Cafe'
+    const icon = CATEGORY_ICONS[catKey] || '🏠'
+    const colorClass = CATEGORY_COLORS[catKey] || 'bg-white/10 text-white/70'
+    const hasPromos = venue.promotions && venue.promotions.length > 0
+
+    return (
+      <div className="fizz-card overflow-hidden" onClick={() => onSendFizz?.(venue._id)}>
+        {/* Image */}
+        <div className="w-full h-40 relative overflow-hidden" style={{ background: '#2E2E50' }}>
+          {venue.photos?.[0] || venue.imageUrl ? (
+            <img src={venue.photos?.[0] || venue.imageUrl} alt={venue.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-5xl">
+              {icon}
+            </div>
+          )}
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex gap-1.5">
+            <span className={`category-badge text-xs ${colorClass}`}>{icon} {catKey}</span>
+          </div>
+          {hasPromos && (
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold fizzing-badge">
+              Fizzing Now
+            </div>
+          )}
+        </div>
+
+        <div className="p-4">
+          <h3 className="font-bold text-white text-base leading-tight">{venue.name}</h3>
+
+          <div className="flex items-center gap-3 mt-1.5">
+            {venue.neighborhood && (
+              <div className="flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-white/30" />
+                <span className="text-xs text-white/40">{venue.neighborhood}</span>
+              </div>
+            )}
+            {venue.rating && (
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3 fill-current" style={{ color: '#C8F135' }} />
+                <span className="text-xs text-white/60">{venue.rating.toFixed(1)}</span>
+              </div>
+            )}
+          </div>
+
+          {venue.description && (
+            <p className="text-sm text-white/40 mt-2 line-clamp-2">{venue.description}</p>
+          )}
+
+          {/* Active promotions */}
+          {hasPromos && (
+            <div className="mt-3 p-2.5 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)', borderColor: 'rgba(0,212,255,0.15)', border: '1px solid' }}>
+              <p className="text-xs font-bold" style={{ color: '#00D4FF' }}>🎉 {venue.promotions![0].title}</p>
+              <p className="text-xs text-white/40 mt-0.5">{venue.promotions![0].description}</p>
+            </div>
+          )}
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onSendFizz?.(venue._id) }}
+            className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: '#C8F135', color: '#1A1A2E' }}
+          >
+            Send a Fizz Here
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#1A1A2E' }}>
+      {/* Search bar */}
+      <div className="px-5 pt-4 pb-3 sticky top-0 z-10" style={{ background: '#1A1A2E' }}>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search venues, neighborhoods..."
+            className="w-full py-3 pl-10 pr-4 rounded-2xl text-sm border border-white/10 focus:border-lime-fizz transition-colors"
+            style={{ background: '#252540' }}
+          />
+        </div>
+      </div>
+
+      {/* City tabs */}
+      <div className="px-5 mb-3">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {FIZZ_CITIES.map(city => (
+            <button
+              key={city}
+              onClick={() => setSelectedCity(city)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={selectedCity === city
+                ? { background: '#C8F135', color: '#1A1A2E' }
+                : { background: '#252540', color: 'rgba(255,255,255,0.5)' }
+              }
+            >
+              {city}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Category filter */}
+      <div className="px-5 mb-5">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+            style={selectedCategory === null
+              ? { background: 'rgba(200,241,53,0.2)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.4)' }
+              : { background: '#252540', color: 'rgba(255,255,255,0.5)' }
+            }
+          >
+            All
+          </button>
+          {FIZZ_CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+              style={selectedCategory === cat
+                ? { background: 'rgba(200,241,53,0.2)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.4)' }
+                : { background: '#252540', color: 'rgba(255,255,255,0.5)' }
+              }
+            >
+              {CATEGORY_ICONS[cat]} {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results count */}
+      <div className="px-5 mb-4">
+        <p className="text-xs text-white/30 font-medium">
+          {loading ? 'Finding venues...' : `${filtered.length} venue${filtered.length !== 1 ? 's' : ''} in ${selectedCity}`}
+        </p>
+      </div>
+
+      {/* Venue grid */}
+      <div className="px-5 flex flex-col gap-4">
+        {loading ? (
+          [1, 2, 3].map(i => (
+            <div key={i} className="rounded-2xl animate-pulse" style={{ height: 280, background: '#252540' }} />
+          ))
+        ) : filtered.length > 0 ? (
+          filtered.map(v => <VenueCard key={v._id} venue={v} />)
+        ) : (
+          <div className="py-16 text-center">
+            <p className="text-4xl mb-3">🔍</p>
+            <p className="text-white/40 font-medium">No venues found</p>
+            <p className="text-white/25 text-sm mt-1">Try a different city or category</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
