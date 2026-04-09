@@ -6,13 +6,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import DashboardLayout from '../../components/DashboardLayout'
 import DashboardPageShell from '../../components/DashboardPageShell'
 import VenueManager from '../../components/VenueManager'
-import StaffManager from '../../components/StaffManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
-import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
-import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Settings, CreditCard, MapPin, Users, Sparkles, Bell, Clock, Target, Zap, Crown, QrCode, Download } from 'lucide-react'
+import { Settings, CreditCard, MapPin, Bell, Clock, Target, Zap, QrCode, Download } from 'lucide-react'
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
@@ -169,7 +166,7 @@ function SettingsPageContent() {
         subtitle="Manage payments, team access, venue details, and notifications in one place."
         metrics={[
           { label: 'Payments', value: connectStatus?.connected ? 'Connected' : 'Not Connected', tone: connectStatus?.connected ? 'success' : 'info' },
-          { label: 'Team Alerts', value: notificationPrefs.promotionObjectives ? 'Enabled' : 'Disabled' },
+          { label: 'Notifications', value: notificationPrefs.promotionObjectives ? 'Enabled' : 'Disabled' },
           { label: 'AI Suggestions', value: notificationPrefs.aiRenewalSuggestions ? 'On' : 'Off' }
         ]}
       >
@@ -231,15 +228,6 @@ function SettingsPageContent() {
                 </div>
               )}
             </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title="Subscription & Growth Plans"
-            subtitle="Choose the plan that matches your growth goals and AI automation needs"
-            defaultOpen={false}
-            icon={<Crown className="w-4 h-4" />}
-          >
-            <SubscriptionPlansManager />
           </CollapsibleSection>
 
           {/* Venue Management - Collapsible */}
@@ -312,18 +300,6 @@ function SettingsPageContent() {
                 </div>
               )
             })()}
-          </CollapsibleSection>
-
-          {/* Staff Management - Collapsible */}
-          <CollapsibleSection
-            title="Team Management"
-            subtitle="Add and manage staff members"
-            defaultOpen={false}
-            icon={<Users className="w-4 h-4" />}
-          >
-            <div className="pt-2">
-              <StaffManager />
-            </div>
           </CollapsibleSection>
 
           {/* Notification Preferences - Collapsible */}
@@ -468,17 +444,6 @@ function SettingsPageContent() {
             </div>
           </CollapsibleSection>
 
-          {/* AI Recommendations - Collapsible */}
-          <CollapsibleSection
-            title="AI Venue Optimization"
-            subtitle="AI-powered recommendations to improve your venue performance"
-            defaultOpen={false}
-            icon={<Sparkles className="w-4 h-4" />}
-          >
-            <div className="pt-2">
-              <AIAnalyticsSummary />
-            </div>
-          </CollapsibleSection>
         </div>
       </DashboardPageShell>
     </DashboardLayout>
