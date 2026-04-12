@@ -9,7 +9,7 @@ import VenueManager from '../../components/VenueManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
-import { Settings, CreditCard, MapPin, Bell, Clock, Target, Zap, QrCode, Download } from 'lucide-react'
+import { Settings, CreditCard, MapPin, Bell, Clock, Target, Zap, QrCode, Download, Sparkles } from 'lucide-react'
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
@@ -250,7 +250,7 @@ function SettingsPageContent() {
             icon={<QrCode className="w-4 h-4" />}
           >
             {(() => {
-              const venueId = (user as any)?.venueId || user?._id
+              const venueId = (user as any)?.venueId || (user as any)?._id
               const venueUrl = `https://www.shotonme.com?venue=${venueId}`
               const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(venueUrl)}&size=300x300&color=B8945A&bgcolor=000000`
               const handleDownload = async () => {

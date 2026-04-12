@@ -9,23 +9,29 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://js.stripe.com",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com https://api.qrserver.com",
-      "connect-src 'self' https://maps.googleapis.com https://shot-on-me.onrender.com wss://shot-on-me.onrender.com https://api.stripe.com",
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "img-src 'self' data: blob: https://res.cloudinary.com https://*.googleusercontent.com",
+      "connect-src 'self' https://shot-on-me.onrender.com wss://shot-on-me.onrender.com",
+      "frame-src 'none'",
+      "worker-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
+      "form-action 'self'",
     ].join('; '),
   },
 ]
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: { root: __dirname },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
+  },
+  webpack: (config) => {
+    config.resolve.alias = { ...config.resolve.alias, '@': require('path').resolve(__dirname) }
+    return config
   },
 }
 

@@ -11,9 +11,25 @@ import VenueDiscovery from './components/VenueDiscovery'
 import SendFizz from './components/SendFizz'
 import FeedTab from './components/FeedTab'
 import ProfileTab from './components/ProfileTab'
+import NotificationsPanel from './components/NotificationsPanel'
+import WalletTab from './components/WalletTab'
+import MessagesTab from './components/MessagesTab'
+import RewardsScreen from './components/RewardsScreen'
+import ReferralScreen from './components/ReferralScreen'
+import CrewsTab from './components/CrewsTab'
+import SettingsMenu from './components/SettingsMenu'
+import FindFriends from './components/FindFriends'
+import SearchModal from './components/SearchModal'
+import FriendProfile from './components/FriendProfile'
+import TonightTab from './components/TonightTab'
 import { Tab } from './types'
 
 type LandingMode = 'landing' | 'signin' | 'register'
+
+interface PrefillRecipient {
+  id: string; firstName?: string; lastName?: string
+  username?: string; profilePicture?: string
+}
 
 function FizzApp() {
   const { user, loading } = useAuth()
@@ -21,10 +37,21 @@ function FizzApp() {
   const [landingMode, setLandingMode] = useState<LandingMode>('landing')
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [prefillVenueId, setPrefillVenueId] = useState<string | undefined>()
+  const [prefillRecipient, setPrefillRecipient] = useState<PrefillRecipient | undefined>()
+
+  // Overlay modals
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showRewards, setShowRewards] = useState(false)
+  const [showReferrals, setShowReferrals] = useState(false)
+  const [showCrews, setShowCrews] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showFindFriends, setShowFindFriends] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [showTonight, setShowTonight] = useState(false)
+  const [viewProfileUserId, setViewProfileUserId] = useState<string | undefined>()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    // Clear any stale service workers
     if ('caches' in window) {
       caches.keys().then(names => names.forEach(name => caches.delete(name)))
     }
@@ -35,41 +62,24 @@ function FizzApp() {
   }, [])
 
   if (typeof window === 'undefined') return null
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E' }}>
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-            🫧
-          </div>
-          <div className="flex gap-1 justify-center">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C8F135', animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
+
+  const Loader = () => (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E' }}>
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
+          🫧
+        </div>
+        <div className="flex gap-1 justify-center">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C8F135', animationDelay: `${i * 0.15}s` }} />
+          ))}
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E' }}>
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-            🫧
-          </div>
-          <div className="flex gap-1 justify-center">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C8F135', animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (!isMounted || loading) return <Loader />
 
-  // Not logged in — show landing or auth screens
   if (!user) {
     if (landingMode === 'landing') {
       return (
@@ -87,22 +97,83 @@ function FizzApp() {
     )
   }
 
-  // Logged in — show main app
   const handleSendFizz = (venueId?: string) => {
     setPrefillVenueId(venueId)
+    setPrefillRecipient(undefined)
+    setActiveTab('send')
+  }
+
+  const handleSendFizzToFriend = (friend: PrefillRecipient) => {
+    setPrefillRecipient(friend)
+    setPrefillVenueId(undefined)
     setActiveTab('send')
   }
 
   const handleSendClose = () => {
     setPrefillVenueId(undefined)
+    setPrefillRecipient(undefined)
     setActiveTab('home')
+  }
+
+  const handleViewProfile = (userId: string) => {
+    setViewProfileUserId(userId)
   }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#1A1A2E' }}>
-      {/* Top bar — not shown on send tab (full screen) */}
+      {/* Overlay modals */}
+      <NotificationsPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+
+      {showRewards && (
+        <RewardsScreen onClose={() => setShowRewards(false)} />
+      )}
+      {showReferrals && (
+        <ReferralScreen onClose={() => setShowReferrals(false)} />
+      )}
+      {showCrews && (
+        <CrewsTab onClose={() => setShowCrews(false)} />
+      )}
+      {showSettings && (
+        <SettingsMenu
+          onClose={() => setShowSettings(false)}
+          onOpenRewards={() => { setShowSettings(false); setShowRewards(true) }}
+          onOpenReferrals={() => { setShowSettings(false); setShowReferrals(true) }}
+        />
+      )}
+      {showFindFriends && (
+        <FindFriends
+          onClose={() => setShowFindFriends(false)}
+          onViewProfile={(uid) => { setShowFindFriends(false); handleViewProfile(uid) }}
+        />
+      )}
+      {showTonight && (
+        <TonightTab
+          onClose={() => setShowTonight(false)}
+          onSendFizz={(venueId) => { setShowTonight(false); handleSendFizz(venueId) }}
+        />
+      )}
+      <SearchModal
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        onViewProfile={(uid) => { setShowSearch(false); handleViewProfile(uid) }}
+        onSendFizz={(venueId) => { setShowSearch(false); handleSendFizz(venueId) }}
+      />
+      {viewProfileUserId && (
+        <FriendProfile
+          userId={viewProfileUserId}
+          onClose={() => setViewProfileUserId(undefined)}
+          onSendFizz={(venueId) => { setViewProfileUserId(undefined); handleSendFizz(venueId) }}
+          onSendFizzToFriend={(friend) => { setViewProfileUserId(undefined); handleSendFizzToFriend(friend) }}
+        />
+      )}
+
+      {/* Top bar — not shown on send tab */}
       {activeTab !== 'send' && (
-        <Dashboard onOpenSearch={undefined} />
+        <Dashboard
+          onOpenNotifications={() => setShowNotifications(true)}
+          onOpenSearch={() => setShowSearch(true)}
+          onOpenProfile={() => setActiveTab('profile')}
+        />
       )}
 
       {/* Main content */}
@@ -119,14 +190,30 @@ function FizzApp() {
         {activeTab === 'send' && (
           <SendFizz
             prefillVenueId={prefillVenueId}
+            prefillRecipient={prefillRecipient}
             onClose={handleSendClose}
           />
+        )}
+        {activeTab === 'messages' && (
+          <MessagesTab />
+        )}
+        {activeTab === 'wallet' && (
+          <WalletTab />
         )}
         {activeTab === 'feed' && (
           <FeedTab onSendFizz={() => setActiveTab('send')} />
         )}
         {activeTab === 'profile' && (
-          <ProfileTab />
+          <ProfileTab
+            onOpenRewards={() => setShowRewards(true)}
+            onOpenReferrals={() => setShowReferrals(true)}
+            onOpenCrews={() => setShowCrews(true)}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenFindFriends={() => setShowFindFriends(true)}
+            onOpenTonight={() => setShowTonight(true)}
+            onOpenWallet={() => setActiveTab('wallet')}
+            onOpenFeed={() => setActiveTab('feed')}
+          />
         )}
       </main>
 

@@ -11,17 +11,24 @@ const GIFT_AMOUNTS = [5, 10, 15, 25]
 
 type Step = 'recipient' | 'amount' | 'occasion' | 'confirm' | 'success'
 
+interface PrefillRecipient {
+  id?: string; _id?: string
+  firstName?: string; lastName?: string
+  username?: string; profilePicture?: string
+}
+
 interface SendFizzProps {
   prefillVenueId?: string
+  prefillRecipient?: PrefillRecipient
   onClose?: () => void
 }
 
-export default function SendFizz({ prefillVenueId, onClose }: SendFizzProps) {
+export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: SendFizzProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
 
-  const [step, setStep] = useState<Step>('recipient')
-  const [recipient, setRecipient] = useState<any>(null)
+  const [step, setStep] = useState<Step>(prefillRecipient ? 'amount' : 'recipient')
+  const [recipient, setRecipient] = useState<any>(prefillRecipient || null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searching, setSearching] = useState(false)

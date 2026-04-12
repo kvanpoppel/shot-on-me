@@ -1,4 +1,4 @@
-export type Tab = 'home' | 'discover' | 'send' | 'feed' | 'profile'
+export type Tab = 'home' | 'discover' | 'send' | 'feed' | 'messages' | 'wallet' | 'profile'
 
 export interface User {
   id: string
@@ -59,6 +59,7 @@ export interface FizzGift {
 export type VenueCategory =
   | 'Coffee Shop'
   | 'Juice Bar'
+  | 'Dirty Soda Shop'
   | 'Soda Shop'
   | 'Tea House'
   | 'Smoothie Bar'
@@ -66,6 +67,7 @@ export type VenueCategory =
   | 'Cafe'
 
 export const FIZZ_CATEGORIES: VenueCategory[] = [
+  'Dirty Soda Shop',
   'Coffee Shop',
   'Juice Bar',
   'Soda Shop',
@@ -98,6 +100,7 @@ export const OCCASION_TAGS = [
 ]
 
 export const CATEGORY_ICONS: Record<string, string> = {
+  'Dirty Soda Shop': '🧋',
   'Coffee Shop': '☕',
   'Juice Bar': '🥤',
   'Soda Shop': '🫧',
@@ -108,6 +111,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
+  'Dirty Soda Shop': 'bg-orange-900/40 text-orange-300',
   'Coffee Shop': 'bg-amber-900/40 text-amber-300',
   'Juice Bar': 'bg-green-900/40 text-green-300',
   'Soda Shop': 'bg-cyan-900/40 text-cyan-300',

@@ -1,17 +1,33 @@
 'use client'
 
-import { Bell, Search, LogOut, Settings } from 'lucide-react'
+import { Bell, Search, LogOut, UserCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface DashboardProps {
   onOpenSearch?: () => void
+  onOpenNotifications?: () => void
+  onOpenProfile?: () => void
   title?: string
+  notificationCount?: number
 }
 
-export default function Dashboard({ onOpenSearch, title }: DashboardProps) {
+export default function Dashboard({ onOpenSearch, onOpenNotifications, onOpenProfile, title, notificationCount = 0 }: DashboardProps) {
   const { user, logout } = useAuth()
   const [showMenu, setShowMenu] = useState(false)
+  const [liveCount, setLiveCount] = useState(notificationCount)
+
+  useEffect(() => { setLiveCount(notificationCount) }, [notificationCount])
+
+  useEffect(() => {
+    const handleNew = () => setLiveCount(c => c + 1)
+    window.addEventListener('new-notification', handleNew)
+    window.addEventListener('socket-notification', handleNew)
+    return () => {
+      window.removeEventListener('new-notification', handleNew)
+      window.removeEventListener('socket-notification', handleNew)
+    }
+  }, [])
 
   const balance = user?.wallet?.balance ?? 0
 
@@ -40,6 +56,19 @@ export default function Dashboard({ onOpenSearch, title }: DashboardProps) {
           ${balance.toFixed(2)}
         </div>
 
+        {/* Notifications */}
+        <button
+          onClick={() => { onOpenNotifications?.(); setLiveCount(0) }}
+          className="relative w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+        >
+          <Bell className="w-5 h-5 text-white/60" />
+          {liveCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-black" style={{ background: '#FF5F57', color: '#fff' }}>
+              {liveCount > 9 ? '9+' : liveCount}
+            </span>
+          )}
+        </button>
+
         {/* Search */}
         {onOpenSearch && (
           <button onClick={onOpenSearch} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors">
@@ -63,6 +92,15 @@ export default function Dashboard({ onOpenSearch, title }: DashboardProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
               <div className="absolute right-0 top-12 z-50 rounded-2xl border border-white/10 py-2 shadow-2xl" style={{ background: '#252540', minWidth: 160 }}>
+                {onOpenProfile && (
+                  <button
+                    onClick={() => { onOpenProfile(); setShowMenu(false) }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    My Profile
+                  </button>
+                )}
                 <button
                   onClick={() => { logout(); setShowMenu(false) }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"

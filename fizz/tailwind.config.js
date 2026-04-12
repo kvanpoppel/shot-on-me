@@ -8,32 +8,41 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: '#1A1A2E',
+        background: '#0F0F1E',
+        card:       '#1C1C32',
+        card2:      '#23233A',
         lime: {
-          fizz: '#C8F135',
-          dark: '#A8D015',
+          fizz:  '#C8F135',
+          dark:  '#A8CF10',
           light: '#D8FF55',
+          50:    'rgba(200,241,53,0.05)',
+          100:   'rgba(200,241,53,0.10)',
+          200:   'rgba(200,241,53,0.20)',
         },
         coral: {
-          fizz: '#FF5F57',
-          dark: '#E04040',
-          light: '#FF7F78',
+          fizz:  '#FF5F57',
+          dark:  '#E04040',
+          light: '#FF9A57',
+          100:   'rgba(255,95,87,0.10)',
+          200:   'rgba(255,95,87,0.20)',
         },
         cyan: {
-          fizz: '#00D4FF',
-          dark: '#00AACC',
+          fizz:  '#00D4FF',
+          dark:  '#00AACC',
           light: '#33DDFF',
+          100:   'rgba(0,212,255,0.10)',
+          200:   'rgba(0,212,255,0.20)',
         },
-        charcoal: {
-          DEFAULT: '#1A1A2E',
-          800: '#252540',
-          700: '#2E2E50',
-          600: '#383860',
+        border: {
+          DEFAULT: 'rgba(255,255,255,0.07)',
+          lime:    'rgba(200,241,53,0.25)',
+          coral:   'rgba(255,95,87,0.20)',
+          cyan:    'rgba(0,212,255,0.20)',
         },
       },
       fontFamily: {
-        'sans': ['Inter', 'system-ui', 'sans-serif'],
-        'display': ['"Poppins"', 'system-ui', 'sans-serif'],
+        'sans':    ['Inter', 'system-ui', 'sans-serif'],
+        'display': ['Poppins', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'fizz-gradient': 'linear-gradient(135deg, #C8F135 0%, #00D4FF 50%, #FF5F57 100%)',

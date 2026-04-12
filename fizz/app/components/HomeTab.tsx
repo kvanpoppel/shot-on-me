@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Zap, ChevronRight, TrendingUp, Gift } from 'lucide-react'
+import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Flame } from 'lucide-react'
 import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface HomeTabProps {
@@ -110,25 +110,38 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#1A1A2E' }}>
+    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#0F0F1E' }}>
       {/* Hero greeting */}
-      <div className="px-5 pt-4 pb-6">
-        <div className="rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #252540 0%, #2E2E50 100%)' }}>
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 blur-2xl" style={{ background: '#C8F135', transform: 'translate(30%, -30%)' }} />
-          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full opacity-15 blur-2xl" style={{ background: '#FF5F57', transform: 'translate(-30%, 30%)' }} />
-          <p className="text-sm text-white/50 mb-1 relative z-10">Good day,</p>
-          <h2 className="text-2xl font-black text-white relative z-10" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            {user?.firstName}! 🫧
+      <div className="px-5 pt-4 pb-5">
+        <div className="rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#1C1C32,#23233A)', border: '1px solid rgba(200,241,53,0.10)' }}>
+          <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl" style={{ background: '#C8F135', transform: 'translate(30%,-30%)' }} />
+          <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full opacity-10 blur-3xl" style={{ background: '#FF5F57', transform: 'translate(-30%,30%)' }} />
+          <p className="text-[13px] mb-0.5 relative z-10" style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Poppins,sans-serif' }}>Hey there,</p>
+          <h2 className="fizz-wordmark text-[28px] text-white relative z-10 leading-tight">
+            {user?.firstName} <span style={{ color: '#C8F135' }}>👋</span>
           </h2>
-          <p className="text-sm text-white/50 mt-1 relative z-10">What moment will you send today?</p>
+          <p className="text-[13px] mt-1 mb-4 relative z-10" style={{ color: 'rgba(255,255,255,0.45)' }}>What moment will you send today?</p>
           <button
             onClick={() => onSendFizz?.()}
-            className="mt-4 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 relative z-10"
-            style={{ background: '#C8F135', color: '#1A1A2E' }}
+            className="fizz-btn-primary px-5 py-2.5 text-[13px] gap-2 relative z-10"
           >
             <Gift className="w-4 h-4" />
             Send a Fizz
           </button>
+        </div>
+      </div>
+
+      {/* Dirty Soda featured strip */}
+      <div className="px-5 mb-5">
+        <div className="rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden cursor-pointer" style={{ background: 'linear-gradient(90deg,#231C18,#1C1810)', border: '1px solid rgba(255,95,87,0.22)' }} onClick={() => onDiscover?.()}>
+          <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-20 text-7xl pr-3 pointer-events-none select-none">🧋</div>
+          <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl" style={{ background: 'rgba(255,95,87,0.15)' }}>🧋</div>
+          <div className="flex-1 min-w-0 relative z-10">
+            <div className="dirty-soda-badge inline-block mb-1" style={{ fontSize: 10, padding: '2px 8px' }}>VIRAL TREND</div>
+            <p className="font-bold text-white text-[14px] leading-tight">Dirty Soda Shops Near You</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Soda + cream + your fave flavors</p>
+          </div>
+          <ChevronRight className="w-4 h-4 flex-shrink-0 relative z-10" style={{ color: 'rgba(255,154,87,0.70)' }} />
         </div>
       </div>
 

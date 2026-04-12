@@ -35,33 +35,63 @@ export default function TermsPage() {
             body: 'Funds added to your Fizz wallet are processed by Stripe. Wallet balances are non-transferable to bank accounts except via approved payout methods. Shot On Me reserves the right to freeze accounts suspected of fraud.',
           },
           {
-            title: '4. Prohibited Use',
+            title: '4. Refunds & Cancellations',
+            body: '',
+            subsections: [
+              {
+                title: '4a. Wallet Deposits',
+                body: 'Funds added to your Fizz wallet are generally non-refundable. If you believe a charge was made in error, contact support@shotonme.com within 7 days of the transaction. Refunds are issued at our discretion and only for verified errors (e.g., duplicate charges, technical failures during payment processing).',
+              },
+              {
+                title: '4b. Sent Fizz Gifts',
+                body: 'Once a Fizz gift has been sent and accepted by the recipient, it cannot be reversed or refunded. If a gift was sent to the wrong person due to a system error, contact us immediately. Gifts sent to incorrect recipients by user error are not eligible for refund.',
+              },
+              {
+                title: '4c. Unredeemed Wallet Balance',
+                body: 'If you close your account with a remaining wallet balance, you may request a refund of unused funds within 30 days of account closure. Accounts dormant for 12 or more months may be subject to an inactivity fee of up to $5/month, as permitted by applicable law. Contact support@shotonme.com to initiate a balance refund.',
+              },
+            ],
+          },
+          {
+            title: '5. Prohibited Use',
             body: 'You may not use Fizz to purchase alcohol, controlled substances, or any product prohibited by law. Venues listed on Fizz are non-alcohol establishments. Misuse may result in account termination.',
           },
           {
-            title: '5. Venue Partners',
+            title: '6. Venue Partners',
             body: 'Venue listings are provided for informational purposes. Fizz does not guarantee hours, pricing, or availability. Disputes with venues must be resolved directly with the venue owner.',
           },
           {
-            title: '6. Intellectual Property',
+            title: '7. Intellectual Property',
             body: 'The Fizz name, logo, and all content are owned by Shot On Me, Inc. You may not use our branding without written permission.',
           },
           {
-            title: '7. Termination',
+            title: '8. Termination',
             body: 'We reserve the right to suspend or terminate accounts that violate these terms, engage in fraud, or abuse the platform.',
           },
           {
-            title: '8. Governing Law',
+            title: '9. Governing Law',
             body: 'These terms are governed by the laws of the State of Indiana, USA.',
           },
           {
-            title: '9. Contact',
+            title: '10. Contact',
             body: 'Questions? Email legal@shotonme.com.',
           },
         ].map(section => (
           <div key={section.title} className="mb-5">
             <h2 className="text-base font-bold text-white mb-2">{section.title}</h2>
-            <p className="text-white/60 text-sm leading-relaxed">{section.body}</p>
+            {section.body ? (
+              <p className="text-white/60 text-sm leading-relaxed">{section.body}</p>
+            ) : null}
+            {'subsections' in section && section.subsections && (
+              <div className="flex flex-col gap-4 mt-2">
+                {section.subsections.map(sub => (
+                  <div key={sub.title}>
+                    <h3 className="text-sm font-semibold mb-1" style={{ color: '#C8F135' }}>{sub.title}</h3>
+                    <p className="text-white/60 text-sm leading-relaxed">{sub.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

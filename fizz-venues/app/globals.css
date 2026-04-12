@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Inter', sans-serif; background: #0F0F1E; color: white; -webkit-font-smoothing: antialiased; }
+
+input, select, textarea, button { font-family: inherit; color: inherit; }
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35); }
+select option { background: #252540; }
+
+@layer components {
+  .fv-card {
+    @apply rounded-2xl border;
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.06);
+  }
+
+  .fv-btn-primary {
+    @apply flex items-center justify-center gap-2 rounded-2xl font-bold transition-all active:scale-95;
+    background: linear-gradient(135deg, #C8F135, #A8D420);
+    color: #1A1A2E;
+  }
+  .fv-btn-primary:disabled { opacity: 0.4; }
+
+  .fv-btn-outline {
+    @apply flex items-center justify-center gap-2 rounded-2xl font-bold transition-all active:scale-95;
+    background: rgba(200,241,53,0.1);
+    color: #C8F135;
+    border: 1px solid rgba(200,241,53,0.3);
+  }
+
+  .fv-input {
+    @apply w-full px-4 py-3.5 rounded-2xl text-sm border outline-none transition-colors;
+    background: #252540;
+    border-color: rgba(255,255,255,0.1);
+    color: white;
+  }
+  .fv-input:focus { border-color: rgba(200,241,53,0.5); }
+
+  .safe-top { padding-top: max(env(safe-area-inset-top), 16px); }
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
+}

@@ -6,6 +6,7 @@ import { useApiUrl } from '../utils/api'
 import axios from 'axios'
 import { Heart, MessageCircle, MapPin, Sparkles } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import PostComposer from './PostComposer'
 
 interface FeedTabProps {
   onSendFizz?: () => void
@@ -16,6 +17,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showComposer, setShowComposer] = useState(false)
 
   const fetchFeed = useCallback(async () => {
     setLoading(true)
@@ -122,9 +124,15 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-28 px-4 pt-4" style={{ background: '#1A1A2E' }}>
+      <PostComposer
+        isOpen={showComposer}
+        onClose={() => setShowComposer(false)}
+        onPosted={fetchFeed}
+      />
+
       {/* CTA */}
       <button
-        onClick={onSendFizz}
+        onClick={() => setShowComposer(true)}
         className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold mb-5"
         style={{ background: '#252540', color: 'rgba(255,255,255,0.5)' }}
       >
@@ -143,10 +151,15 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
         <div className="fizz-card py-16 text-center">
           <p className="text-4xl mb-3">✨</p>
           <p className="text-white/40 font-medium">Your feed is empty</p>
-          <p className="text-white/25 text-sm mt-1">Send a Fizz to get the party started!</p>
-          <button onClick={onSendFizz} className="fizz-btn-primary mt-5 px-6 py-2.5 text-sm">
-            Send a Fizz
-          </button>
+          <p className="text-white/25 text-sm mt-1">Send a Fizz or share a moment to get started!</p>
+          <div className="flex gap-3 justify-center mt-5">
+            <button onClick={onSendFizz} className="fizz-btn-primary px-5 py-2.5 text-sm">
+              Send a Fizz
+            </button>
+            <button onClick={() => setShowComposer(true)} className="fizz-btn-ghost px-5 py-2.5 text-sm">
+              Share a moment
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-4">

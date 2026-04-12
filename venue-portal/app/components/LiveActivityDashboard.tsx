@@ -212,13 +212,13 @@ export default function LiveActivityDashboard() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center">
                     <span className="text-primary-500 font-semibold">
-                      {showUserDetails && user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                      {'?'}
                     </span>
                   </div>
                   <div>
-                    {showUserDetails && user.name ? (
+                    {false ? (
                       <>
-                        <p className="text-primary-500 font-medium">{user.name}</p>
+                        <p className="text-primary-500 font-medium"></p>
                         <p className="text-primary-400 text-xs">
                           {user.distance?.toFixed(1) || '0.0'} miles away
                         </p>
