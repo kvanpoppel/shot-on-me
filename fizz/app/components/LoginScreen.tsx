@@ -265,11 +265,11 @@ export default function LoginScreen({ initialMode = 'signin', onBack }: LoginScr
             <div className="flex flex-col gap-2">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} className="mt-0.5 rounded accent-lime-400" />
-                <span className="text-xs text-white/50">I agree to the <a href="/terms" className="underline" style={{ color: '#C8F135' }}>Terms of Service</a></span>
+                <span className="text-xs text-white/50">I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline" style={{ color: '#C8F135' }}>Terms of Service</a></span>
               </label>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={acceptedPrivacy} onChange={e => setAcceptedPrivacy(e.target.checked)} className="mt-0.5 rounded accent-lime-400" />
-                <span className="text-xs text-white/50">I agree to the <a href="/privacy" className="underline" style={{ color: '#C8F135' }}>Privacy Policy</a></span>
+                <span className="text-xs text-white/50">I agree to the <a href="/privacy" target="_blank" rel="noreferrer" className="underline" style={{ color: '#C8F135' }}>Privacy Policy</a></span>
               </label>
             </div>
             <button type="submit" disabled={loading} className="fizz-btn-primary w-full py-4 text-base mt-2 disabled:opacity-50">
