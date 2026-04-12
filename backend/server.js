@@ -342,6 +342,9 @@ const feedRouter = require('./routes/feed');
 feedRouter.setIO(io);
 app.use('/api/feed', feedRouter);
 
+// Fizz — separate social graph, wallet, feed, messages
+app.use('/api/fizz', require('./routes/fizz'));
+
 app.use('/api/feed-ai', require('./routes/feedAI'));
 app.use('/api/stories', mediaUploadLimiter, require('./routes/stories'));
 app.use('/api/notifications', require('./routes/notifications'));

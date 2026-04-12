@@ -70,7 +70,7 @@ export default function MessagesTab() {
   const fetchConversations = useCallback(async () => {
     if (!token) return
     try {
-      const res = await axios.get(`${API_URL}/messages/conversations`, {
+      const res = await axios.get(`${API_URL}/fizz/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setConversations(res.data.conversations || [])
@@ -83,7 +83,7 @@ export default function MessagesTab() {
     if (!token) return
     setMsgLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/messages/${convId}`, {
+      const res = await axios.get(`${API_URL}/fizz/messages/${convId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setMessages(res.data.messages || [])
@@ -96,7 +96,7 @@ export default function MessagesTab() {
   const fetchFriends = useCallback(async () => {
     if (!token) return
     try {
-      const res = await axios.get(`${API_URL}/users/friends`, {
+      const res = await axios.get(`${API_URL}/fizz/friends`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setFriends(res.data.friends || [])
@@ -130,7 +130,7 @@ export default function MessagesTab() {
     setInput('')
     try {
       const otherUserId = selectedOtherUser?.id || selectedOtherUser?._id
-      await axios.post(`${API_URL}/messages`,
+      await axios.post(`${API_URL}/fizz/messages`,
         { recipientId: otherUserId, content: text },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -146,21 +146,14 @@ export default function MessagesTab() {
     setSelectedOtherUser(conv.otherUser)
   }
 
-  const startNewConversation = async (friend: Friend) => {
+  const startNewConversation = (friend: Friend) => {
     const otherUserId = friend._id || friend.id
-    try {
-      const res = await axios.post(`${API_URL}/messages/conversations`,
-        { recipientId: otherUserId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      const convId = res.data.conversationId || res.data.conversation?.conversationId
-      if (convId) {
-        setSelectedConvId(convId)
-        setSelectedOtherUser(friend)
-        setShowNewChat(false)
-        fetchConversations()
-      }
-    } catch { /* ignore */ }
+    const ids = [userId, otherUserId].sort()
+    const convId = `fizz_${ids[0]}_${ids[1]}`
+    setSelectedConvId(convId)
+    setSelectedOtherUser(friend)
+    setShowNewChat(false)
+    fetchConversations()
   }
 
   const filteredFriends = friends.filter(f => {

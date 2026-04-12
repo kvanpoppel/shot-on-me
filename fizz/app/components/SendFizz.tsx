@@ -62,7 +62,7 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
     const timer = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await axios.get(`${API_URL}/users/search`, {
+        const res = await axios.get(`${API_URL}/fizz/users/search`, {
           params: { q: searchQuery },
           headers: { Authorization: `Bearer ${token}` }
         })
@@ -75,14 +75,14 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
   }, [searchQuery, API_URL, token])
 
   const finalAmount = useCustom ? parseFloat(customAmount) || 0 : amount
-  const balance = user?.wallet?.balance ?? 0
+  const balance = user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0
 
   const handleSend = async () => {
     if (!recipient || finalAmount <= 0) return
     setError('')
     setLoading(true)
     try {
-      await axios.post(`${API_URL}/shots/send`, {
+      await axios.post(`${API_URL}/fizz/send`, {
         recipientId: recipient.id || recipient._id,
         amount: finalAmount,
         message: message || selectedOccasion ? `${selectedOccasion ? `[${selectedOccasion}] ` : ''}${message}` : undefined,

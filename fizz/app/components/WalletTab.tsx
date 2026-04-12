@@ -29,8 +29,8 @@ export default function WalletTab() {
   const [showRedeem, setShowRedeem] = useState(false)
   const [redeemMsg, setRedeemMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const balance = user?.wallet?.balance ?? 0
-  const pending = user?.wallet?.pendingBalance ?? 0
+  const balance = user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0
+  const pending = user?.fizzWallet?.pendingBalance ?? user?.wallet?.pendingBalance ?? 0
 
   const fetchHistory = useCallback(async () => {
     if (!token) return

@@ -29,7 +29,7 @@ export default function Dashboard({ onOpenSearch, onOpenNotifications, onOpenPro
     }
   }, [])
 
-  const balance = user?.wallet?.balance ?? 0
+  const balance = user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0
 
   return (
     <div className="relative z-20 px-5 py-4 flex items-center justify-between safe-top" style={{ background: '#1A1A2E' }}>

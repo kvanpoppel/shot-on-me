@@ -41,8 +41,8 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
   const fetchSuggestions = useCallback(async () => {
     if (!token) return
     try {
-      const res = await axios.get(`${API_URL}/users/suggestions`, { headers: { Authorization: `Bearer ${token}` } })
-      setSuggestions(res.data.users || res.data.suggestions || [])
+      const res = await axios.get(`${API_URL}/fizz/friends`, { headers: { Authorization: `Bearer ${token}` } })
+      setSuggestions(res.data.friends || res.data.users || [])
     } catch { /* ignore */ }
   }, [API_URL, token])
 
@@ -53,7 +53,7 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await axios.get(`${API_URL}/users/search`, {
+        const res = await axios.get(`${API_URL}/fizz/users/search`, {
           params: { q: query },
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -68,7 +68,7 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
   const handleAdd = async (user: SearchUser) => {
     const uid = user._id || user.id || ''
     try {
-      await axios.post(`${API_URL}/users/${uid}/friend`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      await axios.post(`${API_URL}/fizz/friends/${uid}`, {}, { headers: { Authorization: `Bearer ${token}` } })
       setAdded(prev => { const next = new Set(prev); next.add(uid); return next })
     } catch { /* ignore */ }
   }

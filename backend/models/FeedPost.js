@@ -110,6 +110,13 @@ const feedPostSchema = new mongoose.Schema({
       default: Date.now
     }
   }]
+  // Which app this post belongs to
+  source: {
+    type: String,
+    enum: ['shotonme', 'fizz'],
+    default: 'shotonme',
+    index: true,
+  },
 }, {
   timestamps: true
 });

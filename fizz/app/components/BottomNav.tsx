@@ -29,10 +29,10 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     if (!token || !API_URL) return
     const fetch = async () => {
       try {
-        const res = await axios.get(`${API_URL}/messages/unread-count`, {
+        const res = await axios.get(`${API_URL}/fizz/messages/unread-count`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        setUnreadMessages(res.data.unreadCount || 0)
+        setUnreadMessages(res.data.count ?? res.data.unreadCount ?? 0)
       } catch { /* ignore */ }
     }
     fetch()

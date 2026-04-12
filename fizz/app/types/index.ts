@@ -17,6 +17,17 @@ export interface User {
     balance: number
     pendingBalance: number
   }
+  fizzWallet?: {
+    balance: number
+    pendingBalance: number
+  }
+  fizzProfile?: {
+    firstName?: string
+    lastName?: string
+    username?: string
+    bio?: string
+    profilePicture?: string
+  }
 }
 
 export interface Venue {

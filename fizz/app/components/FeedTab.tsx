@@ -22,7 +22,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
   const fetchFeed = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/feed`, {
+      const res = await axios.get(`${API_URL}/fizz/feed`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setPosts(res.data.posts || res.data || [])
@@ -35,7 +35,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
 
   const handleLike = async (postId: string) => {
     try {
-      await axios.post(`${API_URL}/feed/${postId}/like`, {}, {
+      await axios.post(`${API_URL}/fizz/feed/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setPosts(prev => prev.map(p =>

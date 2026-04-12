@@ -28,15 +28,13 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
     setLoading(true)
     try {
       const [profileRes, postsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/users/${userId}/posts`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/fizz/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/fizz/feed?authorId=${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       if (profileRes.status === 'fulfilled') {
-        const u = profileRes.value.data.user || profileRes.value.data
-        setFriend(u)
-        const myId = me?.id || (me as any)?._id
-        const friends = u.friends || []
-        setIsFriend(friends.some((f: any) => (f._id || f.id || f) === myId))
+        const data = profileRes.value.data
+        setFriend(data.user || data)
+        setIsFriend(data.isFriend ?? false)
       }
       if (postsRes.status === 'fulfilled') {
         setPosts(postsRes.value.data.posts || [])
@@ -52,10 +50,10 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
     setToggling(true)
     try {
       if (isFriend) {
-        await axios.delete(`${API_URL}/users/${userId}/friend`, { headers: { Authorization: `Bearer ${token}` } })
+        await axios.delete(`${API_URL}/fizz/friends/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
         setIsFriend(false)
       } else {
-        await axios.post(`${API_URL}/users/${userId}/friend`, {}, { headers: { Authorization: `Bearer ${token}` } })
+        await axios.post(`${API_URL}/fizz/friends/${userId}`, {}, { headers: { Authorization: `Bearer ${token}` } })
         setIsFriend(true)
       }
     } catch { /* ignore */ } finally {
@@ -118,7 +116,7 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
                 <p className="text-xs text-white/35 mt-0.5">Received</p>
               </div>
               <div className="fizz-card py-3 text-center">
-                <p className="text-lg font-black" style={{ color: '#FF5F57' }}>{friend.friends?.length || 0}</p>
+                <p className="text-lg font-black" style={{ color: '#FF5F57' }}>{friend.friendsCount ?? friend.friends?.length ?? 0}</p>
                 <p className="text-xs text-white/35 mt-0.5">Friends</p>
               </div>
             </div>

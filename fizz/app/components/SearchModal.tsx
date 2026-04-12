@@ -41,7 +41,7 @@ export default function SearchModal({ isOpen, onClose, onViewProfile, onSendFizz
       setLoading(true)
       try {
         const [userRes, venueRes] = await Promise.allSettled([
-          axios.get(`${API_URL}/users/search`, { params: { q: query }, headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/fizz/users/search`, { params: { q: query }, headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_URL}/venues`, { params: { search: query, limit: 10 }, headers: { Authorization: `Bearer ${token}` } }),
         ])
         if (userRes.status === 'fulfilled') setUsers(userRes.value.data.users || [])

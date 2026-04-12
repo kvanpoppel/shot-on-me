@@ -41,7 +41,14 @@ const messageSchema = new mongoose.Schema({
   likedBy: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  // Which app this message belongs to
+  source: {
+    type: String,
+    enum: ['shotonme', 'fizz'],
+    default: 'shotonme',
+    index: true,
+  },
 }, {
   timestamps: true
 });

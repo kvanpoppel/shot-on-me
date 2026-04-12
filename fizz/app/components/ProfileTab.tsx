@@ -107,7 +107,7 @@ export default function ProfileTab({
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mt-4 relative z-10">
             <div className="text-center py-3 rounded-xl" style={{ background: 'rgba(200,241,53,0.08)' }}>
-              <p className="text-lg font-black" style={{ color: '#C8F135' }}>${(user?.wallet?.balance ?? 0).toFixed(2)}</p>
+              <p className="text-lg font-black" style={{ color: '#C8F135' }}>${(user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0).toFixed(2)}</p>
               <p className="text-xs text-white/35 mt-0.5">Balance</p>
             </div>
             <div className="text-center py-3 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)' }}>

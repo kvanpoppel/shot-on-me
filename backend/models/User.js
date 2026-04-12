@@ -269,6 +269,21 @@ const userSchema = new mongoose.Schema({
       default: 'v1'
     }
   },
+  // ─── Fizz-specific fields (separate from Shot On Me) ───────────────────────
+  fizzProfile: {
+    firstName:      { type: String, default: '' },
+    lastName:       { type: String, default: '' },
+    username:       { type: String, default: '' },
+    bio:            { type: String, default: '', maxlength: 160 },
+    profilePicture: { type: String, default: '' },
+  },
+  fizzWallet: {
+    balance:        { type: Number, default: 0, min: 0 },
+    pendingBalance: { type: Number, default: 0, min: 0 },
+  },
+  fizzFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // ────────────────────────────────────────────────────────────────────────────
+
   // Role-based access control — used by owner/admin middleware
   role: {
     type: String,

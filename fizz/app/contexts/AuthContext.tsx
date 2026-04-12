@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { token: authToken, user: userData } = res.data
         if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
         if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+        if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
         setToken(authToken)
         setUser(userData)
       })
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
       if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+      if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
 
       setToken(authToken)
       setUser(userData)
@@ -106,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token: authToken, user: userData } = response.data
       if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
       if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+      if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
       setToken(authToken)
       setUser(userData)
     } catch (error: any) {
@@ -143,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = response.data.user
           if (userData._id && !userData.id) userData.id = userData._id.toString()
           if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+          if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
           setUser(userData)
         }
         return

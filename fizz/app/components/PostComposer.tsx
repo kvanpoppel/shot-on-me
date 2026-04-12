@@ -30,7 +30,7 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
       ? `${selectedOccasion} ${content}`.trim()
       : content.trim()
     try {
-      await axios.post(`${API_URL}/feed`, { content: body }, {
+      await axios.post(`${API_URL}/fizz/feed`, { content: body }, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setContent('')
