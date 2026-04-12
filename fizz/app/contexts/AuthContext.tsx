@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(authToken)
       setUser(userData)
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Registration failed'
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Registration failed'
       throw new Error(errorMessage)
     }
   }

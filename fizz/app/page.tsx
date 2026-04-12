@@ -61,8 +61,6 @@ function FizzApp() {
     setIsMounted(true)
   }, [])
 
-  if (typeof window === 'undefined') return null
-
   const Loader = () => (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E' }}>
       <div className="text-center">
