@@ -4,6 +4,37 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/venues/promotions/active - Get venues with active promotions, optionally filtered by city
+router.get('/promotions/active', auth, async (req, res) => {
+  try {
+    const now = new Date()
+    const { city, limit = 8 } = req.query
+    const query = { isActive: true }
+    if (city) query.city = { $regex: new RegExp(city, 'i') }
+
+    const venues = await Venue.find(query)
+      .select('name address category city photos imageUrl promotions')
+      .lean()
+
+    const results = venues
+      .map(venue => {
+        const activePromotions = (venue.promotions || []).filter(p => {
+          if (!p || !p.isActive) return false
+          if (p.startTime && new Date(p.startTime) > now) return false
+          if (p.endTime && new Date(p.endTime) < now) return false
+          return true
+        })
+        return activePromotions.length > 0 ? { ...venue, promotions: activePromotions } : null
+      })
+      .filter(Boolean)
+      .slice(0, parseInt(limit))
+
+    res.json({ promotions: results })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active promotions' })
+  }
+})
+
 // GET /api/venues/featured - Get featured/promoted venues
 router.get('/featured', auth, async (req, res) => {
   try {

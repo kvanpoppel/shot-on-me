@@ -7,6 +7,8 @@ import { User } from '../types'
 
 axios.defaults.withCredentials = true
 
+const TOKEN_KEY = 'fizz_auth_token'
+
 interface AuthContextType {
   user: User | null
   loading: boolean
@@ -30,6 +32,13 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function normalizeUser(userData: any): User {
+  if (userData._id && !userData.id) userData.id = userData._id.toString()
+  if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
+  if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
+  return userData
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,19 +53,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true
     const timeout = setTimeout(() => { if (isMounted) setLoading(false) }, 10000)
 
-    const apiUrl = getApiUrl()
-    axios.get(`${apiUrl}/auth/verify`, { withCredentials: true, timeout: 8000 })
-      .then(res => {
-        if (!isMounted) return
-        const { token: authToken, user: userData } = res.data
-        if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
-        if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
-        if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
-        setToken(authToken)
-        setUser(userData)
+    const storedToken = localStorage.getItem(TOKEN_KEY)
+
+    if (storedToken) {
+      // Restore session from stored token
+      const apiUrl = getApiUrl()
+      axios.get(`${apiUrl}/users/me`, {
+        headers: { Authorization: `Bearer ${storedToken}` },
+        timeout: 8000,
       })
-      .catch(() => {})
-      .finally(() => { if (isMounted) setLoading(false) })
+        .then(res => {
+          if (!isMounted) return
+          const userData = normalizeUser(res.data.user || res.data)
+          setToken(storedToken)
+          setUser(userData)
+        })
+        .catch(() => {
+          // Token expired or invalid — clear it
+          localStorage.removeItem(TOKEN_KEY)
+        })
+        .finally(() => { if (isMounted) setLoading(false) })
+    } else {
+      // Fall back to cookie-based session (legacy / server-side set cookie)
+      const apiUrl = getApiUrl()
+      axios.get(`${apiUrl}/auth/verify`, { withCredentials: true, timeout: 8000 })
+        .then(res => {
+          if (!isMounted) return
+          const { token: authToken, user: userData } = res.data
+          const normalized = normalizeUser(userData)
+          if (authToken) localStorage.setItem(TOKEN_KEY, authToken)
+          setToken(authToken)
+          setUser(normalized)
+        })
+        .catch(() => { /* no session — show landing */ })
+        .finally(() => { if (isMounted) setLoading(false) })
+    }
 
     return () => {
       isMounted = false
@@ -69,23 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const loginUrl = buildApiUrl('auth/login')
       const response = await axios.post(loginUrl, { email, password }, { timeout: 8000 })
       const { token: authToken, user: userData } = response.data
+      const normalized = normalizeUser(userData)
 
-      if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
-      if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
-      if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
+      localStorage.setItem(TOKEN_KEY, authToken)
+      if (rememberMe) {
+        localStorage.setItem('fizz_savedEmail', email)
+      } else {
+        localStorage.removeItem('fizz_savedEmail')
+      }
 
       setToken(authToken)
-      setUser(userData)
-
-      try {
-        if (typeof window !== 'undefined') {
-          if (rememberMe) {
-            localStorage.setItem('fizz_savedEmail', email)
-          } else {
-            localStorage.removeItem('fizz_savedEmail')
-          }
-        }
-      } catch { /* ignore */ }
+      setUser(normalized)
     } catch (error: any) {
       let errorMessage = 'Login failed'
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
@@ -106,11 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const apiUrl = getApiUrl()
       const response = await axios.post(`${apiUrl}/auth/register`, data, { timeout: 30000 })
       const { token: authToken, user: userData } = response.data
-      if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
-      if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
-      if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
+      const normalized = normalizeUser(userData)
+
+      localStorage.setItem(TOKEN_KEY, authToken)
       setToken(authToken)
-      setUser(userData)
+      setUser(normalized)
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Registration failed'
       throw new Error(errorMessage)
@@ -120,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     const apiUrl = getApiUrl()
     axios.post(`${apiUrl}/auth/logout`, {}, { withCredentials: true }).catch(() => {})
+    localStorage.removeItem(TOKEN_KEY)
     setUser(null)
     setToken(null)
   }
@@ -143,11 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (response.data.user) {
-          const userData = response.data.user
-          if (userData._id && !userData.id) userData.id = userData._id.toString()
-          if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
-          if (!userData.fizzWallet) userData.fizzWallet = { balance: 0, pendingBalance: 0 }
-          setUser(userData)
+          setUser(normalizeUser(response.data.user))
         }
         return
       }
@@ -157,10 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.data.user) {
-        const userData = response.data.user
-        if (userData._id && !userData.id) userData.id = userData._id.toString()
-        if (!userData.wallet) userData.wallet = { balance: 0, pendingBalance: 0 }
-        setUser(userData)
+        setUser(normalizeUser(response.data.user))
       } else {
         setUser(prev => prev ? { ...prev, ...data } : null)
       }
