@@ -30,7 +30,7 @@ html, body {
   color: #fff;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 ::-webkit-scrollbar { display: none; }

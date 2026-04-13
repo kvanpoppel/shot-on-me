@@ -136,7 +136,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
     const isEditing = editingPostId === postId
 
     return (
-      <div className="fizz-card overflow-hidden">
+      <div className="overflow-hidden" style={{ background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
@@ -263,7 +263,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28 px-4 pt-4" style={{ background: '#1A1A2E' }}>
+    <div className="overflow-y-auto px-4 pt-4 pb-6 max-w-2xl mx-auto w-full" style={{ background: '#1A1A2E', minHeight: '100%' }}>
       <PostComposer
         isOpen={showComposer}
         onClose={() => setShowComposer(false)}
@@ -328,9 +328,9 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
 
       {/* Feed */}
       {loading ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="rounded-2xl animate-pulse" style={{ height: 140, background: '#252540' }} />
+            <div key={i} className="rounded-lg animate-pulse" style={{ height: 120, background: '#252540' }} />
           ))}
         </div>
       ) : posts.length === 0 ? (
@@ -348,7 +348,7 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {posts.map((post: any) => <PostCard key={post._id || post.id} post={post} />)}
           {/* Infinite scroll sentinel */}
           <div ref={bottomRef} className="h-4" />

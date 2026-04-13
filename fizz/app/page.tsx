@@ -48,7 +48,6 @@ function FizzApp() {
   const [showFindFriends, setShowFindFriends] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showTonight, setShowTonight] = useState(false)
-  const [showMessages, setShowMessages] = useState(false)
   const [viewProfileUserId, setViewProfileUserId] = useState<string | undefined>()
 
   useEffect(() => {
@@ -118,20 +117,16 @@ function FizzApp() {
     setViewProfileUserId(userId)
   }
 
+  const showNav = activeTab !== 'send'
+
   return (
     <div className="flex flex-col overflow-hidden" style={{ background: '#1A1A2E', height: '100dvh' }}>
-      {/* Overlay modals */}
-      <NotificationsPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
 
-      {showRewards && (
-        <RewardsScreen onClose={() => setShowRewards(false)} />
-      )}
-      {showReferrals && (
-        <ReferralScreen onClose={() => setShowReferrals(false)} />
-      )}
-      {showCrews && (
-        <CrewsTab onClose={() => setShowCrews(false)} />
-      )}
+      {/* ── Overlay modals ── */}
+      <NotificationsPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+      {showRewards && <RewardsScreen onClose={() => setShowRewards(false)} />}
+      {showReferrals && <ReferralScreen onClose={() => setShowReferrals(false)} />}
+      {showCrews && <CrewsTab onClose={() => setShowCrews(false)} />}
       {showSettings && (
         <SettingsMenu
           onClose={() => setShowSettings(false)}
@@ -151,11 +146,6 @@ function FizzApp() {
           onSendFizz={(venueId) => { setShowTonight(false); handleSendFizz(venueId) }}
         />
       )}
-      {showMessages && (
-        <div className="fixed inset-0 z-40 flex flex-col" style={{ background: '#1A1A2E' }}>
-          <MessagesTab onClose={() => setShowMessages(false)} />
-        </div>
-      )}
       <SearchModal
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
@@ -171,27 +161,32 @@ function FizzApp() {
         />
       )}
 
-      {/* Top bar — not shown on send tab */}
-      {activeTab !== 'send' && (
+      {/* ── Top bar ── */}
+      {showNav && (
         <Dashboard
-          onOpenNotifications={() => setShowNotifications(true)}
-          onOpenSearch={() => setShowSearch(true)}
           onOpenProfile={() => setActiveTab('profile')}
-          onOpenMessages={() => setShowMessages(true)}
           onOpenWallet={() => setActiveTab('wallet')}
           onOpenSettings={() => setShowSettings(true)}
+          onOpenNotifications={() => setShowNotifications(true)}
+          onOpenRewards={() => setShowRewards(true)}
         />
       )}
 
-      {/* Main content */}
-      <main className="flex-1 overflow-hidden flex flex-col">
+      {/* ── Main content — offset by fixed header (56px) + bottom nav (56px) ── */}
+      <main
+        className="flex-1 overflow-y-auto overflow-x-hidden"
+        style={{ paddingTop: showNav ? 56 : 0, paddingBottom: showNav ? 56 : 0 }}
+      >
         {activeTab === 'home' && (
           <HomeTab
             onSendFizz={handleSendFizz}
-            onDiscover={() => setActiveTab('discover')}
+            onDiscover={() => setActiveTab('sips')}
           />
         )}
-        {activeTab === 'discover' && (
+        {activeTab === 'feed' && (
+          <FeedTab onSendFizz={() => setActiveTab('send')} />
+        )}
+        {(activeTab === 'sips' || activeTab === 'discover') && (
           <VenueDiscovery onSendFizz={handleSendFizz} />
         )}
         {activeTab === 'send' && (
@@ -201,11 +196,9 @@ function FizzApp() {
             onClose={handleSendClose}
           />
         )}
-        {activeTab === 'wallet' && (
-          <WalletTab />
-        )}
-        {activeTab === 'feed' && (
-          <FeedTab onSendFizz={() => setActiveTab('send')} />
+        {activeTab === 'wallet' && <WalletTab />}
+        {activeTab === 'messages' && (
+          <MessagesTab onClose={() => setActiveTab('home')} />
         )}
         {activeTab === 'profile' && (
           <ProfileTab
@@ -221,8 +214,8 @@ function FizzApp() {
         )}
       </main>
 
-      {/* Bottom nav */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* ── Bottom nav ── */}
+      {showNav && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
     </div>
   )
 }

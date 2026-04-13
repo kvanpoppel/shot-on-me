@@ -67,12 +67,12 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
 
     return (
       <div
-        className="flex-shrink-0 fizz-card overflow-hidden cursor-pointer hover:border-lime-fizz/30 transition-all"
-        style={{ width: 180 }}
+        className="flex-shrink-0 overflow-hidden cursor-pointer transition-all"
+        style={{ width: 156, background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 }}
         onClick={() => onSendFizz?.(venue._id)}
       >
         {/* Image */}
-        <div className="w-full h-28 relative overflow-hidden" style={{ background: '#2E2E50' }}>
+        <div className="w-full h-24 relative overflow-hidden" style={{ background: '#2E2E50' }}>
           {venue.photos?.[0] || venue.imageUrl ? (
             <img src={venue.photos?.[0] || venue.imageUrl} alt={venue.name} className="w-full h-full object-cover" />
           ) : (
@@ -99,7 +99,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
             </div>
           )}
           <button
-            className="mt-2 w-full py-1.5 rounded-xl text-xs font-bold text-center"
+            className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-center"
             style={{ background: 'rgba(200,241,53,0.15)', color: '#C8F135' }}
           >
             Send a Fizz
@@ -110,10 +110,11 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#0F0F1E' }}>
+    <div className="overflow-y-auto" style={{ background: '#0F0F1E', minHeight: '100%' }}>
+      <div className="max-w-2xl mx-auto">
       {/* Hero greeting */}
-      <div className="px-5 pt-4 pb-5">
-        <div className="rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#1C1C32,#23233A)', border: '1px solid rgba(200,241,53,0.10)' }}>
+      <div className="px-4 pt-4 pb-4">
+        <div className="rounded-xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#1C1C32,#23233A)', border: '1px solid rgba(200,241,53,0.10)' }}>
           <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl" style={{ background: '#C8F135', transform: 'translate(30%,-30%)' }} />
           <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full opacity-10 blur-3xl" style={{ background: '#FF5F57', transform: 'translate(-30%,30%)' }} />
           <p className="text-[13px] mb-0.5 relative z-10" style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Poppins,sans-serif' }}>Hey there,</p>
@@ -132,7 +133,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
       </div>
 
       {/* Dirty Soda featured strip */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <div className="rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden cursor-pointer" style={{ background: 'linear-gradient(90deg,#231C18,#1C1810)', border: '1px solid rgba(255,95,87,0.22)' }} onClick={() => onDiscover?.()}>
           <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-20 text-7xl pr-3 pointer-events-none select-none">🧋</div>
           <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl" style={{ background: 'rgba(255,95,87,0.15)' }}>🧋</div>
@@ -146,7 +147,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
       </div>
 
       {/* City tabs */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {FIZZ_CITIES.map(city => (
             <button
@@ -165,8 +166,8 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
       </div>
 
       {/* Trending venues */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between px-5 mb-3">
+      <section className="mb-4">
+        <div className="flex items-center justify-between px-4 mb-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" style={{ color: '#C8F135' }} />
             <h2 className="font-bold text-white text-base">Trending in {selectedCity}</h2>
@@ -177,17 +178,17 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         </div>
 
         {loading ? (
-          <div className="flex gap-3 px-5 overflow-x-auto">
+          <div className="flex gap-3 px-4 overflow-x-auto">
             {[1, 2, 3].map(i => (
-              <div key={i} className="flex-shrink-0 rounded-2xl animate-pulse" style={{ width: 180, height: 200, background: '#252540' }} />
+              <div key={i} className="flex-shrink-0 rounded-xl animate-pulse" style={{ width: 156, height: 180, background: '#252540' }} />
             ))}
           </div>
         ) : venues.length > 0 ? (
-          <div className="flex gap-3 px-5 overflow-x-auto pb-2">
+          <div className="flex gap-3 px-4 overflow-x-auto pb-2">
             {venues.map(v => <VenueCard key={v._id} venue={v} />)}
           </div>
         ) : (
-          <div className="mx-5 py-8 text-center fizz-card">
+          <div className="mx-4 py-6 text-center fizz-card">
             <p className="text-3xl mb-2">🫧</p>
             <p className="text-white/40 text-sm">No venues yet in {selectedCity}</p>
             <p className="text-white/25 text-xs mt-1">Check back soon or try another city</p>
@@ -197,7 +198,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
 
       {/* What's Happening */}
       {promotions.length > 0 && (
-        <section className="px-5 mb-6">
+        <section className="px-4 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4" style={{ color: '#FF5F57' }} />
             <h2 className="font-bold text-white text-base">What&apos;s Happening</h2>
@@ -220,21 +221,23 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
       )}
 
       {/* Quick categories */}
-      <section className="px-5 mb-6">
-        <h2 className="font-bold text-white text-base mb-3">Browse by Category</h2>
-        <div className="grid grid-cols-3 gap-3">
+      <section className="px-4 mb-6">
+        <h2 className="font-bold text-white text-sm mb-3">Browse by Category</h2>
+        <div className="grid grid-cols-4 gap-2">
           {FIZZ_CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={onDiscover}
-              className="fizz-card p-3 flex flex-col items-center gap-2 hover:border-lime-fizz/30 transition-all"
+              className="hover:border-lime-fizz/30 transition-all flex flex-col items-center gap-1.5 p-2"
+              style={{ background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}
             >
-              <span className="text-2xl">{CATEGORY_ICONS[cat]}</span>
-              <span className="text-xs font-semibold text-white/70 text-center leading-tight">{cat}</span>
+              <span className="text-xl">{CATEGORY_ICONS[cat]}</span>
+              <span className="text-[10px] font-semibold text-white/60 text-center leading-tight">{cat.split(' ')[0]}</span>
             </button>
           ))}
         </div>
       </section>
+      </div>
     </div>
   )
 }
