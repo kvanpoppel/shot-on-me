@@ -32,7 +32,7 @@ export default function Dashboard({
   const [showMenu, setShowMenu] = useState(false)
   const [liveCount, setLiveCount] = useState(notificationCount)
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setLiveCount(notificationCount) }, [notificationCount])
 
@@ -46,7 +46,6 @@ export default function Dashboard({
     }
   }, [])
 
-  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -59,17 +58,18 @@ export default function Dashboard({
     }
   }, [showMenu])
 
-  // Unread message count
   useEffect(() => {
     if (!token || !API_URL) return
-    const fetch = async () => {
+    const fetchUnread = async () => {
       try {
-        const res = await axios.get(`${API_URL}/fizz/messages/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await axios.get(`${API_URL}/fizz/messages/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         setUnreadMessages(res.data.count ?? res.data.unreadCount ?? 0)
       } catch { /* ignore */ }
     }
-    fetch()
-    const interval = setInterval(fetch, 30000)
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
     return () => clearInterval(interval)
   }, [token, API_URL])
 
@@ -80,47 +80,40 @@ export default function Dashboard({
   }, [])
 
   const balance = user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0
-  const displayName = user?.fizzProfile?.firstName || user?.firstName || ''
+  const firstName = user?.fizzProfile?.firstName || user?.firstName || ''
   const lastName = user?.fizzProfile?.lastName || user?.lastName || ''
   const username = user?.fizzProfile?.username || user?.username || ''
   const profilePic = user?.fizzProfile?.profilePicture || user?.profilePicture
 
   return (
-    <div className="relative z-20 px-5 py-3 flex items-center justify-between safe-top" style={{ background: '#1A1A2E' }}>
-
-      {/* ── Left: Profile dropdown trigger ── */}
-      <div className="relative" ref={menuRef}>
+    <div
+      className="relative z-20 safe-top flex items-center px-4"
+      style={{ background: '#1A1A2E', height: 56 }}
+    >
+      {/* ── LEFT: Avatar + dropdown ── */}
+      <div className="relative flex-shrink-0" ref={menuRef}>
         <button
           onClick={() => setShowMenu(o => !o)}
-          className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/5 active:bg-white/8"
+          className="flex items-center gap-1.5 rounded-xl p-1 transition-colors hover:bg-white/5 active:bg-white/8"
         >
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0" style={{ border: '1.5px solid rgba(200,241,53,0.35)' }}>
+          <div
+            className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0"
+            style={{ border: '1.5px solid rgba(200,241,53,0.4)' }}
+          >
             {profilePic ? (
               <img src={profilePic} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)', color: '#1A1A2E' }}>
-                {displayName?.[0]}{lastName?.[0]}
+              <div
+                className="w-full h-full flex items-center justify-center text-xs font-bold"
+                style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)', color: '#1A1A2E' }}
+              >
+                {firstName?.[0]}{lastName?.[0]}
               </div>
             )}
           </div>
-
-          {/* Name + wordmark */}
-          <div className="text-left">
-            {title ? (
-              <p className="text-sm font-bold text-white leading-none">{title}</p>
-            ) : (
-              <p className="text-sm font-black tracking-tight leading-none" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
-              </p>
-            )}
-            <p className="text-[11px] text-white/40 mt-0.5 leading-none">
-              Hey {displayName} 👋
-            </p>
-          </div>
-
           <ChevronDown
-            className="w-3.5 h-3.5 text-white/30 transition-transform"
+            className="w-3 h-3 text-white/40 transition-transform"
             style={{ transform: showMenu ? 'rotate(180deg)' : 'rotate(0deg)' }}
           />
         </button>
@@ -129,18 +122,27 @@ export default function Dashboard({
         {showMenu && (
           <div
             className="absolute left-0 top-full mt-2 rounded-2xl border py-2 shadow-2xl z-50"
-            style={{ background: '#252540', borderColor: 'rgba(255,255,255,0.10)', minWidth: 200 }}
+            style={{ background: '#252540', borderColor: 'rgba(255,255,255,0.10)', minWidth: 210 }}
           >
-            {/* User info header */}
-            <div className="px-4 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-              <p className="text-sm font-bold text-white">{displayName} {lastName}</p>
-              {username && <p className="text-xs text-white/40 mt-0.5">@{username}</p>}
+            {/* User info */}
+            <div className="px-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <p className="text-sm font-bold text-white leading-tight">{firstName} {lastName}</p>
+              {username ? (
+                <p className="text-xs text-white/40 mt-0.5">@{username}</p>
+              ) : (
+                <p className="text-xs text-white/40 mt-0.5">{user?.email}</p>
+              )}
             </div>
 
-            {/* Balance */}
-            <div className="px-4 py-2.5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+            {/* Wallet balance */}
+            <div
+              className="px-4 py-2.5 border-b flex items-center justify-between"
+              style={{ borderColor: 'rgba(255,255,255,0.07)' }}
+            >
               <span className="text-xs text-white/50">Fizz Wallet</span>
-              <span className="text-sm font-bold" style={{ color: '#C8F135' }}>${balance.toFixed(2)}</span>
+              <span className="text-sm font-bold" style={{ color: '#C8F135' }}>
+                ${balance.toFixed(2)}
+              </span>
             </div>
 
             {/* Actions */}
@@ -149,7 +151,7 @@ export default function Dashboard({
                 onClick={() => { onOpenProfile(); setShowMenu(false) }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
-                <UserCircle className="w-4 h-4" />
+                <UserCircle className="w-4 h-4 flex-shrink-0" />
                 My Profile
               </button>
             )}
@@ -158,7 +160,7 @@ export default function Dashboard({
                 onClick={() => { onOpenWallet(); setShowMenu(false) }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
-                <Wallet className="w-4 h-4" />
+                <Wallet className="w-4 h-4 flex-shrink-0" />
                 My Wallet
               </button>
             )}
@@ -167,7 +169,7 @@ export default function Dashboard({
                 onClick={() => { onOpenSettings(); setShowMenu(false) }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4 flex-shrink-0" />
                 Settings
               </button>
             )}
@@ -179,15 +181,25 @@ export default function Dashboard({
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
               style={{ color: '#FF5F57' }}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4 flex-shrink-0" />
               Sign Out
             </button>
           </div>
         )}
       </div>
 
-      {/* ── Right: icons ── */}
-      <div className="flex items-center gap-1.5">
+      {/* ── CENTER: App name (absolutely centered) ── */}
+      <div className="absolute left-0 right-0 flex justify-center pointer-events-none">
+        <span
+          className="text-xl font-black tracking-tight"
+          style={{ fontFamily: 'Poppins, sans-serif' }}
+        >
+          <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+        </span>
+      </div>
+
+      {/* ── RIGHT: Action icons ── */}
+      <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
         {/* Messages */}
         <button
           onClick={() => { onOpenMessages?.(); setUnreadMessages(0) }}
@@ -195,7 +207,10 @@ export default function Dashboard({
         >
           <MessageSquare className="w-5 h-5 text-white/60" />
           {unreadMessages > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-black" style={{ background: '#00D4FF', color: '#1A1A2E' }}>
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-black"
+              style={{ background: '#00D4FF', color: '#1A1A2E' }}
+            >
               {unreadMessages > 9 ? '9+' : unreadMessages}
             </span>
           )}
@@ -208,7 +223,10 @@ export default function Dashboard({
         >
           <Bell className="w-5 h-5 text-white/60" />
           {liveCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-black" style={{ background: '#FF5F57', color: '#fff' }}>
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-black"
+              style={{ background: '#FF5F57', color: '#fff' }}
+            >
               {liveCount > 9 ? '9+' : liveCount}
             </span>
           )}
@@ -216,7 +234,10 @@ export default function Dashboard({
 
         {/* Search */}
         {onOpenSearch && (
-          <button onClick={onOpenSearch} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors">
+          <button
+            onClick={onOpenSearch}
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+          >
             <Search className="w-5 h-5 text-white/60" />
           </button>
         )}

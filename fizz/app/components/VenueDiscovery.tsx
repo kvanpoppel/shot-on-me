@@ -140,7 +140,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
                     latitude: (venue as any).location?.latitude,
                     longitude: (venue as any).location?.longitude,
                   }, { headers: { Authorization: `Bearer ${token}` } })
-                  setCheckedIn(prev => new Set([...prev, venue._id]))
+                  setCheckedIn(prev => new Set(Array.from(prev).concat(venue._id)))
                 } catch { /* ignore */ }
               }}
               disabled={checkedIn.has(venue._id)}
