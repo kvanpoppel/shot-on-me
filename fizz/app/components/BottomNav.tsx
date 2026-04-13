@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Home, Compass, Send, MessageSquare, User } from 'lucide-react'
+import { Home, Newspaper, Send, Wallet, User } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
@@ -13,11 +13,11 @@ interface BottomNavProps {
 }
 
 const TABS: { id: Tab; icon: React.ElementType; label: string; isFab?: boolean }[] = [
-  { id: 'home',      icon: Home,          label: 'Home' },
-  { id: 'discover',  icon: Compass,       label: 'Spots' },
-  { id: 'send',      icon: Send,          label: 'Fizz',    isFab: true },
-  { id: 'messages',  icon: MessageSquare, label: 'Messages' },
-  { id: 'profile',   icon: User,          label: 'Profile' },
+  { id: 'home',    icon: Home,      label: 'Home' },
+  { id: 'feed',    icon: Newspaper, label: 'Feed' },
+  { id: 'send',    icon: Send,      label: 'Fizz',   isFab: true },
+  { id: 'wallet',  icon: Wallet,    label: 'Wallet' },
+  { id: 'profile', icon: User,      label: 'Profile' },
 ]
 
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {

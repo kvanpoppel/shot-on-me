@@ -58,7 +58,13 @@ const storySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  source: {
+    type: String,
+    enum: ['shotonme', 'fizz'],
+    default: 'shotonme',
+    index: true,
+  },
 }, {
   timestamps: true
 });

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { X, Gift, MapPin, Bell } from 'lucide-react'
+import { X, Gift, MapPin, Bell, MessageCircle, UserPlus, Heart } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Notification {
@@ -37,13 +37,11 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
     if (!token) return
     setLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/notifications`, {
+      const res = await axios.get(`${API_URL}/fizz/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setNotifications(res.data.notifications || res.data || [])
-    } catch {
-      // endpoint may not exist yet — ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setLoading(false)
     }
   }, [API_URL, token])
@@ -51,7 +49,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
   const markAllRead = useCallback(async () => {
     if (!token) return
     try {
-      await axios.put(`${API_URL}/notifications/read-all`, {}, {
+      await axios.put(`${API_URL}/fizz/notifications/read-all`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
@@ -79,7 +77,10 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
         read: isOpen,
         createdAt: detail.createdAt || new Date().toISOString(),
       }
-      setNotifications(prev => [notif, ...prev])
+      setNotifications(prev => {
+        if (detail._id && prev.some(n => n._id === detail._id)) return prev
+        return [notif, ...prev]
+      })
     }
     window.addEventListener('new-notification', handleNew)
     window.addEventListener('socket-notification', handleNew)
@@ -92,10 +93,19 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
   if (!isOpen) return null
 
   const NotifIcon = ({ type }: { type: string }) => {
-    if (type === 'shot' || type === 'gift' || type === 'fizz') {
+    if (type === 'fizz_received' || type === 'shot' || type === 'gift' || type === 'fizz') {
       return <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(200,241,53,0.15)' }}>🫧</div>
     }
-    if (type === 'wallet') {
+    if (type === 'message') {
+      return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,212,255,0.15)' }}><MessageCircle className="w-5 h-5" style={{ color: '#00D4FF' }} /></div>
+    }
+    if (type === 'friend_request' || type === 'friend_accepted') {
+      return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(167,139,250,0.15)' }}><UserPlus className="w-5 h-5" style={{ color: '#A78BFA' }} /></div>
+    }
+    if (type === 'feed_like' || type === 'feed_comment') {
+      return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,95,87,0.15)' }}><Heart className="w-5 h-5" style={{ color: '#FF5F57' }} /></div>
+    }
+    if (type === 'wallet' || type === 'payment_received') {
       return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,212,255,0.15)' }}><Gift className="w-5 h-5" style={{ color: '#00D4FF' }} /></div>
     }
     return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }}><Bell className="w-5 h-5 text-white/40" /></div>

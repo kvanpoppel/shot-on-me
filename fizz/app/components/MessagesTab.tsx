@@ -6,7 +6,7 @@ import { useSocket } from '../contexts/SocketContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
 import {
-  Send, ArrowLeft, Search, Plus, X, MoreVertical, Check, CheckCheck,
+  Send, ArrowLeft, Search, Plus, X, Image as ImageIcon,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -46,7 +46,7 @@ function Avatar({ user, size = 10 }: { user: any; size?: number }) {
   )
 }
 
-export default function MessagesTab() {
+export default function MessagesTab({ onClose }: { onClose?: () => void }) {
   const { user, token } = useAuth()
   const { socket } = useSocket()
   const API_URL = useApiUrl()
@@ -62,8 +62,15 @@ export default function MessagesTab() {
   const [showNewChat, setShowNewChat] = useState(false)
   const [friends, setFriends] = useState<Friend[]>([])
   const [friendSearch, setFriendSearch] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const [otherTyping, setOtherTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const selectedConvIdRef = useRef<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [msgImageUrl, setMsgImageUrl] = useState<string | null>(null)
+  const [uploadingImg, setUploadingImg] = useState(false)
 
   const userId = user?.id || (user as any)?._id
 
@@ -106,35 +113,107 @@ export default function MessagesTab() {
   useEffect(() => { fetchConversations() }, [fetchConversations])
 
   useEffect(() => {
+    selectedConvIdRef.current = selectedConvId
     if (selectedConvId) fetchMessages(selectedConvId)
   }, [selectedConvId, fetchMessages])
 
-  // Real-time socket
+  // Real-time: fizz-message via window event (from SocketContext)
   useEffect(() => {
-    if (!socket) return
-    const handleNewMsg = (data: { message: Message; conversationId: string }) => {
-      if (data.conversationId === selectedConvId) {
-        setMessages(prev => [...prev, data.message])
+    const handleFizzMessage = (e: Event) => {
+      const data = (e as CustomEvent).detail as { message: Message; conversationId: string }
+      if (data.conversationId === selectedConvIdRef.current) {
+        setMessages(prev => {
+          // Deduplicate
+          if (prev.some(m => m._id === data.message._id)) return prev
+          return [...prev, data.message]
+        })
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
       }
       fetchConversations()
     }
-    socket.on('new-message', handleNewMsg)
-    return () => { socket.off('new-message', handleNewMsg) }
-  }, [socket, selectedConvId, fetchConversations])
+    window.addEventListener('fizz-message', handleFizzMessage)
+    return () => window.removeEventListener('fizz-message', handleFizzMessage)
+  }, [fetchConversations])
+
+  // Typing indicator — listen for other user typing
+  useEffect(() => {
+    let clearTimer: ReturnType<typeof setTimeout>
+    const handleTyping = (e: Event) => {
+      const data = (e as CustomEvent).detail
+      if (data.conversationId !== selectedConvIdRef.current) return
+      setOtherTyping(data.isTyping)
+      if (data.isTyping) {
+        clearTimer = setTimeout(() => setOtherTyping(false), 3000)
+      }
+    }
+    window.addEventListener('fizz-typing', handleTyping)
+    return () => { window.removeEventListener('fizz-typing', handleTyping); clearTimeout(clearTimer) }
+  }, [])
+
+  const emitTyping = useCallback((typing: boolean) => {
+    if (!socket || !selectedConvId || !selectedOtherUser) return
+    const recipientId = selectedOtherUser?.id || selectedOtherUser?._id
+    axios.post(`${API_URL}/fizz/messages/${selectedConvId}/typing`,
+      { recipientId, isTyping: typing },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).catch(() => {})
+  }, [socket, selectedConvId, selectedOtherUser, API_URL, token])
+
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImg(true)
+    try {
+      const form = new FormData()
+      form.append('image', file)
+      const res = await axios.post(`${API_URL}/fizz/upload`, form, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      })
+      setMsgImageUrl(res.data.url)
+    } catch { /* ignore */ } finally {
+      setUploadingImg(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+    if (!isTyping) {
+      setIsTyping(true)
+      emitTyping(true)
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false)
+      emitTyping(false)
+    }, 2000)
+  }
 
   const handleSend = async () => {
-    if (!input.trim() || !selectedConvId || sending) return
+    if (!input.trim() && !msgImageUrl) return
+    if (!selectedConvId || sending) return
     setSending(true)
     const text = input.trim()
+    const imgUrl = msgImageUrl
     setInput('')
+    setMsgImageUrl(null)
+    // Stop typing indicator
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    setIsTyping(false)
+    emitTyping(false)
     try {
       const otherUserId = selectedOtherUser?.id || selectedOtherUser?._id
-      await axios.post(`${API_URL}/fizz/messages`,
-        { recipientId: otherUserId, content: text },
+      const payload: any = { recipientId: otherUserId, content: text || ' ' }
+      if (imgUrl) payload.media = [{ url: imgUrl, type: 'image' }]
+      const res = await axios.post(`${API_URL}/fizz/messages`, payload,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      fetchMessages(selectedConvId)
+      if (res.data.message) {
+        setMessages(prev => {
+          if (prev.some(m => m._id === res.data.message._id)) return prev
+          return [...prev, res.data.message]
+        })
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      }
       fetchConversations()
     } catch { /* ignore */ } finally {
       setSending(false)
@@ -175,7 +254,9 @@ export default function MessagesTab() {
           <Avatar user={selectedOtherUser} size={9} />
           <div className="flex-1">
             <p className="font-bold text-white text-sm">{otherName}</p>
-            <p className="text-xs text-white/30">Fizz friend</p>
+            <p className="text-xs" style={{ color: otherTyping ? '#C8F135' : 'rgba(255,255,255,0.3)' }}>
+            {otherTyping ? 'typing...' : 'Fizz friend'}
+          </p>
           </div>
         </div>
 
@@ -196,16 +277,21 @@ export default function MessagesTab() {
               return (
                 <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                    className="max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden"
                     style={isMine
                       ? { background: '#C8F135', color: '#1A1A2E', borderBottomRightRadius: 6 }
                       : { background: '#252540', color: 'white', borderBottomLeftRadius: 6 }
                     }
                   >
-                    <p>{msg.content}</p>
-                    <p className="text-[10px] mt-1 opacity-50">
-                      {msg.createdAt ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true }) : ''}
-                    </p>
+                    {(msg as any).media?.length > 0 && (
+                      <img src={(msg as any).media[0].url} alt="" className="w-full max-h-48 object-cover" />
+                    )}
+                    <div className="px-4 py-2.5">
+                      {msg.content?.trim() && msg.content.trim() !== ' ' && <p>{msg.content}</p>}
+                      <p className="text-[10px] mt-1 opacity-50">
+                        {msg.createdAt ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true }) : ''}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )
@@ -216,11 +302,24 @@ export default function MessagesTab() {
 
         {/* Input */}
         <div className="px-4 py-3 border-t safe-bottom flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
+          {/* Image preview */}
+          {msgImageUrl && (
+            <div className="relative mb-2 inline-block">
+              <img src={msgImageUrl} alt="" className="h-20 rounded-xl object-cover" />
+              <button onClick={() => setMsgImageUrl(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+                <X className="w-3 h-3 text-white" />
+              </button>
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
           <div className="flex items-end gap-2">
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImg} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all" style={{ background: 'rgba(0,212,255,0.12)' }}>
+              <ImageIcon className="w-4 h-4" style={{ color: '#00D4FF' }} />
+            </button>
             <textarea
               ref={inputRef}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
               placeholder="Message..."
               rows={1}
@@ -229,7 +328,7 @@ export default function MessagesTab() {
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || sending}
+              disabled={(!input.trim() && !msgImageUrl) || sending}
               className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
               style={{ background: '#C8F135' }}
             >
@@ -245,8 +344,15 @@ export default function MessagesTab() {
   return (
     <div className="flex flex-col h-full" style={{ background: '#0F0F1E' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ background: '#1A1A2E' }}>
-        <h2 className="text-lg font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Messages</h2>
+      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0 safe-top" style={{ background: '#1A1A2E' }}>
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <button onClick={onClose} className="p-2 -ml-2 rounded-xl hover:bg-white/5">
+              <ArrowLeft className="w-5 h-5 text-white/60" />
+            </button>
+          )}
+          <h2 className="text-lg font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Messages</h2>
+        </div>
         <button
           onClick={() => { setShowNewChat(true); fetchFriends() }}
           className="w-9 h-9 rounded-xl flex items-center justify-center"

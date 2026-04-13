@@ -48,6 +48,7 @@ function FizzApp() {
   const [showFindFriends, setShowFindFriends] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showTonight, setShowTonight] = useState(false)
+  const [showMessages, setShowMessages] = useState(false)
   const [viewProfileUserId, setViewProfileUserId] = useState<string | undefined>()
 
   useEffect(() => {
@@ -118,7 +119,7 @@ function FizzApp() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#1A1A2E' }}>
+    <div className="flex flex-col overflow-hidden" style={{ background: '#1A1A2E', height: '100dvh' }}>
       {/* Overlay modals */}
       <NotificationsPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
 
@@ -150,6 +151,11 @@ function FizzApp() {
           onSendFizz={(venueId) => { setShowTonight(false); handleSendFizz(venueId) }}
         />
       )}
+      {showMessages && (
+        <div className="fixed inset-0 z-40 flex flex-col" style={{ background: '#1A1A2E' }}>
+          <MessagesTab onClose={() => setShowMessages(false)} />
+        </div>
+      )}
       <SearchModal
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
@@ -171,6 +177,9 @@ function FizzApp() {
           onOpenNotifications={() => setShowNotifications(true)}
           onOpenSearch={() => setShowSearch(true)}
           onOpenProfile={() => setActiveTab('profile')}
+          onOpenMessages={() => setShowMessages(true)}
+          onOpenWallet={() => setActiveTab('wallet')}
+          onOpenSettings={() => setShowSettings(true)}
         />
       )}
 
@@ -191,9 +200,6 @@ function FizzApp() {
             prefillRecipient={prefillRecipient}
             onClose={handleSendClose}
           />
-        )}
-        {activeTab === 'messages' && (
-          <MessagesTab />
         )}
         {activeTab === 'wallet' && (
           <WalletTab />

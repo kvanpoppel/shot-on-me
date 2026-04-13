@@ -105,6 +105,25 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      // Fizz-specific real-time events
+      newSocket.on('fizz-message', (data: any) => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('fizz-message', { detail: data }))
+        }
+      })
+
+      newSocket.on('fizz-typing', (data: any) => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('fizz-typing', { detail: data }))
+        }
+      })
+
+      newSocket.on('fizz-notification', (data: any) => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }))
+        }
+      })
+
       socketRef.current = newSocket
       setSocket(newSocket)
 

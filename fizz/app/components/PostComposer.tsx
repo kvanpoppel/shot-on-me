@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { X, Image as ImageIcon, Sparkles, Send } from 'lucide-react'
+import { X, Image as ImageIcon, Sparkles } from 'lucide-react'
 import { OCCASION_TAGS } from '../types'
 
 interface PostComposerProps {
@@ -19,22 +19,49 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
   const [content, setContent] = useState('')
   const [selectedOccasion, setSelectedOccasion] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imagePublicId, setImagePublicId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError('')
+    try {
+      const form = new FormData()
+      form.append('image', file)
+      const res = await axios.post(`${API_URL}/fizz/upload`, form, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      })
+      setImageUrl(res.data.url)
+      setImagePublicId(res.data.publicId)
+    } catch {
+      setError('Image upload failed. Try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handlePost = async () => {
-    if (!content.trim() && !selectedOccasion) return
+    if (!content.trim() && !selectedOccasion && !imageUrl) return
     setError('')
     setLoading(true)
     const body = selectedOccasion
       ? `${selectedOccasion} ${content}`.trim()
       : content.trim()
     try {
-      await axios.post(`${API_URL}/fizz/feed`, { content: body }, {
+      const media = imageUrl ? [{ url: imageUrl, type: 'image', publicId: imagePublicId }] : undefined
+      await axios.post(`${API_URL}/fizz/feed`, { content: body || ' ', media }, {
         headers: { Authorization: `Bearer ${token}` },
       })
       setContent('')
       setSelectedOccasion(null)
+      setImageUrl(null)
+      setImagePublicId(null)
       onPosted?.()
       onClose()
     } catch (err: any) {
@@ -47,13 +74,15 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
   const handleClose = () => {
     setContent('')
     setSelectedOccasion(null)
+    setImageUrl(null)
+    setImagePublicId(null)
     setError('')
     onClose()
   }
 
   if (!isOpen) return null
 
-  const canPost = (content.trim().length > 0 || selectedOccasion !== null) && !loading
+  const canPost = (content.trim().length > 0 || selectedOccasion !== null || imageUrl !== null) && !loading && !uploading
 
   return (
     <>
@@ -97,13 +126,27 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
             ))}
           </div>
 
+          {/* Image preview */}
+          {imageUrl && (
+            <div className="relative mb-4 rounded-2xl overflow-hidden">
+              <img src={imageUrl} alt="" className="w-full max-h-48 object-cover" />
+              <button
+                onClick={() => { setImageUrl(null); setImagePublicId(null) }}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.6)' }}
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          )}
+
           {/* Text */}
-          <div className="relative mb-4">
+          <div className="relative mb-3">
             <textarea
               ref={textareaRef}
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="What&apos;s your Fizz moment? ✨"
+              placeholder="What's your Fizz moment? ✨"
               rows={4}
               maxLength={280}
               autoFocus
@@ -114,6 +157,18 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
               {content.length}/280
             </span>
           </div>
+
+          {/* Add photo */}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 mb-4 text-sm font-semibold px-3 py-2 rounded-xl transition-all"
+            style={{ background: 'rgba(0,212,255,0.1)', color: '#00D4FF' }}
+          >
+            <ImageIcon className="w-4 h-4" />
+            {uploading ? 'Uploading...' : imageUrl ? 'Change photo' : 'Add photo'}
+          </button>
 
           {error && (
             <div className="px-4 py-3 rounded-xl text-sm mb-4" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
@@ -126,10 +181,7 @@ export default function PostComposer({ isOpen, onClose, onPosted }: PostComposer
             disabled={!canPost}
             className="fizz-btn-primary w-full py-4 text-base gap-2 disabled:opacity-30"
           >
-            {loading
-              ? 'Posting...'
-              : <><Sparkles className="w-4 h-4" /> Share</>
-            }
+            {loading ? 'Posting...' : <><Sparkles className="w-4 h-4" /> Share</>}
           </button>
         </div>
       </div>

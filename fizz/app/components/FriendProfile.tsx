@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { X, UserPlus, UserMinus, Gift, MapPin, Heart, MessageCircle, Grid3x3 } from 'lucide-react'
+import { X, UserPlus, UserMinus, Gift, MapPin, Heart, MessageCircle, Grid3x3, ShieldOff, Flag, MoreVertical } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface FriendProfileProps {
@@ -22,6 +22,10 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
   const [loading, setLoading] = useState(true)
   const [isFriend, setIsFriend] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDone, setReportDone] = useState(false)
 
   const fetchProfile = useCallback(async () => {
     if (!token) return
@@ -68,6 +72,56 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      {showReport && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm" onClick={() => setShowReport(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-3xl p-5 animate-slide-up" style={{ background: '#1A1A2E' }}>
+            <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(255,255,255,0.15)' }} />
+            {reportDone ? (
+              <div className="py-8 text-center">
+                <p className="text-3xl mb-3">✅</p>
+                <p className="font-bold text-white">Report submitted</p>
+                <p className="text-sm text-white/40 mt-1">Thank you. We'll review this shortly.</p>
+                <button onClick={() => { setShowReport(false); setReportDone(false) }} className="mt-5 fizz-btn-ghost px-6 py-2.5 text-sm">Close</button>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-bold text-white mb-4">Report {name || 'User'}</h3>
+                <div className="flex flex-col gap-2 mb-4">
+                  {['Spam or fake account', 'Harassment or bullying', 'Inappropriate content', 'Impersonation', 'Other'].map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setReportReason(r)}
+                      className="px-4 py-3 rounded-2xl text-sm text-left transition-all"
+                      style={reportReason === r
+                        ? { background: 'rgba(255,154,87,0.2)', color: '#FF9A57', border: '1px solid rgba(255,154,87,0.4)' }
+                        : { background: '#252540', color: 'rgba(255,255,255,0.6)' }
+                      }
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  disabled={!reportReason}
+                  onClick={async () => {
+                    try {
+                      await axios.post(`${API_URL}/fizz/users/${userId}/report`, { reason: reportReason }, { headers: { Authorization: `Bearer ${token}` } })
+                    } catch { /* ignore */ } finally {
+                      setReportDone(true)
+                    }
+                  }}
+                  className="w-full py-3.5 rounded-2xl text-sm font-bold disabled:opacity-40 transition-all"
+                  style={{ background: '#FF9A57', color: '#1A1A2E' }}
+                >
+                  Submit Report
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
       <div
         className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col animate-slide-up"
         style={{ background: '#1A1A2E', maxHeight: '90vh' }}
@@ -75,10 +129,39 @@ export default function FriendProfile({ userId, onClose, onSendFizz, onSendFizzT
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mt-4 mb-1 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }} />
 
-        {/* Close */}
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-xl hover:bg-white/5">
+        {/* Close + More */}
+        <button onClick={onClose} className="absolute top-4 left-4 p-2 rounded-xl hover:bg-white/5">
           <X className="w-5 h-5 text-white/40" />
         </button>
+        <div className="absolute top-4 right-4">
+          <button onClick={() => setShowMore(!showMore)} className="p-2 rounded-xl hover:bg-white/5">
+            <MoreVertical className="w-5 h-5 text-white/40" />
+          </button>
+          {showMore && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)} />
+              <div className="absolute right-0 top-10 z-50 rounded-2xl border border-white/10 py-1 shadow-2xl" style={{ background: '#252540', minWidth: 160 }}>
+                <button
+                  onClick={() => { setShowMore(false); setShowReport(true) }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5"
+                >
+                  <Flag className="w-3.5 h-3.5" /> Report User
+                </button>
+                <button
+                  onClick={async () => {
+                    await axios.post(`${API_URL}/fizz/block/${userId}`, {}, { headers: { Authorization: `Bearer ${token}` } })
+                    setShowMore(false)
+                    onClose()
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-white/5"
+                  style={{ color: '#FF5F57', borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <ShieldOff className="w-3.5 h-3.5" /> Block & Remove
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">

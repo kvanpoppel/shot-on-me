@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { Heart, MessageCircle, MapPin, Sparkles } from 'lucide-react'
+import { Heart, MessageCircle, MapPin, Sparkles, MoreHorizontal, Pencil, Trash2, X, Check, Share2, Flag } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PostComposer from './PostComposer'
+import StoriesRow from './StoriesRow'
+import CommentsSheet from './CommentsSheet'
 
 interface FeedTabProps {
   onSendFizz?: () => void
@@ -15,41 +17,123 @@ interface FeedTabProps {
 export default function FeedTab({ onSendFizz }: FeedTabProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
+  const userId = user?.id || (user as any)?._id
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [showComposer, setShowComposer] = useState(false)
+  const [menuPostId, setMenuPostId] = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [commentsPostId, setCommentsPostId] = useState<string | null>(null)
+  const [reportingPostId, setReportingPostId] = useState<string | null>(null)
+  const [reportReason, setReportReason] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const PAGE_SIZE = 20
 
   const fetchFeed = useCallback(async () => {
     setLoading(true)
+    setHasMore(true)
     try {
       const res = await axios.get(`${API_URL}/fizz/feed`, {
+        params: { skip: 0, limit: PAGE_SIZE },
         headers: { Authorization: `Bearer ${token}` }
       })
-      setPosts(res.data.posts || res.data || [])
+      const fetched = res.data.posts || res.data || []
+      setPosts(fetched)
+      if (fetched.length < PAGE_SIZE) setHasMore(false)
     } catch { /* ignore */ } finally {
       setLoading(false)
     }
   }, [API_URL, token])
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const res = await axios.get(`${API_URL}/fizz/feed`, {
+        params: { skip: posts.length, limit: PAGE_SIZE },
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const more = res.data.posts || []
+      if (more.length < PAGE_SIZE) setHasMore(false)
+      setPosts(prev => [...prev, ...more])
+    } catch { /* ignore */ } finally {
+      setLoadingMore(false)
+    }
+  }, [API_URL, token, posts.length, loadingMore, hasMore])
+
   useEffect(() => { fetchFeed() }, [fetchFeed])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const el = bottomRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) loadMore() }, { threshold: 0.1 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   const handleLike = async (postId: string) => {
     try {
-      await axios.post(`${API_URL}/fizz/feed/${postId}/like`, {}, {
+      const res = await axios.post(`${API_URL}/fizz/feed/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setPosts(prev => prev.map(p =>
         (p._id === postId || p.id === postId)
-          ? { ...p, likes: (p.likes || 0) + 1, likedByMe: true }
+          ? { ...p, likes: res.data.likeCount ?? (p.likes || 0) + 1, likedByMe: res.data.liked ?? true }
           : p
       ))
     } catch { /* ignore */ }
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await axios.delete(`${API_URL}/fizz/feed/${postId}`, { headers: { Authorization: `Bearer ${token}` } })
+      setPosts(prev => prev.filter(p => (p._id || p.id) !== postId))
+    } catch { /* ignore */ }
+    setMenuPostId(null)
+  }
+
+  const handleEditPost = async (postId: string) => {
+    if (!editContent.trim()) return
+    try {
+      await axios.put(`${API_URL}/fizz/feed/${postId}`, { content: editContent }, { headers: { Authorization: `Bearer ${token}` } })
+      setPosts(prev => prev.map(p => (p._id || p.id) === postId ? { ...p, content: editContent } : p))
+      setEditingPostId(null)
+    } catch { /* ignore */ }
+  }
+
+  const handleShare = async (postId: string) => {
+    setMenuPostId(null)
+    try {
+      await axios.post(`${API_URL}/fizz/feed/${postId}/share`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      // Native share fallback
+      if (navigator.share) {
+        await navigator.share({ title: 'Check out this Fizz!', url: window.location.href }).catch(() => {})
+      }
+    } catch { /* ignore */ }
+  }
+
+  const handleReportPost = async (postId: string) => {
+    if (!reportReason.trim()) return
+    try {
+      await axios.post(`${API_URL}/fizz/feed/${postId}/report`, { reason: reportReason }, { headers: { Authorization: `Bearer ${token}` } })
+    } catch { /* ignore */ } finally {
+      setReportingPostId(null)
+      setReportReason('')
+    }
   }
 
   const PostCard = ({ post }: { post: any }) => {
     const authorName = `${post.author?.firstName || post.user?.firstName || ''} ${post.author?.lastName || post.user?.lastName || ''}`.trim() || 'A friend'
     const timeAgo = post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true }) : ''
     const isGift = post.type === 'shot' || post.type === 'gift'
+    const postId = post._id || post.id
+    const authorId = post.author?.id || post.author?._id
+    const isOwn = authorId && userId && (authorId.toString() === userId.toString())
+    const isEditing = editingPostId === postId
 
     return (
       <div className="fizz-card overflow-hidden">
@@ -74,10 +158,55 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
               Fizz
             </div>
           )}
+          <div className="relative">
+            <button onClick={() => setMenuPostId(menuPostId === postId ? null : postId)} className="p-1 rounded-lg hover:bg-white/5">
+              <MoreHorizontal className="w-4 h-4 text-white/30" />
+            </button>
+            {menuPostId === postId && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuPostId(null)} />
+                <div className="absolute right-0 top-8 z-50 rounded-2xl border border-white/10 py-1 shadow-2xl" style={{ background: '#252540', minWidth: 150 }}>
+                  <button onClick={() => handleShare(postId)} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5">
+                    <Share2 className="w-3.5 h-3.5" /> Share
+                  </button>
+                  {isOwn ? (
+                    <>
+                      <button onClick={() => { setEditingPostId(postId); setEditContent(post.content || ''); setMenuPostId(null) }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button onClick={() => handleDeletePost(postId)} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-white/5" style={{ color: '#FF5F57', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => { setReportingPostId(postId); setMenuPostId(null) }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-white/5" style={{ color: '#FF9A57', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Flag className="w-3.5 h-3.5" /> Report
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Content */}
-        {post.content && (
+        {/* Content / inline edit */}
+        {isEditing ? (
+          <div className="px-4 pb-3">
+            <textarea
+              value={editContent}
+              onChange={e => setEditContent(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              autoFocus
+              className="w-full px-3 py-2 rounded-xl text-sm border border-white/10 focus:border-lime-fizz resize-none"
+              style={{ background: '#252540' }}
+            />
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => handleEditPost(postId)} className="fizz-btn-primary px-4 py-2 text-xs gap-1"><Check className="w-3 h-3" /> Save</button>
+              <button onClick={() => setEditingPostId(null)} className="fizz-btn-ghost px-4 py-2 text-xs gap-1"><X className="w-3 h-3" /> Cancel</button>
+            </div>
+          </div>
+        ) : post.content && (
           <p className="px-4 pb-3 text-sm text-white/80 leading-relaxed">{post.content}</p>
         )}
 
@@ -98,8 +227,16 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
           </div>
         )}
 
-        {/* Image */}
-        {post.imageUrl && (
+        {/* Images */}
+        {post.media?.length > 0 && (
+          <div className={`grid gap-1 ${post.media.length > 1 ? 'grid-cols-2' : ''}`}>
+            {post.media.slice(0, 4).map((m: any, i: number) => (
+              <img key={i} src={m.url} alt="" className="w-full object-cover" style={{ maxHeight: post.media.length === 1 ? 280 : 180, borderRadius: post.media.length === 1 ? 0 : 4 }} />
+            ))}
+          </div>
+        )}
+        {/* Legacy imageUrl */}
+        {!post.media?.length && post.imageUrl && (
           <img src={post.imageUrl} alt="" className="w-full max-h-64 object-cover" />
         )}
 
@@ -113,7 +250,10 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
             <Heart className={`w-4 h-4 ${post.likedByMe ? 'fill-current' : ''}`} />
             <span>{post.likes || 0}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-sm text-white/40">
+          <button
+            onClick={() => setCommentsPostId(postId)}
+            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors"
+          >
             <MessageCircle className="w-4 h-4" />
             <span>{post.commentCount || 0}</span>
           </button>
@@ -129,6 +269,52 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
         onClose={() => setShowComposer(false)}
         onPosted={fetchFeed}
       />
+
+      {commentsPostId && (
+        <CommentsSheet
+          postId={commentsPostId}
+          onClose={() => setCommentsPostId(null)}
+          onCommentAdded={() => setPosts(prev => prev.map(p => (p._id || p.id) === commentsPostId ? { ...p, commentCount: (p.commentCount || 0) + 1 } : p))}
+        />
+      )}
+
+      {reportingPostId && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setReportingPostId(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl p-5 animate-slide-up" style={{ background: '#1A1A2E' }}>
+            <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(255,255,255,0.15)' }} />
+            <h3 className="font-bold text-white mb-4">Report Post</h3>
+            <div className="flex flex-col gap-2 mb-4">
+              {['Spam', 'Harassment', 'Inappropriate content', 'Misinformation', 'Other'].map(r => (
+                <button
+                  key={r}
+                  onClick={() => setReportReason(r)}
+                  className="px-4 py-3 rounded-2xl text-sm text-left transition-all"
+                  style={reportReason === r
+                    ? { background: 'rgba(255,154,87,0.2)', color: '#FF9A57', border: '1px solid rgba(255,154,87,0.4)' }
+                    : { background: '#252540', color: 'rgba(255,255,255,0.6)' }
+                  }
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => handleReportPost(reportingPostId)}
+              disabled={!reportReason}
+              className="w-full py-3.5 rounded-2xl text-sm font-bold disabled:opacity-40 transition-all"
+              style={{ background: '#FF9A57', color: '#1A1A2E' }}
+            >
+              Submit Report
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Stories */}
+      <div className="-mx-4 mb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+        <StoriesRow />
+      </div>
 
       {/* CTA */}
       <button
@@ -164,6 +350,16 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       ) : (
         <div className="flex flex-col gap-4">
           {posts.map((post: any) => <PostCard key={post._id || post.id} post={post} />)}
+          {/* Infinite scroll sentinel */}
+          <div ref={bottomRef} className="h-4" />
+          {loadingMore && (
+            <div className="flex justify-center py-4">
+              <div className="flex gap-1">{[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C8F135', animationDelay: `${i*0.15}s` }} />)}</div>
+            </div>
+          )}
+          {!hasMore && posts.length > 0 && (
+            <p className="text-center text-xs py-4" style={{ color: 'rgba(255,255,255,0.2)' }}>You're all caught up ✨</p>
+          )}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { X, Search, UserPlus, Check, Users } from 'lucide-react'
+import { X, Search, UserPlus, Check, Users, UserCheck, UserX } from 'lucide-react'
 
 interface FindFriendsProps {
   onClose: () => void
@@ -37,16 +37,45 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
   const [suggestions, setSuggestions] = useState<SearchUser[]>([])
   const [loading, setLoading] = useState(false)
   const [added, setAdded] = useState<Set<string>>(new Set())
+  const [pendingRequests, setPendingRequests] = useState<any[]>([])
+  const [requestsLoading, setRequestsLoading] = useState(false)
 
   const fetchSuggestions = useCallback(async () => {
     if (!token) return
     try {
-      const res = await axios.get(`${API_URL}/fizz/friends`, { headers: { Authorization: `Bearer ${token}` } })
-      setSuggestions(res.data.friends || res.data.users || [])
+      const res = await axios.get(`${API_URL}/fizz/friends/suggestions`, { headers: { Authorization: `Bearer ${token}` } })
+      setSuggestions(res.data.users || [])
     } catch { /* ignore */ }
   }, [API_URL, token])
 
   useEffect(() => { fetchSuggestions() }, [fetchSuggestions])
+
+  const fetchPendingRequests = useCallback(async () => {
+    if (!token) return
+    setRequestsLoading(true)
+    try {
+      const res = await axios.get(`${API_URL}/fizz/friends/requests/pending`, { headers: { Authorization: `Bearer ${token}` } })
+      setPendingRequests(res.data.requests || [])
+    } catch { /* ignore */ } finally {
+      setRequestsLoading(false)
+    }
+  }, [API_URL, token])
+
+  useEffect(() => { fetchPendingRequests() }, [fetchPendingRequests])
+
+  const handleAccept = async (requestId: string) => {
+    try {
+      await axios.post(`${API_URL}/fizz/friends/requests/${requestId}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      setPendingRequests(prev => prev.filter(r => r._id !== requestId))
+    } catch { /* ignore */ }
+  }
+
+  const handleDecline = async (requestId: string) => {
+    try {
+      await axios.post(`${API_URL}/fizz/friends/requests/${requestId}/decline`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      setPendingRequests(prev => prev.filter(r => r._id !== requestId))
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     if (!query.trim() || query.length < 2) { setResults([]); return }
@@ -99,9 +128,43 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pt-4 pb-10">
+          {/* Pending requests */}
+          {pendingRequests.length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: '#C8F135' }}>
+                <span className="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center" style={{ background: '#C8F135', color: '#1A1A2E' }}>{pendingRequests.length}</span>
+                Friend Requests
+              </p>
+              <div className="flex flex-col gap-2">
+                {pendingRequests.map(req => {
+                  const name = `${req.from?.firstName || ''} ${req.from?.lastName || ''}`.trim()
+                  return (
+                    <div key={req._id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'rgba(200,241,53,0.06)', border: '1px solid rgba(200,241,53,0.15)' }}>
+                      <div className="w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>
+                        {req.from?.profilePicture ? <img src={req.from.profilePicture} alt="" className="w-full h-full object-cover" /> : `${req.from?.firstName?.[0] || ''}${req.from?.lastName?.[0] || ''}`}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white text-sm">{name}</p>
+                        {req.from?.username && <p className="text-xs text-white/35">@{req.from.username}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleAccept(req._id)} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(200,241,53,0.2)' }}>
+                          <UserCheck className="w-4 h-4" style={{ color: '#C8F135' }} />
+                        </button>
+                        <button onClick={() => handleDecline(req._id)} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,95,87,0.15)' }}>
+                          <UserX className="w-4 h-4" style={{ color: '#FF5F57' }} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {!query && (
             <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>
-              Suggested Friends
+              Your Fizz Friends
             </p>
           )}
 
@@ -155,7 +218,7 @@ export default function FindFriends({ onClose, onViewProfile }: FindFriendsProps
                       : { background: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)' }
                     }
                   >
-                    {isAdded ? <><Check className="w-3 h-3" /> Added</> : <><UserPlus className="w-3 h-3" /> Add</>}
+                    {isAdded ? <><Check className="w-3 h-3" /> {u.isFriend ? 'Friends' : 'Requested'}</> : <><UserPlus className="w-3 h-3" /> Add</>}
                   </button>
                 </div>
               )

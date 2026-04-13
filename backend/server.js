@@ -343,7 +343,9 @@ feedRouter.setIO(io);
 app.use('/api/feed', feedRouter);
 
 // Fizz — separate social graph, wallet, feed, messages
-app.use('/api/fizz', require('./routes/fizz'));
+const fizzRouter = require('./routes/fizz')
+fizzRouter.setIO(io)
+app.use('/api/fizz', fizzRouter);
 
 app.use('/api/feed-ai', require('./routes/feedAI'));
 app.use('/api/stories', mediaUploadLimiter, require('./routes/stories'));

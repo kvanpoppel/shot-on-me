@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Search, Star, Filter } from 'lucide-react'
+import { MapPin, Search, Star, Filter, Check } from 'lucide-react'
 import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface VenueDiscoveryProps {
@@ -28,6 +28,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
   const [selectedCity, setSelectedCity] = useState(FIZZ_CITIES[0])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [venues, setVenues] = useState<Venue[]>([])
+  const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set())
   const [filtered, setFiltered] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -121,13 +122,37 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
             </div>
           )}
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onSendFizz?.(venue._id) }}
-            className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: '#C8F135', color: '#1A1A2E' }}
-          >
-            Send a Fizz Here
-          </button>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); onSendFizz?.(venue._id) }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={{ background: '#C8F135', color: '#1A1A2E' }}
+            >
+              Send a Fizz
+            </button>
+            <button
+              onClick={async (e) => {
+                e.stopPropagation()
+                if (checkedIn.has(venue._id)) return
+                try {
+                  await axios.post(`${API_URL}/fizz/checkins`, {
+                    venueId: venue._id, venueName: venue.name,
+                    latitude: (venue as any).location?.latitude,
+                    longitude: (venue as any).location?.longitude,
+                  }, { headers: { Authorization: `Bearer ${token}` } })
+                  setCheckedIn(prev => new Set([...prev, venue._id]))
+                } catch { /* ignore */ }
+              }}
+              disabled={checkedIn.has(venue._id)}
+              className="px-3 py-2.5 rounded-xl text-sm font-bold flex items-center gap-1 transition-all"
+              style={checkedIn.has(venue._id)
+                ? { background: 'rgba(0,212,255,0.15)', color: '#00D4FF' }
+                : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }
+              }
+            >
+              {checkedIn.has(venue._id) ? <><Check className="w-3.5 h-3.5" /> In</> : <><MapPin className="w-3.5 h-3.5" /> Check in</>}
+            </button>
+          </div>
         </div>
       </div>
     )

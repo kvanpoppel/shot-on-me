@@ -276,12 +276,28 @@ const userSchema = new mongoose.Schema({
     username:       { type: String, default: '' },
     bio:            { type: String, default: '', maxlength: 160 },
     profilePicture: { type: String, default: '' },
+    notifPrefs: {
+      allEnabled:     { type: Boolean, default: true },
+      messages:       { type: Boolean, default: true },
+      fizzReceived:   { type: Boolean, default: true },
+      friendRequests: { type: Boolean, default: true },
+      feedActivity:   { type: Boolean, default: true },
+    },
   },
   fizzWallet: {
     balance:        { type: Number, default: 0, min: 0 },
     pendingBalance: { type: Number, default: 0, min: 0 },
   },
   fizzFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  fizzBlocked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  fizzPushSubscriptions: [{
+    endpoint:   { type: String, required: true },
+    keys: {
+      p256dh: { type: String, required: true },
+      auth:   { type: String, required: true },
+    },
+    createdAt: { type: Date, default: Date.now },
+  }],
   // ────────────────────────────────────────────────────────────────────────────
 
   // Role-based access control — used by owner/admin middleware

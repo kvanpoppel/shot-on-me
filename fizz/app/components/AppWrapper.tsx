@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import CookieConsent from './CookieConsent'
 
 const CACHE_VERSION = '2026-04-09-v1'
 const CACHE_KEY = 'fizz_cache_version'
@@ -20,5 +21,10 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     localStorage.setItem(CACHE_KEY, CACHE_VERSION)
     window.location.reload()
   }, [])
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <CookieConsent />
+    </>
+  )
 }

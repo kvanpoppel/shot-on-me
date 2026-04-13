@@ -229,8 +229,13 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 input:focus, textarea:focus, select:focus { outline: none; }
 
 /* ─── Safe areas ──────────────────────────────────────────────────── */
-.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
-.safe-top    { padding-top: env(safe-area-inset-top, 0px); }
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
+.safe-top    { padding-top: max(env(safe-area-inset-top, 0px), 0px); }
+
+/* ─── Mobile viewport fix ─────────────────────────────────────────── */
+/* Ensure app shell fills the true visible viewport on mobile browsers */
+html { height: -webkit-fill-available; }
+body { min-height: -webkit-fill-available; }
 
 /* ─── Shimmer skeleton ────────────────────────────────────────────── */
 .skeleton {
