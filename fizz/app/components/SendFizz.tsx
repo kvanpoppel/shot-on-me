@@ -151,9 +151,10 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
   }
 
   return (
-    <div className="flex-1 flex flex-col" style={{ background: '#1A1A2E' }}>
+    <div style={{ background: '#1A1A2E', minHeight: '100%' }}>
+      <div className="max-w-2xl mx-auto flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
         {step !== 'recipient' && (
           <button
             onClick={() => {
@@ -178,7 +179,7 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 mx-5 mt-3 rounded-full overflow-hidden" style={{ background: '#252540' }}>
+      <div className="h-1 mx-4 mt-3 rounded-full overflow-hidden" style={{ background: '#252540' }}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
@@ -188,7 +189,7 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-5">
+      <div className="px-4 py-5 pb-8">
 
         {/* Step 1: Recipient */}
         {step === 'recipient' && (
@@ -447,6 +448,7 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

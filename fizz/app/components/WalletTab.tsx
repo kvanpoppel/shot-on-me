@@ -82,12 +82,13 @@ export default function WalletTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#0F0F1E' }}>
+    <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
       <AddFundsModal isOpen={showAddFunds} onClose={() => setShowAddFunds(false)} onSuccess={() => { updateUser({}); fetchHistory() }} />
       <TapAndPayModal isOpen={showTapPay} onClose={() => setShowTapPay(false)} />
+      <div className="max-w-2xl mx-auto">
 
       {/* Balance hero */}
-      <div className="px-5 pt-5 pb-4">
+      <div className="px-4 pt-5 pb-4">
         <div
           className="rounded-3xl p-6 relative overflow-hidden"
           style={{ background: 'linear-gradient(135deg, #1C1C32, #23233A)', border: '1px solid rgba(200,241,53,0.12)' }}
@@ -116,7 +117,7 @@ export default function WalletTab() {
       </div>
 
       {/* Quick actions */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setShowAddFunds(true)}
@@ -152,7 +153,7 @@ export default function WalletTab() {
 
       {/* Redeem code panel */}
       {showRedeem && (
-        <div className="mx-5 mb-5 fizz-card p-4 animate-slide-up">
+        <div className="mx-4 mb-4 fizz-card p-4 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-white">Enter promo code</p>
             <button onClick={() => { setShowRedeem(false); setRedeemMsg(null) }}>
@@ -187,7 +188,7 @@ export default function WalletTab() {
       )}
 
       {/* History */}
-      <div className="px-5">
+      <div className="px-4 pb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-white text-base">Transaction History</h2>
         </div>
@@ -271,6 +272,7 @@ export default function WalletTab() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

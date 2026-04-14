@@ -125,7 +125,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
         <div className="w-10 h-1 rounded-full mx-auto mt-4 mb-1 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }} />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-4 py-4 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5" style={{ color: '#C8F135' }} />
             <h2 className="text-lg font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Notifications</h2>
@@ -136,7 +136,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 pb-8 safe-bottom">
+        <div className="flex-1 overflow-y-auto px-4 py-3 pb-8 safe-bottom max-w-2xl mx-auto w-full">
           {loading ? (
             <div className="flex flex-col gap-3 pt-2">
               {[1, 2, 3].map(i => (

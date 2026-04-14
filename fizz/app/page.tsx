@@ -21,7 +21,6 @@ import SettingsMenu from './components/SettingsMenu'
 import FindFriends from './components/FindFriends'
 import SearchModal from './components/SearchModal'
 import FriendProfile from './components/FriendProfile'
-import TonightTab from './components/TonightTab'
 import { Tab } from './types'
 
 type LandingMode = 'landing' | 'signin' | 'register'
@@ -47,7 +46,6 @@ function FizzApp() {
   const [showSettings, setShowSettings] = useState(false)
   const [showFindFriends, setShowFindFriends] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-  const [showTonight, setShowTonight] = useState(false)
   const [viewProfileUserId, setViewProfileUserId] = useState<string | undefined>()
 
   useEffect(() => {
@@ -140,12 +138,6 @@ function FizzApp() {
           onViewProfile={(uid) => { setShowFindFriends(false); handleViewProfile(uid) }}
         />
       )}
-      {showTonight && (
-        <TonightTab
-          onClose={() => setShowTonight(false)}
-          onSendFizz={(venueId) => { setShowTonight(false); handleSendFizz(venueId) }}
-        />
-      )}
       <SearchModal
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
@@ -207,7 +199,6 @@ function FizzApp() {
             onOpenCrews={() => setShowCrews(true)}
             onOpenSettings={() => setShowSettings(true)}
             onOpenFindFriends={() => setShowFindFriends(true)}
-            onOpenTonight={() => setShowTonight(true)}
             onOpenWallet={() => setActiveTab('wallet')}
             onOpenFeed={() => setActiveTab('feed')}
           />

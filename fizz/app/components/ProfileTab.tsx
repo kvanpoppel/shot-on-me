@@ -6,7 +6,7 @@ import { useApiUrl } from '../utils/api'
 import axios from 'axios'
 import {
   Gift, MapPin, PlusCircle, Sparkles, Shield,
-  Share2, Settings, UserPlus, ChevronRight, Zap, Wallet, Rss,
+  Share2, Settings, UserPlus, ChevronRight, Wallet, Rss,
   Pencil, Camera, X, Check,
 } from 'lucide-react'
 import AddFundsModal from './AddFundsModal'
@@ -17,7 +17,6 @@ interface ProfileTabProps {
   onOpenCrews?: () => void
   onOpenSettings?: () => void
   onOpenFindFriends?: () => void
-  onOpenTonight?: () => void
   onOpenWallet?: () => void
   onOpenFeed?: () => void
 }
@@ -28,7 +27,6 @@ export default function ProfileTab({
   onOpenCrews,
   onOpenSettings,
   onOpenFindFriends,
-  onOpenTonight,
   onOpenWallet,
   onOpenFeed,
 }: ProfileTabProps) {
@@ -113,7 +111,6 @@ export default function ProfileTab({
   const totalReceived = history.filter(s => s.recipient?.id === userId || s.recipient?._id === userId).length
 
   const quickLinks = [
-    { icon: <Zap className="w-4 h-4" style={{ color: '#C8F135' }} />, label: "What's Fizzing", sub: 'Friends out, events & deals', onPress: onOpenTonight },
     { icon: <Wallet className="w-4 h-4" style={{ color: '#00D4FF' }} />, label: 'Wallet', sub: 'Balance, history & Tap & Pay', onPress: onOpenWallet },
     { icon: <Sparkles className="w-4 h-4" style={{ color: '#FFD700' }} />, label: 'Rewards', sub: `${points} pts · 100 pts = $5`, onPress: onOpenRewards },
     { icon: <Rss className="w-4 h-4" style={{ color: '#FF9A57' }} />, label: 'Fizz Feed', sub: 'See what friends are sharing', onPress: onOpenFeed },
@@ -130,8 +127,9 @@ export default function ProfileTab({
   const displayPic = fp.profilePicture || user?.profilePicture || ''
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#0F0F1E' }}>
+    <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
       <AddFundsModal isOpen={showAddFunds} onClose={() => setShowAddFunds(false)} onSuccess={() => updateUser({})} />
+      <div className="max-w-2xl mx-auto">
 
       {/* Edit Profile Sheet */}
       {showEditProfile && (
@@ -199,7 +197,7 @@ export default function ProfileTab({
 
 
       {/* Profile hero */}
-      <div className="px-5 pt-5 pb-4">
+      <div className="px-4 pt-5 pb-4">
         <div className="fizz-card p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-10 blur-3xl pointer-events-none" style={{ background: '#C8F135', transform: 'translate(20%,-20%)' }} />
 
@@ -255,7 +253,7 @@ export default function ProfileTab({
       </div>
 
       {/* Add funds */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <button
           onClick={() => setShowAddFunds(true)}
           className="w-full fizz-btn-primary py-3.5 gap-2 text-sm"
@@ -266,7 +264,7 @@ export default function ProfileTab({
       </div>
 
       {/* Quick links */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>Explore</p>
         <div className="fizz-card overflow-hidden">
           {quickLinks.map((link, i) => (
@@ -290,7 +288,7 @@ export default function ProfileTab({
       </div>
 
       {/* Fizz History */}
-      <div className="px-5">
+      <div className="px-4 pb-6">
         <div className="flex items-center gap-2 mb-3">
           <Gift className="w-4 h-4" style={{ color: '#C8F135' }} />
           <h2 className="font-bold text-white text-base">Fizz History</h2>
@@ -339,6 +337,7 @@ export default function ProfileTab({
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

@@ -50,7 +50,7 @@ const FEATURES = [
   {
     icon: '✨',
     title: 'Celebrate Everything',
-    body: 'Good morning texts. Birthdays. A random Tuesday. Any moment is worth a Fizz. Faith-friendly, family-approved, always fun.',
+    body: 'Good morning texts. Birthdays. A random Tuesday. Any moment is worth a Fizz — always fun, always personal.',
     accent: '#FF5F57',
     bg: 'rgba(255,95,87,0.07)',
     border: 'rgba(255,95,87,0.15)',
@@ -60,7 +60,7 @@ const FEATURES = [
 /* ── Social proof quotes ──────────────────────────────── */
 const REVIEWS = [
   { text: 'I sent my bestie a dirty soda Fizz before her big presentation. She cried (in the best way).', name: 'Mia T.', city: 'Salt Lake City' },
-  { text: 'Perfect for our youth group — no bars, no pressure, just the best soda shops in Indy.', name: 'Pastor Joel', city: 'Indianapolis' },
+  { text: 'My whole crew uses Fizz to meet up at the best soda shops in Indy. It just works.', name: 'Joel R.', city: 'Indianapolis' },
   { text: 'My whole family uses Fizz now. Even my mom figured it out in like 30 seconds.', name: 'Kai R.', city: 'Nashville' },
 ]
 
@@ -122,7 +122,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
 
         <p className="text-[17px] leading-relaxed mb-3 max-w-sm mx-auto" style={{ color: 'rgba(255,255,255,0.60)' }}>
           Gift a <strong className="text-white font-semibold">dirty soda</strong>, coffee, or juice to anyone you love.
-          Discover the best non-alcohol spots in your city.
+          Discover the best sip spots in your city.
         </p>
 
         {/* Dirty soda callout */}
@@ -273,7 +273,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
             Built for <span style={{ color: '#C8F135' }}>everyone.</span>
           </h3>
           <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.50)' }}>
-            Whether you&apos;re faith-based, health-conscious, a teen, a parent, or just someone who doesn&apos;t drink — Fizz is yours.
+            Whether you&apos;re with your crew, your family, your coworkers, or just treating yourself — Fizz is yours.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {[

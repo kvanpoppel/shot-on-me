@@ -159,9 +159,10 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-28" style={{ background: '#1A1A2E' }}>
+    <div style={{ background: '#1A1A2E', minHeight: '100%' }}>
+      <div className="max-w-2xl mx-auto">
       {/* Search bar */}
-      <div className="px-5 pt-4 pb-3 sticky top-0 z-10" style={{ background: '#1A1A2E' }}>
+      <div className="px-4 pt-4 pb-3 sticky top-0 z-10" style={{ background: '#1A1A2E' }}>
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
           <input
@@ -176,7 +177,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
       </div>
 
       {/* City tabs */}
-      <div className="px-5 mb-3">
+      <div className="px-4 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {FIZZ_CITIES.map(city => (
             <button
@@ -195,7 +196,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
       </div>
 
       {/* Category filter */}
-      <div className="px-5 mb-5">
+      <div className="px-4 mb-4">
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedCategory(null)}
@@ -224,14 +225,14 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
       </div>
 
       {/* Results count */}
-      <div className="px-5 mb-4">
+      <div className="px-4 mb-4">
         <p className="text-xs text-white/30 font-medium">
           {loading ? 'Finding venues...' : `${filtered.length} venue${filtered.length !== 1 ? 's' : ''} in ${selectedCity}`}
         </p>
       </div>
 
       {/* Venue grid */}
-      <div className="px-5 flex flex-col gap-4">
+      <div className="px-4 flex flex-col gap-4 pb-6">
         {loading ? (
           [1, 2, 3].map(i => (
             <div key={i} className="rounded-2xl animate-pulse" style={{ height: 280, background: '#252540' }} />
@@ -245,6 +246,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
             <p className="text-white/25 text-sm mt-1">Try a different city or category</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

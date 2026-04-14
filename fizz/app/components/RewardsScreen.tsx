@@ -99,8 +99,9 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
 
       {/* Panel */}
       <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0F0F1E' }}>
+        <div className="max-w-2xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
+        <div className="flex items-center justify-between px-4 py-5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
           <div>
             <h2 className="text-xl font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Rewards</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -116,7 +117,7 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
 
         {/* Cash redemption banner */}
         {userPoints >= 100 && (
-          <div className="mx-5 mt-4 p-4 rounded-2xl flex items-center gap-3" style={{ background: 'rgba(200,241,53,0.08)', border: '1px solid rgba(200,241,53,0.25)' }}>
+          <div className="mx-4 mt-4 p-4 rounded-2xl flex items-center gap-3" style={{ background: 'rgba(200,241,53,0.08)', border: '1px solid rgba(200,241,53,0.25)' }}>
             <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: '#C8F135' }} />
             <div className="flex-1">
               <p className="text-sm font-bold" style={{ color: '#C8F135' }}>Redeem 100 pts for $5 cash</p>
@@ -133,7 +134,7 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
         )}
 
         {/* Earn points banner */}
-        <div className="mx-5 mt-3 p-3 rounded-2xl flex items-start gap-2" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}>
+        <div className="mx-4 mt-3 p-3 rounded-2xl flex items-start gap-2" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}>
           <Bell className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#00D4FF' }} />
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.50)' }}>
             Earn <span className="font-bold text-white">2 pts</span> per Fizz sent ·&nbsp;
@@ -143,7 +144,7 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 px-5 mt-4 mb-2 flex-shrink-0">
+        <div className="flex gap-2 px-4 mt-4 mb-2 flex-shrink-0">
           {(['catalog', 'mine'] as const).map(t => (
             <button
               key={t}
@@ -160,7 +161,7 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-10">
+        <div className="flex-1 overflow-y-auto px-4 pb-10">
           {loading ? (
             <div className="flex flex-col gap-3 pt-4">
               {[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: '#1C1C32' }} />)}
@@ -245,6 +246,7 @@ export default function RewardsScreen({ onClose }: RewardsScreenProps) {
               </div>
             )
           )}
+        </div>
         </div>
       </div>
     </>

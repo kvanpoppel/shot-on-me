@@ -161,7 +161,7 @@ export default function SettingsMenu({ onClose, onOpenRewards, onOpenReferrals }
         <div className="w-10 h-1 rounded-full mx-auto mt-4 mb-2 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }} />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-4 py-4 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <div>
             <h2 className="text-lg font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Settings</h2>
             <p className="text-xs text-white/35 mt-0.5">{user?.email}</p>
@@ -171,7 +171,7 @@ export default function SettingsMenu({ onClose, onOpenRewards, onOpenReferrals }
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 pb-10 safe-bottom">
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-10 safe-bottom">
 
           {/* Account */}
           <div className="mb-5">

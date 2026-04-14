@@ -245,7 +245,8 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
     const otherName = `${selectedOtherUser.firstName || selectedOtherUser.name?.split(' ')[0] || ''} ${selectedOtherUser.lastName || ''}`.trim()
 
     return (
-      <div className="flex flex-col h-full" style={{ background: '#0F0F1E' }}>
+      <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
+      <div className="max-w-2xl mx-auto flex flex-col" style={{ minHeight: '100%' }}>
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
           <button onClick={() => { setSelectedConvId(null); setSelectedOtherUser(null); setMessages([]) }} className="p-2 rounded-xl hover:bg-white/5">
@@ -337,14 +338,16 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
       </div>
+      </div>
     )
   }
 
   // ─── Conversation list ─────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full" style={{ background: '#0F0F1E' }}>
+    <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
+    <div className="max-w-2xl mx-auto flex flex-col" style={{ minHeight: '100%' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0 safe-top" style={{ background: '#1A1A2E' }}>
+      <div className="flex items-center justify-between px-4 py-4 flex-shrink-0 safe-top" style={{ background: '#1A1A2E' }}>
         <div className="flex items-center gap-2">
           {onClose && (
             <button onClick={onClose} className="p-2 -ml-2 rounded-xl hover:bg-white/5">
@@ -408,7 +411,7 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
       )}
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-28">
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
         {loading ? (
           <div className="flex flex-col gap-3 pt-2">
             {[1,2,3].map(i => <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: '#252540' }} />)}
@@ -457,6 +460,7 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }

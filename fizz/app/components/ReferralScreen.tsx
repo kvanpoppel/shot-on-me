@@ -77,15 +77,16 @@ export default function ReferralScreen({ onClose }: ReferralScreenProps) {
       )}
 
       <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0F0F1E' }}>
+        <div className="max-w-2xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
+        <div className="flex items-center justify-between px-4 py-5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#1A1A2E' }}>
           <h2 className="text-xl font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>Invite Friends</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5">
             <X className="w-5 h-5 text-white/40" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5 pb-10">
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-10">
           {/* Share card */}
           <div className="rounded-3xl p-5 relative overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg,#1C1C32,#23233A)', border: '1px solid rgba(200,241,53,0.15)' }}>
             <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-15 blur-3xl pointer-events-none" style={{ background: '#C8F135', transform: 'translate(30%,-30%)' }} />
@@ -183,6 +184,7 @@ export default function ReferralScreen({ onClose }: ReferralScreenProps) {
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
     </>
