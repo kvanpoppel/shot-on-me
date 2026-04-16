@@ -60,7 +60,7 @@ function PromotionsPageContent() {
     <DashboardLayout>
       <DashboardPageShell
         icon={<Sparkles className="w-5 h-5 text-primary-500" />}
-        title="Promotions"
+        title="Deals"
         subtitle="Build campaigns that convert faster and keep your venue full."
         actions={(
           <button

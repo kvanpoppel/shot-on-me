@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
-import { Menu, X, LogOut, LayoutDashboard, Sparkles, Users, Settings, Crown } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, Sparkles, Users, Settings, Crown, BarChart2 } from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -71,8 +71,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navItems = [
     { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/promotions', label: 'Promotions', icon: Sparkles },
-    { href: '/dashboard/redemptions', label: 'Activity', icon: Users },
+    { href: '/dashboard/promotions', label: 'Deals', icon: Sparkles },
+    { href: '/dashboard/redemptions', label: 'Guests', icon: Users },
+    { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart2 },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ]
 

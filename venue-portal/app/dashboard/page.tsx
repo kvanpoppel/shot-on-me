@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/ToastContainer'
@@ -9,7 +9,7 @@ import axios from 'axios'
 import { getApiUrl } from '../utils/api'
 import {
   Sparkles, Users, TrendingUp, Crown, ArrowRight,
-  Zap, X, Clock, CheckCircle2
+  Zap, X, CheckCircle2, Bell, Send, Clock, Megaphone
 } from 'lucide-react'
 
 interface BusySlot {
@@ -37,11 +37,20 @@ export default function Dashboard() {
   })
   const [loadingStats, setLoadingStats] = useState(true)
   const [venueId, setVenueId] = useState<string | null>(null)
+  const [venueName, setVenueName] = useState<string>('your venue')
   const [currentTier, setCurrentTier] = useState<string>('free')
   const [busyTimes, setBusyTimes] = useState<BusyTimesData | null>(null)
   const [loadingBusy, setLoadingBusy] = useState(false)
   const [publishingDealType, setPublishingDealType] = useState<string | null>(null)
   const [showDealSuccess, setShowDealSuccess] = useState<string | null>(null)
+
+  // Notify modal
+  const [showNotify, setShowNotify] = useState(false)
+  const [notifyTitle, setNotifyTitle] = useState('')
+  const [notifyMessage, setNotifyMessage] = useState('')
+  const [sendingNotify, setSendingNotify] = useState(false)
+  const [notifySent, setNotifySent] = useState(false)
+  const notifyTitleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!loading && !user) router.push('/')
@@ -50,6 +59,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (token && user) fetchData()
   }, [token, user])
+
+  useEffect(() => {
+    if (showNotify) {
+      setTimeout(() => notifyTitleRef.current?.focus(), 80)
+    } else {
+      setNotifyTitle('')
+      setNotifyMessage('')
+      setNotifySent(false)
+    }
+  }, [showNotify])
 
   const fetchData = async () => {
     if (!token) return
@@ -67,6 +86,7 @@ export default function Dashboard() {
         setVenueId(myVenue._id)
         fetchBusyTimes(myVenue._id)
       }
+      if (myVenue?.name) setVenueName(myVenue.name)
       setCurrentTier(myVenue?.subscriptionTier || 'free')
 
       setStats({
@@ -115,6 +135,23 @@ export default function Dashboard() {
     }
   }
 
+  const sendNotification = async () => {
+    if (!token || !venueId || !notifyTitle.trim()) return
+    setSendingNotify(true)
+    try {
+      await axios.post(
+        `${getApiUrl()}/venues/${venueId}/notify`,
+        { title: notifyTitle.trim(), message: notifyMessage.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setNotifySent(true)
+    } catch (error: any) {
+      showError(error?.response?.data?.error || 'Failed to send notification')
+    } finally {
+      setSendingNotify(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -133,27 +170,39 @@ export default function Dashboard() {
     { key: 'vip' as const, label: 'VIP Exclusive', emoji: '👑', desc: 'Reward your regulars', color: 'from-cyan-500 to-sky-500' },
   ]
 
+  const hourNow = new Date().getHours()
+  const greeting = hourNow < 12 ? 'Good morning' : hourNow < 17 ? 'Good afternoon' : 'Good evening'
+
   return (
     <DashboardLayout>
       <div className="space-y-5 pb-8">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Welcome back 👋</h1>
-            <p className="text-primary-400/60 text-sm mt-0.5">Your venue is live on Shot On Me. Let's drive some action.</p>
+            <h1 className="text-2xl font-bold text-white">{greeting} 👋</h1>
+            <p className="text-primary-400/60 text-sm mt-0.5 capitalize">{venueName} is live on Shot On Me.</p>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/promotions')}
-            className="flex-shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 text-sm font-bold text-black hover:bg-primary-400 transition-all shadow-lg shadow-primary-500/25"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline">New Promotion</span>
-            <span className="sm:hidden">Promote</span>
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowNotify(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-primary-500/30 bg-black/40 px-4 py-2.5 text-sm font-bold text-primary-400 hover:border-primary-500/60 hover:text-primary-300 transition-all"
+            >
+              <Megaphone className="w-4 h-4" />
+              <span className="hidden sm:inline">Notify Guests</span>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/promotions')}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 text-sm font-bold text-black hover:bg-primary-400 transition-all shadow-lg shadow-primary-500/25"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">New Deal</span>
+              <span className="sm:hidden">Deal</span>
+            </button>
+          </div>
         </div>
 
-        {/* Deal success banner */}
+        {/* ── Deal success banner ── */}
         {showDealSuccess && (
           <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -168,13 +217,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Community Pulse — 4 KPIs */}
+        {/* ── KPIs ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Active Deals', value: loadingStats ? '—' : `${stats.activePromos}`, icon: Sparkles, color: 'text-primary-500', detail: 'running now' },
-            { label: 'Shots Sent', value: loadingStats ? '—' : `${stats.totalRedemptions}`, icon: TrendingUp, color: 'text-emerald-400', detail: 'via Shot On Me' },
+            { label: 'Shots Sent', value: loadingStats ? '—' : `${stats.totalRedemptions}`, icon: TrendingUp, color: 'text-emerald-400', detail: 'all time' },
             { label: 'Revenue', value: loadingStats ? '—' : stats.totalRevenue, icon: Zap, color: 'text-amber-400', detail: 'last 30 days' },
-            { label: 'Community', value: loadingStats ? '—' : `${stats.totalRedemptions > 0 ? '●' : '—'}`, icon: Users, color: 'text-cyan-400', detail: 'activity tracked' },
+            { label: 'Followers', value: loadingStats ? '—' : '—', icon: Users, color: 'text-cyan-400', detail: 'guests following you' },
           ].map(({ label, value, icon: Icon, color, detail }) => (
             <div key={label} className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -187,18 +236,18 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Launch a Deal — inline quick actions */}
+        {/* ── Quick Launch ── */}
         <div className="rounded-xl border border-primary-500/20 bg-black/40 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm font-semibold text-white">Launch a Deal Instantly</p>
-              <p className="text-xs text-primary-400/50 mt-0.5">AI builds it for you — one tap and it's live in the app.</p>
+              <p className="text-xs text-primary-400/50 mt-0.5">AI writes it for you — one tap and it's live.</p>
             </div>
             <button
               onClick={() => router.push('/dashboard/promotions')}
               className="text-xs text-primary-400/60 hover:text-primary-400 flex items-center gap-1 transition-colors"
             >
-              All promotions <ArrowRight className="w-3 h-3" />
+              All deals <ArrowRight className="w-3 h-3" />
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -217,7 +266,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom row: Busy Times + Upgrade nudge */}
+        {/* ── Bottom row: Busy Times + Upgrade ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Busy Times */}
@@ -251,7 +300,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Upgrade Nudge */}
+          {/* Upgrade / Plan status */}
           {isFreeTier ? (
             <div className="rounded-xl border border-primary-500/30 bg-gradient-to-br from-primary-500/10 via-black/60 to-amber-500/5 p-5 flex flex-col justify-between">
               <div>
@@ -260,7 +309,7 @@ export default function Dashboard() {
                   <p className="text-sm font-semibold text-primary-500">Go viral with Growth</p>
                 </div>
                 <p className="text-xs text-primary-400/60 leading-relaxed mb-4">
-                  Unlock AI-powered promotions, advanced analytics, and social sharing to fill your venue every night.
+                  Unlock AI promotions, advanced analytics, and social sharing to fill your venue every night.
                 </p>
                 <ul className="space-y-1.5 mb-4">
                   {['AI promotion generation', 'Social media auto-share', 'Guest analytics & insights', 'Unlimited active deals'].map((f) => (
@@ -288,13 +337,114 @@ export default function Dashboard() {
                 onClick={() => router.push('/dashboard/analytics')}
                 className="mt-2 text-xs text-primary-400/60 hover:text-primary-400 flex items-center gap-1 transition-colors"
               >
-                View full analytics <ArrowRight className="w-3 h-3" />
+                View analytics <ArrowRight className="w-3 h-3" />
               </button>
             </div>
           )}
         </div>
 
       </div>
+
+      {/* ── Notify Guests Modal ── */}
+      {showNotify && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setShowNotify(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-primary-500/25 bg-black/95 shadow-2xl shadow-primary-500/10 overflow-hidden">
+
+              {notifySent ? (
+                /* Success state */
+                <div className="flex flex-col items-center justify-center text-center px-8 py-12 gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-white">Notification Sent!</p>
+                    <p className="text-sm text-primary-400/60 mt-1">Your guests will see it in the Shot On Me app.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowNotify(false)}
+                    className="mt-2 w-full rounded-xl bg-primary-500 py-3 text-sm font-bold text-black hover:bg-primary-400 transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                /* Compose state */
+                <>
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/10">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-primary-500/15 flex items-center justify-center">
+                        <Bell className="w-4 h-4 text-primary-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">Notify Your Guests</p>
+                        <p className="text-[11px] text-primary-400/50">Push to all your followers instantly</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowNotify(false)} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-primary-400/50 hover:text-primary-400">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-5 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-primary-400/70 mb-1.5 uppercase tracking-wide">
+                        Subject <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        ref={notifyTitleRef}
+                        type="text"
+                        value={notifyTitle}
+                        onChange={e => setNotifyTitle(e.target.value)}
+                        placeholder="e.g. Happy Hour starts NOW 🍻"
+                        maxLength={60}
+                        className="w-full rounded-xl border border-primary-500/25 bg-black/60 px-4 py-3 text-sm text-white placeholder-primary-400/30 focus:border-primary-500/60 focus:outline-none focus:ring-1 focus:ring-primary-500/30 transition-colors"
+                      />
+                      <p className="text-[10px] text-primary-400/30 mt-1 text-right">{notifyTitle.length}/60</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-primary-400/70 mb-1.5 uppercase tracking-wide">
+                        Message <span className="text-primary-400/40">(optional)</span>
+                      </label>
+                      <textarea
+                        value={notifyMessage}
+                        onChange={e => setNotifyMessage(e.target.value)}
+                        placeholder="Tell guests what's happening tonight..."
+                        maxLength={160}
+                        rows={3}
+                        className="w-full rounded-xl border border-primary-500/25 bg-black/60 px-4 py-3 text-sm text-white placeholder-primary-400/30 focus:border-primary-500/60 focus:outline-none focus:ring-1 focus:ring-primary-500/30 transition-colors resize-none"
+                      />
+                      <p className="text-[10px] text-primary-400/30 mt-1 text-right">{notifyMessage.length}/160</p>
+                    </div>
+
+                    <button
+                      onClick={sendNotification}
+                      disabled={sendingNotify || !notifyTitle.trim()}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary-500 py-3.5 text-sm font-bold text-black hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-500/20"
+                    >
+                      {sendingNotify ? (
+                        <>
+                          <div className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Send to All Guests
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[11px] text-primary-400/35 text-center">
+                      Guests who follow your venue will receive a push notification.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </DashboardLayout>
   )
 }

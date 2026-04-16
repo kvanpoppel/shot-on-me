@@ -138,8 +138,8 @@ export default function RedemptionsPage() {
     <DashboardLayout>
       <DashboardPageShell
         icon={<Users className="w-5 h-5 text-primary-500" />}
-        title="Guest Activity"
-        subtitle="Track followers, monitor check-ins, and review venue payment activity."
+        title="Guests"
+        subtitle="Track followers, monitor check-ins, and review payment activity."
         actions={(
           <div className="inline-flex rounded-lg border border-primary-500/25 bg-black/40 p-1">
             <button
