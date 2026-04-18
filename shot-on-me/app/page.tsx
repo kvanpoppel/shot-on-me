@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import axios from 'axios'
 import { useAuth } from './contexts/AuthContext'
+import { useApiUrl } from './utils/api'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
 import BottomNav from './components/BottomNav'
@@ -26,7 +28,8 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
 
 function Home() {
-  const { user, loading } = useAuth()
+  const { user, token, loading } = useAuth()
+  const API_URL = useApiUrl()
   usePushNotifications()
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [viewingProfile, setViewingProfile] = useState<string | null>(null)
@@ -37,6 +40,21 @@ function Home() {
   const [isMounted, setIsMounted] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [pendingVenueId, setPendingVenueId] = useState<string | null>(null)
+  const [savedGoogleVenues, setSavedGoogleVenues] = useState<any[]>([])
+
+  const refreshSavedVenues = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      setSavedGoogleVenues(res.data?.venues || [])
+    } catch (e) {
+      console.error('[page] refreshSavedVenues failed:', e)
+    }
+  }, [token, API_URL])
+
+  useEffect(() => {
+    refreshSavedVenues()
+  }, [refreshSavedVenues])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -256,10 +274,11 @@ function Home() {
           </ErrorBoundary>
         </div>
         {activeTab === 'map' && (
-          <MapTab 
-            setActiveTab={setActiveTab} 
-            onViewProfile={setViewingProfile} 
+          <MapTab
+            setActiveTab={setActiveTab}
+            onViewProfile={setViewingProfile}
             activeTab={activeTab}
+            onVenueSaved={refreshSavedVenues}
             onOpenSettings={() => {
               // Trigger settings modal from Dashboard
               const event = new CustomEvent('open-settings')
@@ -277,6 +296,8 @@ function Home() {
           <MyVenuesTab
             initialOpenVenueId={pendingVenueId}
             onVenueOpened={() => setPendingVenueId(null)}
+            savedGoogleVenues={savedGoogleVenues}
+            onSavedVenuesChange={refreshSavedVenues}
           />
         )}
         {activeTab === 'happening' && <WhatsHappeningTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}

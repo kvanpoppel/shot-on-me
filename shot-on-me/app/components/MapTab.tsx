@@ -20,9 +20,10 @@ interface MapTabProps {
   onViewProfile?: (userId: string) => void
   activeTab?: Tab
   onOpenSettings?: () => void
+  onVenueSaved?: () => void
 }
 
-export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings }: MapTabProps) {
+export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings, onVenueSaved }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -124,6 +125,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     try {
       const res = await axios.post(`${API_URL}/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
       console.log('[SavedVenues] Save SUCCESS:', res.data)
+      onVenueSaved?.()
     } catch (err: any) {
       console.error('[SavedVenues] Save FAILED:', err?.response?.status, err?.response?.data, err?.message)
       setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })

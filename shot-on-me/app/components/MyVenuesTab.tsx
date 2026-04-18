@@ -30,20 +30,28 @@ type UnifiedVenue =
 interface MyVenuesTabProps {
   initialOpenVenueId?: string | null
   onVenueOpened?: () => void
+  savedGoogleVenues?: SavedGoogleVenue[]
+  onSavedVenuesChange?: () => void
 }
 
-export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened }: MyVenuesTabProps) {
+export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened, savedGoogleVenues: savedProp = [], onSavedVenuesChange }: MyVenuesTabProps) {
   const { token } = useAuth()
   const API_URL = useApiUrl()
 
   const [followedVenues, setFollowedVenues] = useState<any[]>([])
-  const [savedVenues, setSavedVenues] = useState<SavedGoogleVenue[]>([])
+  // Saved Google venues come from parent (page.tsx fetches them)
+  const [savedVenues, setSavedVenues] = useState<SavedGoogleVenue[]>(savedProp)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(initialOpenVenueId || null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'saved' | 'following' | 'promotions'>('all')
   const [editMode, setEditMode] = useState(false)
+
+  // Sync when parent refreshes saved venues
+  useEffect(() => {
+    setSavedVenues(savedProp)
+  }, [savedProp])
 
   useEffect(() => {
     if (initialOpenVenueId) {
@@ -54,52 +62,31 @@ export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened }: MyVen
 
   useEffect(() => {
     if (!token) return
-    // Fetch immediately, then once more after 1.5s to handle race condition
-    // where user navigates here before a just-saved venue's POST completes
-    fetchAll()
-    const retry = setTimeout(fetchAll, 1500)
-    return () => clearTimeout(retry)
+    fetchFollowedVenues()
   }, [token])
 
   const fetchAll = async () => {
-    console.log('[MyVenues] fetchAll called, API_URL:', API_URL, '| token present:', !!token)
+    fetchFollowedVenues()
+  }
+
+  const fetchFollowedVenues = async () => {
     setLoading(true)
     setFetchError(null)
     try {
-      const [savedRes, followedRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/saved-venues`, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 8000
-        }),
-        axios.get(`${API_URL}/venue-follows/following`, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 8000
-        })
-      ])
-
-      if (savedRes.status === 'fulfilled') {
-        const venues = savedRes.value.data?.venues || []
-        console.log('[MyVenues] Saved venues fetched:', venues.length, venues.map((v: any) => v.name))
-        setSavedVenues(venues)
-      } else {
-        console.error('[MyVenues] Failed to fetch saved venues:', savedRes.reason?.response?.status, savedRes.reason?.message)
-      }
-
-      if (followedRes.status === 'fulfilled') {
-        const normalized = (followedRes.value.data?.followedVenues || []).map((v: any) => {
-          if (v.rating && typeof v.rating === 'object' && 'average' in v.rating) {
-            v.rating = typeof v.rating.average === 'number' ? v.rating.average : null
-          }
-          return v
-        })
-        setFollowedVenues(normalized)
-      } else {
-        console.error('Failed to fetch followed venues:', followedRes.reason)
-      }
-
-      if (savedRes.status === 'rejected' && followedRes.status === 'rejected') {
-        setFetchError('Could not load venues. Check your connection.')
-      }
+      const res = await axios.get(`${API_URL}/venue-follows/following`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
+      })
+      const normalized = (res.data?.followedVenues || []).map((v: any) => {
+        if (v.rating && typeof v.rating === 'object' && 'average' in v.rating) {
+          v.rating = typeof v.rating.average === 'number' ? v.rating.average : null
+        }
+        return v
+      })
+      setFollowedVenues(normalized)
+    } catch (err) {
+      console.error('[MyVenues] Failed to fetch followed venues:', err)
+      setFetchError('Could not load venues.')
     } finally {
       setLoading(false)
     }
@@ -112,6 +99,7 @@ export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened }: MyVen
       await axios.delete(`${API_URL}/saved-venues/${placeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
+      onSavedVenuesChange?.()
     } catch (err) {
       console.error('Failed to remove saved venue:', err)
     }
