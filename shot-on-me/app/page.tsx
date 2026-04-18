@@ -285,6 +285,8 @@ function Home() {
             onViewProfile={setViewingProfile}
             activeTab={activeTab}
             onVenueSaved={refreshSavedVenues}
+            savedGoogleVenues={savedGoogleVenues}
+            onSavedVenuesChange={refreshSavedVenues}
             onOpenSettings={() => {
               // Trigger settings modal from Dashboard
               const event = new CustomEvent('open-settings')

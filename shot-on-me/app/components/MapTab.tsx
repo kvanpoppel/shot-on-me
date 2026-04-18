@@ -21,9 +21,11 @@ interface MapTabProps {
   activeTab?: Tab
   onOpenSettings?: () => void
   onVenueSaved?: () => void
+  savedGoogleVenues?: SavedGoogleVenue[]
+  onSavedVenuesChange?: () => void
 }
 
-export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings, onVenueSaved }: MapTabProps) {
+export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings, onVenueSaved, savedGoogleVenues: savedGoogleVenuesProp = [], onSavedVenuesChange }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -129,6 +131,16 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     } catch (err: any) {
       console.error('[SavedVenues] Save FAILED:', err?.response?.status, err?.response?.data, err?.message)
       setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })
+    }
+  }
+
+  const handleUnsaveVenue = async (placeId: string) => {
+    setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(placeId); return next })
+    try {
+      await axios.delete(`${API_URL}/saved-venues/${placeId}`, { headers: { Authorization: `Bearer ${token}` } })
+      onSavedVenuesChange?.()
+    } catch (err) {
+      console.error('[SavedVenues] Unsave failed:', err)
     }
   }
 
@@ -1652,6 +1664,53 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       {/* List View - Compact Style */}
       {viewMode === 'list' && (
       <div className="p-3">
+
+          {/* Saved Places Section */}
+          {savedGoogleVenuesProp.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-primary-500 flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 fill-primary-500" />
+                  Saved Places
+                </h2>
+                <span className="text-xs text-primary-400/50">{savedGoogleVenuesProp.length} saved</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {savedGoogleVenuesProp.map(venue => (
+                  <div key={venue.placeId} className="bg-black/60 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{venue.name}</p>
+                      {venue.address?.city && (
+                        <p className="text-xs text-primary-400/60 truncate">{[venue.address.street, venue.address.city, venue.address.state].filter(Boolean).join(', ')}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {(venue.website || venue.googleMapsUrl) && (
+                        <a
+                          href={venue.website || venue.googleMapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:text-primary-500 hover:bg-primary-500/20 transition-all"
+                          title="Open venue"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleUnsaveVenue(venue.placeId)}
+                        className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:text-red-500 hover:bg-red-500/20 transition-all"
+                        title="Remove from saved"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-b border-primary-500/10 mt-4 mb-2" />
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
