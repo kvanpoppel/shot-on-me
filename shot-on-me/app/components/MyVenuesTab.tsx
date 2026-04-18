@@ -50,6 +50,7 @@ export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened, savedGo
 
   // Sync when parent refreshes saved venues
   useEffect(() => {
+    console.log('[MyVenues] savedProp received:', savedProp.length)
     setSavedVenues(savedProp)
   }, [savedProp])
 

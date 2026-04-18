@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import axios from 'axios'
 import { useAuth } from './contexts/AuthContext'
@@ -42,19 +42,25 @@ function Home() {
   const [pendingVenueId, setPendingVenueId] = useState<string | null>(null)
   const [savedGoogleVenues, setSavedGoogleVenues] = useState<any[]>([])
 
-  const refreshSavedVenues = useCallback(async () => {
-    if (!token) return
+  const refreshSavedVenues = async () => {
+    if (!token) { console.log('[page] refreshSavedVenues: no token'); return }
     try {
+      console.log('[page] fetching saved venues...')
       const res = await axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      console.log('[page] saved venues:', res.data?.venues?.length)
       setSavedGoogleVenues(res.data?.venues || [])
     } catch (e) {
       console.error('[page] refreshSavedVenues failed:', e)
     }
-  }, [token, API_URL])
+  }
 
   useEffect(() => {
-    refreshSavedVenues()
-  }, [refreshSavedVenues])
+    if (!token) return
+    console.log('[page] token ready, fetching saved venues')
+    axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => { console.log('[page] got', res.data?.venues?.length, 'saved venues'); setSavedGoogleVenues(res.data?.venues || []) })
+      .catch(e => console.error('[page] saved venues fetch error:', e))
+  }, [token])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
