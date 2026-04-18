@@ -389,6 +389,7 @@ app.use('/api/personalized-promotions', require('./routes/personalizedPromotions
 app.use('/api/predictive-analytics', require('./routes/predictiveAnalytics'));
 app.use('/api/ai-automation', require('./routes/aiAutomation'));
 app.use('/api/search', require('./routes/search'));
+app.use('/api/saved-venues', require('./routes/saved-venues'));
 app.use('/api/disputes', require('./routes/disputes'));
 app.use('/api/kyc', kycRouter);
 app.use('/api/wallet-provisioning', require('./routes/wallet-provisioning'));

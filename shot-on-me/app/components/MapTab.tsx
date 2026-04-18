@@ -13,7 +13,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 import { useApiUrl } from '../utils/api'
 import { Tab } from '@/app/types'
-import { saveGoogleVenue, getSavedGoogleVenues, type SavedGoogleVenue } from './MyVenuesTab'
+import { type SavedGoogleVenue } from './MyVenuesTab'
 
 interface MapTabProps {
   setActiveTab?: (tab: Tab) => void
@@ -79,13 +79,15 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
   const [justSavedPlaceId, setJustSavedPlaceId] = useState<string | null>(null)
 
-  // Load already-saved Google venues from localStorage on mount
+  // Load already-saved Google venues from backend on mount
   useEffect(() => {
-    const saved = getSavedGoogleVenues()
-    setSavedPlaceIds(new Set(saved.map(v => v.placeId)))
-  }, [])
+    if (!token) return
+    axios.get(`${API_URL}/api/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setSavedPlaceIds(new Set((res.data.venues || []).map((v: any) => v.placeId))))
+      .catch(() => {})
+  }, [token, API_URL])
 
-  const handleSaveGoogleVenue = (venue: any, e: React.MouseEvent) => {
+  const handleSaveGoogleVenue = async (venue: any, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!venue.placeId || savedPlaceIds.has(venue.placeId)) return
 
@@ -93,7 +95,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}&query_place_id=${venue.placeId}`
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name + ' ' + (venue.address?.city || ''))}`
 
-    const toSave: SavedGoogleVenue = {
+    const payload = {
       placeId: venue.placeId,
       name: venue.name,
       address: venue.address || {},
@@ -103,13 +105,19 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       lat: venue.location?.latitude,
       lng: venue.location?.longitude,
       coverPhoto: venue.coverPhoto || venue.image || '',
-      savedAt: new Date().toISOString(),
     }
 
-    saveGoogleVenue(toSave)
+    // Optimistic update
     setSavedPlaceIds(prev => new Set([...prev, venue.placeId]))
     setJustSavedPlaceId(venue.placeId)
     setTimeout(() => setJustSavedPlaceId(null), 2000)
+
+    try {
+      await axios.post(`${API_URL}/api/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
+    } catch {
+      // Roll back on failure
+      setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })
+    }
   }
 
   const fetchTrendingVenues = useCallback(async () => {

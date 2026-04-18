@@ -112,6 +112,24 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue'
   }],
+  savedGoogleVenues: [{
+    placeId:      { type: String, required: true },
+    name:         { type: String, required: true },
+    address: {
+      street: String,
+      city:   String,
+      state:  String
+    },
+    website:      { type: String, default: '' },
+    googleMapsUrl:{ type: String, default: '' },
+    rating:       { type: Number },
+    lat:          { type: Number },
+    lng:          { type: Number },
+    coverPhoto:   { type: String, default: '' },
+    isFavorite:   { type: Boolean, default: false },
+    order:        { type: Number, default: 0 },
+    savedAt:      { type: Date, default: Date.now }
+  }],
   followedVenues: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Venue'

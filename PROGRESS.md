@@ -1,147 +1,112 @@
-# 🚀 Progress Report - What I've Built
+# Progress Report — Shot On Me Platform
+_Last updated: 2026-04-17_
 
-## ✅ Completed
+---
 
-### 1. **Complete Backend API** (100%)
-- ✅ Express.js server with all routes
-- ✅ MongoDB models (User, Venue, Payment, FeedPost)
-- ✅ Authentication system (JWT)
-- ✅ Payment system with escrow
-- ✅ SMS integration (Twilio ready)
-- ✅ Real-time WebSocket support
-- ✅ Media uploads (Cloudinary ready)
-- ✅ Location tracking
-- ✅ Social feed features
-- ✅ Notification system
+## Platform Overview
 
-### 2. **Venue Portal Web App** (100%)
-- ✅ Next.js 14 with TypeScript
-- ✅ Beautiful UI with Tailwind CSS
-- ✅ Authentication system
-- ✅ Dashboard with statistics
-- ✅ Promotions management
-- ✅ Schedule management
-- ✅ Notification center
-- ✅ Responsive design
+Three apps, one backend, deployed on Vercel (frontends) + Render (backend).
 
-### 3. **Shot On Me Mobile App** (100%)
-- ✅ Next.js 14 mobile-first design
-- ✅ Authentication system
-- ✅ Wallet system
-- ✅ Payment sending/receiving
-- ✅ Social feed (Facebook-style)
-- ✅ Location tracking
-- ✅ Friend discovery
-- ✅ Venue discovery
-- ✅ Bottom navigation
-- ✅ Google Maps integration ready
+| App | Folder | URL |
+|-----|--------|-----|
+| Backend API | `backend/` | Render — Express + MongoDB + Socket.io |
+| Shot On Me | `shot-on-me/` | shotonme.com — customer mobile PWA |
+| Fizz | `fizz/` | fizz.shotonme.com — non-alcohol gifting PWA |
+| Venue Portal | `venue-portal/` | venues.shotonme.com — venue owner dashboard |
 
-### 4. **Configuration & Setup** (100%)
-- ✅ Environment file templates
-- ✅ Setup scripts (PowerShell)
-- ✅ Start-all script
-- ✅ Check-setup verification
-- ✅ JWT secret generated
-- ✅ Google Maps API key configured
+---
 
-### 5. **Documentation** (100%)
-- ✅ README files for each component
-- ✅ Quick start guide
-- ✅ API keys guide
-- ✅ MongoDB setup guide
-- ✅ Troubleshooting guide
-- ✅ Configuration templates
-- ✅ Next steps guide
+## Fizz App — ~95% Complete
 
-### 6. **Developer Tools** (100%)
-- ✅ .gitignore file
-- ✅ Utility helper functions
-- ✅ Error handling
-- ✅ Input validation
-- ✅ Security middleware
+### What's Built (all wired to live backend)
+- **Auth:** Register, sign in, forgot password, remember me, Face ID/biometric, reset-password page
+- **Home tab:** Wallet balance, quick-send, friend activity feed
+- **Sips tab (Venue Discovery):** Browse non-alcohol venues, check-in with GPS, send Fizz to venue
+- **Feed tab:** Posts with photo upload, likes, comments (CommentsSheet), share post, report post, delete/edit own posts, infinite scroll + pagination, StoriesRow at top
+- **Stories:** 24h expiry, grouped by author, auto-advance viewer, create/delete
+- **Send Fizz:** P2P gifting with prefill from venue or friend profile
+- **Wallet tab:** Balance, add funds (AddFundsModal), transaction history
+- **Messages tab (DMs):** Real-time via Socket.io, photo uploads in DMs, typing indicators, unread count
+- **Profile tab:** Edit profile + photo upload, stats, friends list, rewards, referrals, crews, settings
+- **Friend system:** Send/accept/decline requests, friend suggestions (friends-of-friends + active fallback), block/report users, FriendProfile overlay
+- **Search:** SearchModal — search users and venues
+- **Find Friends:** FindFriends component
+- **Notifications:** Real-time (socket) + persisted list (/fizz/notifications), per-type settings (messages, fizzReceived, friendRequests, feedActivity), read-all
+- **Push notifications:** PWA web-push with VAPID, service worker at /sw.js — wired but needs Kate's VAPID keys in Render
+- **Rewards / Gamification:** RewardsScreen component
+- **Referrals:** ReferralScreen component
+- **Crews:** CrewsTab component
+- **Settings:** SettingsMenu with notification preferences
+- **Legal:** Terms (/terms) + Privacy (/privacy) pages, Cookie consent banner
+- **Venue signup:** /venue-signup page
+- **PWA:** manifest.json, icons, apple-web-app meta, OG tags, Twitter card
+- **Error handling:** ErrorBoundary component
 
-## 📊 Statistics
+### What's NOT Done / Kate's Action Items
+- [ ] Generate VAPID keys: `npx web-push generate-vapid-keys` → add to Render env
+- [ ] Create Sentry account → add NEXT_PUBLIC_SENTRY_DSN to Vercel (fizz project)
+- [ ] TonightTab and CookieConsent components exist but TonightTab is disabled (hidden from nav)
 
-- **Total Files Created:** 50+
-- **Lines of Code:** 5,000+
-- **API Endpoints:** 20+
-- **React Components:** 15+
-- **Database Models:** 4
-- **Documentation Pages:** 10+
+---
 
-## 🎯 Features Implemented
+## Shot On Me App — ~85% Complete
 
-### Core Features
-- ✅ User authentication & registration
-- ✅ Wallet system with balance tracking
-- ✅ Send money to friends
-- ✅ Payment redemption codes
-- ✅ SMS notifications
-- ✅ Social feed with posts
-- ✅ Photo/video uploads
-- ✅ Likes & comments
-- ✅ Location tracking
-- ✅ Friend discovery
-- ✅ Venue management
-- ✅ Promotions system
-- ✅ Schedule management
-- ✅ Customer notifications
-- ✅ Real-time updates
+- Wallet, payments, Tap-n-Pay virtual card, social feed, venue discovery, friend discovery, location tracking, bottom nav (pill style), Shot On Me-style dropdown, Stories row
+- Cookie consent banner added
+- Sentry wired (needs NEXT_PUBLIC_SENTRY_DSN in Vercel)
 
-### Technical Features
-- ✅ RESTful API
-- ✅ WebSocket real-time
-- ✅ JWT authentication
-- ✅ Password hashing
-- ✅ Input validation
-- ✅ Error handling
-- ✅ CORS configuration
-- ✅ Environment variables
-- ✅ TypeScript support
-- ✅ Responsive design
-- ✅ Mobile-first UI
+---
 
-## 🔄 What's Left (Optional)
+## Venue Portal — ~90% Complete
 
-### Required for Full Functionality:
-1. **MongoDB Setup** - You need to do this
-2. **Install Dependencies** - Run `npm install`
-3. **Create .env Files** - Copy from templates
+- Dashboard, promotions management, schedule management, notification center (Notify Guests)
+- Simplified nav (April 2026): renamed tabs, removed clutter
+- Terms of Service (12 sections) + Privacy Policy (10 sections) — production grade (April 12)
+- Deployed to Vercel
 
-### Optional Enhancements:
-- Push notifications
-- Email notifications
-- Advanced analytics
-- Admin dashboard
-- Payment gateway integration (Stripe)
-- Enhanced map features
-- Live streaming
-- QR code scanning
+---
 
-## 📈 Project Status
+## Backend — ~95% Complete
 
-**Overall Completion: 95%**
+All `/api/fizz/*` and `/api/*` endpoints built:
+- Auth, profiles, wallet, send, friends, user search
+- Feed CRUD + likes/comments/share/report
+- Messages + unread count + typing indicators
+- Stories (CRUD + view tracking)
+- Check-ins
+- Notifications (persist + list + read-all)
+- Push subscriptions (web-push delivery)
+- Block/unblock/blocked list
+- Friend requests (send/accept/decline/pending)
+- Friend suggestions
+- CORS fix applied (no-origin gap closed)
+- Sentry integrated (needs SENTRY_DSN in Render)
 
-- Code: ✅ 100% Complete
-- Configuration: ✅ 100% Complete
-- Documentation: ✅ 100% Complete
-- Setup Scripts: ✅ 100% Complete
-- Testing: ⏳ Needs your setup
-- Deployment: ⏳ Ready when you are
+---
 
-## 🎉 What This Means
+## Kate's Remaining Tasks (All Ops — No More Code)
 
-You have a **production-ready** application that just needs:
-1. MongoDB connection
-2. Dependencies installed
-3. Environment files created
+### Must-do Before Real Money Flows
+- [ ] Rotate ALL credentials: Stripe, Twilio, MongoDB, Cloudinary, JWT secret
+- [ ] Verify .env is NOT in git history
+- [ ] Switch Stripe to live mode in Render env vars
+- [ ] Connect live Stripe to business bank account
 
-Everything else is **done and ready to go!**
+### Push Notifications
+- [ ] `npx web-push generate-vapid-keys`
+- [ ] Add to Render: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL=admin@fizz.app
 
-## 🚀 Next Actions
+### Error Tracking
+- [ ] Create Sentry account + 4 projects (backend, shot-on-me, fizz, venue-portal)
+- [ ] Add SENTRY_DSN to Render (backend + venue-portal backend)
+- [ ] Add NEXT_PUBLIC_SENTRY_DSN to Vercel (shot-on-me + fizz)
 
-See `NEXT_STEPS.md` for your action items.
+### Business Setup
+- [ ] Form LLC (state SOS or Stripe Atlas)
+- [ ] Get EIN (IRS.gov — free, instant)
+- [ ] Open business bank account (Mercury or Relay)
+- [ ] Set up privacy@shotonme.com email
 
-The hard work is done. You're just a few setup steps away from running everything!
-
-
+### Infrastructure
+- [ ] Set up Cloudflare in front of all 3 domains
+- [ ] Enable MongoDB Atlas automated backups (daily, 7-day retention)
