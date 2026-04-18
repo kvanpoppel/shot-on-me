@@ -1665,16 +1665,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       {viewMode === 'list' && (
       <div className="p-3">
 
-          {/* Saved Places Section */}
+          {/* Saved Places — same grid/card style as SOM venues */}
           {savedGoogleVenuesProp.length > 0 && (
             <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold text-primary-500 flex items-center gap-1.5">
-                  <Star className="w-3.5 h-3.5 fill-primary-500" />
-                  Saved Places
-                </h2>
-                <span className="text-xs text-primary-400/50">{savedGoogleVenuesProp.length} saved</span>
-              </div>
               <div className="grid grid-cols-2 gap-2.5">
                 {savedGoogleVenuesProp.map(venue => {
                   const openUrl = venue.website || venue.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}`
@@ -1684,18 +1677,13 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                       onClick={() => window.open(openUrl, '_blank', 'noopener,noreferrer')}
                       className="bg-black/40 border-2 border-primary-500/20 rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group"
                     >
-                      {/* Top badges */}
-                      <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between gap-2">
-                        <div className="bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold text-white flex items-center gap-1 shadow-lg">
-                          <ExternalLink className="w-2.5 h-2.5" />
-                          Saved
-                        </div>
+                      {/* Star button — filled = saved, click to unsave */}
+                      <div className="absolute top-2 right-2 z-10">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleUnsaveVenue(venue.placeId) }}
-                          className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-red-500/80 transition-all shadow-lg"
-                          title="Remove from saved"
+                          className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg"
                         >
-                          <X className="w-3.5 h-3.5 text-primary-400 hover:text-white" />
+                          <Star className="w-4 h-4 fill-primary-500 text-primary-500" />
                         </button>
                       </div>
 
@@ -1738,14 +1726,14 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                           )}
                         </div>
                         <div className="mt-1 pt-1 border-t border-primary-500/5">
-                          <p className="text-[8px] text-primary-400/40 text-center">Tap to open</p>
+                          <p className="text-[8px] text-primary-400/30 text-center">No current specials</p>
                         </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
-              <div className="border-b border-primary-500/10 mt-4 mb-2" />
+              <div className="border-b border-primary-500/10 mt-2.5 mb-2" />
             </div>
           )}
 
