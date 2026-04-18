@@ -1770,6 +1770,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             <div ref={venuesContainerRef} className="grid grid-cols-2 gap-2.5">
             {getFilteredVenues.map((venue: any) => {
               if (!venue || !venue._id) return null
+              // Don't show Google venues already in the saved section above
+              if (venue.isGooglePlace && savedPlaceIds.has(venue.placeId || '')) return null
               
               const activePromos = getActivePromotions(venue)
               const hasActivePromotions = activePromos.length > 0
