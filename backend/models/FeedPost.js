@@ -109,7 +109,7 @@ const feedPostSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
   // Which app this post belongs to
   source: {
     type: String,
