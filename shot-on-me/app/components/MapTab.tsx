@@ -1675,37 +1675,75 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 </h2>
                 <span className="text-xs text-primary-400/50">{savedGoogleVenuesProp.length} saved</span>
               </div>
-              <div className="flex flex-col gap-2">
-                {savedGoogleVenuesProp.map(venue => (
-                  <div key={venue.placeId} className="bg-black/60 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{venue.name}</p>
-                      {venue.address?.city && (
-                        <p className="text-xs text-primary-400/60 truncate">{[venue.address.street, venue.address.city, venue.address.state].filter(Boolean).join(', ')}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {(venue.website || venue.googleMapsUrl) && (
-                        <a
-                          href={venue.website || venue.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:text-primary-500 hover:bg-primary-500/20 transition-all"
-                          title="Open venue"
+              <div className="grid grid-cols-2 gap-2.5">
+                {savedGoogleVenuesProp.map(venue => {
+                  const openUrl = venue.website || venue.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}`
+                  return (
+                    <div
+                      key={venue.placeId}
+                      onClick={() => window.open(openUrl, '_blank', 'noopener,noreferrer')}
+                      className="bg-black/40 border-2 border-primary-500/20 rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group"
+                    >
+                      {/* Top badges */}
+                      <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between gap-2">
+                        <div className="bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold text-white flex items-center gap-1 shadow-lg">
+                          <ExternalLink className="w-2.5 h-2.5" />
+                          Saved
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleUnsaveVenue(venue.placeId) }}
+                          className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-red-500/80 transition-all shadow-lg"
+                          title="Remove from saved"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                      <button
-                        onClick={() => handleUnsaveVenue(venue.placeId)}
-                        className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:text-red-500 hover:bg-red-500/20 transition-all"
-                        title="Remove from saved"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                          <X className="w-3.5 h-3.5 text-primary-400 hover:text-white" />
+                        </button>
+                      </div>
+
+                      {/* Image / icon area */}
+                      <div className="relative h-24 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden group/image">
+                        {venue.coverPhoto ? (
+                          <img
+                            src={venue.coverPhoto}
+                            alt={venue.name}
+                            className="w-full h-full object-cover group-hover/image:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-16 h-16 bg-primary-500/20 rounded-xl flex items-center justify-center border-2 border-primary-500/30 group-hover/image:scale-110 transition-transform duration-300">
+                              <span className="text-2xl font-bold text-primary-500">
+                                {venue.name?.[0]?.toUpperCase() || 'V'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </div>
+
+                      {/* Info */}
+                      <div className="p-2.5">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-primary-500 text-sm line-clamp-1">{venue.name}</h3>
+                            {(venue.address?.city || venue.address?.state) && (
+                              <p className="text-[10px] text-primary-400/60 mb-1.5 line-clamp-1">
+                                {[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}
+                              </p>
+                            )}
+                          </div>
+                          {venue.rating && (
+                            <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 px-1.5 py-0.5 rounded-full">
+                              <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
+                              <span className="text-[10px] font-bold text-primary-500">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-1 pt-1 border-t border-primary-500/5">
+                          <p className="text-[8px] text-primary-400/40 text-center">Tap to open</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <div className="border-b border-primary-500/10 mt-4 mb-2" />
             </div>
