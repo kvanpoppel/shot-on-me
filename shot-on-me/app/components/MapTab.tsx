@@ -82,7 +82,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   // Load already-saved Google venues from backend on mount
   useEffect(() => {
     if (!token) return
-    axios.get(`${API_URL}/api/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setSavedPlaceIds(new Set((res.data.venues || []).map((v: any) => v.placeId))))
       .catch(() => {})
   }, [token, API_URL])
@@ -113,7 +113,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     setTimeout(() => setJustSavedPlaceId(null), 2000)
 
     try {
-      await axios.post(`${API_URL}/api/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
+      await axios.post(`${API_URL}/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
     } catch {
       // Roll back on failure
       setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })
