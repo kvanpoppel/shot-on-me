@@ -62,6 +62,7 @@ export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened }: MyVen
   }, [token])
 
   const fetchAll = async () => {
+    console.log('[MyVenues] fetchAll called, API_URL:', API_URL, '| token present:', !!token)
     setLoading(true)
     setFetchError(null)
     try {
@@ -77,9 +78,11 @@ export default function MyVenuesTab({ initialOpenVenueId, onVenueOpened }: MyVen
       ])
 
       if (savedRes.status === 'fulfilled') {
-        setSavedVenues(savedRes.value.data?.venues || [])
+        const venues = savedRes.value.data?.venues || []
+        console.log('[MyVenues] Saved venues fetched:', venues.length, venues.map((v: any) => v.name))
+        setSavedVenues(venues)
       } else {
-        console.error('Failed to fetch saved venues:', savedRes.reason)
+        console.error('[MyVenues] Failed to fetch saved venues:', savedRes.reason?.response?.status, savedRes.reason?.message)
       }
 
       if (followedRes.status === 'fulfilled') {

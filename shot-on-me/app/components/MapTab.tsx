@@ -82,9 +82,14 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   // Load already-saved Google venues from backend on mount
   useEffect(() => {
     if (!token) return
+    console.log('[SavedVenues] Loading saved placeIds from backend...')
     axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setSavedPlaceIds(new Set((res.data.venues || []).map((v: any) => v.placeId))))
-      .catch(() => {})
+      .then(res => {
+        const ids = (res.data.venues || []).map((v: any) => v.placeId)
+        console.log('[SavedVenues] Loaded', ids.length, 'saved venues')
+        setSavedPlaceIds(new Set(ids))
+      })
+      .catch((err) => console.error('[SavedVenues] Failed to load saved placeIds:', err?.response?.status, err?.message))
   }, [token, API_URL])
 
   const handleSaveGoogleVenue = async (venue: any, e: React.MouseEvent) => {
@@ -107,15 +112,20 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       coverPhoto: venue.coverPhoto || venue.image || '',
     }
 
+    console.log('[SavedVenues] Saving venue:', venue.name, '| placeId:', venue.placeId)
+    console.log('[SavedVenues] POST to:', `${API_URL}/saved-venues`)
+    console.log('[SavedVenues] Token present:', !!token)
+
     // Optimistic update
     setSavedPlaceIds(prev => new Set([...prev, venue.placeId]))
     setJustSavedPlaceId(venue.placeId)
     setTimeout(() => setJustSavedPlaceId(null), 2000)
 
     try {
-      await axios.post(`${API_URL}/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
-    } catch {
-      // Roll back on failure
+      const res = await axios.post(`${API_URL}/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
+      console.log('[SavedVenues] Save SUCCESS:', res.data)
+    } catch (err: any) {
+      console.error('[SavedVenues] Save FAILED:', err?.response?.status, err?.response?.data, err?.message)
       setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })
     }
   }
