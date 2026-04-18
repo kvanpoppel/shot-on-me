@@ -22,9 +22,10 @@ interface DashboardProps {
   viewingProfile?: string | null
   setViewingProfile?: (userId: string | null) => void
   onOpenAddFunds?: () => void
+  onViewVenueProfile?: (venueId: string) => void
 }
 
-export default function Dashboard({ activeTab, setActiveTab, viewingProfile, setViewingProfile, onOpenAddFunds }: DashboardProps) {
+export default function Dashboard({ activeTab, setActiveTab, viewingProfile, setViewingProfile, onOpenAddFunds, onViewVenueProfile }: DashboardProps) {
   const { user, logout, updateUser } = useAuth()
   const { socket } = useSocket()
   const router = useRouter()
@@ -454,7 +455,8 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
         }}
         onViewVenue={(venueId) => {
           setShowSearchModal(false)
-          setActiveTab('map')
+          onViewVenueProfile?.(venueId)
+          setActiveTab('venues')
         }}
         onViewPost={(postId) => {
           setShowSearchModal(false)

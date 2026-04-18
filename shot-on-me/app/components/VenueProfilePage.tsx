@@ -16,6 +16,7 @@ import {
   Loader,
   MapPin as CheckInIcon,
   Navigation,
+  Globe,
   Share2,
   GlassWater as Wine,
   Info,
@@ -450,7 +451,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
           </button>
         </div>
 
-        {/* Directions & Share */}
+        {/* Directions, Website & Share */}
         <div className="flex gap-2 sm:gap-3">
           <button
             onClick={() => {
@@ -464,6 +465,15 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
             <Navigation className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
             <span className="text-sm sm:text-base">Directions</span>
           </button>
+          {venue?.website && (
+            <button
+              onClick={() => window.open(venue.website, '_blank', 'noopener,noreferrer')}
+              className="flex-1 bg-primary-500/20 active:bg-primary-500/40 hover:bg-primary-500/30 border border-primary-500/30 text-primary-500 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 touch-manipulation"
+            >
+              <Globe className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="text-sm sm:text-base">Website</span>
+            </button>
+          )}
           <button
             onClick={async () => {
               if (navigator.share && venue.name) {

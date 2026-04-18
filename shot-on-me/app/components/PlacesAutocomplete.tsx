@@ -29,7 +29,7 @@ export default function PlacesAutocomplete({ value, onChange, onPlaceSelect, pla
     </div>
   )
   return (
-    <Autocomplete onLoad={setAutocomplete} onPlaceChanged={onPlaceChanged} options={{ types: ['establishment'], fields: ['formatted_address','geometry','name','place_id','types','rating','user_ratings_total'] }}>
+    <Autocomplete onLoad={setAutocomplete} onPlaceChanged={onPlaceChanged} options={{ types: ['establishment'], fields: ['formatted_address','geometry','name','place_id','types','rating','user_ratings_total','website','url','address_components','photos'] }}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400" />
         <input ref={inputRef} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inputClass} />

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -13,6 +13,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 import { useApiUrl } from '../utils/api'
 import { Tab } from '@/app/types'
+import { saveGoogleVenue, getSavedGoogleVenues, type SavedGoogleVenue } from './MyVenuesTab'
 
 interface MapTabProps {
   setActiveTab?: (tab: Tab) => void
@@ -75,6 +76,41 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [showActiveVenues, setShowActiveVenues] = useState(true)
   const [showRegularVenues, setShowRegularVenues] = useState(true)
   const [circularFriendAvatars, setCircularFriendAvatars] = useState<Map<string, string>>(new Map())
+  const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
+  const [justSavedPlaceId, setJustSavedPlaceId] = useState<string | null>(null)
+
+  // Load already-saved Google venues from localStorage on mount
+  useEffect(() => {
+    const saved = getSavedGoogleVenues()
+    setSavedPlaceIds(new Set(saved.map(v => v.placeId)))
+  }, [])
+
+  const handleSaveGoogleVenue = (venue: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!venue.placeId || savedPlaceIds.has(venue.placeId)) return
+
+    const googleMapsUrl = venue.location?.latitude && venue.location?.longitude
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}&query_place_id=${venue.placeId}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name + ' ' + (venue.address?.city || ''))}`
+
+    const toSave: SavedGoogleVenue = {
+      placeId: venue.placeId,
+      name: venue.name,
+      address: venue.address || {},
+      website: venue.website || '',
+      googleMapsUrl,
+      rating: venue.rating || undefined,
+      lat: venue.location?.latitude,
+      lng: venue.location?.longitude,
+      coverPhoto: venue.coverPhoto || venue.image || '',
+      savedAt: new Date().toISOString(),
+    }
+
+    saveGoogleVenue(toSave)
+    setSavedPlaceIds(prev => new Set([...prev, venue.placeId]))
+    setJustSavedPlaceId(venue.placeId)
+    setTimeout(() => setJustSavedPlaceId(null), 2000)
+  }
 
   const fetchTrendingVenues = useCallback(async () => {
     if (!token || !API_URL) return
@@ -424,6 +460,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         user_ratings_total: googlePlace.user_ratings_total,
         isGooglePlace: true,
         placeId: googlePlace.place_id,
+        website: (googlePlace as any).website || '',
         types: googlePlace.types
       }
       
@@ -1695,15 +1732,26 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 }
               }
 
+              const isGoogleOnly = !!venue.isGooglePlace
+              const alreadySaved = isGoogleOnly && savedPlaceIds.has(venue.placeId || '')
+              const justSaved = isGoogleOnly && justSavedPlaceId === venue.placeId
+
               return (
                 <div
                   key={venue._id}
                   onClick={() => {
-                      if (!venue.isGooglePlace && venue._id) {
-                        setViewingVenueId(venue._id)
+                    if (!isGoogleOnly && venue._id) {
+                      setViewingVenueId(venue._id)
+                    } else if (isGoogleOnly) {
+                      // Open Google Maps or website externally
+                      const url = venue.website ||
+                        (venue.location?.latitude && venue.location?.longitude
+                          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}&query_place_id=${venue.placeId}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name + ' ' + (venue.address?.city || ''))}`)
+                      window.open(url, '_blank', 'noopener,noreferrer')
                     }
                   }}
-                  className={`${cardBgGradient} border-2 ${cardBorderColor} rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group`}
+                  className={`${cardBgGradient} border-2 ${isGoogleOnly ? 'border-blue-500/40' : cardBorderColor} rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group`}
                 >
                   {/* Badges Row - Top */}
                   <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between gap-2">
@@ -1728,19 +1776,36 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                       )}
                     </div>
                     
-                    {/* Right Side - Favorite Star */}
-                    <button
-                      onClick={(e) => toggleFavorite(venue._id?.toString() || '', e)}
-                      className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg"
-                    >
-                      <Star
-                        className={`w-4 h-4 transition-all ${
-                          isFavorite
-                            ? 'fill-primary-500 text-primary-500'
-                            : 'text-primary-400/60 hover:text-primary-500'
+                    {/* Right Side - Favorite Star (SOM) or Save button (Google) */}
+                    {isGoogleOnly ? (
+                      <button
+                        onClick={(e) => handleSaveGoogleVenue(venue, e)}
+                        className={`px-2 py-1 rounded-full text-[10px] font-bold shadow-lg transition-all flex items-center gap-1 ${
+                          alreadySaved
+                            ? 'bg-primary-500/30 text-primary-400 cursor-default'
+                            : justSaved
+                              ? 'bg-primary-500 text-black'
+                              : 'bg-black/70 backdrop-blur-sm text-primary-400 hover:bg-primary-500 hover:text-black'
                         }`}
-                      />
-                    </button>
+                        disabled={alreadySaved}
+                        title={alreadySaved ? 'Already saved' : 'Save to My Venues'}
+                      >
+                        {justSaved ? '✓ Saved!' : alreadySaved ? '✓ Saved' : '+ Save'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => toggleFavorite(venue._id?.toString() || '', e)}
+                        className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg"
+                      >
+                        <Star
+                          className={`w-4 h-4 transition-all ${
+                            isFavorite
+                              ? 'fill-primary-500 text-primary-500'
+                              : 'text-primary-400/60 hover:text-primary-500'
+                          }`}
+                        />
+                      </button>
+                    )}
                   </div>
 
                   {/* Friends at Venue Indicator - Top Right Below Badges */}
@@ -1778,6 +1843,13 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                     )}
                     {/* Gradient Overlay for better text readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {/* Google venue badge */}
+                    {isGoogleOnly && (
+                      <div className="absolute top-2 left-2 bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold text-white flex items-center gap-1 shadow-lg">
+                        <ExternalLink className="w-2.5 h-2.5" />
+                        Google
+                      </div>
+                    )}
                     
                     {/* Open/Closed Status Badge - Bottom Left */}
                     {venueOpenStatus !== null && (

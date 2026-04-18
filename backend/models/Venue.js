@@ -212,6 +212,8 @@ const venueSchema = new mongoose.Schema({
     tagline: { type: String, maxlength: 60, default: '' },
     logoUrl: { type: String, default: '' }
   },
+  website: { type: String, default: '' },        // Venue's own website URL
+  placeId: { type: String, default: '' },        // Google Places ID for matching
 }, {
   timestamps: true
 });

@@ -36,6 +36,7 @@ function Home() {
   const [autoOpenPostForm, setAutoOpenPostForm] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [pendingVenueId, setPendingVenueId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -211,12 +212,13 @@ function Home() {
   return (
     <ErrorBoundary>
       {user && isMounted && <PermissionsManager />}
-      <Dashboard 
-        activeTab={activeTab} 
+      <Dashboard
+        activeTab={activeTab}
         setActiveTab={setActiveTab}
         viewingProfile={viewingProfile}
         setViewingProfile={setViewingProfile}
         onOpenAddFunds={() => setAutoOpenAddFunds(true)}
+        onViewVenueProfile={(venueId) => setPendingVenueId(venueId)}
       />
       <ProximityNotifications />
       <main className={`bg-black ${activeTab === 'messages' || activeTab === 'groups' ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto'}`}>
@@ -271,7 +273,12 @@ function Home() {
         {activeTab === 'tonight' && <TonightTab onViewProfile={setViewingProfile} onSendDrink={(userId, name) => { setPrefilledRecipient({ id: userId, name }); setAutoOpenSendForm(true); setActiveTab('wallet') }} />}
         {activeTab === 'rewards' && <RewardsScreen />}
         {activeTab === 'referrals' && <ReferralScreen />}
-        {activeTab === 'venues' && <MyVenuesTab />}
+        {activeTab === 'venues' && (
+          <MyVenuesTab
+            initialOpenVenueId={pendingVenueId}
+            onVenueOpened={() => setPendingVenueId(null)}
+          />
+        )}
         {activeTab === 'happening' && <WhatsHappeningTab setActiveTab={setActiveTab} onViewProfile={setViewingProfile} />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
