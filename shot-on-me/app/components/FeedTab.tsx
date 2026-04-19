@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, RefreshCw, Flame, Compass, UserCheck, Eye, MoreVertical, Flag, Trash2, ThumbsUp } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Flame, Compass, UserCheck, MoreVertical, Flag, Trash2, ThumbsUp } from 'lucide-react'
 import UserAvatarButton from './UserAvatarButton'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
@@ -146,14 +146,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([])
-  // Load showSuggestions preference from localStorage
-  const [showSuggestions, setShowSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('showFriendSuggestions')
-      return saved !== null ? saved === 'true' : true
-    }
-    return true
-  })
   const [selectedMedia, setSelectedMedia] = useState<File[]>([])
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
   const [selectedStoryGroup, setSelectedStoryGroup] = useState<any>(null)
@@ -169,7 +161,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const feedContainerRef = useRef<HTMLDivElement>(null)
   
   // Feed enhancement states
-  const [feedFilter, setFeedFilter] = useState<'following' | 'trending' | 'nearby' | 'foryou' | 'discover'>('following')
+  const [feedFilter, setFeedFilter] = useState<'following' | 'trending' | 'nearby'>('following')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -179,13 +171,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [aiSignals, setAiSignals] = useState<{ viewedProfileIds: string[]; addedFriendIds: string[] }>({
     viewedProfileIds: [],
     addedFriendIds: []
-  })
-  const [showTrendingVenues, setShowTrendingVenues] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('showTrendingVenues')
-      return saved === 'true'
-    }
-    return false // Hidden by default
   })
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
   const [activePostReactionPicker, setActivePostReactionPicker] = useState<string | null>(null)
@@ -1668,9 +1653,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 {[
                   { id: 'following', label: 'Following', icon: UserCheck },
                   { id: 'trending', label: 'Trending', icon: Flame },
-                  { id: 'nearby', label: 'Nearby', icon: Compass },
-                  { id: 'foryou', label: 'For You', icon: Sparkles },
-                  { id: 'discover', label: 'Discover', icon: Eye }
+                  { id: 'nearby', label: 'Nearby', icon: Compass }
                 ].map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -1695,19 +1678,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             {/* Actions */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={() => {
-                  setPage(1)
-                  setHasMore(true)
-                  setLoading(true)
-                  fetchFeed(1, feedFilter)
-                }}
-                disabled={loading || pullToRefresh}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all disabled:opacity-50"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-4 h-4 ${pullToRefresh ? 'animate-spin' : ''}`} />
-              </button>
-              <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-find-friends'))}
                 className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
                 title="Friends"
@@ -1720,14 +1690,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 title="Round Mode — send a drink to everyone"
               >
                 <TrendingUp className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">Round</span>
-              </button>
-              <button
-                onClick={() => setShowFriendInvite(true)}
-                className="bg-primary-500/10 border border-primary-500/20 text-primary-500 p-2 rounded-lg hover:bg-primary-500/20 transition-all flex items-center gap-1.5 font-medium text-sm"
-                title="Invite Friends"
-              >
-                <UserPlus className="w-4 h-4" />
+                <span className="text-xs">Round</span>
               </button>
               <button
                 onClick={() => setShowPostForm(!showPostForm)}
@@ -1741,157 +1704,95 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         </div>
       </div>
 
-      {/* Friend Suggestions - Collapsible */}
+      {/* Friend Suggestions - Inline */}
       {friendSuggestions.length > 0 && (
-        <div className="border-b border-primary-500/10">
-          {!showSuggestions ? (
-            <button
-              onClick={() => {
-                setShowSuggestions(true)
-                localStorage.setItem('showFriendSuggestions', 'true')
-              }}
-              className="w-full p-3 bg-primary-500/5 hover:bg-primary-500/10 transition-all flex items-center justify-between text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary-500" />
-                <span className="text-sm text-primary-400">
-                  {friendSuggestions.length} friend suggestion{friendSuggestions.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <span className="text-xs text-primary-500/70">Tap to view</span>
-            </button>
-          ) : (
-            <div className="p-4 bg-gradient-to-r from-primary-500/5 to-transparent">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4 text-primary-500" />
-                  <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
-                </div>
-                <button
+        <div className="p-4 bg-gradient-to-r from-primary-500/5 to-transparent border-b border-primary-500/10">
+          <div className="flex items-center space-x-2 mb-3">
+            <Users className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
+          </div>
+          <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
+            {friendSuggestions.slice(0, 5).map((suggestion) => (
+              <div
+                key={suggestion._id || suggestion.id}
+                className="flex flex-col items-center space-y-2 bg-black/40 border border-primary-500/15 rounded-lg p-3 flex-shrink-0 min-w-[100px] backdrop-blur-sm"
+              >
+                <div
+                  className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden cursor-pointer hover:border-primary-500 transition-all"
                   onClick={() => {
-                    setShowSuggestions(false)
-                    localStorage.setItem('showFriendSuggestions', 'false')
+                    const profileId = suggestion._id || suggestion.id
+                    if (profileId) trackProfileViewForAI(profileId)
+                    onViewProfile?.(profileId)
                   }}
-                  className="text-primary-400 hover:text-primary-500 text-xs"
                 >
-                  Hide
+                  {suggestion.profilePicture ? (
+                    <img src={suggestion.profilePicture} alt={suggestion.firstName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                      <span className="text-primary-500 font-medium">
+                        {suggestion.firstName?.[0]}{suggestion.lastName?.[0]}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p
+                  className="text-xs font-semibold text-primary-500 text-center cursor-pointer hover:text-primary-400 transition-all"
+                  onClick={() => {
+                    const profileId = suggestion._id || suggestion.id
+                    if (profileId) trackProfileViewForAI(profileId)
+                    onViewProfile?.(profileId)
+                  }}
+                >
+                  {suggestion.firstName}
+                </p>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const friendId = suggestion._id || suggestion.id
+                    if (friendId) {
+                      handleAddFriend(friendId)
+                    } else {
+                      console.error('No friend ID found for suggestion:', suggestion)
+                      alert('Unable to add friend - missing user ID')
+                    }
+                  }}
+                  className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full flex items-center justify-center"
+                >
+                  <UserPlus className="w-3 h-3 inline mr-1" />
+                  Add
                 </button>
               </div>
-              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
-                {friendSuggestions.slice(0, 5).map((suggestion) => (
-                  <div
-                    key={suggestion._id || suggestion.id}
-                    className="flex flex-col items-center space-y-2 bg-black/40 border border-primary-500/15 rounded-lg p-3 flex-shrink-0 min-w-[100px] backdrop-blur-sm"
-                  >
-                    <div 
-                      className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden cursor-pointer hover:border-primary-500 transition-all"
-                      onClick={() => {
-                        const profileId = suggestion._id || suggestion.id
-                        if (profileId) trackProfileViewForAI(profileId)
-                        onViewProfile?.(profileId)
-                      }}
-                    >
-                      {suggestion.profilePicture ? (
-                        <img src={suggestion.profilePicture} alt={suggestion.firstName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                          <span className="text-primary-500 font-medium">
-                            {suggestion.firstName?.[0]}{suggestion.lastName?.[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p 
-                      className="text-xs font-semibold text-primary-500 text-center cursor-pointer hover:text-primary-400 transition-all"
-                      onClick={() => {
-                        const profileId = suggestion._id || suggestion.id
-                        if (profileId) trackProfileViewForAI(profileId)
-                        onViewProfile?.(profileId)
-                      }}
-                    >
-                      {suggestion.firstName}
-                    </p>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        const friendId = suggestion._id || suggestion.id
-                        if (friendId) {
-                          handleAddFriend(friendId)
-                        } else {
-                          console.error('No friend ID found for suggestion:', suggestion)
-                          alert('Unable to add friend - missing user ID')
-                        }
-                      }}
-                      className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full flex items-center justify-center"
-                    >
-                      <UserPlus className="w-3 h-3 inline mr-1" />
-                      Add
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Trending Venues - Collapsible */}
+      {/* Trending Venues - Inline */}
       {trendingVenues.length > 0 && (
-        <div className="border-b border-primary-500/10">
-          {!showTrendingVenues ? (
-            <button
-              onClick={() => {
-                setShowTrendingVenues(true)
-                localStorage.setItem('showTrendingVenues', 'true')
-              }}
-              className="w-full p-3 bg-primary-500/5 hover:bg-primary-500/10 transition-all flex items-center justify-between text-left"
-            >
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary-500" />
-                <span className="text-sm text-primary-400">
-                  {trendingVenues.length} trending venue{trendingVenues.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <span className="text-xs text-primary-500/70">Tap to view</span>
-            </button>
-          ) : (
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4 text-primary-500" />
-                  <h2 className="text-sm font-semibold text-primary-500">Trending Venues</h2>
+        <div className="p-4 border-b border-primary-500/10">
+          <div className="flex items-center space-x-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-semibold text-primary-500">Trending Venues</h2>
+          </div>
+          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+            {trendingVenues.map((venue) => (
+              <button
+                key={venue._id}
+                onClick={() => {
+                  setSelectedVenue(venue)
+                  setShowPostForm(true)
+                }}
+                className="flex items-center space-x-2 bg-black/50 border border-primary-500/20 rounded-lg px-3 py-2 flex-shrink-0 hover:border-primary-500/50 transition-colors"
+              >
+                <MapPin className="w-4 h-4 text-primary-500" />
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
+                  <p className="text-xs text-primary-400">{venue.followerCount || 0} followers</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowTrendingVenues(false)
-                    localStorage.setItem('showTrendingVenues', 'false')
-                  }}
-                  className="text-primary-400 hover:text-primary-500 text-xs"
-                >
-                  Hide
-                </button>
-              </div>
-              <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
-                {trendingVenues.map((venue) => (
-                  <button
-                    key={venue._id}
-                    onClick={() => {
-                      setSelectedVenue(venue)
-                      setShowPostForm(true)
-                    }}
-                    className="flex items-center space-x-2 bg-black/50 border border-primary-500/20 rounded-lg px-3 py-2 flex-shrink-0 hover:border-primary-500/50 transition-colors"
-                  >
-                    <MapPin className="w-4 h-4 text-primary-500" />
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
-                      <p className="text-xs text-primary-400">{venue.followerCount || 0} followers</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
