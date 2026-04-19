@@ -4,11 +4,23 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Search, Star, Filter, Check } from 'lucide-react'
+import { MapPin, Search, Star, Filter, Check, ExternalLink, X } from 'lucide-react'
 import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
+
+interface SavedVenue {
+  placeId: string
+  name: string
+  address?: { street?: string; city?: string; state?: string }
+  website?: string
+  googleMapsUrl?: string
+  rating?: number
+  coverPhoto?: string
+}
 
 interface VenueDiscoveryProps {
   onSendFizz?: (venueId?: string) => void
+  savedGoogleVenues?: SavedVenue[]
+  onSavedVenuesChange?: () => void
 }
 
 function isFizzVenue(venue: Venue): boolean {
@@ -20,7 +32,7 @@ function isFizzVenue(venue: Venue): boolean {
   )
 }
 
-export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
+export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onSavedVenuesChange }: VenueDiscoveryProps) {
   const { token } = useAuth()
   const API_URL = useApiUrl()
 
@@ -31,6 +43,49 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
   const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set())
   const [filtered, setFiltered] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+
+  // Keep savedIds in sync with parent prop
+  useEffect(() => {
+    setSavedIds(new Set(savedGoogleVenues.map(v => v.placeId)))
+  }, [savedGoogleVenues])
+
+  const handleSaveVenue = async (venue: Venue, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const placeId = venue._id
+    if (savedIds.has(placeId)) {
+      // Unsave
+      setSavedIds(prev => { const n = new Set(prev); n.delete(placeId); return n })
+      try {
+        await axios.delete(`${API_URL}/saved-venues/${placeId}`, { headers: { Authorization: `Bearer ${token}` } })
+        onSavedVenuesChange?.()
+      } catch {}
+    } else {
+      // Save
+      setSavedIds(prev => new Set(Array.from(prev).concat(placeId)))
+      try {
+        await axios.post(`${API_URL}/saved-venues`, {
+          placeId,
+          name: venue.name,
+          address: venue.address || {},
+          website: (venue as any).website || '',
+          googleMapsUrl: '',
+          rating: typeof venue.rating === 'number' ? venue.rating : 0,
+          coverPhoto: venue.photos?.[0] || venue.imageUrl || '',
+        }, { headers: { Authorization: `Bearer ${token}` } })
+        onSavedVenuesChange?.()
+      } catch {}
+    }
+  }
+
+  const handleUnsaveSaved = async (placeId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSavedIds(prev => { const n = new Set(prev); n.delete(placeId); return n })
+    try {
+      await axios.delete(`${API_URL}/saved-venues/${placeId}`, { headers: { Authorization: `Bearer ${token}` } })
+      onSavedVenuesChange?.()
+    } catch {}
+  }
 
   const fetchVenues = useCallback(async () => {
     setLoading(true)
@@ -69,6 +124,7 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
     const icon = CATEGORY_ICONS[catKey] || '🏠'
     const colorClass = CATEGORY_COLORS[catKey] || 'bg-white/10 text-white/70'
     const hasPromos = venue.promotions && venue.promotions.length > 0
+    const isSaved = savedIds.has(venue._id)
 
     return (
       <div className="fizz-card overflow-hidden" onClick={() => onSendFizz?.(venue._id)}>
@@ -85,11 +141,20 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
           <div className="absolute top-3 left-3 flex gap-1.5">
             <span className={`category-badge text-xs ${colorClass}`}>{icon} {catKey}</span>
           </div>
-          {hasPromos && (
-            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold fizzing-badge">
-              Fizzing Now
-            </div>
-          )}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            {hasPromos && (
+              <div className="px-2 py-0.5 rounded-full text-xs font-bold fizzing-badge">
+                Fizzing Now
+              </div>
+            )}
+            <button
+              onClick={(e) => handleSaveVenue(venue, e)}
+              className="p-1.5 rounded-full transition-all"
+              style={{ background: 'rgba(0,0,0,0.6)' }}
+            >
+              <Star className={`w-4 h-4 transition-all ${isSaved ? 'fill-current text-lime-400' : 'text-white/50'}`} style={isSaved ? { color: '#C8F135' } : {}} />
+            </button>
+          </div>
         </div>
 
         <div className="p-4">
@@ -223,6 +288,58 @@ export default function VenueDiscovery({ onSendFizz }: VenueDiscoveryProps) {
           ))}
         </div>
       </div>
+
+      {/* Saved Venues Section */}
+      {savedGoogleVenues.length > 0 && (
+        <div className="px-4 mb-4">
+          <div className="flex flex-col gap-3">
+            {savedGoogleVenues.map(venue => {
+              const openUrl = venue.website || venue.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name)}`
+              return (
+                <div
+                  key={venue.placeId}
+                  className="fizz-card overflow-hidden cursor-pointer"
+                  onClick={() => window.open(openUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <div className="w-full h-40 relative overflow-hidden" style={{ background: '#2E2E50' }}>
+                    {venue.coverPhoto ? (
+                      <img src={venue.coverPhoto} alt={venue.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-5xl">
+                        🏠
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => handleUnsaveSaved(venue.placeId, e)}
+                      className="absolute top-3 right-3 p-1.5 rounded-full transition-all"
+                      style={{ background: 'rgba(0,0,0,0.6)' }}
+                    >
+                      <Star className="w-4 h-4 fill-current" style={{ color: '#C8F135' }} />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-bold text-white text-base leading-tight">{venue.name}</h3>
+                    {(venue.address?.city || venue.address?.state) && (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <MapPin className="w-3 h-3 text-white/30" />
+                        <span className="text-xs text-white/40">{[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}</span>
+                      </div>
+                    )}
+                    {venue.rating && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Star className="w-3 h-3 fill-current" style={{ color: '#C8F135' }} />
+                        <span className="text-xs text-white/60">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating}</span>
+                      </div>
+                    )}
+                    <p className="text-xs mt-2" style={{ color: 'rgba(200,241,53,0.5)' }}>Tap to open</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="border-b mt-4 mb-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+        </div>
+      )}
 
       {/* Results count */}
       <div className="px-4 mb-4">

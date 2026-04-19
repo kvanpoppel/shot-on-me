@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
+import { useApiUrl } from './utils/api'
+import axios from 'axios'
 import LandingPage from './components/LandingPage'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
@@ -31,8 +33,10 @@ interface PrefillRecipient {
 }
 
 function FizzApp() {
-  const { user, loading } = useAuth()
+  const { user, token, loading } = useAuth()
+  const API_URL = useApiUrl()
   const [isMounted, setIsMounted] = useState(false)
+  const [savedGoogleVenues, setSavedGoogleVenues] = useState<any[]>([])
   const [landingMode, setLandingMode] = useState<LandingMode>('landing')
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [prefillVenueId, setPrefillVenueId] = useState<string | undefined>()
@@ -47,6 +51,21 @@ function FizzApp() {
   const [showFindFriends, setShowFindFriends] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [viewProfileUserId, setViewProfileUserId] = useState<string | undefined>()
+
+  useEffect(() => {
+    if (!token) return
+    axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setSavedGoogleVenues(res.data?.venues || []))
+      .catch(() => {})
+  }, [token])
+
+  const refreshSavedVenues = async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
+      setSavedGoogleVenues(res.data?.venues || [])
+    } catch {}
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -179,7 +198,11 @@ function FizzApp() {
           <FeedTab onSendFizz={() => setActiveTab('send')} />
         )}
         {(activeTab === 'sips' || activeTab === 'discover') && (
-          <VenueDiscovery onSendFizz={handleSendFizz} />
+          <VenueDiscovery
+            onSendFizz={handleSendFizz}
+            savedGoogleVenues={savedGoogleVenues}
+            onSavedVenuesChange={refreshSavedVenues}
+          />
         )}
         {activeTab === 'send' && (
           <SendFizz
