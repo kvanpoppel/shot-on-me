@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, TrendingUp, MoreVertical, X, Search, User, Users, MapPin, Phone, AlertTriangle, Lock } from 'lucide-react'
+import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, X, Search, User, MapPin, Phone, AlertTriangle, Lock } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -31,7 +31,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const router = useRouter()
   const [showSendForm, setShowSendForm] = useState(false)
   const [showRedeemForm, setShowRedeemForm] = useState(false)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | 'sent' | 'received' | null>('all')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [amount, setAmount] = useState('')
@@ -910,8 +909,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       </div>
 
-      <p className="text-center text-primary-400/35 text-xs px-4 mb-3">Send shots & check in to earn points — 100 pts = $5 🥃</p>
-
       {/* Primary Actions — balance-aware */}
       {balance === 0 && (
         <div className="px-4 mb-4">
@@ -1270,24 +1267,34 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       </div>
       )}
 
-      {/* Quick Actions Grid — always visible */}
+      {/* Quick Actions — balance-aware to avoid duplicate Add Funds */}
       <div className="px-4 mb-4">
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setShowAddFunds(true)}
-            className="group relative bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Funds</span>
-          </button>
+        {balance > 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowAddFunds(true)}
+              className="group relative bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Funds</span>
+            </button>
+            <button
+              onClick={() => setShowTapAndPay(true)}
+              className="group bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Radio className="w-5 h-5" />
+              <span>Tap & Pay</span>
+            </button>
+          </div>
+        ) : (
           <button
             onClick={() => setShowTapAndPay(true)}
-            className="group bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all hover:border-primary-500/60 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Radio className="w-5 h-5" />
             <span>Tap & Pay</span>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Virtual Card Manager */}
@@ -1351,8 +1358,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             <p className="text-primary-400/50 text-xs">Add funds and buy a drink for a friend — it'll show up here.</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {filteredPayments.slice(0, 5).map((payment) => {
+          <div className="space-y-2" ref={paymentsContainerRef}>
+            {filteredPayments.map((payment) => {
               const isSent = payment.senderId?._id === user?.id || payment.senderId === user?.id || payment.sender?._id === user?.id || payment.sender === user?.id
               const otherUser = isSent 
                 ? (payment.recipient || payment.recipientId)
@@ -1432,114 +1439,68 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                 </div>
               )
             })}
-            {filteredPayments.length > 5 && (
-              <p className="text-center text-primary-400/40 text-xs py-2">Showing 5 most recent</p>
+            {loadingMorePayments && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 text-primary-500 animate-spin" />
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* More Menu - Secondary Actions */}
-      <div className="px-4 mb-6">
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowMoreMenu(!showMoreMenu)
-              setShowSendForm(false)
-            }}
-            className="w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-500/10 hover:border-primary-500/50 transition-all"
-          >
-            <MoreVertical className="w-5 h-5" />
-            <span>More Options</span>
-          </button>
+      {/* Secondary Actions — always visible */}
+      <div className="px-4 mb-6 space-y-2">
+        <button
+          onClick={() => setShowRedeemForm(!showRedeemForm)}
+          className="w-full bg-black/50 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-semibold flex items-center gap-3 px-4 hover:bg-primary-500/10 hover:text-primary-500 transition-all"
+        >
+          <QrCode className="w-5 h-5" />
+          <span>Redeem Reward Code</span>
+        </button>
 
-          {showMoreMenu && (
-            <div className="mt-2 bg-black/90 border-2 border-primary-500/30 rounded-xl overflow-hidden shadow-xl">
-              <button
-                onClick={() => {
-                  setShowRedeemForm(!showRedeemForm)
-                  setShowMoreMenu(false)
-                }}
-                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3 border-b border-primary-500/10"
-              >
-                <QrCode className="w-5 h-5" />
-                <span>{showRedeemForm ? 'Hide' : 'Redeem'} Reward Code</span>
-              </button>
-              <button
-                onClick={() => {
-                  setShowPaymentMethods(!showPaymentMethods)
-                  setShowMoreMenu(false)
-                }}
-                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3 border-b border-primary-500/10"
-              >
-                <CreditCard className="w-5 h-5" />
-                <span>{showPaymentMethods ? 'Hide' : 'Manage'} Payment Methods</span>
-              </button>
-              <button
-                onClick={async () => {
-                  setShowMoreMenu(false)
-                  if (!token) return
-                  try {
-                    const res = await axios.get(`${API_URL}/wallet-provisioning/status`, {
-                      headers: { Authorization: `Bearer ${token}` }
-                    })
-                    if (!res.data.hasCard) {
-                      setError('You need an active virtual card to add to Apple/Google Wallet.')
-                    } else if (!res.data.apple?.available) {
-                      setError('Apple/Google Pay wallet provisioning is coming soon! We\'re finalizing this feature.')
-                    }
-                  } catch {
-                    setError('Apple/Google Pay provisioning — coming soon!')
-                  }
-                }}
-                className="w-full px-4 py-3 text-left text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 transition-colors flex items-center gap-3"
-              >
-                <WalletIcon className="w-5 h-5" />
-                <span>Add to Apple / Google Wallet</span>
-              </button>
-            </div>
-          )}
+        {showRedeemForm && (
+          <form onSubmit={handleRedeem} className="bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
+            <input
+              type="text"
+              value={redemptionCode}
+              onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
+              placeholder="Enter reward code"
+              required
+              className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
+            />
+            <button
+              type="submit"
+              disabled={redeeming || !redemptionCode.trim()}
+              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
+            >
+              {redeeming ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Redeeming...</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-5 h-5" />
+                  <span>Redeem</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
-          {showRedeemForm && (
-            <form onSubmit={handleRedeem} className="mt-4 bg-black/50 border-2 border-primary-500/30 rounded-xl p-5 space-y-4">
-              <div>
-                <label className="block text-primary-500 text-sm font-semibold mb-2">Reward Code (Points/Rewards)</label>
-                <p className="text-xs text-primary-400/70 mb-2">Enter a reward code from venue promotions or point system</p>
-                <input
-                  type="text"
-                  value={redemptionCode}
-                  onChange={(e) => setRedemptionCode(e.target.value.toUpperCase())}
-                  placeholder="Enter reward code"
-                  required
-                  className="w-full px-4 py-3 bg-black/60 border border-primary-500/30 rounded-lg text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={redeeming || !redemptionCode.trim()}
-                className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
-              >
-                {redeeming ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Redeeming...</span>
-                  </>
-                ) : (
-                  <>
-                    <QrCode className="w-5 h-5" />
-                    <span>Redeem</span>
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+        <button
+          onClick={() => setShowPaymentMethods(!showPaymentMethods)}
+          className="w-full bg-black/50 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-semibold flex items-center gap-3 px-4 hover:bg-primary-500/10 hover:text-primary-500 transition-all"
+        >
+          <CreditCard className="w-5 h-5" />
+          <span>Manage Payment Methods</span>
+        </button>
 
-          {showPaymentMethods && (
-            <div className="mt-4 p-5 bg-black/50 border border-primary-500/20 rounded-xl">
-              <PaymentMethodsManager />
-            </div>
-          )}
-        </div>
+        {showPaymentMethods && (
+          <div className="p-5 bg-black/50 border border-primary-500/20 rounded-xl">
+            <PaymentMethodsManager />
+          </div>
+        )}
       </div>
 
       {/* Points Booster Animation */}
