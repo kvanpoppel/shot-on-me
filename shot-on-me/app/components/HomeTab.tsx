@@ -860,16 +860,22 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     )
   }
 
+  // Consolidated venue items: active deals first, then featured, then trending
+  const venueItems: { type: 'deal'; deal: QuickDeal } | { type: 'venue'; venue: any }[] = []
+  filteredDeals.slice(0, 5).forEach(deal => (venueItems as any[]).push({ type: 'deal', deal }))
+  if (filteredDeals.length === 0) {
+    const fallback = featuredVenues.length > 0 ? featuredVenues : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
+    fallback.slice(0, 4).forEach((venue: any) => (venueItems as any[]).push({ type: 'venue', venue }))
+  }
+
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-visible pt-16" suppressHydrationWarning>
-      {/* Wallet Hero Card — adapts to balance state */}
+
+      {/* 1. Wallet Hero */}
       <div className="px-4 pt-2 mb-5">
         {walletBalance === 0 ? (
-          /* ── New / empty wallet ── */
           <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
-            <p className="text-primary-400/70 text-sm mb-0.5">
-              Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋
-            </p>
+            <p className="text-primary-400/70 text-sm mb-0.5">Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋</p>
             <p className="text-white font-semibold text-base mb-1">Ready to send your first shot?</p>
             <p className="text-primary-400/60 text-xs mb-4">Add money to your wallet to buy drinks for friends at the bar.</p>
             <button
@@ -881,21 +887,13 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             <p className="text-center text-primary-400/40 text-xs mt-3">You can also receive shots — no balance needed</p>
           </div>
         ) : (
-          /* ── Funded wallet ── */
           <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
-            <p className="text-primary-400/70 text-sm mb-0.5">
-              Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋
-            </p>
+            <p className="text-primary-400/70 text-sm mb-0.5">Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋</p>
             <p className="text-primary-400/60 text-xs">Wallet balance</p>
             <p className="text-4xl font-bold text-white mt-1 mb-4">${walletBalance.toFixed(2)}</p>
             <div className="flex gap-3">
               <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (onSendMoney) onSendMoney()
-                  else setActiveTab?.('wallet')
-                }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
                 className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
                 <Send className="w-4 h-4" />
@@ -913,59 +911,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         )}
       </div>
 
-      {/* Search Modal - Shown when search icon is clicked */}
-      {showSearchModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center p-4 pt-16">
-          <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-primary-500">Search</h2>
-              <button
-                onClick={() => {
-                  setShowSearchModal(false)
-                  setSearchQuery('')
-                }}
-                className="text-primary-400 hover:text-primary-500"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary-400/60" />
-              <input
-                type="text"
-                placeholder="Search venues, deals..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setShowSearch(true)}
-                autoFocus
-                className="w-full pl-12 pr-4 py-3.5 bg-black/60 border border-primary-500/20 rounded-xl text-primary-300 placeholder-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all backdrop-blur-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setShowSearch(false)
-                  }}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary-400/60 hover:text-primary-500"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Actions — Find & Invite Friends */}
+      {/* 2. Find & Invite Friends */}
       <div className="px-4 mb-6">
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowFindFriends(true)
-            }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFindFriends(true) }}
+            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
             <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
@@ -973,14 +924,9 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               <h3 className="text-xs font-bold tracking-tight">Find Friends</h3>
             </div>
           </button>
-
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowInviteModal(true)
-            }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden pointer-events-auto z-10"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInviteModal(true) }}
+            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
             <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
@@ -991,353 +937,62 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         </div>
       </div>
 
-      {/* Live Deals - ACTIVE PROMOTIONS - Moved to Top for Maximum Visibility */}
-      {filteredDeals.length > 0 && (
+      {/* 3. Happening Now — deals + venues, one unified section */}
+      {venueItems.length > 0 && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-                <Gift className="w-4 h-4 text-primary-500" />
-              </div>
-              <h2 className="text-xl font-bold text-primary-500 tracking-tight">Active Promotions</h2>
-              <span className="bg-primary-500/20 text-primary-500 px-2 py-0.5 rounded-full text-xs font-bold">
-                {filteredDeals.length}
-              </span>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              View All
-              <ArrowRight className="w-4 h-4 ml-1" />
+            <h2 className="text-xl font-bold text-primary-500">Happening Now</h2>
+            <button onClick={() => setActiveTab?.('map')} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
+              See All <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-          
-          {/* Real-Time Promotions Highlight */}
-          <div className="bg-gradient-to-r from-primary-500/15 to-primary-500/8 border-2 border-primary-500/30 rounded-lg p-2.5 mb-4">
-            <div className="flex items-start gap-2">
-              <Bell className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-primary-400 font-medium leading-relaxed">
-                  <span className="text-primary-500 font-bold">Real-Time Promotions</span> — Venues push instant deals straight to you. Time-sensitive, exclusive, and live right now.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {filteredDeals.map((deal, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setActiveTab?.('map')
-                  // Store venue info for MapTab to highlight
-                  if (deal.venue._id) {
-                    localStorage.setItem('highlightVenue', deal.venue._id)
-                  }
-                  // Track click analytics
-                  if (deal.venue._id) {
-                    axios.post(`${API_URL}/venues/${deal.venue._id}/promotions/track`, {
-                      promotionTitle: deal.promotion.title,
-                      type: 'click'
-                    }, {
-                      headers: { Authorization: `Bearer ${token}` }
-                    }).catch(() => {})
-                  }
-                }}
-                className="bg-gradient-to-br from-primary-500/15 via-primary-500/5 to-black/50 border-2 border-primary-500/30 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:from-primary-500/20 hover:via-primary-500/10 hover:to-black/60 transition-all backdrop-blur-sm group shadow-lg shadow-primary-500/20 active:scale-[0.98]"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                      <h3 className="font-bold text-primary-500 text-lg">{deal.venue.name}</h3>
-                      {getVenueBadge(deal.venue) && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getVenueBadge(deal.venue)?.className}`}>
-                          {getVenueBadge(deal.venue)?.label}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-primary-400 text-base font-bold mb-1">
-                      {deal.promotion.title}
-                    </p>
-                    {deal.promotion.description && (
-                      <p className="text-primary-300/80 text-sm mb-2 line-clamp-2">
-                        {deal.promotion.description}
-                      </p>
-                    )}
-                    {deal.distance && (
-                      <p className="text-xs text-primary-400/70 mb-2">{deal.distance} away</p>
-                    )}
-                  </div>
-                  {deal.promotion.type === 'happy-hour' && (
-                    <span className="bg-primary-500/30 border-2 border-primary-500/50 text-primary-500 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center flex-shrink-0 animate-pulse">
-                      <Clock className="w-3.5 h-3.5 mr-1" />
-                      LIVE
-                    </span>
-                  )}
-                  {deal.promotion.type === 'flash-deal' && (
-                    <span className="bg-red-500/30 border-2 border-red-500/50 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center flex-shrink-0 animate-pulse">
-                      <Zap className="w-3.5 h-3.5 mr-1" />
-                      FLASH
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between pt-3 border-t border-primary-500/20">
-                  <div className="flex items-center space-x-2 text-xs text-primary-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span className="font-medium">{getTimeRemaining(deal.promotion.endTime)}</span>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
+          <div className="space-y-2.5">
+            {(venueItems as any[]).map((item: any, idx: number) => {
+              if (item.type === 'deal') {
+                const deal: QuickDeal = item.deal
+                return (
+                  <div
+                    key={`deal-${idx}`}
+                    onClick={() => {
                       setActiveTab?.('map')
-                      if (deal.venue._id) {
-                        localStorage.setItem('highlightVenue', deal.venue._id)
-                      }
+                      if (deal.venue._id) localStorage.setItem('highlightVenue', deal.venue._id)
                     }}
-                    className="bg-primary-500 text-black px-5 py-2 rounded-lg text-sm font-bold hover:bg-primary-600 transition-all flex items-center shadow-lg shadow-primary-500/25"
+                    className="bg-black/50 border border-primary-500/25 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:bg-black/70 transition-all active:scale-[0.98]"
                   >
-                    View Venue
-                    <ArrowRight className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Venue Spotlight - directly tied to venue portal subscriptions */}
-      {featuredVenues.length > 0 && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5">
-                <Star className="w-4 h-4 text-primary-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-primary-500 tracking-tight">Venue Spotlight</h2>
-                <p className="text-xs text-primary-400/70 font-normal">Featured and AI-optimized venues</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              Browse
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {featuredVenues.slice(0, 4).map((venue: any) => (
-              <div
-                key={venue._id}
-                onClick={() => {
-                  if (venue._id) {
-                    localStorage.setItem('highlightVenue', venue._id)
-                  }
-                  setActiveTab?.('map')
-                }}
-                className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all backdrop-blur-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-primary-500 truncate">{venue.name}</p>
-                      {getVenueBadge(venue) && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getVenueBadge(venue)?.className}`}>
-                          {getVenueBadge(venue)?.label}
-                        </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-primary-500 truncate">{deal.venue.name}</p>
+                        <p className="text-sm text-white/80 mt-0.5 line-clamp-1">{deal.promotion.title}</p>
+                        <div className="flex items-center gap-1 mt-1.5 text-xs text-primary-400/60">
+                          <Clock className="w-3 h-3" />
+                          <span>{getTimeRemaining(deal.promotion.endTime)}</span>
+                        </div>
+                      </div>
+                      {deal.promotion.type === 'happy-hour' && (
+                        <span className="text-xs font-bold text-primary-500 bg-primary-500/15 border border-primary-500/30 px-2 py-1 rounded-lg flex-shrink-0 animate-pulse">LIVE</span>
+                      )}
+                      {deal.promotion.type === 'flash-deal' && (
+                        <span className="text-xs font-bold text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-1 rounded-lg flex-shrink-0 animate-pulse">FLASH</span>
                       )}
                     </div>
-                    <p className="text-xs text-primary-400/70 mt-1 line-clamp-2">
-                      {venue.description || 'Top venue with active promotions right now.'}
-                    </p>
-                    <p className="text-[11px] text-primary-400/80 mt-2">
-                      {venue.promotions?.length || 0} active special{(venue.promotions?.length || 0) !== 1 ? 's' : ''}
-                    </p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-primary-400/70 flex-shrink-0 mt-1" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Live Activity Strip */}
-      {!searchQuery && activityStrip.length > 0 && (
-        <div className="px-0 mb-4 overflow-hidden border-y border-primary-500/10 bg-primary-500/3">
-          <div
-            className="flex gap-0 py-2"
-            style={{ animation: 'marquee 30s linear infinite', whiteSpace: 'nowrap', width: 'max-content' }}
-          >
-            {[...activityStrip, ...activityStrip].map((event, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 px-5 text-xs text-primary-400/70 flex-shrink-0">
-                <span className="w-1 h-1 rounded-full bg-primary-500/50 flex-shrink-0" />
-                {event}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* What's Happening Now - Venue Promotions & Deals */}
-      {liveActivity.length > 0 && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5">
-                <Gift className="w-4 h-4 text-primary-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-primary-500 tracking-tight">What&apos;s Happening Now</h2>
-                <p className="text-xs text-primary-400/70 font-normal">Venue deals &amp; promotions</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              See All
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {liveActivity.slice(0, 5).map((activity) => (
-              <div
-                key={activity.id}
-                onClick={() => {
-                  if (activity.venue) {
-                    setActiveTab?.('map')
-                    // Track view analytics for promotion
-                    if (activity.event && activity.venue?._id) {
-                      axios.post(`${API_URL}/venues/${activity.venue._id}/promotions/track`, {
-                        promotionTitle: activity.event.title,
-                        type: 'view'
-                      }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      }).catch(() => {})
-                    }
-                  }
-                }}
-                className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border-2 border-primary-500/30 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:from-primary-500/15 transition-all backdrop-blur-sm group shadow-lg shadow-primary-500/10"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1.5">
-                      <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                      <p className="text-sm font-bold text-primary-500">{activity.venue?.name}</p>
-                      {getVenueBadge(activity.venue) ? (
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${getVenueBadge(activity.venue)?.className}`}>
-                          {getVenueBadge(activity.venue)?.label}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-primary-400/60 bg-primary-500/10 px-1.5 py-0.5 rounded">Promoted</span>
-                      )}
-                    </div>
-                    {activity.type === 'venue-event' && (
-                      <>
-                        <p className="text-base font-bold text-primary-400 mb-1">{activity.event?.title}</p>
-                        {activity.event?.description && (
-                          <p className="text-xs text-primary-400/80 mb-2 line-clamp-2">{activity.event.description}</p>
-                        )}
-                        {activity.event?.type && (
-                          <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-2 ${
-                            activity.event.type === 'happy-hour' ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30' :
-                            activity.event.type === 'flash-deal' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                            'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                          }`}>
-                            {activity.event.type === 'happy-hour' ? '🍺 Happy Hour' :
-                             activity.event.type === 'flash-deal' ? '⚡ Flash Deal' :
-                             activity.event.type === 'special' ? '⭐ Special' :
-                             activity.event.type}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0 ml-3">
-                    <div className="w-12 h-12 border-2 border-primary-500/40 rounded-lg flex items-center justify-center bg-primary-500/10">
-                      <Gift className="w-6 h-6 text-primary-500" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-primary-500/20">
-                  <div className="flex items-center space-x-2 text-xs text-primary-400/70">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      {activity.event?.timeRemaining > 0 
-                        ? `${Math.floor(activity.event.timeRemaining / 60000)} min remaining`
-                        : 'Ending soon'}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setActiveTab?.('map')
-                      // Track click analytics
-                      if (activity.event && activity.venue?._id) {
-                        axios.post(`${API_URL}/venues/${activity.venue._id}/promotions/track`, {
-                          promotionTitle: activity.event.title,
-                          type: 'click'
-                        }, {
-                          headers: { Authorization: `Bearer ${token}` }
-                        }).catch(() => {})
-                      }
-                    }}
-                    className="bg-primary-500 text-black px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-primary-600 transition-all flex items-center"
-                  >
-                    Claim Deal
-                    <ArrowRight className="w-3 h-3 ml-1" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* AI-Powered Recommendations */}
-      {aiEnabled && aiRecommendations.length > 0 && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="bg-gradient-to-br from-primary-500/20 to-primary-500/10 border border-primary-500/30 rounded-lg p-1.5">
-              <Zap className="w-4 h-4 text-primary-500" />
-            </div>
-            <h2 className="text-lg font-bold text-primary-500 tracking-tight">For You</h2>
-            <span className="text-xs text-primary-400/60 bg-primary-500/10 px-2 py-0.5 rounded-full">AI</span>
-          </div>
-          <div className="space-y-3">
-            {aiRecommendations.map((rec, idx) => {
-              const venue = rec.venue
+                )
+              }
+              const venue = item.venue
               return (
                 <div
-                  key={rec.id || venue._id || idx}
-                  onClick={() => {
-                    if (venue?._id) {
-                      localStorage.setItem('highlightVenue', venue._id)
-                    }
-                    setActiveTab?.('map')
-                  }}
-                  className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border-2 border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:from-primary-500/15 transition-all backdrop-blur-sm group"
+                  key={`venue-${venue._id}`}
+                  onClick={() => { if (venue._id) localStorage.setItem('highlightVenue', venue._id); setActiveTab?.('map') }}
+                  className="bg-black/50 border border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all active:scale-[0.98]"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1">
-                      <Star className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-primary-500 truncate">{venue.name}</p>
-                        <p className="text-xs text-primary-400/70 mt-0.5">Recommended for you</p>
-                        <p className="text-[11px] text-primary-400/70 mt-1 truncate">Why: {rec.reason}</p>
-                      </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-primary-500 truncate">{venue.name}</p>
+                      <p className="text-xs text-primary-400/60 mt-0.5 line-clamp-1">
+                        {venue.description || (venue.promotions?.length > 0 ? `${venue.promotions.length} active special${venue.promotions.length !== 1 ? 's' : ''}` : 'Tap & pay venue')}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full text-primary-500">
-                        {rec.confidence}% match
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                    </div>
+                    <ArrowRight className="w-4 h-4 text-primary-400/50 flex-shrink-0" />
                   </div>
                 </div>
               )
@@ -1345,235 +1000,59 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
           </div>
         </div>
       )}
-      {!aiEnabled && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="bg-black/40 border border-primary-500/20 rounded-xl p-3">
-            <p className="text-xs text-primary-400/80">
-              AI suggestions are currently off. You can enable them in `Settings {'>'} AI Personalization`.
-            </p>
-          </div>
-        </div>
-      )}
 
-
-      {/* Trending Now - Venue-focused: discover trending venues */}
-      {filteredTrending.length > 0 && !searchQuery && (
+      {/* 4. Friends out tonight */}
+      {nearbyFriends.length > 0 && (
         <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
-            >
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
-                <MapPin className="w-4 h-4 text-primary-500" />
-              </div>
-              <div className="text-left">
-                <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">Trending Now</h2>
-                <p className="text-xs text-primary-400/70 font-normal">Discover venues</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-            >
-              See All
-              <ArrowRight className="w-4 h-4 ml-1" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold text-primary-500">Friends Out Tonight</h2>
+            <button onClick={() => setActiveTab?.('happening')} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
+              See All <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            {filteredTrending
-              .filter((venue: any) => venue.activity && venue.activity.friendCount > 0) // Only show venues with friend activity
-              .slice(0, 5)
-              .map((venue: any) => (
+          <div className="space-y-2">
+            {nearbyFriends.map((friend) => (
               <div
-                key={venue._id}
-                onClick={() => setActiveTab?.('map')}
-                className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all backdrop-blur-sm group"
+                key={friend._id || friend.id}
+                onClick={() => onViewProfile?.(friend._id || friend.id)}
+                className="bg-black/50 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all active:scale-[0.98]"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3 flex-1">
-                    <div className="relative">
-                      <MapPin className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                      {venue.activity?.friendCount > 0 && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary-500 rounded-full border-2 border-black flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-black">{venue.activity.friendCount}</span>
-                        </div>
-                      )}
+                <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                  {friend.profilePicture ? (
+                    <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                      <span className="text-primary-500 font-medium text-sm">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-primary-500 truncate">{venue.name}</p>
-                      {venue.activity && (
-                        <div className="flex items-center space-x-3 mt-1.5 flex-wrap gap-2">
-                          {venue.activity.friendCount > 0 && (
-                            <div className="flex items-center space-x-1">
-                              <Users className="w-3 h-3 text-primary-500" />
-                              <p className="text-xs text-primary-400">
-                                <span className="text-primary-500 font-bold">{venue.activity.friendCount}</span>
-                                <span className="text-primary-400/70"> friend{venue.activity.friendCount !== 1 ? 's' : ''} here now</span>
-                              </p>
-                            </div>
-                          )}
-                          {venue.activity.checkIns > 0 && (
-                            <p className="text-xs text-primary-400/70">
-                              <span className="text-primary-500 font-semibold">{venue.activity.checkIns}</span> check-in{venue.activity.checkIns !== 1 ? 's' : ''}
-                            </p>
-                          )}
-                          {venue.activity.posts > 0 && (
-                            <p className="text-xs text-primary-400/70">
-                              <span className="text-primary-500 font-semibold">{venue.activity.posts}</span> post{venue.activity.posts !== 1 ? 's' : ''}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <button className="bg-primary-500/20 hover:bg-primary-500/30 text-primary-500 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center">
-                    Join
-                    <ArrowRight className="w-3 h-3 ml-1" />
-                  </button>
+                  )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-primary-500 text-sm">{friend.firstName} {friend.lastName}</p>
+                  {friend.distance && (
+                    <p className="text-xs text-primary-400/60">
+                      {typeof friend.distance === 'number'
+                        ? friend.distance < 0.1 ? `${Math.round(friend.distance * 5280)}ft away` : `${friend.distance.toFixed(1)}mi away`
+                        : String(friend.distance).replace('miles', 'mi')}
+                    </p>
+                  )}
+                </div>
+                <ArrowRight className="w-4 h-4 text-primary-400/50 flex-shrink-0" />
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* What's Happening - Friend-focused: nearby friends, navigates to happening */}
-      {nearbyFriends.length > 0 && !searchQuery && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => setActiveTab?.('happening')}
-              className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity group"
-            >
-              <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5 group-hover:bg-primary-500/20 transition-colors">
-                <Users className="w-4 h-4 text-primary-500" />
-              </div>
-              <div className="text-left">
-                <h2 className="text-lg font-bold text-primary-500 tracking-tight group-hover:text-primary-400 transition-colors">What&apos;s Happening</h2>
-                <p className="text-xs text-primary-400/70 font-normal">Where your friends are</p>
-              </div>
-            </button>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setActiveTab?.('happening')}
-                className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-              >
-                See All
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </button>
-              <button
-                onClick={() => setShowFriendsMap(!showFriendsMap)}
-                className="text-primary-400 hover:text-primary-500 text-sm flex items-center font-medium"
-              >
-                {showFriendsMap ? (
-                  <>
-                    <List className="w-4 h-4 mr-1" />
-                    List
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="w-4 h-4 mr-1" />
-                    Map
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {showFriendsMap && mapsLoaded ? (
-            <div className="bg-black/50 border-2 border-primary-500/20 rounded-xl overflow-hidden backdrop-blur-sm" style={{ height: '400px' }}>
-              <GoogleMapComponent
-                center={userLocation || { lat: 39.7684, lng: -86.1581 }}
-                zoom={13}
-                markers={nearbyFriends
-                  .filter(friend => friend.location?.latitude && friend.location?.longitude)
-                  .map(friend => ({
-                    id: friend._id || friend.id,
-                    position: {
-                      lat: friend.location.latitude,
-                      lng: friend.location.longitude
-                    },
-                    title: `${friend.firstName} ${friend.lastName}`,
-                    label: {
-                      text: friend.firstName?.[0] || '?',
-                      color: '#B8945A',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    },
-                    icon: friend.profilePicture ? {
-                      url: friend.profilePicture,
-                      scaledSize: { width: 40, height: 40 },
-                      anchor: { x: 20, y: 20 }
-                    } : undefined,
-                    onClick: () => onViewProfile?.(friend._id || friend.id)
-                  }))}
-              />
-            </div>
-          ) : showFriendsMap && !mapsLoaded ? (
-            <div className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-8 flex items-center justify-center backdrop-blur-sm" style={{ height: '400px' }}>
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-primary-500/40 mx-auto mb-4" />
-                <p className="text-primary-400/80 text-sm">Loading map...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {nearbyFriends.map((friend) => (
-                <div
-                  key={friend._id || friend.id}
-                  className="bg-black/50 border-2 border-primary-500/20 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm cursor-pointer hover:bg-black/60 hover:border-primary-500/40 transition-all group"
-                  onClick={() => onViewProfile?.(friend._id || friend.id)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                      {friend.profilePicture ? (
-                        <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                          <span className="text-primary-500 font-medium text-sm">
-                            {friend.firstName?.[0]}{friend.lastName?.[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-bold text-primary-500 tracking-tight">
-                        {friend.firstName} {friend.lastName}
-                      </p>
-                      {friend.distance && (
-                        <p className="text-xs text-primary-400/70 font-light">
-                          {typeof friend.distance === 'string' && friend.distance.includes('miles')
-                            ? friend.distance.replace('miles', 'mi')
-                            : typeof friend.distance === 'number'
-                            ? friend.distance < 0.1
-                              ? `${Math.round(friend.distance * 5280)}ft away`
-                              : `${friend.distance.toFixed(1)}mi away`
-                            : friend.distance}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-primary-400/60 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* New User Experience — full engagement section when no deals + no nearby friends */}
-      {quickDeals.length === 0 && nearbyFriends.length === 0 && !searchQuery && (
+      {/* 5. New user fallback — only when no deals and no friends */}
+      {quickDeals.length === 0 && nearbyFriends.length === 0 && (
         <div className="px-4 space-y-4 pb-2">
-
-          {/* How it works — 3 step visual */}
           <div>
             <p className="text-primary-400/50 text-[10px] font-bold uppercase tracking-widest mb-3">How it works</p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { Icon: Wallet,  label: 'Add Money',   sub: 'Fund your wallet once'       },
-                { Icon: MapPin,  label: 'Hit the Bar',  sub: 'Find a tap & pay venue'      },
-                { Icon: Send,    label: 'Send a Shot',  sub: 'Buy a drink for a friend'    },
+                { Icon: Wallet, label: 'Add Money',  sub: 'Fund your wallet once'    },
+                { Icon: MapPin, label: 'Hit the Bar', sub: 'Find a tap & pay venue'   },
+                { Icon: Send,   label: 'Send a Shot', sub: 'Buy a drink for a friend' },
               ] as const).map(({ Icon, label, sub }) => (
                 <div key={label} className="bg-black/50 border border-primary-500/20 rounded-xl p-3 text-center">
                   <div className="w-8 h-8 bg-primary-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -1585,8 +1064,6 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               ))}
             </div>
           </div>
-
-          {/* FOMO — find your crew */}
           <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5">
             <p className="text-white font-bold text-base mb-1">Your crew is out there tonight</p>
             <p className="text-primary-400/60 text-sm mb-4">Find friends on Shot On Me and see where they're headed. Never miss a round.</p>
@@ -1598,14 +1075,10 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               Find Your Friends
             </button>
           </div>
-
-          {/* Viral share — be the one who buys the round */}
           <div className="relative bg-gradient-to-br from-primary-500/15 via-black/70 to-black/90 border border-primary-500/30 rounded-2xl p-5 overflow-hidden">
             <div className="absolute top-0 right-0 w-28 h-28 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
             <p className="text-white font-bold text-base mb-1 relative z-10">Be the one who buys the round</p>
-            <p className="text-primary-400/60 text-sm mb-4 relative z-10">
-              Invite friends — the more people on Shot On Me, the more shots fly.
-            </p>
+            <p className="text-primary-400/60 text-sm mb-4 relative z-10">Invite friends — the more people on Shot On Me, the more shots fly.</p>
             <button
               onClick={() => setShowInviteModal(true)}
               className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 relative z-10"
@@ -1614,8 +1087,6 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               Invite Friends Now
             </button>
           </div>
-
-          {/* Venue discovery teaser */}
           <div className="bg-black/40 border border-primary-500/15 rounded-2xl p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1634,35 +1105,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-
         </div>
       )}
 
-      {/* Search Results Empty State */}
-      {searchQuery && filteredDeals.length === 0 && filteredTrending.length === 0 && (
-        <div className="px-4">
-          <div className="text-center py-16">
-            <Search className="w-12 h-12 text-primary-500/40 mx-auto mb-4" />
-            <p className="text-primary-400/80 mb-2 font-light text-lg">No results found</p>
-            <p className="text-primary-500/60 text-sm font-light">Try a different search term</p>
-          </div>
-        </div>
-      )}
-
-      {/* Invite Friends Modal */}
-      <InviteFriendsModal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-      />
-
-      {/* Find Friends Modal */}
+      {/* Modals */}
+      <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
       <FindFriends
         isOpen={showFindFriends}
         onClose={() => setShowFindFriends(false)}
-        onViewProfile={(userId) => {
-          setShowFindFriends(false)
-          onViewProfile?.(userId)
-        }}
+        onViewProfile={(userId) => { setShowFindFriends(false); onViewProfile?.(userId) }}
       />
     </div>
   )
