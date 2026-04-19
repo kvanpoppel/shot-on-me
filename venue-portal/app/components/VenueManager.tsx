@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, Wine, Tag, CalendarDays, TrendingUp, Moon, Plus, Trash2, Camera } from 'lucide-react'
+import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, Wine, Tag, CalendarDays, TrendingUp, Moon, Plus, Trash2, Camera, Sparkles } from 'lucide-react'
 import VenueMap from './VenueMap'
 
 import { getApiUrl } from '../utils/api'
@@ -54,7 +54,13 @@ export default function VenueManager() {
     featuredUntil: '',
     subscriptionExpiresAt: ''
   })
-  const [activeSection, setActiveSection] = useState<'info' | 'wine' | 'happyhour' | 'special' | 'weekend' | 'trending' | 'tonight'>('info')
+  const [activeSection, setActiveSection] = useState<'info' | 'amenities' | 'wine' | 'happyhour' | 'special' | 'weekend' | 'trending' | 'tonight'>('info')
+  const [amenities, setAmenities] = useState({
+    kidsFriendly: false, dogFriendly: false, hasFood: false, byob: false,
+    trivia: false, liveMusic: false, outdoorSeating: false, happyHour: false,
+    poolTables: false, danceFloor: false, sportsTv: false, karaoke: false, arcade: false,
+  })
+  const [amenitiesSaving, setAmenitiesSaving] = useState(false)
   const [menuSaving, setMenuSaving] = useState(false)
   const [wineMenu, setWineMenu] = useState<Array<{ name: string; description: string; price: string; varietal: string }>>([])
   const [happyHour, setHappyHour] = useState({ times: '', description: '' })
@@ -152,6 +158,7 @@ export default function VenueManager() {
         if (myVenue.trending) setTrending(myVenue.trending)
         if (myVenue.tonight) setTonight(myVenue.tonight)
         if (myVenue.coverPhoto) setCoverPhotoUrl(myVenue.coverPhoto)
+        if (myVenue.amenities) setAmenities({ ...amenities, ...myVenue.amenities })
       } else {
         if (process.env.NODE_ENV === 'development') {
           console.debug('No venue found for user:', user.id)
@@ -873,6 +880,7 @@ export default function VenueManager() {
         <div className="flex overflow-x-auto scrollbar-hide bg-black/60 border-b border-primary-500/15">
           {([
             { id: 'info',      label: 'Info',         icon: MapPin },
+            { id: 'amenities', label: 'Amenities',    icon: Sparkles },
             { id: 'wine',      label: 'Wine',         icon: Wine },
             { id: 'happyhour', label: 'Happy Hour',   icon: Clock },
             { id: 'special',   label: 'Special',      icon: Tag },
@@ -939,6 +947,75 @@ export default function VenueManager() {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Amenities */}
+          {activeSection === 'amenities' && (
+            <div className="space-y-4">
+              <p className="text-primary-400/60 text-xs">Tell guests what your venue offers. These appear as filter badges in the Shot On Me app and power AI recommendations.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { key: 'kidsFriendly',   label: '👶 Kids Friendly' },
+                  { key: 'dogFriendly',    label: '🐕 Dog Friendly' },
+                  { key: 'hasFood',        label: '🍕 Food Served' },
+                  { key: 'byob',           label: '🥂 BYOB' },
+                  { key: 'trivia',         label: '🎯 Trivia Night' },
+                  { key: 'liveMusic',      label: '🎵 Live Music' },
+                  { key: 'outdoorSeating', label: '🌿 Outdoor Seating' },
+                  { key: 'happyHour',      label: '🍺 Happy Hour' },
+                  { key: 'poolTables',     label: '🎱 Pool Tables' },
+                  { key: 'danceFloor',     label: '🕺 Dance Floor' },
+                  { key: 'sportsTv',       label: '📺 Sports TV' },
+                  { key: 'karaoke',        label: '🎤 Karaoke' },
+                  { key: 'arcade',         label: '🎮 Arcade' },
+                ] as const).map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                      amenities[key]
+                        ? 'bg-primary-500/15 border-primary-500/60 text-primary-400'
+                        : 'bg-black/30 border-primary-500/15 text-primary-400/50 hover:border-primary-500/30'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={amenities[key]}
+                      onChange={(e) => setAmenities({ ...amenities, [key]: e.target.checked })}
+                      className="sr-only"
+                    />
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      amenities[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/30'
+                    }`}>
+                      {amenities[key] && <span className="text-black text-xs font-bold leading-none">✓</span>}
+                    </div>
+                    <span className="text-sm font-medium">{label}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={async () => {
+                  if (!token || !venue) return
+                  setAmenitiesSaving(true)
+                  try {
+                    await axios.put(
+                      `${getApiUrl()}/venues/${venue._id}`,
+                      { amenities },
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    )
+                    alert('Amenities saved!')
+                  } catch {
+                    alert('Failed to save amenities.')
+                  } finally {
+                    setAmenitiesSaving(false)
+                  }
+                }}
+                disabled={amenitiesSaving}
+                className="flex items-center gap-2 bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-600 disabled:opacity-50 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                {amenitiesSaving ? 'Saving...' : 'Save Amenities'}
+              </button>
             </div>
           )}
 

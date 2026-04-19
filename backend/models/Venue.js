@@ -214,6 +214,21 @@ const venueSchema = new mongoose.Schema({
   },
   website: { type: String, default: '' },        // Venue's own website URL
   placeId: { type: String, default: '' },        // Google Places ID for matching
+  amenities: {
+    kidsFriendly:   { type: Boolean, default: false },
+    dogFriendly:    { type: Boolean, default: false },
+    hasFood:        { type: Boolean, default: false },
+    byob:           { type: Boolean, default: false },
+    trivia:         { type: Boolean, default: false },
+    liveMusic:      { type: Boolean, default: false },
+    outdoorSeating: { type: Boolean, default: false },
+    happyHour:      { type: Boolean, default: false },
+    poolTables:     { type: Boolean, default: false },
+    danceFloor:     { type: Boolean, default: false },
+    sportsTv:       { type: Boolean, default: false },
+    karaoke:        { type: Boolean, default: false },
+    arcade:         { type: Boolean, default: false },
+  },
 }, {
   timestamps: true
 });

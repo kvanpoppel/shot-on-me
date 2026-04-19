@@ -175,7 +175,7 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 // Update current user profile (firstName, lastName, etc.) - must come after /me/profile-picture
 router.put('/me', auth, async (req, res) => {
   try {
-    const { firstName, lastName, phoneNumber, username, bio } = req.body;
+    const { firstName, lastName, phoneNumber, username, bio, venuePreferences } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -213,6 +213,11 @@ router.put('/me', auth, async (req, res) => {
     // Update bio if provided (max 160 chars)
     if (bio !== undefined) {
       updateData.bio = bio.trim().slice(0, 160);
+    }
+
+    // Update venue preferences if provided
+    if (venuePreferences !== undefined) {
+      updateData.venuePreferences = venuePreferences;
     }
 
     // Use findByIdAndUpdate to avoid validation issues

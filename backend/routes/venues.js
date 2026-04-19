@@ -170,6 +170,66 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// GET /api/venues/recommendations — AI-powered venue recommendations based on user preferences
+router.get('/recommendations', auth, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.userId).select('venuePreferences');
+    const prefs = user?.venuePreferences || {};
+
+    // Build list of preferred amenity keys (only those set to true)
+    const preferredKeys = Object.entries(prefs)
+      .filter(([, v]) => v === true)
+      .map(([k]) => k);
+
+    const venues = await Venue.find({ isActive: true }).limit(100);
+
+    const scored = venues.map(venue => {
+      const amenities = venue.amenities || {};
+      let matchCount = 0;
+      const matchedLabels = [];
+
+      const labelMap = {
+        kidsFriendly: 'Kids friendly', dogFriendly: 'Dog friendly', hasFood: 'Food served',
+        byob: 'BYOB', trivia: 'Trivia night', liveMusic: 'Live music',
+        outdoorSeating: 'Outdoor seating', happyHour: 'Happy hour',
+        poolTables: 'Pool tables', danceFloor: 'Dance floor',
+        sportsTv: 'Sports TV', karaoke: 'Karaoke', arcade: 'Arcade',
+      };
+
+      for (const key of preferredKeys) {
+        if (amenities[key]) {
+          matchCount++;
+          matchedLabels.push(labelMap[key] || key);
+        }
+      }
+
+      return { venue, matchCount, matchedLabels };
+    });
+
+    // Sort by match count descending, then by followerCount
+    scored.sort((a, b) => b.matchCount - a.matchCount || (b.venue.followerCount || 0) - (a.venue.followerCount || 0));
+
+    // Return top 10 with match info; only include venues with at least 1 match if prefs set
+    const top = (preferredKeys.length > 0 ? scored.filter(s => s.matchCount > 0) : scored).slice(0, 10);
+
+    res.json({
+      recommendations: top.map(({ venue, matchCount, matchedLabels }) => ({
+        ...venue.toObject(),
+        matchCount,
+        matchedLabels,
+        matchReason: matchedLabels.length > 0
+          ? `Matches your vibe: ${matchedLabels.slice(0, 3).join(', ')}${matchedLabels.length > 3 ? ` +${matchedLabels.length - 3} more` : ''}`
+          : 'Popular near you',
+      })),
+      hasPreferences: preferredKeys.length > 0,
+    });
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /api/venues/:venueId
 router.get('/:venueId', auth, async (req, res) => {
   try {
@@ -288,7 +348,7 @@ router.put('/:venueId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this venue' });
     }
 
-    const { name, address, phone, email, website, schedule, location, description, subscriptionTier, isFeatured, featuredUntil, subscriptionExpiresAt } = req.body;
+    const { name, address, phone, email, website, schedule, location, description, subscriptionTier, isFeatured, featuredUntil, subscriptionExpiresAt, amenities } = req.body;
 
     // Update fields if provided
     if (name) venue.name = name;
@@ -304,6 +364,8 @@ router.put('/:venueId', auth, async (req, res) => {
         coordinates: [location.longitude, location.latitude]
       };
     }
+    // Amenities
+    if (amenities) venue.amenities = { ...(venue.amenities || {}), ...amenities };
     // Subscription and featured status
     if (subscriptionTier !== undefined) venue.subscriptionTier = subscriptionTier;
     if (isFeatured !== undefined) venue.isFeatured = isFeatured;

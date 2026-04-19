@@ -18,7 +18,8 @@ import {
   Settings,
   Pencil,
   X,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -67,7 +68,13 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const [friends, setFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends'>('posts')
+  const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends' | 'vibe'>('posts')
+  const [venuePrefs, setVenuePrefs] = useState({
+    kidsFriendly: false, dogFriendly: false, hasFood: false, byob: false,
+    trivia: false, liveMusic: false, outdoorSeating: false, happyHour: false,
+    poolTables: false, danceFloor: false, sportsTv: false, karaoke: false,
+  })
+  const [savingPrefs, setSavingPrefs] = useState(false)
   const [stats, setStats] = useState({
     postsCount: 0,
     checkInsCount: 0,
@@ -93,6 +100,27 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
     } finally {
       setUploadingPhoto(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
+
+  // Load venue preferences from user object
+  useEffect(() => {
+    const prefs = (user as any)?.venuePreferences
+    if (prefs) setVenuePrefs(p => ({ ...p, ...prefs }))
+  }, [user])
+
+  const saveVenuePrefs = async () => {
+    if (!token) return
+    setSavingPrefs(true)
+    try {
+      await axios.put(`${API_URL}/users/me`, { venuePreferences: venuePrefs }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (updateUser) await updateUser({})
+    } catch (e) {
+      console.error('Failed to save preferences', e)
+    } finally {
+      setSavingPrefs(false)
     }
   }
 
@@ -432,6 +460,17 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
           <Users className="w-4 h-4 inline mr-1.5" />
           Friends
         </button>
+        <button
+          onClick={() => setActiveView('vibe')}
+          className={`flex-1 py-3 text-sm font-medium transition-all ${
+            activeView === 'vibe'
+              ? 'text-primary-500 border-b-2 border-primary-500'
+              : 'text-primary-400/70 hover:text-primary-500'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 inline mr-1.5" />
+          My Vibe
+        </button>
       </div>
 
       {/* Content Area */}
@@ -618,6 +657,62 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeView === 'vibe' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-bold text-primary-500 mb-0.5">My Vibe</p>
+              <p className="text-xs text-primary-400/50 mb-4">Tell us what you like — the AI uses this to recommend venues that match your style and notify you when the right spot has your vibe tonight.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {([
+                { key: 'kidsFriendly',   label: '👶 Kids Friendly' },
+                { key: 'dogFriendly',    label: '🐕 Dog Friendly' },
+                { key: 'hasFood',        label: '🍕 Food Served' },
+                { key: 'byob',           label: '🥂 BYOB' },
+                { key: 'trivia',         label: '🎯 Trivia Night' },
+                { key: 'liveMusic',      label: '🎵 Live Music' },
+                { key: 'outdoorSeating', label: '🌿 Outdoor Seating' },
+                { key: 'happyHour',      label: '🍺 Happy Hour' },
+                { key: 'poolTables',     label: '🎱 Pool Tables' },
+                { key: 'danceFloor',     label: '🕺 Dance Floor' },
+                { key: 'sportsTv',       label: '📺 Sports TV' },
+                { key: 'karaoke',        label: '🎤 Karaoke' },
+              ] as const).map(({ key, label }) => (
+                <label
+                  key={key}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                    venuePrefs[key]
+                      ? 'bg-primary-500/15 border-primary-500/50 text-primary-400'
+                      : 'bg-black/30 border-primary-500/10 text-primary-400/40 hover:border-primary-500/25'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={venuePrefs[key]}
+                    onChange={(e) => setVenuePrefs({ ...venuePrefs, [key]: e.target.checked })}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    venuePrefs[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/25'
+                  }`}>
+                    {venuePrefs[key] && <span className="text-black text-xs font-bold leading-none">✓</span>}
+                  </div>
+                  <span className="text-sm font-medium">{label}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={saveVenuePrefs}
+              disabled={savingPrefs}
+              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50 mt-2"
+            >
+              {savingPrefs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {savingPrefs ? 'Saving...' : 'Save My Vibe'}
+            </button>
+            <p className="text-[11px] text-primary-400/30 text-center">Your preferences power the "For You" section on the Venues tab.</p>
           </div>
         )}
       </div>

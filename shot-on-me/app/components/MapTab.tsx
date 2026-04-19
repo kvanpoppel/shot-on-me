@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink, Sparkles } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -81,6 +81,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [circularFriendAvatars, setCircularFriendAvatars] = useState<Map<string, string>>(new Map())
   const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
   const [justSavedPlaceId, setJustSavedPlaceId] = useState<string | null>(null)
+  const [amenityFilters, setAmenityFilters] = useState<Set<string>>(new Set())
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [loadingRecs, setLoadingRecs] = useState(false)
+  const [hasPreferences, setHasPreferences] = useState(false)
 
   // Load already-saved Google venues from backend on mount
   useEffect(() => {
@@ -94,6 +98,28 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       })
       .catch((err) => console.error('[SavedVenues] Failed to load saved placeIds:', err?.response?.status, err?.message))
   }, [token, API_URL])
+
+  // Fetch AI recommendations
+  useEffect(() => {
+    if (!token) return
+    setLoadingRecs(true)
+    axios.get(`${API_URL}/venues/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        setRecommendations(res.data.recommendations || [])
+        setHasPreferences(res.data.hasPreferences || false)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRecs(false))
+  }, [token, API_URL])
+
+  const toggleAmenityFilter = (key: string) => {
+    setAmenityFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const handleSaveGoogleVenue = async (venue: any, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -536,6 +562,14 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       })
     }
 
+    // Apply amenity filters first (multi-select AND logic — applied to all filter paths)
+    if (amenityFilters.size > 0) {
+      filtered = filtered.filter(venue => {
+        const a = venue.amenities || {}
+        return Array.from(amenityFilters).every(key => a[key] === true)
+      })
+    }
+
     // Apply promotion filter
     if (filter === 'all') return rankVenues(filtered)
     if (filter === 'favorites') {
@@ -672,7 +706,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       }
       return false
     }))
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance, favoriteVenueIds, rankVenues])
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance, favoriteVenueIds, rankVenues, amenityFilters])
 
   // Get category icon
   const getCategoryIcon = useCallback((category: string) => {
@@ -1429,6 +1463,45 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             </div>
           </div>
           
+          {/* Amenity filter chips */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4 mt-1">
+            {([
+              { key: 'dogFriendly',    label: '🐕 Dogs' },
+              { key: 'kidsFriendly',   label: '👶 Kids' },
+              { key: 'hasFood',        label: '🍕 Food' },
+              { key: 'byob',           label: '🥂 BYOB' },
+              { key: 'trivia',         label: '🎯 Trivia' },
+              { key: 'liveMusic',      label: '🎵 Live Music' },
+              { key: 'outdoorSeating', label: '🌿 Outdoor' },
+              { key: 'happyHour',      label: '🍺 Happy Hr' },
+              { key: 'poolTables',     label: '🎱 Pool' },
+              { key: 'danceFloor',     label: '🕺 Dancing' },
+              { key: 'sportsTv',       label: '📺 Sports' },
+              { key: 'karaoke',        label: '🎤 Karaoke' },
+              { key: 'arcade',         label: '🎮 Arcade' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => toggleAmenityFilter(key)}
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  amenityFilters.has(key)
+                    ? 'bg-primary-500 text-black shadow-md'
+                    : 'bg-black/60 border border-primary-500/20 text-primary-400/70 hover:border-primary-500/40'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            {amenityFilters.size > 0 && (
+              <button
+                onClick={() => setAmenityFilters(new Set())}
+                className="flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/20 border border-red-500/30 text-red-400 whitespace-nowrap"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
           {/* View Toggle - Compact */}
           <div className="flex items-center justify-end gap-1.5">
             <button
@@ -1734,6 +1807,45 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 })}
               </div>
               <div className="border-b border-primary-500/10 mt-2.5 mb-2" />
+            </div>
+          )}
+
+          {/* AI Recommendations — For You */}
+          {recommendations.length > 0 && filter === 'all' && amenityFilters.size === 0 && !searchQuery && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Sparkles className="w-4 h-4 text-primary-500" />
+                <span className="text-sm font-bold text-primary-500">For You</span>
+                {!hasPreferences && (
+                  <span className="text-[10px] text-primary-400/40 ml-1">Set preferences in Profile to personalize</span>
+                )}
+              </div>
+              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-3 px-3">
+                {recommendations.slice(0, 6).map((venue: any) => (
+                  <div
+                    key={venue._id}
+                    onClick={() => setViewingVenueId(venue._id)}
+                    className="flex-shrink-0 w-44 bg-black/50 border border-primary-500/20 rounded-2xl overflow-hidden cursor-pointer hover:border-primary-500/50 transition-all"
+                  >
+                    <div className="h-24 bg-gradient-to-br from-primary-500/10 to-black/40 relative overflow-hidden">
+                      {venue.coverPhoto ? (
+                        <img src={venue.coverPhoto} alt={venue.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-3xl font-bold text-primary-500/40">{venue.name?.[0]?.toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2.5">
+                      <p className="font-bold text-primary-400 text-xs line-clamp-1">{venue.name}</p>
+                      {venue.matchReason && (
+                        <p className="text-[10px] text-primary-500/70 mt-1 line-clamp-2 leading-tight">{venue.matchReason}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-b border-primary-500/10 mt-2 mb-1" />
             </div>
           )}
 

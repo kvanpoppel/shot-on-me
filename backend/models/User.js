@@ -149,6 +149,20 @@ const userSchema = new mongoose.Schema({
     expirationWarningHours: { type: Number, default: 24 }, // Hours before expiration to warn (default 24h)
     launchWarningHours: { type: Number, default: 1 } // Hours before launch to notify (default 1h)
   },
+  venuePreferences: {
+    kidsFriendly:   { type: Boolean, default: false },
+    dogFriendly:    { type: Boolean, default: false },
+    hasFood:        { type: Boolean, default: false },
+    byob:           { type: Boolean, default: false },
+    trivia:         { type: Boolean, default: false },
+    liveMusic:      { type: Boolean, default: false },
+    outdoorSeating: { type: Boolean, default: false },
+    happyHour:      { type: Boolean, default: false },
+    poolTables:     { type: Boolean, default: false },
+    danceFloor:     { type: Boolean, default: false },
+    sportsTv:       { type: Boolean, default: false },
+    karaoke:        { type: Boolean, default: false },
+  },
   privacySettings: {
     profileVisibility:    { type: String, enum: ['everyone', 'friends', 'private'], default: 'everyone' },
     showCheckInsOnFeed:   { type: Boolean, default: true },
