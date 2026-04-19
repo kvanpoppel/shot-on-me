@@ -14,7 +14,11 @@ import {
   Clock,
   Loader2,
   Send,
-  UserPlus
+  UserPlus,
+  Settings,
+  Pencil,
+  X,
+  Check
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -45,12 +49,16 @@ interface FeedPost {
 interface ProfileTabProps {
   onViewProfile?: (userId: string) => void
   setActiveTab?: (tab: 'feed' | 'home' | 'map' | 'wallet' | 'profile') => void
+  onOpenSettings?: () => void
 }
 
-export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabProps) {
+export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings }: ProfileTabProps) {
   const { user, token, updateUser } = useAuth()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', username: '', bio: '' })
+  const [saving, setSaving] = useState(false)
   const [postsPage, setPostsPage] = useState(1)
   const [postsHasMore, setPostsHasMore] = useState(true)
   const [loadingMorePosts, setLoadingMorePosts] = useState(false)
@@ -85,6 +93,32 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
     } finally {
       setUploadingPhoto(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
+
+  const openEdit = () => {
+    setEditForm({
+      firstName: user?.firstName || (user as any)?.name?.split(' ')[0] || '',
+      lastName: user?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
+      username: user?.username || '',
+      bio: (user as any)?.bio || '',
+    })
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    if (!token) return
+    setSaving(true)
+    try {
+      await axios.put(`${API_URL}/users/me`, editForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (updateUser) await updateUser({})
+      setEditing(false)
+    } catch (err) {
+      console.error('Profile update failed', err)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -248,36 +282,23 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
 
       {/* Profile Header */}
       <div className="px-4 py-6 border-b border-primary-500/10">
+
+        {/* Top row: avatar + stats + icons */}
         <div className="flex items-center space-x-6 mb-4">
-          {/* Profile Picture — tappable to upload */}
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            className="relative w-20 h-20 flex-shrink-0 group"
-            disabled={uploadingPhoto}
-          >
+          {/* Profile Picture */}
+          <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
             <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
               {user?.profilePicture ? (
-                <img
-                  src={user.profilePicture}
-                  alt={user.firstName}
-                  className="w-full h-full object-cover"
-                />
+                <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                  <span className="text-2xl text-primary-500 font-semibold">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
-                  </span>
+                  <span className="text-2xl text-primary-500 font-semibold">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
                 </div>
               )}
             </div>
-            {/* Camera overlay */}
             <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {uploadingPhoto
-                ? <Loader2 className="w-5 h-5 text-white animate-spin" />
-                : <Camera className="w-5 h-5 text-white" />
-              }
+              {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
             </div>
-            {/* Add photo badge for new users */}
             {!user?.profilePicture && !uploadingPhoto && (
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
                 <Camera className="w-3 h-3 text-black" />
@@ -286,48 +307,93 @@ export default function ProfileTab({ onViewProfile, setActiveTab }: ProfileTabPr
           </button>
 
           {/* Stats */}
-          <div className="flex-1 flex justify-around flex-wrap gap-4">
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary-500">{stats.postsCount}</p>
-              <p className="text-xs text-primary-400/70 font-light">Posts</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary-500">{stats.friendsCount}</p>
-              <p className="text-xs text-primary-400/70 font-light">Friends</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary-500">{stats.checkInsCount}</p>
-              <p className="text-xs text-primary-400/70 font-light">Check-ins</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary-500">{stats.venuesVisited}</p>
-              <p className="text-xs text-primary-400/70 font-light">Venues</p>
-            </div>
+          <div className="flex-1 flex justify-around">
+            {[
+              { value: stats.postsCount, label: 'Posts' },
+              { value: stats.friendsCount, label: 'Friends' },
+              { value: stats.checkInsCount, label: 'Check-ins' },
+              { value: stats.venuesVisited, label: 'Venues' },
+            ].map(({ value, label }) => (
+              <div key={label} className="text-center">
+                <p className="text-lg font-semibold text-primary-500">{value}</p>
+                <p className="text-xs text-primary-400/70 font-light">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* User Info */}
-        <div className="mb-3">
-          <h2 className="text-base font-semibold text-primary-500 tracking-tight mb-1">
-            {user?.firstName} {user?.lastName}
-          </h2>
-          {user?.username && (
-            <p className="text-sm text-primary-400/80 font-light">@{user.username}</p>
-          )}
-        </div>
-
-        {/* Profile completeness nudge — shown only when no photo */}
-        {!user?.profilePicture && (
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            className="w-full mt-1 border border-primary-500/25 rounded-xl px-4 py-2.5 flex items-center gap-3 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all text-left"
-          >
-            <Camera className="w-4 h-4 text-primary-500 flex-shrink-0" />
-            <div>
-              <p className="text-primary-500 text-xs font-semibold">Add a profile photo</p>
-              <p className="text-primary-400/50 text-[10px]">Friends and venues will recognize you faster</p>
+        {/* Name / username / bio — or edit form */}
+        {editing ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={editForm.firstName}
+                onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))}
+                placeholder="First name"
+                className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
+              />
+              <input
+                value={editForm.lastName}
+                onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))}
+                placeholder="Last name"
+                className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
+              />
             </div>
-          </button>
+            <input
+              value={editForm.username}
+              onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+              placeholder="username"
+              className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
+            />
+            <textarea
+              value={editForm.bio}
+              onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
+              placeholder="Bio (160 chars)"
+              maxLength={160}
+              rows={2}
+              className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60 resize-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={saveEdit} disabled={saving} className="flex-1 bg-primary-500 text-black font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Save
+              </button>
+              <button onClick={() => setEditing(false)} className="flex-1 border border-primary-500/30 text-primary-400 font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:border-primary-500/50 transition-all">
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-semibold text-primary-500 tracking-tight">
+                {user?.firstName} {user?.lastName}
+              </h2>
+              {user?.username && <p className="text-sm text-primary-400/70 mt-0.5">@{user.username}</p>}
+              {(user as any)?.bio && <p className="text-sm text-primary-400/60 mt-1.5 leading-snug">{(user as any).bio}</p>}
+              {!user?.profilePicture && (
+                <button onClick={() => photoInputRef.current?.click()} className="mt-3 w-full border border-primary-500/25 rounded-xl px-4 py-2.5 flex items-center gap-3 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all text-left">
+                  <Camera className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-primary-500 text-xs font-semibold">Add a profile photo</p>
+                    <p className="text-primary-400/50 text-[10px]">Friends and venues will recognize you faster</p>
+                  </div>
+                </button>
+              )}
+            </div>
+            {/* Edit + Settings icons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={openEdit} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Edit profile">
+                <Pencil className="w-4 h-4" />
+              </button>
+              {onOpenSettings && (
+                <button onClick={onOpenSettings} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Settings">
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

@@ -175,8 +175,8 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 // Update current user profile (firstName, lastName, etc.) - must come after /me/profile-picture
 router.put('/me', auth, async (req, res) => {
   try {
-    const { firstName, lastName, phoneNumber } = req.body;
-    
+    const { firstName, lastName, phoneNumber, username, bio } = req.body;
+
     const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -184,23 +184,35 @@ router.put('/me', auth, async (req, res) => {
 
     // Build update object
     const updateData = {};
-    
+
     // Update name if firstName or lastName provided
     if (firstName !== undefined || lastName !== undefined) {
       const currentNameParts = (user.name || '').split(' ');
       const newFirstName = firstName !== undefined ? firstName : (currentNameParts[0] || '');
       const newLastName = lastName !== undefined ? lastName : (currentNameParts.slice(1).join(' ') || '');
       updateData.name = `${newFirstName} ${newLastName}`.trim();
-      
+
       // Ensure name is not empty (required field)
       if (!updateData.name || updateData.name.trim() === '') {
         updateData.name = user.name || `${newFirstName} ${newLastName}`.trim() || 'User';
       }
+      updateData.firstName = newFirstName;
+      updateData.lastName = newLastName;
     }
 
     // Update phone number if provided
     if (phoneNumber !== undefined) {
       updateData.phoneNumber = phoneNumber;
+    }
+
+    // Update username if provided (trim, lowercase)
+    if (username !== undefined) {
+      updateData.username = username.trim().toLowerCase();
+    }
+
+    // Update bio if provided (max 160 chars)
+    if (bio !== undefined) {
+      updateData.bio = bio.trim().slice(0, 160);
     }
 
     // Use findByIdAndUpdate to avoid validation issues
