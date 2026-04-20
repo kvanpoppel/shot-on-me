@@ -923,7 +923,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             onClick={() => {
               setShowSendForm(!showSendForm)
               setShowRedeemForm(false)
-              setShowMoreMenu(false)
+
               if (!showSendForm) {
                 setSearchQuery('')
                 setSearchResults([])
