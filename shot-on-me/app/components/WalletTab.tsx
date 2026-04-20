@@ -346,7 +346,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       hasAutoOpenedRef.current = true
       setShowSendForm(true)
       setShowRedeemForm(false)
-      setShowMoreMenu(false)
       // Pre-fill recipient if passed (e.g., from Send Drink fallback)
       if (prefilledRecipientId) {
         setSearchQuery(prefilledRecipientName || '')
