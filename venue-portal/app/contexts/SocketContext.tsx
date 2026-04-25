@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext'
 interface SocketContextType { socket: Socket | null; connected: boolean }
 const SocketContext = createContext<SocketContextType>({ socket: null, connected: false })
 export const useSocket = () => useContext(SocketContext)
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://shot-on-me.onrender.com'
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/api$/, '') || 'https://shot-on-me.onrender.com'
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)

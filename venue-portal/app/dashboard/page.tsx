@@ -40,7 +40,6 @@ export default function Dashboard() {
   const [loadingStats, setLoadingStats] = useState(true)
   const [busyTimes, setBusyTimes] = useState<BusyTimesData | null>(null)
   const [loadingBusy, setLoadingBusy] = useState(false)
-  const [publishingDealType, setPublishingDealType] = useState<string | null>(null)
   const [showDealSuccess, setShowDealSuccess] = useState<string | null>(null)
 
   // Notify modal
@@ -108,22 +107,8 @@ export default function Dashboard() {
     }
   }
 
-  const launchDeal = async (dealType: 'happy-hour' | 'flash-deal' | 'weekend' | 'vip') => {
-    if (!token || !venueId || publishingDealType) return
-    setPublishingDealType(dealType)
-    try {
-      await axios.post(
-        `${getApiUrl()}/ai-automation/instant-deal`,
-        { venueId, dealType },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      setShowDealSuccess(dealType)
-      fetchStats()
-    } catch (error: any) {
-      showError(error?.response?.data?.error || 'Failed to launch deal')
-    } finally {
-      setPublishingDealType(null)
-    }
+  const launchDeal = (dealType: 'happy-hour' | 'flash-deal' | 'weekend' | 'vip') => {
+    router.push(`/dashboard/promotions?action=${dealType}`)
   }
 
   const sendNotification = async () => {
@@ -246,11 +231,10 @@ export default function Dashboard() {
               <button
                 key={key}
                 onClick={() => launchDeal(key)}
-                disabled={!!publishingDealType}
-                className={`rounded-xl bg-gradient-to-br ${color} p-3 text-left text-black hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
+                className={`rounded-xl bg-gradient-to-br ${color} p-3 text-left text-black hover:opacity-90 transition-all active:scale-95`}
               >
                 <p className="text-xl mb-1">{emoji}</p>
-                <p className="text-xs font-bold leading-tight">{publishingDealType === key ? 'Publishing...' : label}</p>
+                <p className="text-xs font-bold leading-tight">{label}</p>
                 <p className="text-[10px] opacity-70 mt-0.5">{desc}</p>
               </button>
             ))}
