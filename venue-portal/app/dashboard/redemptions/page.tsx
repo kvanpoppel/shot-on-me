@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
+import { useVenue } from '../../contexts/VenueContext'
 import DashboardLayout from '../../components/DashboardLayout'
 import DashboardPageShell from '../../components/DashboardPageShell'
 import CollapsibleSection from '../../components/CollapsibleSection'
@@ -14,10 +15,10 @@ import { Sparkles, RefreshCcw, Search, Users } from 'lucide-react'
 
 export default function RedemptionsPage() {
   const { user, loading, token } = useAuth()
+  const { followerCount } = useVenue()
   const router = useRouter()
   const [redemptions, setRedemptions] = useState<any[]>([])
   const [loadingRedemptions, setLoadingRedemptions] = useState(true)
-  const [followerCount, setFollowerCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState<'all' | 'succeeded' | 'processing' | 'other'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeSection, setActiveSection] = useState<'checkins' | 'payments'>('checkins')
@@ -63,8 +64,6 @@ export default function RedemptionsPage() {
         setRedemptions([])
         return
       }
-
-      setFollowerCount(Number(myVenue.followerCount) || 0)
 
       // Get payments redeemed at this venue (type: shot_redeemed or transfer, with venueId)
       const response = await axios.get(`${apiUrl}/payments/history`, {
@@ -171,22 +170,22 @@ export default function RedemptionsPage() {
         ]}
       >
         {activeSection === 'checkins' ? (
-          <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
-            <CheckInsHistory />
+          <div className="space-y-4">
+            <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">
+              <CheckInsHistory />
+            </div>
+            <CollapsibleSection
+              title="AI Activity Insights"
+              subtitle="AI-powered analysis of follower and check-in behavior"
+              defaultOpen={false}
+              icon={<Sparkles className="w-4 h-4" />}
+            >
+              <div className="pt-2">
+                <AIAnalyticsSummary />
+              </div>
+            </CollapsibleSection>
           </div>
         ) : null}
-
-        {/* AI Insights - Redemption Patterns */}
-        <CollapsibleSection
-          title="AI Activity Insights"
-          subtitle="AI-powered analysis of follower and check-in behavior"
-          defaultOpen={false}
-          icon={<Sparkles className="w-4 h-4" />}
-        >
-          <div className="pt-2">
-            <AIAnalyticsSummary />
-          </div>
-        </CollapsibleSection>
 
         {activeSection === 'payments' ? (
         <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 md:p-6 overflow-x-hidden">

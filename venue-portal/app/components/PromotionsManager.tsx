@@ -3,8 +3,9 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import { useSocket } from '../contexts/SocketContext'
-import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Save, Bell, Zap } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Bell, Zap } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { useToast } from './ToastContainer'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
@@ -81,7 +82,8 @@ export interface PromotionsManagerRef {
 
 const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProps>(
   ({ hideQuickActions = false, compactView = false }: PromotionsManagerProps, ref) => {
-  const { token, user } = useAuth()
+  const { token } = useAuth()
+  const { venueId } = useVenue()
   const { socket } = useSocket()
   const { showSuccess, showError } = useToast()
   const [promotions, setPromotions] = useState<Promotion[]>([])
@@ -91,7 +93,6 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
   const [quickActionData, setQuickActionData] = useState<Partial<PromotionFormData> | null>(null)
-  const [venueId, setVenueId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [viewingAnalytics, setViewingAnalytics] = useState<{ promotionId: string; title: string } | null>(null)
   const [showLibrary, setShowLibrary] = useState(false)
@@ -99,10 +100,12 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   const [aiEnhancingAction, setAiEnhancingAction] = useState<string | null>(null)
   const [publishingQuickAction, setPublishingQuickAction] = useState<string | null>(null)
   const [showAdvancedTools, setShowAdvancedTools] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchVenue()
-  }, [user, token])
+    if (venueId) fetchPromotions(venueId)
+    else setLoading(false)
+  }, [venueId])
 
   // Listen for real-time promotion updates
   useEffect(() => {
@@ -137,63 +140,19 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
     }
   }, [socket, venueId])
 
-  const fetchVenue = async () => {
-    if (!token || !user) return
-    try {
-      const apiUrl = getApiUrl()
-      const venuesResponse = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      let venues: any[] = []
-      if (Array.isArray(venuesResponse.data)) {
-        venues = venuesResponse.data
-      } else if (venuesResponse.data?.venues) {
-        venues = venuesResponse.data.venues
-      }
-      
-      let myVenue = null
-      if (venues.length > 0 && venues[0].venue) {
-        myVenue = venues[0].venue
-      } else {
-        myVenue = venues.find((v: any) => {
-          const venueOwnerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-          const userId = user.id?.toString() || (user as any)._id?.toString()
-          const isOwner = venueOwnerId === userId
-          const isStaff = v.staff?.some((s: any) => {
-            const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
-            return staffUserId === userId
-          })
-          return isOwner || isStaff
-        })
-      }
-      
-      if (myVenue) {
-        const venueIdToUse = myVenue._id?.toString() || myVenue.id?.toString() || myVenue._id || myVenue.id
-        setVenueId(venueIdToUse)
-        fetchPromotions(venueIdToUse)
-      } else {
-        setLoading(false)
-      }
-    } catch (error) {
-      console.error('Failed to fetch venue:', error)
-      setLoading(false)
-    }
-  }
-
   const fetchPromotions = async (vid?: string) => {
     if (!vid && !venueId) return
     const vId = vid || venueId
     if (!vId) return
-    
+
     try {
       const apiUrl = getApiUrl()
       const response = await axios.get(`${apiUrl}/venues/${vId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setPromotions(response.data.venue?.promotions || [])
-    } catch (error) {
-      console.error('Failed to fetch promotions:', error)
+    } catch {
+      // keep current list
     } finally {
       setLoading(false)
     }
@@ -201,7 +160,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
 
   const handleSavePromotion = async (formData: PromotionFormData) => {
     if (!venueId || !token) {
-      alert('No venue found. Please create a venue first.')
+      showError('No venue found. Please create a venue first.')
       return
     }
 
@@ -234,17 +193,17 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        const message = response.data?.notificationsSent 
-          ? '✅ Promotion activated! Push notifications sent to users instantly!'
-          : 'Promotion updated successfully!'
-        alert(message)
+        const message = response.data?.notificationsSent
+          ? 'Promotion activated — push notifications sent!'
+          : 'Promotion updated successfully.'
+        showSuccess(message)
       } else {
         await axios.post(
           `${getApiUrl()}/venues/${venueId}/promotions`,
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        alert('✅ Promotion created! Push notifications sent to users instantly!')
+        showSuccess('Promotion created — push notifications sent!')
       }
 
       setShowWizard(false)
@@ -254,9 +213,8 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       setQuickActionData(null)
       fetchPromotions()
     } catch (error: any) {
-      console.error('❌ Failed to save promotion:', error)
       const errorMessage = error.response?.data?.error || error.message || 'Failed to save promotion'
-      alert(`Error: ${errorMessage}`)
+      showError(errorMessage)
     } finally {
       setSaving(false)
     }
@@ -284,18 +242,20 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
 
   const handleDelete = async (promoId: string) => {
     if (!venueId || !token) return
-    if (!confirm('Are you sure you want to delete this promotion?')) return
-
+    if (confirmDeleteId !== promoId) {
+      setConfirmDeleteId(promoId)
+      return
+    }
+    setConfirmDeleteId(null)
     try {
       await axios.delete(
         `${getApiUrl()}/venues/${venueId}/promotions/${promoId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Promotion deleted successfully!')
+      showSuccess('Promotion deleted.')
       fetchPromotions()
     } catch (error: any) {
-      console.error('Failed to delete promotion:', error)
-      alert(error.response?.data?.error || 'Failed to delete promotion')
+      showError(error.response?.data?.error || 'Failed to delete promotion')
     }
   }
 
@@ -681,12 +641,12 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
         <div className="text-center py-4 text-primary-400/80 text-sm">
           <p className="mb-2 font-light">No venue found. Please create a venue first.</p>
-          <button
-            onClick={() => window.location.href = '/dashboard/settings'}
-            className="bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
+          <a
+            href="/dashboard/settings"
+            className="inline-block bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-400 transition-all text-sm"
           >
             Go to Settings
-          </button>
+          </a>
         </div>
       </div>
     )
@@ -873,37 +833,47 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
                         )}
                       </div>
                     </div>
-                    <div className="flex space-x-1 ml-3 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setViewingAnalytics({ promotionId: promo._id, title: promo.title })
-                        }}
-                        className="p-2 text-primary-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
-                        title="View analytics"
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEdit(promo)
-                        }}
-                        className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors"
-                        title="Edit promotion"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(promo._id)
-                        }}
-                        className="p-2 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        title="Delete promotion"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="flex items-center space-x-1 ml-3 flex-shrink-0">
+                      {confirmDeleteId === promo._id ? (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                            className="px-2 py-1 text-[11px] font-semibold text-primary-400 hover:text-primary-300 rounded-lg border border-primary-500/25 hover:border-primary-500/45 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(promo._id) }}
+                            className="px-2 py-1 text-[11px] font-semibold text-red-300 bg-red-500/15 hover:bg-red-500/25 rounded-lg border border-red-500/30 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setViewingAnalytics({ promotionId: promo._id, title: promo.title }) }}
+                            className="p-2 text-primary-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
+                            title="View analytics"
+                          >
+                            <BarChart3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(promo) }}
+                            className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors"
+                            title="Edit promotion"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(promo._id) }}
+                            className="p-2 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Delete promotion"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

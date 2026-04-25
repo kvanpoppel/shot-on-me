@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { UserPlus, Trash2, Shield, User, Crown, X } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
+import { useToast } from './ToastContainer'
 
 interface StaffMember {
   _id: string
@@ -24,6 +25,7 @@ interface StaffMember {
 
 export default function StaffManager() {
   const { token, user } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [venueId, setVenueId] = useState<string | null>(null)
@@ -32,6 +34,7 @@ export default function StaffManager() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'manager' | 'staff'>('staff')
   const [userRole, setUserRole] = useState<'owner' | 'manager' | 'staff' | null>(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchVenueAndStaff()
@@ -93,8 +96,8 @@ export default function StaffManager() {
         })
         setStaff(staffResponse.data.staff || [])
       }
-    } catch (error) {
-      console.error('Failed to fetch venue/staff:', error)
+    } catch {
+      // fetch silently
     } finally {
       setLoading(false)
     }
@@ -115,10 +118,9 @@ export default function StaffManager() {
       setRole('staff')
       setShowAddForm(false)
       fetchVenueAndStaff()
-      alert('Staff member added successfully!')
+      showSuccess('Staff member added successfully!')
     } catch (error: any) {
-      console.error('Failed to add staff:', error)
-      alert(error.response?.data?.error || 'Failed to add staff member')
+      showError(error.response?.data?.error || 'Failed to add staff member')
     } finally {
       setAdding(false)
     }
@@ -126,18 +128,17 @@ export default function StaffManager() {
 
   const handleRemoveStaff = async (staffId: string) => {
     if (!venueId || !token) return
-    if (!confirm('Are you sure you want to remove this staff member?')) return
 
     try {
       await axios.delete(
         `${getApiUrl()}/venues/${venueId}/staff/${staffId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
+      setConfirmRemoveId(null)
       fetchVenueAndStaff()
-      alert('Staff member removed successfully!')
+      showSuccess('Staff member removed successfully!')
     } catch (error: any) {
-      console.error('Failed to remove staff:', error)
-      alert(error.response?.data?.error || 'Failed to remove staff member')
+      showError(error.response?.data?.error || 'Failed to remove staff member')
     }
   }
 
@@ -151,10 +152,9 @@ export default function StaffManager() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       fetchVenueAndStaff()
-      alert('Staff role updated successfully!')
+      showSuccess('Staff role updated successfully!')
     } catch (error: any) {
-      console.error('Failed to update role:', error)
-      alert(error.response?.data?.error || 'Failed to update staff role')
+      showError(error.response?.data?.error || 'Failed to update staff role')
     }
   }
 
@@ -303,13 +303,30 @@ export default function StaffManager() {
                         <User className="w-3 h-3" />
                       </button>
                     )}
-                    <button
-                      onClick={() => handleRemoveStaff(member._id)}
-                      className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                      title="Remove staff member"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {confirmRemoveId === member._id ? (
+                      <div className="flex gap-1 items-center">
+                        <button
+                          onClick={() => handleRemoveStaff(member._id)}
+                          className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        >
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => setConfirmRemoveId(null)}
+                          className="px-1.5 py-0.5 text-xs border border-primary-500/30 text-primary-400 rounded hover:bg-primary-500/10 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRemoveId(member._id)}
+                        className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                        title="Remove staff member"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

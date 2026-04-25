@@ -2,35 +2,35 @@
 
 import { ReactNode, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import axios from 'axios'
-import { Menu, X, LogOut, LayoutDashboard, Sparkles, Users, Settings, Crown, BarChart2 } from 'lucide-react'
+import {
+  Menu, X, LogOut, LayoutDashboard, Sparkles, Users, Settings,
+  Crown, BarChart2, Bot, Star, Building2, CheckCircle2
+} from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: ReactNode
 }
 
-import { getApiUrl } from '../utils/api'
-
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, logout, token } = useAuth()
+  const { user, logout } = useAuth()
+  const { venueName, tier } = useVenue()
   const router = useRouter()
   const pathname = usePathname()
-  const [venueName, setVenueName] = useState<string>('Your Venue')
-  const [userInitial, setUserInitial] = useState<string>('V')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement | null>(null)
+
+  const userInitial = user?.firstName
+    ? user.firstName.charAt(0).toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() ?? 'V'
 
   const handleLogout = () => {
     logout()
     router.push('/')
   }
-
-  useEffect(() => {
-    fetchVenueName()
-  }, [token, user])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,38 +44,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [accountMenuOpen])
 
-  const fetchVenueName = async () => {
-    if (!token || !user) return
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      let venues: any[] = []
-      if (Array.isArray(response.data)) venues = response.data
-      else if (response.data?.venues) venues = response.data.venues
-
-      const myVenue = venues[0]
-      if (myVenue?.name) setVenueName(myVenue.name)
-      if (user.firstName) setUserInitial(user.firstName.charAt(0).toUpperCase())
-      else if (user.email) setUserInitial(user.email.charAt(0).toUpperCase())
-    } catch {
-      // keep defaults
-    }
-  }
-
   const isActive = (path: string) => {
     if (path === '/dashboard') return pathname === '/dashboard'
     return pathname?.startsWith(path)
   }
 
   const navItems = [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/promotions', label: 'Deals', icon: Sparkles },
-    { href: '/dashboard/redemptions', label: 'Guests', icon: Users },
-    { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart2 },
-    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { href: '/dashboard',               label: 'Home',         icon: LayoutDashboard },
+    { href: '/dashboard/promotions',    label: 'Deals',        icon: Sparkles },
+    { href: '/dashboard/redemptions',   label: 'Guests',       icon: Users },
+    { href: '/dashboard/analytics',     label: 'Analytics',    icon: BarChart2 },
+    { href: '/dashboard/influencers',   label: 'Influencers',  icon: Star },
+    { href: '/dashboard/automation',    label: 'Automation',   icon: Bot },
+    { href: '/dashboard/profile',       label: 'Profile',      icon: Building2 },
+    { href: '/dashboard/settings',      label: 'Settings',     icon: Settings },
   ]
+
+  const isPaidTier = tier !== 'free'
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <nav className="space-y-0.5 flex-1">
@@ -97,6 +82,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </nav>
   )
 
+  const SidebarFooter = ({ onClick }: { onClick?: () => void }) => {
+    if (isPaidTier) {
+      return (
+        <Link
+          href="/dashboard/profile"
+          onClick={onClick}
+          className="mt-6 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3 transition-all hover:border-emerald-500/50"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-emerald-300 capitalize leading-none">{tier} Plan</p>
+            <p className="text-[10px] text-emerald-400/60 mt-0.5 font-normal">AI &amp; automation unlocked</p>
+          </div>
+        </Link>
+      )
+    }
+    return (
+      <Link
+        href="/dashboard/profile"
+        onClick={onClick}
+        className="mt-6 flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-4 py-3 text-black font-bold text-sm shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all hover:scale-[1.02]"
+      >
+        <Crown className="w-4 h-4 flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-xs font-bold leading-none">Upgrade Plan</p>
+          <p className="text-[10px] opacity-70 mt-0.5 font-normal">Unlock AI + automation</p>
+        </div>
+      </Link>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-black flex overflow-x-hidden">
       {/* Sidebar */}
@@ -104,18 +120,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-5 flex flex-col h-full">
           <h1 className="text-xl logo-script text-primary-500 mb-8 tracking-tight">Shot On Me</h1>
           <NavLinks />
-
-          {/* Upgrade CTA */}
-          <Link
-            href="/dashboard/profile"
-            className="mt-6 flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-4 py-3 text-black font-bold text-sm shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all hover:scale-[1.02]"
-          >
-            <Crown className="w-4 h-4 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs font-bold leading-none">Upgrade Plan</p>
-              <p className="text-[10px] opacity-70 mt-0.5 font-normal">Unlock AI + automation</p>
-            </div>
-          </Link>
+          <SidebarFooter />
         </div>
       </aside>
 
@@ -126,7 +131,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="w-64 bg-black/97 backdrop-blur-md border-r border-primary-500/10 h-full p-5 flex flex-col"
+            className="w-64 bg-black/97 backdrop-blur-md border-r border-primary-500/10 h-full p-5 flex flex-col overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-8">
@@ -136,17 +141,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
             <NavLinks onClick={() => setMobileMenuOpen(false)} />
-            <Link
-              href="/dashboard/profile"
-              onClick={() => setMobileMenuOpen(false)}
-              className="mt-6 flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-4 py-3 text-black font-bold text-sm"
-            >
-              <Crown className="w-4 h-4" />
-              <div>
-                <p className="text-xs font-bold leading-none">Upgrade Plan</p>
-                <p className="text-[10px] opacity-70 mt-0.5 font-normal">Unlock AI + automation</p>
-              </div>
-            </Link>
+            <SidebarFooter onClick={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}

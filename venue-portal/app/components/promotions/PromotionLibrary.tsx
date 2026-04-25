@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { getApiUrl } from '../../utils/api'
 import axios from 'axios'
 import { X, BookOpen, Search, Filter, Star, Calendar, TrendingUp, Trash2, Edit, Copy } from 'lucide-react'
+import { useToast } from '../ToastContainer'
 
 interface PromotionLibraryProps {
   onSelectPromotion: (promotionData: any) => void
@@ -32,11 +33,13 @@ interface SavedPromotion {
 
 export default function PromotionLibrary({ onSelectPromotion, onClose }: PromotionLibraryProps) {
   const { token } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [savedPromotions, setSavedPromotions] = useState<SavedPromotion[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     if (token) {
@@ -65,7 +68,6 @@ export default function PromotionLibrary({ onSelectPromotion, onClose }: Promoti
       )
       setSavedPromotions(response.data.promotions || [])
     } catch (err: any) {
-      console.error('Error fetching library:', err)
       setError(err.response?.data?.message || 'Failed to load library')
     } finally {
       setLoading(false)
@@ -73,17 +75,15 @@ export default function PromotionLibrary({ onSelectPromotion, onClose }: Promoti
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this saved promotion?')) return
-
     try {
       const apiUrl = getApiUrl()
       await axios.delete(`${apiUrl}/promotion-library/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
+      setConfirmDeleteId(null)
       fetchLibrary()
-    } catch (err: any) {
-      console.error('Error deleting:', err)
-      alert('Failed to delete promotion')
+    } catch {
+      showError('Failed to delete promotion')
     }
   }
 
@@ -132,9 +132,8 @@ export default function PromotionLibrary({ onSelectPromotion, onClose }: Promoti
 
       onSelectPromotion(promotionData)
       onClose()
-    } catch (err: any) {
-      console.error('Error using promotion:', err)
-      alert('Failed to load promotion')
+    } catch {
+      showError('Failed to load promotion')
     }
   }
 
@@ -242,13 +241,30 @@ export default function PromotionLibrary({ onSelectPromotion, onClose }: Promoti
                       >
                         <Copy className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(promotion._id)}
-                        className="p-1.5 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {confirmDeleteId === promotion._id ? (
+                        <div className="flex gap-1 items-center">
+                          <button
+                            onClick={() => handleDelete(promotion._id)}
+                            className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 text-xs bg-black border border-primary-500/30 text-primary-400 rounded hover:bg-primary-500/10 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(promotion._id)}
+                          className="p-1.5 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 

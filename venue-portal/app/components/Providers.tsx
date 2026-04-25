@@ -4,15 +4,15 @@ import { ReactNode } from 'react'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import { AuthProvider } from '../contexts/AuthContext'
+import { VenueProvider } from '../contexts/VenueContext'
 import { SocketProvider } from '../contexts/SocketContext'
 import { GoogleMapsProvider } from '../contexts/GoogleMapsContext'
 import ErrorBoundary from './ErrorBoundary'
 import { ToastProvider } from './ToastContainer'
 
-// Initialize Stripe with publishable key from environment variable
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-const stripePromise = stripePublishableKey && 
-  !stripePublishableKey.includes('placeholder') && 
+const stripePromise = stripePublishableKey &&
+  !stripePublishableKey.includes('placeholder') &&
   !stripePublishableKey.includes('your_stripe') &&
   stripePublishableKey.length > 20
   ? loadStripe(stripePublishableKey)
@@ -25,17 +25,21 @@ export default function Providers({ children }: { children: ReactNode }) {
         <ErrorBoundary>
           <AuthProvider>
             <ErrorBoundary>
-              <SocketProvider>
+              <VenueProvider>
                 <ErrorBoundary>
-                  <GoogleMapsProvider>
+                  <SocketProvider>
                     <ErrorBoundary>
-                      <Elements stripe={stripePromise}>
-                        {children}
-                      </Elements>
+                      <GoogleMapsProvider>
+                        <ErrorBoundary>
+                          <Elements stripe={stripePromise}>
+                            {children}
+                          </Elements>
+                        </ErrorBoundary>
+                      </GoogleMapsProvider>
                     </ErrorBoundary>
-                  </GoogleMapsProvider>
+                  </SocketProvider>
                 </ErrorBoundary>
-              </SocketProvider>
+              </VenueProvider>
             </ErrorBoundary>
           </AuthProvider>
         </ErrorBoundary>
@@ -43,4 +47,3 @@ export default function Providers({ children }: { children: ReactNode }) {
     </ErrorBoundary>
   )
 }
-

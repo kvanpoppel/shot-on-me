@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import { getApiUrl } from '../utils/api'
+import { useToast } from './ToastContainer'
 import { Check, Crown } from 'lucide-react'
 
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
 export default function SubscriptionPlansManager() {
-  const { token, user } = useAuth()
-  const [venueId, setVenueId] = useState<string | null>(null)
-  const [currentTier, setCurrentTier] = useState<SubscriptionTier>('free')
+  const { token } = useAuth()
+  const { venueId, tier: currentTier } = useVenue()
+  const { showSuccess, showError } = useToast()
   const [updatingTier, setUpdatingTier] = useState<SubscriptionTier | null>(null)
 
   const subscriptionPlans: {
@@ -75,42 +77,6 @@ export default function SubscriptionPlansManager() {
     }
   ]
 
-  useEffect(() => {
-    fetchVenueSubscription()
-  }, [token, user])
-
-  const fetchVenueSubscription = async () => {
-    if (!token || !user) return
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      let venues: any[] = []
-      if (Array.isArray(response.data)) {
-        venues = response.data
-      } else if (response.data?.venues) {
-        venues = response.data.venues
-      }
-
-      const userId = user?.id?.toString() || (user as any)?._id?.toString()
-      const myVenue = userId
-        ? venues.find((v: any) => {
-            const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-            return ownerId === userId
-          }) || venues[0]
-        : venues[0]
-
-      if (myVenue?._id) {
-        setVenueId(myVenue._id.toString())
-        setCurrentTier((myVenue.subscriptionTier || 'free') as SubscriptionTier)
-      }
-    } catch (error) {
-      console.error('Failed to fetch venue subscription:', error)
-    }
-  }
-
   const handleTierChange = async (tier: SubscriptionTier) => {
     if (!token || !venueId || tier === currentTier) return
 
@@ -122,10 +88,9 @@ export default function SubscriptionPlansManager() {
         { subscriptionTier: tier },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setCurrentTier(tier)
-      alert(`Subscription updated to ${tier}.`)
+      showSuccess(`Subscription updated to ${tier}.`)
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to update subscription tier')
+      showError(error.response?.data?.message || 'Failed to update subscription tier')
     } finally {
       setUpdatingTier(null)
     }
@@ -147,7 +112,7 @@ export default function SubscriptionPlansManager() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {subscriptionPlans.map((plan) => {
-          const isCurrent = currentTier === plan.tier
+          const isCurrent = (currentTier as string) === plan.tier
           const isUpdating = updatingTier === plan.tier
           return (
             <div

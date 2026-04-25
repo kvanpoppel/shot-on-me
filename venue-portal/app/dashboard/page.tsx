@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import { useToast } from '../components/ToastContainer'
 import DashboardLayout from '../components/DashboardLayout'
 import axios from 'axios'
@@ -26,6 +27,7 @@ interface BusyTimesData {
 
 export default function Dashboard() {
   const { user, loading, token } = useAuth()
+  const { venueId, venueName, tier, followerCount } = useVenue()
   const { showSuccess, showError } = useToast()
   const router = useRouter()
 
@@ -36,9 +38,6 @@ export default function Dashboard() {
     pendingPayouts: '0.00'
   })
   const [loadingStats, setLoadingStats] = useState(true)
-  const [venueId, setVenueId] = useState<string | null>(null)
-  const [venueName, setVenueName] = useState<string>('your venue')
-  const [currentTier, setCurrentTier] = useState<string>('free')
   const [busyTimes, setBusyTimes] = useState<BusyTimesData | null>(null)
   const [loadingBusy, setLoadingBusy] = useState(false)
   const [publishingDealType, setPublishingDealType] = useState<string | null>(null)
@@ -57,8 +56,12 @@ export default function Dashboard() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (token && user) fetchData()
+    if (token && user) fetchStats()
   }, [token, user])
+
+  useEffect(() => {
+    if (venueId && token) fetchBusyTimes(venueId)
+  }, [venueId, token])
 
   useEffect(() => {
     if (showNotify) {
@@ -70,30 +73,18 @@ export default function Dashboard() {
     }
   }, [showNotify])
 
-  const fetchData = async () => {
+  const fetchStats = async () => {
     if (!token) return
     setLoadingStats(true)
     try {
-      const apiUrl = getApiUrl()
-      const [statsRes, venuesRes] = await Promise.all([
-        axios.get(`${apiUrl}/dashboard/stats`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${apiUrl}/venues`, { headers: { Authorization: `Bearer ${token}` } }),
-      ])
-
-      const venues = Array.isArray(venuesRes.data) ? venuesRes.data : venuesRes.data?.venues || []
-      const myVenue = venues[0]
-      if (myVenue?._id) {
-        setVenueId(myVenue._id)
-        fetchBusyTimes(myVenue._id)
-      }
-      if (myVenue?.name) setVenueName(myVenue.name)
-      setCurrentTier(myVenue?.subscriptionTier || 'free')
-
+      const res = await axios.get(`${getApiUrl()}/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       setStats({
-        totalRevenue: `$${statsRes.data.totalRevenue || '0.00'}`,
-        totalRedemptions: statsRes.data.totalRedemptions || 0,
-        activePromos: statsRes.data.activePromos || 0,
-        pendingPayouts: `$${statsRes.data.pendingPayouts || '0.00'}`
+        totalRevenue: `$${res.data.totalRevenue || '0.00'}`,
+        totalRedemptions: res.data.totalRedemptions || 0,
+        activePromos: res.data.activePromos || 0,
+        pendingPayouts: `$${res.data.pendingPayouts || '0.00'}`
       })
     } catch {
       // keep defaults
@@ -127,7 +118,7 @@ export default function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setShowDealSuccess(dealType)
-      fetchData()
+      fetchStats()
     } catch (error: any) {
       showError(error?.response?.data?.error || 'Failed to launch deal')
     } finally {
@@ -161,13 +152,13 @@ export default function Dashboard() {
   }
   if (!user) return null
 
-  const isFreeTier = currentTier === 'free'
+  const isFreeTier = tier === 'free'
 
   const DEAL_TYPES = [
-    { key: 'happy-hour' as const, label: 'Happy Hour', emoji: '🍻', desc: 'Boost weekday traffic', color: 'from-amber-500 to-orange-500' },
-    { key: 'flash-deal' as const, label: 'Flash Deal', emoji: '⚡', desc: 'Create urgency now', color: 'from-rose-500 to-pink-500' },
-    { key: 'weekend' as const, label: 'Weekend Special', emoji: '🎉', desc: 'Pack your Fri–Sun', color: 'from-violet-500 to-fuchsia-500' },
-    { key: 'vip' as const, label: 'VIP Exclusive', emoji: '👑', desc: 'Reward your regulars', color: 'from-cyan-500 to-sky-500' },
+    { key: 'happy-hour' as const, label: 'Happy Hour',      emoji: '🍻', desc: 'Boost weekday traffic',  color: 'from-amber-500 to-orange-500' },
+    { key: 'flash-deal' as const, label: 'Flash Deal',       emoji: '⚡', desc: 'Create urgency now',     color: 'from-rose-500 to-pink-500' },
+    { key: 'weekend'    as const, label: 'Weekend Special',  emoji: '🎉', desc: 'Pack your Fri–Sun',      color: 'from-violet-500 to-fuchsia-500' },
+    { key: 'vip'        as const, label: 'VIP Exclusive',    emoji: '👑', desc: 'Reward your regulars',   color: 'from-cyan-500 to-sky-500' },
   ]
 
   const hourNow = new Date().getHours()
@@ -220,10 +211,10 @@ export default function Dashboard() {
         {/* ── KPIs ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Active Deals', value: loadingStats ? '—' : `${stats.activePromos}`, icon: Sparkles, color: 'text-primary-500', detail: 'running now' },
-            { label: 'Shots Sent', value: loadingStats ? '—' : `${stats.totalRedemptions}`, icon: TrendingUp, color: 'text-emerald-400', detail: 'all time' },
-            { label: 'Revenue', value: loadingStats ? '—' : stats.totalRevenue, icon: Zap, color: 'text-amber-400', detail: 'last 30 days' },
-            { label: 'Followers', value: loadingStats ? '—' : '—', icon: Users, color: 'text-cyan-400', detail: 'guests following you' },
+            { label: 'Active Deals',  value: loadingStats ? '—' : `${stats.activePromos}`,    icon: Sparkles,   color: 'text-primary-500', detail: 'running now' },
+            { label: 'Shots Sent',    value: loadingStats ? '—' : `${stats.totalRedemptions}`, icon: TrendingUp, color: 'text-emerald-400', detail: 'all time' },
+            { label: 'Revenue',       value: loadingStats ? '—' : stats.totalRevenue,          icon: Zap,        color: 'text-amber-400',   detail: 'last 30 days' },
+            { label: 'Followers',     value: loadingStats ? '—' : `${followerCount}`,          icon: Users,      color: 'text-cyan-400',    detail: 'guests following you' },
           ].map(({ label, value, icon: Icon, color, detail }) => (
             <div key={label} className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -331,7 +322,7 @@ export default function Dashboard() {
           ) : (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 flex flex-col justify-center items-center text-center gap-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-              <p className="text-sm font-semibold text-emerald-300 capitalize">{currentTier} Plan Active</p>
+              <p className="text-sm font-semibold text-emerald-300 capitalize">{tier} Plan Active</p>
               <p className="text-xs text-primary-400/50">AI automation and advanced features are unlocked.</p>
               <button
                 onClick={() => router.push('/dashboard/analytics')}
@@ -353,7 +344,6 @@ export default function Dashboard() {
             <div className="w-full max-w-md rounded-2xl border border-primary-500/25 bg-black/95 shadow-2xl shadow-primary-500/10 overflow-hidden">
 
               {notifySent ? (
-                /* Success state */
                 <div className="flex flex-col items-center justify-center text-center px-8 py-12 gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
                     <CheckCircle2 className="w-8 h-8 text-emerald-400" />
@@ -370,7 +360,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : (
-                /* Compose state */
                 <>
                   <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/10">
                     <div className="flex items-center gap-2.5">

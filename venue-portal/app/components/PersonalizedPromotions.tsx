@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
 import { Users, Target, Send, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
+import { useToast } from './ToastContainer'
 
 interface TargetUser {
   userId: string
@@ -16,6 +17,7 @@ interface TargetUser {
 
 export default function PersonalizedPromotions() {
   const { token } = useAuth()
+  const { showError } = useToast()
   const [targetUsers, setTargetUsers] = useState<TargetUser[]>([])
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
@@ -41,8 +43,7 @@ export default function PersonalizedPromotions() {
       )
       setTargetUsers(response.data.targetUsers)
     } catch (error: any) {
-      console.error('Failed to find target users:', error)
-      alert(error.response?.data?.message || 'Failed to find target users')
+      showError(error.response?.data?.message || 'Failed to find target users')
     } finally {
       setLoading(false)
     }
@@ -50,11 +51,11 @@ export default function PersonalizedPromotions() {
 
   const sendExclusivePromotion = async () => {
     if (selectedUsers.size === 0) {
-      alert('Please select at least one user')
+      showError('Please select at least one user')
       return
     }
     if (!promotionId) {
-      alert('Please enter a promotion ID')
+      showError('Please enter a promotion ID')
       return
     }
 
@@ -75,8 +76,7 @@ export default function PersonalizedPromotions() {
       setSelectedUsers(new Set())
       setMessage('')
     } catch (error: any) {
-      console.error('Failed to send exclusive promotion:', error)
-      alert(error.response?.data?.message || 'Failed to send exclusive promotion')
+      showError(error.response?.data?.message || 'Failed to send exclusive promotion')
     } finally {
       setSending(false)
     }

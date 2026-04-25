@@ -9,6 +9,7 @@ import { getApiUrl } from '../../utils/api'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './PromotionTemplates'
 import PromotionWizard from './PromotionWizard'
 import QuickActions from './QuickActions'
+import { useToast } from '../ToastContainer'
 
 interface Promotion {
   _id: string
@@ -56,6 +57,7 @@ interface PromotionFormData {
 export default function PromotionManagerEnhanced() {
   const { token, user } = useAuth()
   const { socket } = useSocket()
+  const { showSuccess, showError } = useToast()
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
   const [showTemplates, setShowTemplates] = useState(false)
@@ -65,6 +67,7 @@ export default function PromotionManagerEnhanced() {
   const [quickActionData, setQuickActionData] = useState<Partial<PromotionFormData> | null>(null)
   const [venueId, setVenueId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchVenue()
@@ -141,8 +144,7 @@ export default function PromotionManagerEnhanced() {
       } else {
         setLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to fetch venue:', error)
+    } catch {
       setLoading(false)
     }
   }
@@ -151,15 +153,15 @@ export default function PromotionManagerEnhanced() {
     if (!vid && !venueId) return
     const vId = vid || venueId
     if (!vId) return
-    
+
     try {
       const apiUrl = getApiUrl()
       const response = await axios.get(`${apiUrl}/venues/${vId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setPromotions(response.data.venue?.promotions || [])
-    } catch (error) {
-      console.error('Failed to fetch promotions:', error)
+    } catch {
+      // fetch silently
     } finally {
       setLoading(false)
     }
@@ -167,7 +169,7 @@ export default function PromotionManagerEnhanced() {
 
   const handleSavePromotion = async (formData: PromotionFormData) => {
     if (!venueId || !token) {
-      alert('No venue found. Please create a venue first.')
+      showError('No venue found. Please create a venue first.')
       return
     }
 
@@ -191,14 +193,14 @@ export default function PromotionManagerEnhanced() {
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        alert('Promotion updated successfully!')
+        showSuccess('Promotion updated successfully!')
       } else {
         await axios.post(
           `${getApiUrl()}/venues/${venueId}/promotions`,
           promotionData,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        alert('Promotion created successfully!')
+        showSuccess('Promotion created successfully!')
       }
 
       setShowWizard(false)
@@ -208,9 +210,7 @@ export default function PromotionManagerEnhanced() {
       setQuickActionData(null)
       fetchPromotions()
     } catch (error: any) {
-      console.error('❌ Failed to save promotion:', error)
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to save promotion'
-      alert(`Error: ${errorMessage}`)
+      showError(error.response?.data?.error || error.message || 'Failed to save promotion')
     } finally {
       setSaving(false)
     }
@@ -237,18 +237,17 @@ export default function PromotionManagerEnhanced() {
 
   const handleDelete = async (promoId: string) => {
     if (!venueId || !token) return
-    if (!confirm('Are you sure you want to delete this promotion?')) return
 
     try {
       await axios.delete(
         `${getApiUrl()}/venues/${venueId}/promotions/${promoId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Promotion deleted successfully!')
+      setConfirmDeleteId(null)
+      showSuccess('Promotion deleted successfully!')
       fetchPromotions()
     } catch (error: any) {
-      console.error('Failed to delete promotion:', error)
-      alert(error.response?.data?.error || 'Failed to delete promotion')
+      showError(error.response?.data?.error || 'Failed to delete promotion')
     }
   }
 
@@ -482,16 +481,33 @@ export default function PromotionManagerEnhanced() {
                     >
                       <Edit className="w-3 h-3" />
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(promo._id)
-                      }}
-                      className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                      title="Delete promotion"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {confirmDeleteId === promo._id ? (
+                      <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleDelete(promo._id)}
+                          className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="px-1.5 py-0.5 text-xs border border-primary-500/30 text-primary-400 rounded hover:bg-primary-500/10 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmDeleteId(promo._id)
+                        }}
+                        className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                        title="Delete promotion"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

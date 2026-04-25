@@ -5,9 +5,11 @@ import { Send, Users, Calendar } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
+import { useToast } from './ToastContainer'
 
 export default function NotificationCenter() {
   const { token, user } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [message, setMessage] = useState('')
   const [type, setType] = useState('promotion')
   const [sending, setSending] = useState(false)
@@ -29,10 +31,9 @@ export default function NotificationCenter() {
         }
       )
       setMessage('')
-      alert('Notification sent successfully!')
+      showSuccess('Notification sent successfully!')
     } catch (error: any) {
-      console.error('Failed to send notification:', error)
-      alert(error.response?.data?.error || 'Failed to send notification')
+      showError(error.response?.data?.error || 'Failed to send notification')
     } finally {
       setSending(false)
     }

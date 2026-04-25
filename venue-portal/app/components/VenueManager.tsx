@@ -7,6 +7,7 @@ import { Edit, MapPin, Clock, Share2, Globe, Phone, Mail, X, Save, Star, Crown, 
 import VenueMap from './VenueMap'
 
 import { getApiUrl } from '../utils/api'
+import { useToast } from './ToastContainer'
 
 interface Venue {
   _id: string
@@ -34,6 +35,7 @@ interface Venue {
 
 export default function VenueManager() {
   const { token, user } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [allVenues, setAllVenues] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
@@ -218,13 +220,12 @@ export default function VenueManager() {
       })
 
       setEditing(false)
-      alert('Venue updated successfully!')
+      showSuccess('Venue updated successfully!')
     } catch (error: any) {
-      // Log error for debugging but show user-friendly message
       if (process.env.NODE_ENV === 'development') {
         console.debug('Failed to update venue:', error.message || error)
       }
-      alert(error.response?.data?.error || 'Failed to update venue')
+      showError(error.response?.data?.error || 'Failed to update venue')
     } finally {
       setSaving(false)
     }
@@ -247,8 +248,8 @@ export default function VenueManager() {
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
       )
       setCoverPhotoUrl(res.data.coverPhotoUrl)
-    } catch (err) {
-      console.error('Cover photo upload failed:', err)
+    } catch {
+      // upload silently
     } finally {
       setCoverPhotoUploading(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
@@ -276,7 +277,7 @@ export default function VenueManager() {
       setTimeout(() => setPostSuccess(false), 3000)
       if (res.data.sent === 0) return // no followers yet, still success
     } catch {
-      alert('Failed to post. Try again.')
+      showError('Failed to post. Try again.')
     } finally {
       setPosting(false)
     }
@@ -291,9 +292,9 @@ export default function VenueManager() {
         { message, type },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert(`Notified ${res.data.sent} followers!`)
+      showSuccess(`Notified ${res.data.sent} followers!`)
     } catch {
-      alert('Failed to send notifications. Try again.')
+      showError('Failed to send notifications. Try again.')
     } finally {
       setNotifying(false)
     }
@@ -308,9 +309,9 @@ export default function VenueManager() {
         { wineMenu, happyHour, currentSpecial, weekendSpecials, trending, tonight },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Saved!')
+      showSuccess('Saved!')
     } catch {
-      alert('Failed to save. Try again.')
+      showError('Failed to save. Try again.')
     } finally {
       setMenuSaving(false)
     }
@@ -335,14 +336,12 @@ export default function VenueManager() {
         text: shareText,
         url: shareUrl
       }).catch(() => {
-        // Fallback to copying to clipboard
         navigator.clipboard.writeText(`${shareText} ${shareUrl}`)
-        alert('Venue link copied to clipboard!')
+        showSuccess('Venue link copied to clipboard!')
       })
     } else {
-      // Fallback to copying to clipboard
       navigator.clipboard.writeText(`${shareText} ${shareUrl}`)
-      alert('Venue link copied to clipboard!')
+      showSuccess('Venue link copied to clipboard!')
     }
   }
 
@@ -840,7 +839,7 @@ export default function VenueManager() {
               if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer')
               } else {
-                alert('Venue location not available. Please add an address or location coordinates.')
+                showError('Venue location not available. Please add an address or location coordinates.')
               }
             }}
             className="flex items-center space-x-2 bg-black border border-primary-500 text-primary-500 px-4 py-2 rounded-lg hover:bg-primary-500/10 transition-colors cursor-pointer"
@@ -856,7 +855,7 @@ export default function VenueManager() {
               if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer')
               } else {
-                alert('Venue location not available. Please add an address or location coordinates.')
+                showError('Venue location not available. Please add an address or location coordinates.')
               }
             }}
             className="flex items-center space-x-2 bg-black border border-primary-500 text-primary-500 px-4 py-2 rounded-lg hover:bg-primary-500/10 transition-colors cursor-pointer"
@@ -1003,9 +1002,9 @@ export default function VenueManager() {
                       { amenities },
                       { headers: { Authorization: `Bearer ${token}` } }
                     )
-                    alert('Amenities saved!')
+                    showSuccess('Amenities saved!')
                   } catch {
-                    alert('Failed to save amenities.')
+                    showError('Failed to save amenities.')
                   } finally {
                     setAmenitiesSaving(false)
                   }

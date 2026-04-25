@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
 import DashboardLayout from '../../components/DashboardLayout'
 import DashboardPageShell from '../../components/DashboardPageShell'
 import VenueManager from '../../components/VenueManager'
 import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import { useAuth } from '../../contexts/AuthContext'
-import { getApiUrl } from '../../utils/api'
+import { useVenue } from '../../contexts/VenueContext'
 import { Building2, Link as LinkIcon, Crown, ExternalLink, Copy, BadgeCheck } from 'lucide-react'
 
 export default function ProfilePage() {
-  const { user, loading, token } = useAuth()
+  const { user, loading } = useAuth()
+  const { venueSlug } = useVenue()
   const router = useRouter()
-  const [portalPath, setPortalPath] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
@@ -23,30 +22,7 @@ export default function ProfilePage() {
     }
   }, [loading, user, router])
 
-  useEffect(() => {
-    const fetchPortalPath = async () => {
-      if (!token || !user) return
-      try {
-        const response = await axios.get(`${getApiUrl()}/venues`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const venues = Array.isArray(response.data) ? response.data : response.data?.venues || []
-        const userId = user?.id?.toString() || (user as any)?._id?.toString()
-        const myVenue = venues.find((v: any) => {
-          const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-          return ownerId === userId
-        }) || venues[0]
-
-        if (myVenue?.slug) {
-          setPortalPath(`/v/${myVenue.slug}`)
-        }
-      } catch (error) {
-        console.error('Failed to fetch venue portal path:', error)
-      }
-    }
-
-    fetchPortalPath()
-  }, [token, user])
+  const portalPath = venueSlug ? `/v/${venueSlug}` : null
 
   if (loading) {
     return (
@@ -68,8 +44,8 @@ export default function ProfilePage() {
       await navigator.clipboard.writeText(portalUrl)
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 1800)
-    } catch (error) {
-      console.error('Failed to copy portal URL:', error)
+    } catch {
+      // copy silently
     }
   }
 

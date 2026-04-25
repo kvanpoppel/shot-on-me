@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
+import { useVenue } from '../../contexts/VenueContext'
 import { useToast } from '../../components/ToastContainer'
 import DashboardLayout from '../../components/DashboardLayout'
 import DashboardPageShell from '../../components/DashboardPageShell'
@@ -50,11 +51,11 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
 
 export default function InfluencersPage() {
   const { user, loading, token } = useAuth()
+  const { venueId } = useVenue()
   const { showSuccess, showError } = useToast()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<'find' | 'offers'>('find')
-  const [venueId, setVenueId] = useState<string | null>(null)
   const [eligible, setEligible] = useState<EligibleInfluencer[]>([])
   const [offers, setOffers] = useState<InfluencerOffer[]>([])
   const [loadingEligible, setLoadingEligible] = useState(false)
@@ -80,31 +81,11 @@ export default function InfluencersPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (token && user) {
-      fetchVenueId()
-    }
-  }, [token, user])
-
-  useEffect(() => {
     if (venueId && token) {
       fetchEligible()
       fetchOffers()
     }
   }, [venueId, token])
-
-  const fetchVenueId = async () => {
-    if (!token) return
-    try {
-      const apiUrl = getApiUrl()
-      const res = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const venues = Array.isArray(res.data) ? res.data : res.data?.venues || []
-      setVenueId(venues[0]?._id || null)
-    } catch {
-      // silently ignore
-    }
-  }
 
   const fetchEligible = async () => {
     if (!token) return

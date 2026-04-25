@@ -1,22 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
+import { useVenue } from '../../contexts/VenueContext'
 import DashboardLayout from '../../components/DashboardLayout'
 import DashboardPageShell from '../../components/DashboardPageShell'
 import AIAutomationDashboard from '../../components/AIAutomationDashboard'
-import axios from 'axios'
-import { getApiUrl } from '../../utils/api'
 import { Crown, ArrowRight, Bot } from 'lucide-react'
 
-type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
-
 export default function AutomationPage() {
-  const { user, loading, token } = useAuth()
+  const { user, loading } = useAuth()
+  const { tier, loading: venueLoading } = useVenue()
   const router = useRouter()
-  const [tier, setTier] = useState<SubscriptionTier>('free')
-  const [loadingTier, setLoadingTier] = useState(true)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -24,36 +20,9 @@ export default function AutomationPage() {
     }
   }, [user, loading, router])
 
-  useEffect(() => {
-    const fetchTier = async () => {
-      if (!token || !user) {
-        setLoadingTier(false)
-        return
-      }
-      try {
-        const response = await axios.get(`${getApiUrl()}/venues`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const venues = Array.isArray(response.data) ? response.data : response.data?.venues || []
-        const userId = user?.id?.toString() || (user as any)?._id?.toString()
-        const myVenue = venues.find((v: any) => {
-          const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-          return ownerId === userId
-        }) || venues[0]
-        setTier((myVenue?.subscriptionTier || 'free') as SubscriptionTier)
-      } catch {
-        setTier('free')
-      } finally {
-        setLoadingTier(false)
-      }
-    }
-
-    fetchTier()
-  }, [token, user])
-
   const hasAutomationAccess = tier === 'premium' || tier === 'enterprise'
 
-  if (loading || loadingTier) {
+  if (loading || venueLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>

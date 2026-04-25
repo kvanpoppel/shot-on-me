@@ -6,6 +6,7 @@ import axios from 'axios'
 import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowDown, Loader } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { StatsSkeleton } from './LoadingSkeleton'
+import { useToast } from './ToastContainer'
 
 interface EarningsData {
   connected: boolean
@@ -38,6 +39,7 @@ interface EarningsData {
 
 export default function EarningsDashboard() {
   const { token } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [data, setData] = useState<EarningsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [payoutAmount, setPayoutAmount] = useState('')
@@ -57,8 +59,8 @@ export default function EarningsDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       })
       setData(response.data)
-    } catch (error) {
-      console.error('Failed to fetch earnings:', error)
+    } catch {
+      // fetch silently
     } finally {
       setLoading(false)
     }
@@ -66,7 +68,7 @@ export default function EarningsDashboard() {
 
   const handleRequestPayout = async () => {
     if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
-      alert('Please enter a valid amount')
+      showError('Please enter a valid amount')
       return
     }
 
@@ -77,11 +79,11 @@ export default function EarningsDashboard() {
         { amount: parseFloat(payoutAmount) },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      alert('Payout requested successfully!')
+      showSuccess('Payout requested successfully!')
       setPayoutAmount('')
       await fetchEarnings()
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to request payout')
+      showError(error.response?.data?.message || 'Failed to request payout')
     } finally {
       setRequestingPayout(false)
     }

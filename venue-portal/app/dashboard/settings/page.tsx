@@ -9,10 +9,12 @@ import VenueManager from '../../components/VenueManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
+import { useToast } from '../../components/ToastContainer'
 import { Settings, CreditCard, MapPin, Bell, Clock, Target, Zap, QrCode, Download, Sparkles } from 'lucide-react'
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
+  const { showError } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [connectStatus, setConnectStatus] = useState<any>(null)
@@ -69,8 +71,8 @@ function SettingsPageContent() {
           launchWarningHours: response.data.notificationPreferences.launchWarningHours ?? 1
         })
       }
-    } catch (error) {
-      console.error('Failed to fetch notification preferences:', error)
+    } catch {
+      // fetch silently
     }
   }
 
@@ -143,7 +145,7 @@ function SettingsPageContent() {
         window.location.href = response.data.url
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to start bank connection')
+      showError(error.response?.data?.error || 'Failed to start bank connection')
       setConnecting(false)
     }
   }
