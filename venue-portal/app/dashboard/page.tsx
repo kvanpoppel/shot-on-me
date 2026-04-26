@@ -296,7 +296,7 @@ export default function Dashboard() {
                 </ul>
               </div>
               <button
-                onClick={() => router.push('/dashboard/profile')}
+                onClick={() => router.push('/dashboard/settings')}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-4 py-3 text-black font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-primary-500/20"
               >
                 <Crown className="w-4 h-4" />
@@ -309,7 +309,7 @@ export default function Dashboard() {
               <p className="text-sm font-semibold text-emerald-300 capitalize">{tier} Plan Active</p>
               <p className="text-xs text-primary-400/50">AI automation and advanced features are unlocked.</p>
               <button
-                onClick={() => router.push('/dashboard/analytics')}
+                onClick={() => router.push('/dashboard/money')}
                 className="mt-2 text-xs text-primary-400/60 hover:text-primary-400 flex items-center gap-1 transition-colors"
               >
                 View analytics <ArrowRight className="w-3 h-3" />

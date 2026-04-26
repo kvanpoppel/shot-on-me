@@ -64,10 +64,10 @@ function PromotionsPageContent() {
         subtitle="Build campaigns that convert faster and keep your venue full."
         actions={(
           <button
-            onClick={() => router.push('/dashboard/analytics?tab=suggestions')}
+            onClick={() => router.push('/dashboard/guests?tab=insights')}
             className="inline-flex items-center gap-2 rounded-lg border border-primary-500/30 bg-black/40 px-4 py-2 text-sm font-semibold text-primary-400 transition hover:border-primary-500/50 hover:text-primary-500"
           >
-            Open AI Suggestions
+            AI Insights
             <ArrowRight className="h-4 w-4" />
           </button>
         )}
