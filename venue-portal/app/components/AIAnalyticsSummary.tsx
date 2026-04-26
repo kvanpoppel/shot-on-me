@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Sparkles, TrendingUp, Target, Loader2 } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 
 export default function AIAnalyticsSummary() {
   const { token } = useAuth()
-  const router = useRouter()
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -70,12 +68,6 @@ export default function AIAnalyticsSummary() {
           </div>
         </div>
       ))}
-      <button
-        onClick={() => router.push('/dashboard/guests')}
-        className="w-full mt-4 text-xs text-primary-500/70 hover:text-primary-500 transition-colors text-center"
-      >
-        View All Insights →
-      </button>
     </div>
   )
 }
