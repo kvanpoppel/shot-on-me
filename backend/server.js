@@ -257,6 +257,39 @@ if (mongoose.connection.readyState === 1) {
   mongoose.connection.once('connected', startViralDetectorJob);
 }
 
+// Every 5 minutes: expire promotions whose endTime (or flashDealEndsAt) has passed
+const startPromotionExpiryJob = () => {
+  const run = async () => {
+    try {
+      const Venue = require('./models/Venue');
+      const now = new Date();
+      // Expire standard promotions past endTime
+      const r1 = await Venue.updateMany(
+        { 'promotions': { $elemMatch: { isActive: true, isFlashDeal: { $ne: true }, endTime: { $lt: now } } } },
+        { $set: { 'promotions.$[elem].isActive': false } },
+        { arrayFilters: [{ 'elem.isActive': true, 'elem.isFlashDeal': { $ne: true }, 'elem.endTime': { $lt: now } }] }
+      );
+      // Expire flash deals past flashDealEndsAt
+      const r2 = await Venue.updateMany(
+        { 'promotions': { $elemMatch: { isActive: true, isFlashDeal: true, flashDealEndsAt: { $lt: now } } } },
+        { $set: { 'promotions.$[elem].isActive': false } },
+        { arrayFilters: [{ 'elem.isActive': true, 'elem.isFlashDeal': true, 'elem.flashDealEndsAt': { $lt: now } }] }
+      );
+      const total = (r1.modifiedCount || 0) + (r2.modifiedCount || 0);
+      if (total > 0) console.log(`[PromotionExpiry] Expired ${total} stale promotion(s)`);
+    } catch (e) { console.error('Promotion expiry job error:', e.message); }
+  };
+  setTimeout(() => {
+    run();
+    setInterval(run, 5 * 60 * 1000); // every 5 minutes
+  }, 15000); // 15s after boot
+};
+if (mongoose.connection.readyState === 1) {
+  startPromotionExpiryJob();
+} else {
+  mongoose.connection.once('connected', startPromotionExpiryJob);
+}
+
 // Seed test venues (dev only)
 if (process.env.SEED_TEST_VENUES === 'true') {
   const seedTestVenuesOnConnect = async () => {

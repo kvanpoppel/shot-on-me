@@ -266,7 +266,13 @@ router.get('/:venueId', auth, async (req, res) => {
       
       const filteredPromotions = venue.promotions.filter(promo => {
         if (!promo.isActive) return false;
-        
+
+        // Reject expired promotions — use flashDealEndsAt if set, otherwise endTime
+        const promoExpiry = (promo.isFlashDeal && promo.flashDealEndsAt)
+          ? new Date(promo.flashDealEndsAt)
+          : (promo.endTime ? new Date(promo.endTime) : null);
+        if (promoExpiry && promoExpiry < now) return false;
+
         const targeting = promo.targeting || {};
         
         // Followers-only check
