@@ -204,7 +204,7 @@ export default function EarningsDashboard() {
             <button
               onClick={() => {
                 // Navigate to full payment history
-                window.location.href = '/dashboard/analytics?tab=payments'
+                window.location.href = '/dashboard/money?tab=payments'
               }}
               className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
             >
@@ -248,7 +248,7 @@ export default function EarningsDashboard() {
             <button
               onClick={() => {
                 // Navigate to full payout history
-                window.location.href = '/dashboard/analytics?tab=payouts'
+                window.location.href = '/dashboard/money?tab=payouts'
               }}
               className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
             >

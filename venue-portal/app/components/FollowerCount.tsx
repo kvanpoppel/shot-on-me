@@ -100,7 +100,7 @@ export default function FollowerCount() {
 
   return (
     <div 
-      onClick={() => window.location.href = '/dashboard/analytics?tab=followers'}
+      onClick={() => window.location.href = '/dashboard/guests'}
       className="bg-black/40 border border-primary-500/15 rounded-lg p-3 hover:border-primary-500/25 hover:bg-black/50 transition-all backdrop-blur-sm cursor-pointer group"
     >
       <div className="flex items-center justify-between">

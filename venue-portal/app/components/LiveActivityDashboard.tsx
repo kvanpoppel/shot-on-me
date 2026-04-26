@@ -127,7 +127,7 @@ export default function LiveActivityDashboard() {
             </span>
             {checkIns.length > 0 && (
               <button
-                onClick={() => window.open(`/dashboard/analytics?tab=checkins`, '_blank')}
+                onClick={() => window.location.href = '/dashboard/guests'}
                 className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
               >
                 View All
@@ -183,7 +183,7 @@ export default function LiveActivityDashboard() {
             </span>
             {nearbyUsers.length > 0 && (
               <button
-                onClick={() => window.open(`/dashboard/analytics?tab=nearby`, '_blank')}
+                onClick={() => window.location.href = '/dashboard/guests'}
                 className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
               >
                 View All
