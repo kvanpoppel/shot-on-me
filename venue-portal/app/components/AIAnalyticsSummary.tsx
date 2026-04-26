@@ -71,7 +71,7 @@ export default function AIAnalyticsSummary() {
         </div>
       ))}
       <button
-        onClick={() => router.push('/dashboard/analytics?tab=ai-analytics')}
+        onClick={() => router.push('/dashboard/guests')}
         className="w-full mt-4 text-xs text-primary-500/70 hover:text-primary-500 transition-colors text-center"
       >
         View All Insights →
