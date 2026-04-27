@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
@@ -18,6 +19,7 @@ interface PromotionSuggestion {
 
 export default function PromotionSuggestions() {
   const { token } = useAuth()
+  const router = useRouter()
   const [suggestions, setSuggestions] = useState<PromotionSuggestion[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedSuggestion, setSelectedSuggestion] = useState<PromotionSuggestion | null>(null)
@@ -170,7 +172,7 @@ export default function PromotionSuggestions() {
                     onClick={() => {
                       // Navigate to promotions page with template pre-filled
                       const templateStr = encodeURIComponent(JSON.stringify(suggestion.promotionTemplate))
-                      window.location.href = `/dashboard/promotions?template=${templateStr}`
+                      router.push(`/dashboard/promotions?template=${templateStr}`)
                     }}
                     className="mt-4 w-full bg-primary-500 text-black py-2 rounded-lg font-semibold hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
                   >

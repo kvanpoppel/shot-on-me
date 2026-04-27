@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSocket } from '../../contexts/SocketContext'
@@ -57,6 +58,7 @@ interface PromotionFormData {
 export default function PromotionManagerEnhanced() {
   const { token, user } = useAuth()
   const { socket } = useSocket()
+  const router = useRouter()
   const { showSuccess, showError } = useToast()
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
@@ -382,7 +384,7 @@ export default function PromotionManagerEnhanced() {
         <div className="text-center py-4 text-primary-400/80 text-sm">
           <p className="mb-2 font-light">No venue found. Please create a venue first.</p>
           <button
-            onClick={() => window.location.href = '/dashboard/settings'}
+            onClick={() => router.push('/dashboard/settings')}
             className="bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm"
           >
             Go to Settings

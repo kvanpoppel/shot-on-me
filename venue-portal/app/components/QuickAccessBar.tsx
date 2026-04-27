@@ -32,7 +32,7 @@ export default function QuickAccessBar({
     { 
       label: 'Analytics', 
       icon: <TrendingUp className="w-4 h-4" />, 
-      action: () => router.push('/dashboard/analytics'),
+      action: () => router.push('/dashboard/money'),
       primary: false
     },
     { 
@@ -44,7 +44,7 @@ export default function QuickAccessBar({
     { 
       label: 'Notifications', 
       icon: <Bell className="w-4 h-4" />, 
-      action: () => router.push('/dashboard/analytics?tab=notifications'),
+      action: () => router.push('/dashboard/guests'),
       primary: false
     }
   ]

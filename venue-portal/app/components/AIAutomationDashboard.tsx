@@ -287,7 +287,7 @@ export default function AIAutomationDashboard() {
           
           {suggestions.length > 3 && (
             <button
-              onClick={() => router.push('/dashboard/analytics?tab=ai-analytics')}
+              onClick={() => router.push('/dashboard/guests')}
               className="w-full text-xs text-primary-500/70 hover:text-primary-500 transition-colors text-center py-2"
             >
               View All {suggestions.length} Suggestions →

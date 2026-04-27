@@ -49,7 +49,7 @@ export default function NotificationCenter() {
           <h2 className="text-base font-semibold text-primary-500 tracking-tight">Send Notification</h2>
         </div>
         <a
-          href="/dashboard/analytics?tab=notifications"
+          href="/dashboard/guests"
           className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
         >
           History

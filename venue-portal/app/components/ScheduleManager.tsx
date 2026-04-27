@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MapPin } from 'lucide-react'
 
 const daysOfWeek = [
@@ -14,6 +15,7 @@ const daysOfWeek = [
 ]
 
 export default function ScheduleManager() {
+  const router = useRouter()
   const [schedule, setSchedule] = useState(
     daysOfWeek.reduce((acc, day) => {
       acc[day.key] = { open: '09:00', close: '22:00', isOpen: true }
@@ -41,7 +43,7 @@ export default function ScheduleManager() {
           <h2 className="text-base font-semibold text-primary-500 tracking-tight">Venue Info</h2>
         </div>
         <button 
-          onClick={() => window.location.href = '/dashboard/settings'}
+          onClick={() => router.push('/dashboard/settings')}
           className="text-primary-500/80 hover:text-primary-500 font-medium text-xs transition-all"
         >
           Edit
