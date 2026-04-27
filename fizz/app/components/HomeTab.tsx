@@ -4,12 +4,34 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Flame } from 'lucide-react'
+import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Flame, Clock } from 'lucide-react'
 import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface HomeTabProps {
   onSendFizz?: (venueId?: string) => void
   onDiscover?: () => void
+}
+
+const FIZZ_TYPE_LABEL: Record<string, { label: string; color: string }> = {
+  'happy-hour': { label: 'Happy Hour',  color: '#FFB347' },
+  'flash-deal': { label: 'Flash Deal',  color: '#FF5F57' },
+  'special':    { label: 'Special',     color: '#00D4FF' },
+  'exclusive':  { label: 'VIP',         color: '#C8F135' },
+  'event':      { label: 'Event',       color: '#A78BFA' },
+  'happy_hour': { label: 'Happy Hour',  color: '#FFB347' },
+  'flash_deal': { label: 'Flash Deal',  color: '#FF5F57' },
+}
+
+function getTimeLeft(promo: any): string {
+  const expiry = (promo.isFlashDeal && promo.flashDealEndsAt)
+    ? new Date(promo.flashDealEndsAt)
+    : (promo.endTime ? new Date(promo.endTime) : null)
+  if (!expiry) return ''
+  const diff = expiry.getTime() - Date.now()
+  if (diff <= 0) return 'Ended'
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  return h > 0 ? `${h}h ${m}m left` : `${m}m left`
 }
 
 function isFizzVenue(venue: Venue): boolean {
@@ -204,18 +226,37 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
             <h2 className="font-bold text-white text-base">What&apos;s Happening</h2>
           </div>
           <div className="flex flex-col gap-3">
-            {promotions.map((promo: any) => (
-              <div key={promo._id} className="fizz-card p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(255,95,87,0.15)' }}>
-                  🎉
+            {promotions.map((promo: any) => {
+              const typeInfo = FIZZ_TYPE_LABEL[promo.type]
+              const timeLeft = getTimeLeft(promo)
+              return (
+                <div key={promo._id} className="fizz-card p-4 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(255,95,87,0.15)' }}>
+                    🎉
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="font-bold text-white text-sm">{promo.title}</h3>
+                      {typeInfo && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: `${typeInfo.color}22`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44` }}>
+                          {typeInfo.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-white/50 text-xs mt-0.5 line-clamp-2">{promo.description}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-xs font-semibold" style={{ color: '#00D4FF' }}>{promo.venueName}</p>
+                      {timeLeft && timeLeft !== 'Ended' && (
+                        <span className="flex items-center gap-1 text-[10px] text-white/40">
+                          <Clock className="w-3 h-3" />{timeLeft}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-white text-sm">{promo.title}</h3>
-                  <p className="text-white/50 text-xs mt-0.5 line-clamp-2">{promo.description}</p>
-                  <p className="text-xs font-semibold mt-1" style={{ color: '#00D4FF' }}>{promo.venueName}</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}

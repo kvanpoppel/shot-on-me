@@ -123,7 +123,13 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     const catKey = Object.keys(CATEGORY_ICONS).find(k => venue.category?.toLowerCase().includes(k.toLowerCase())) || 'Cafe'
     const icon = CATEGORY_ICONS[catKey] || '🏠'
     const colorClass = CATEGORY_COLORS[catKey] || 'bg-white/10 text-white/70'
-    const hasPromos = venue.promotions && venue.promotions.length > 0
+    const now = new Date()
+    const hasPromos = venue.promotions?.some((p: any) => {
+      const expiry = (p.isFlashDeal && p.flashDealEndsAt)
+        ? new Date(p.flashDealEndsAt)
+        : (p.endTime ? new Date(p.endTime) : null)
+      return !expiry || now < expiry
+    })
     const isSaved = savedIds.has(venue._id)
 
     return (
@@ -179,13 +185,25 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
             <p className="text-sm text-white/40 mt-2 line-clamp-2">{venue.description}</p>
           )}
 
-          {/* Active promotions */}
-          {hasPromos && (
-            <div className="mt-3 p-2.5 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)', borderColor: 'rgba(0,212,255,0.15)', border: '1px solid' }}>
-              <p className="text-xs font-bold" style={{ color: '#00D4FF' }}>🎉 {venue.promotions![0].title}</p>
-              <p className="text-xs text-white/40 mt-0.5">{venue.promotions![0].description}</p>
-            </div>
-          )}
+          {/* Active promotions — show first non-expired one */}
+          {(() => {
+            const now = new Date()
+            const activePromo = venue.promotions?.find((p: any) => {
+              const expiry = (p.isFlashDeal && p.flashDealEndsAt)
+                ? new Date(p.flashDealEndsAt)
+                : (p.endTime ? new Date(p.endTime) : null)
+              return !expiry || now < expiry
+            })
+            if (!activePromo) return null
+            return (
+              <div className="mt-3 p-2.5 rounded-xl" style={{ background: 'rgba(0,212,255,0.08)', borderColor: 'rgba(0,212,255,0.15)', border: '1px solid' }}>
+                <p className="text-xs font-bold" style={{ color: '#00D4FF' }}>🎉 {activePromo.title}</p>
+                {activePromo.description && (
+                  <p className="text-xs text-white/40 mt-0.5">{activePromo.description}</p>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="flex gap-2 mt-3">
             <button

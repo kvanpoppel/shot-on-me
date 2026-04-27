@@ -16,6 +16,16 @@ interface MapTabProps {
   setActiveTab?: (tab: Tab) => void
 }
 
+const TYPE_LABEL: Record<string, { label: string; color: string }> = {
+  'happy-hour':  { label: 'Happy Hour',   color: 'bg-amber-500/20 border-amber-500/30 text-amber-400' },
+  'flash-deal':  { label: 'Flash Deal',   color: 'bg-rose-500/20 border-rose-500/30 text-rose-400' },
+  'special':     { label: 'Special',      color: 'bg-primary-500/10 border-primary-500/20 text-primary-500' },
+  'exclusive':   { label: 'VIP',          color: 'bg-purple-500/20 border-purple-500/30 text-purple-400' },
+  'event':       { label: 'Event',        color: 'bg-blue-500/20 border-blue-500/30 text-blue-400' },
+  'happy_hour':  { label: 'Happy Hour',   color: 'bg-amber-500/20 border-amber-500/30 text-amber-400' },
+  'flash_deal':  { label: 'Flash Deal',   color: 'bg-rose-500/20 border-rose-500/30 text-rose-400' },
+}
+
 export default function MapTab({ setActiveTab }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
@@ -309,15 +319,23 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     const now = new Date()
     const dayOfWeek = now.getDay()
     const currentTime = now.getHours() * 100 + now.getMinutes()
-    
+
     return (venue.promotions || []).filter((promo: any) => {
-      // Check if promotion is active based on schedule
+      if (!promo.isActive) return false
+
+      // Check hard expiry (flash deals use flashDealEndsAt; others use endTime)
+      const expiryTime = (promo.isFlashDeal && promo.flashDealEndsAt)
+        ? new Date(promo.flashDealEndsAt)
+        : (promo.endTime ? new Date(promo.endTime) : null)
+      if (expiryTime && now >= expiryTime) return false
+
+      // Check schedule window if present
       if (promo.schedule) {
         const schedule = promo.schedule[dayOfWeek]
         if (schedule && schedule.start && schedule.end) {
           const start = parseInt(schedule.start.replace(':', ''))
           const end = parseInt(schedule.end.replace(':', ''))
-          return currentTime >= start && currentTime <= end
+          return currentTime >= start && currentTime < end
         }
       }
       return true
@@ -541,12 +559,15 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                         <div key={idx} className="bg-black/30 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
                           <div className="flex items-start justify-between mb-2">
                             <h5 className="font-medium text-primary-500 text-sm tracking-tight">{promo.title}</h5>
-                            {promo.type === 'happy-hour' && (
-                              <span className="flex items-center text-xs text-primary-500 bg-primary-500/10 border border-primary-500/20 px-2 py-1 rounded font-medium">
-                                <Clock className="w-3 h-3 mr-1" />
-                                NOW
-                              </span>
-                            )}
+                            {(() => {
+                              const t = TYPE_LABEL[promo.type]
+                              return t ? (
+                                <span className={`flex items-center text-xs border px-2 py-1 rounded font-medium ${t.color}`}>
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {t.label}
+                                </span>
+                              ) : null
+                            })()}
                           </div>
                           <p className="text-primary-400/80 text-sm mb-2 font-light">{promo.description || promo.message}</p>
                           {promo.schedule && (

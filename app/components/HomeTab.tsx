@@ -40,8 +40,21 @@ interface QuickDeal {
     description?: string
     type: string
     endTime: string
+    flashDealEndsAt?: string
+    isFlashDeal?: boolean
   }
   distance?: string
+}
+
+const TYPE_LABEL: Record<string, { label: string; color: string }> = {
+  'happy-hour':  { label: 'Happy Hour',   color: 'bg-amber-500/20 border-amber-500/30 text-amber-400' },
+  'flash-deal':  { label: 'Flash Deal',   color: 'bg-rose-500/20 border-rose-500/30 text-rose-400' },
+  'special':     { label: 'Special',      color: 'bg-primary-500/10 border-primary-500/20 text-primary-500' },
+  'exclusive':   { label: 'VIP',          color: 'bg-purple-500/20 border-purple-500/30 text-purple-400' },
+  'event':       { label: 'Event',        color: 'bg-blue-500/20 border-blue-500/30 text-blue-400' },
+  // legacy underscore fallbacks
+  'happy_hour':  { label: 'Happy Hour',   color: 'bg-amber-500/20 border-amber-500/30 text-amber-400' },
+  'flash_deal':  { label: 'Flash Deal',   color: 'bg-rose-500/20 border-rose-500/30 text-rose-400' },
 }
 
 export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: HomeTabProps) {
@@ -60,7 +73,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
     }
   }, [token, user])
 
-  // Real-time wallet updates
+  // Real-time wallet + promotion updates
   useEffect(() => {
     if (!socket) return
 
@@ -70,12 +83,23 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
       }
     }
 
+    // Refresh deals list whenever promotions change from venue portal
+    const handlePromotionChange = () => {
+      if (token && user) fetchHomeData()
+    }
+
     socket.on('wallet-updated', handleWalletUpdate)
+    socket.on('promotion-updated', handlePromotionChange)
+    socket.on('new-promotion', handlePromotionChange)
+    socket.on('promotion-deleted', handlePromotionChange)
 
     return () => {
       socket.off('wallet-updated', handleWalletUpdate)
+      socket.off('promotion-updated', handlePromotionChange)
+      socket.off('new-promotion', handlePromotionChange)
+      socket.off('promotion-deleted', handlePromotionChange)
     }
-  }, [socket, user])
+  }, [socket, user, token])
 
   const fetchHomeData = async () => {
     if (!token) return
@@ -103,10 +127,13 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
         if (venue.promotions && venue.promotions.length > 0) {
           venue.promotions.forEach((promo: any) => {
             const startTime = new Date(promo.startTime)
-            const endTime = new Date(promo.endTime)
-            
-            // Check if promotion is currently active
-            if (promo.isActive && now >= startTime && now <= endTime) {
+            // Flash deals use flashDealEndsAt; regular promos use endTime
+            const expiryTime = (promo.isFlashDeal && promo.flashDealEndsAt)
+              ? new Date(promo.flashDealEndsAt)
+              : (promo.endTime ? new Date(promo.endTime) : null)
+
+            // Check if promotion is currently active (exclusive upper bound)
+            if (promo.isActive && now >= startTime && expiryTime && now < expiryTime) {
               deals.push({
                 venue: {
                   _id: venue._id,
@@ -117,7 +144,9 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
                   title: promo.title,
                   description: promo.description,
                   type: promo.type,
-                  endTime: promo.endTime
+                  endTime: promo.endTime,
+                  flashDealEndsAt: promo.flashDealEndsAt,
+                  isFlashDeal: promo.isFlashDeal
                 }
               })
             }
@@ -125,10 +154,12 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
         }
       })
 
-      // Sort by end time (soonest ending first) and take top 5
-      deals.sort((a, b) => 
-        new Date(a.promotion.endTime).getTime() - new Date(b.promotion.endTime).getTime()
-      )
+      // Sort by effective expiry time (soonest ending first) and take top 5
+      const getExpiry = (d: QuickDeal) =>
+        (d.promotion.isFlashDeal && d.promotion.flashDealEndsAt)
+          ? new Date(d.promotion.flashDealEndsAt).getTime()
+          : new Date(d.promotion.endTime).getTime()
+      deals.sort((a, b) => getExpiry(a) - getExpiry(b))
       setQuickDeals(deals.slice(0, 5))
 
       // Get trending venues (by follower count)
@@ -172,16 +203,19 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
     }
   }
 
-  const getTimeRemaining = (endTime: string) => {
+  const getTimeRemaining = (deal: QuickDeal) => {
     const now = new Date()
-    const end = new Date(endTime)
+    const expiryStr = (deal.promotion.isFlashDeal && deal.promotion.flashDealEndsAt)
+      ? deal.promotion.flashDealEndsAt
+      : deal.promotion.endTime
+    const end = new Date(expiryStr)
     const diff = end.getTime() - now.getTime()
-    
+
     if (diff <= 0) return 'Ended'
-    
+
     const hours = Math.floor(diff / (1000 * 60 * 60))
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    
+
     if (hours > 0) return `${hours}h ${minutes}m left`
     return `${minutes}m left`
   }
@@ -307,17 +341,20 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
                         </p>
                       )}
                     </div>
-                    {deal.promotion.type === 'happy-hour' && (
-                      <span className="bg-primary-500/10 border border-primary-500/20 text-primary-500 px-2 py-1 rounded text-xs font-medium flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
-                        NOW
-                      </span>
-                    )}
+                    {(() => {
+                      const t = TYPE_LABEL[deal.promotion.type]
+                      return t ? (
+                        <span className={`border px-2 py-1 rounded text-xs font-medium flex items-center ${t.color}`}>
+                          <Clock className="w-3 h-3 mr-1" />
+                          {t.label}
+                        </span>
+                      ) : null
+                    })()}
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-xs text-primary-400">
                       <Clock className="w-3 h-3" />
-                      <span>{getTimeRemaining(deal.promotion.endTime)}</span>
+                      <span>{getTimeRemaining(deal)}</span>
                     </div>
                     <button className="text-primary-500 hover:text-primary-400 text-xs font-semibold flex items-center">
                       View

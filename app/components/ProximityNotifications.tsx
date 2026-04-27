@@ -20,6 +20,9 @@ interface NearbyVenue {
     title: string
     description?: string
     type: string
+    endTime?: string
+    flashDealEndsAt?: string
+    isFlashDeal?: boolean
   }>
 }
 
@@ -112,21 +115,39 @@ export default function ProximityNotifications() {
                   (v: NearbyVenue) => !notifiedVenuesRef.current.has(v.venue._id)
                 )
 
-                if (newVenues.length > 0) {
-                  newVenues.forEach((v: NearbyVenue) => {
+                // Filter out venues with no active (non-expired) promotions
+                const now = new Date()
+                const venuesWithActivePromos = newVenues.filter((v: NearbyVenue) =>
+                  v.promotions.some((promo) => {
+                    const expiry = (promo.isFlashDeal && promo.flashDealEndsAt)
+                      ? new Date(promo.flashDealEndsAt)
+                      : (promo.endTime ? new Date(promo.endTime) : null)
+                    return !expiry || now < expiry
+                  })
+                )
+
+                if (venuesWithActivePromos.length > 0) {
+                  venuesWithActivePromos.forEach((v: NearbyVenue) => {
                     notifiedVenuesRef.current.add(v.venue._id)
                   })
 
-                  const closest = newVenues[0]
+                  const closest = venuesWithActivePromos[0]
+                  // Use the first non-expired promo for notification text
+                  const activePromo = closest.promotions.find((p) => {
+                    const expiry = (p.isFlashDeal && p.flashDealEndsAt)
+                      ? new Date(p.flashDealEndsAt)
+                      : (p.endTime ? new Date(p.endTime) : null)
+                    return !expiry || now < expiry
+                  }) || closest.promotions[0]
+
                   setCurrentNotification(closest)
                   setShowNotification(true)
-                  setNotifications(prev => [...newVenues, ...prev])
+                  setNotifications(prev => [...venuesWithActivePromos, ...prev])
 
                   // Browser notification
                   if ('Notification' in window && Notification.permission === 'granted') {
-                    const promo = closest.promotions[0]
                     new Notification(`🎉 Special at ${closest.venue.name}!`, {
-                      body: `${promo.title} - ${closest.distance} km away`,
+                      body: `${activePromo.title} - ${closest.distance} km away`,
                       icon: '/icon-192x192.png',
                       tag: `venue-${closest.venue._id}`
                     })
