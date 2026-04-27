@@ -8,6 +8,7 @@ import DashboardLayout from '../../components/DashboardLayout'
 import LiveActivityDashboard from '../../components/LiveActivityDashboard'
 import CheckInsHistory from '../../components/CheckInsHistory'
 import AIAnalyticsSummary from '../../components/AIAnalyticsSummary'
+import FeatureGate, { LockedBadge } from '../../components/FeatureGate'
 import { Users, Sparkles, Activity, ClipboardList } from 'lucide-react'
 
 type Tab = 'live' | 'checkins' | 'insights'
@@ -30,8 +31,8 @@ export default function GuestsPage() {
   if (!user) return null
 
   const TABS: { id: Tab; label: string; icon: any }[] = [
-    { id: 'live',     label: 'Live',      icon: Activity },
-    { id: 'checkins', label: 'Check-ins', icon: ClipboardList },
+    { id: 'live',     label: 'Live',        icon: Activity },
+    { id: 'checkins', label: 'Check-ins',   icon: ClipboardList },
     { id: 'insights', label: 'AI Insights', icon: Sparkles },
   ]
 
@@ -73,6 +74,7 @@ export default function GuestsPage() {
             >
               <Icon className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{label}</span>
+              {id === 'insights' && <LockedBadge requires="growth" />}
             </button>
           ))}
         </div>
@@ -91,17 +93,19 @@ export default function GuestsPage() {
         )}
 
         {activeTab === 'insights' && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
-              <AIAnalyticsSummary />
+          <FeatureGate requires="growth" message="AI Insights are a Growth plan feature">
+            <div className="space-y-4">
+              <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
+                <AIAnalyticsSummary />
+              </div>
+              <button
+                onClick={() => router.push('/dashboard/money?tab=payments')}
+                className="w-full rounded-xl border border-primary-500/15 bg-black/40 py-3 text-xs text-primary-400/60 hover:text-primary-400 hover:border-primary-500/30 transition-all"
+              >
+                View full payment history in Money →
+              </button>
             </div>
-            <button
-              onClick={() => router.push('/dashboard/money?tab=payments')}
-              className="w-full rounded-xl border border-primary-500/15 bg-black/40 py-3 text-xs text-primary-400/60 hover:text-primary-400 hover:border-primary-500/30 transition-all"
-            >
-              View full payment history in Money →
-            </button>
-          </div>
+          </FeatureGate>
         )}
 
       </div>

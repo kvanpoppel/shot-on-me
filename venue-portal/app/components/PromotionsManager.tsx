@@ -5,7 +5,7 @@ import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useVenue } from '../contexts/VenueContext'
 import { useSocket } from '../contexts/SocketContext'
-import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Bell, Zap } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Bell, Zap, Crown } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { useToast } from './ToastContainer'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
@@ -15,6 +15,7 @@ import PromotionAnalytics from './promotions/PromotionAnalytics'
 import PromotionLibrary from './promotions/PromotionLibrary'
 import SaveToLibraryModal from './promotions/SaveToLibraryModal'
 import SmartPromotionGenerator from './SmartPromotionGenerator'
+import { useFeatureAvailable } from './FeatureGate'
 
 interface Promotion {
   _id: string
@@ -83,9 +84,10 @@ export interface PromotionsManagerRef {
 const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProps>(
   ({ hideQuickActions = false, compactView = false }: PromotionsManagerProps, ref) => {
   const { token } = useAuth()
-  const { venueId } = useVenue()
+  const { venueId, tier } = useVenue()
   const { socket } = useSocket()
   const { showSuccess, showError } = useToast()
+  const hasUnlimitedDeals = useFeatureAvailable('growth')
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
   const [showTemplates, setShowTemplates] = useState(false)
@@ -610,6 +612,11 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   }
 
   const handleNewPromotion = () => {
+    // Free tier: max 1 active promotion
+    if (!hasUnlimitedDeals && promotions.filter(p => p.isActive).length >= 1) {
+      showError('Free plan allows 1 active deal. Upgrade for unlimited.')
+      return
+    }
     setSelectedTemplate(null)
     setEditingPromo(null)
     setQuickActionData(null)
