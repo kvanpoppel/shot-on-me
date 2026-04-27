@@ -38,6 +38,7 @@ interface QuickDeal {
   promotion: {
     title: string
     description?: string
+    offer?: string
     type: string
     endTime: string
     flashDealEndsAt?: string
@@ -143,6 +144,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
                 promotion: {
                   title: promo.title,
                   description: promo.description,
+                  offer: promo.offer,
                   type: promo.type,
                   endTime: promo.endTime,
                   flashDealEndsAt: promo.flashDealEndsAt,
@@ -332,9 +334,14 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile }: Hom
                         <MapPin className="w-4 h-4 text-primary-500" />
                         <h3 className="font-bold text-primary-500">{deal.venue.name}</h3>
                       </div>
-                      <p className="text-primary-400 text-sm font-semibold mb-1">
+                      <p className="text-primary-400 text-sm font-semibold mb-0.5">
                         {deal.promotion.title}
                       </p>
+                      {deal.promotion.offer && (
+                        <p className="text-primary-500 text-sm font-bold mb-1">
+                          {deal.promotion.offer}
+                        </p>
+                      )}
                       {deal.promotion.description && (
                         <p className="text-primary-300 text-xs mb-2">
                           {deal.promotion.description}

@@ -16,6 +16,7 @@ interface Promotion {
   _id: string
   title: string
   description?: string
+  offer?: string
   type: string
   startTime: string
   endTime: string
@@ -37,6 +38,7 @@ interface Promotion {
 interface PromotionFormData {
   title: string
   description: string
+  offer: string
   type: string
   startTime: string
   endTime: string
@@ -180,6 +182,7 @@ export default function PromotionManagerEnhanced() {
       const promotionData = {
         title: formData.title,
         description: formData.description,
+        offer: formData.offer || '',
         type: formData.type,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
@@ -462,6 +465,9 @@ export default function PromotionManagerEnhanced() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-primary-500 text-xs truncate tracking-tight">{promo.title}</h3>
+                    {promo.offer && (
+                      <p className="text-xs text-primary-500 font-semibold mt-0.5 line-clamp-1">{promo.offer}</p>
+                    )}
                     {promo.description && (
                       <p className="text-xs text-primary-400/80 mt-0.5 line-clamp-1 font-light">{promo.description}</p>
                     )}
