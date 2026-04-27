@@ -51,7 +51,7 @@ export default function CollapsibleSection({
         </div>
       </div>
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-primary-500/10 animate-slide-up">
+        <div className="px-4 pb-4 border-t border-primary-500/10">
           {children}
         </div>
       )}

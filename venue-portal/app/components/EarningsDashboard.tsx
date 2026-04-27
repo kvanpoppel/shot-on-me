@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowDown, Loader } from 'lucide-react'
@@ -40,6 +41,7 @@ interface EarningsData {
 export default function EarningsDashboard() {
   const { token } = useAuth()
   const { showSuccess, showError } = useToast()
+  const router = useRouter()
   const [data, setData] = useState<EarningsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [payoutAmount, setPayoutAmount] = useState('')
@@ -204,7 +206,7 @@ export default function EarningsDashboard() {
             <button
               onClick={() => {
                 // Navigate to full payment history
-                window.location.href = '/dashboard/money?tab=payments'
+                router.push('/dashboard/money?tab=payments')
               }}
               className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
             >
@@ -248,7 +250,7 @@ export default function EarningsDashboard() {
             <button
               onClick={() => {
                 // Navigate to full payout history
-                window.location.href = '/dashboard/money?tab=payouts'
+                router.push('/dashboard/money?tab=payouts')
               }}
               className="text-xs text-primary-500 hover:text-primary-400 transition-colors underline"
             >

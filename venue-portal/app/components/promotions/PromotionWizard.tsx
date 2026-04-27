@@ -187,58 +187,55 @@ export default function PromotionWizard({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-black border-2 border-primary-500/30 rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-black border border-primary-500/30 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
         {/* Header with Progress */}
-        <div className="p-6 border-b border-primary-500/20">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-primary-500">
-              {isEditing ? 'Edit Promotion' : 'Create Promotion'}
-            </h2>
+        <div className="px-4 pt-4 pb-3 border-b border-primary-500/15">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-bold text-white">
+                {isEditing ? 'Edit Deal' : 'Create Deal'}
+              </h2>
+              <p className="text-xs text-primary-400/40 mt-0.5">Step {currentStep} of {STEPS.length} — {STEPS[currentStep - 1].name}</p>
+            </div>
             <button
               onClick={onCancel}
-              className="text-primary-400 hover:text-primary-500 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 text-primary-400 hover:text-white hover:bg-white/10 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between">
-            {STEPS.map((step, index) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
-                      currentStep >= step.id
-                        ? 'bg-primary-500 border-primary-500 text-black'
-                        : 'bg-black border-primary-500/30 text-primary-400'
-                    }`}
-                  >
-                    {currentStep > step.id ? (
-                      <Check className="w-5 h-5" />
-                    ) : (
-                      step.icon
-                    )}
-                  </div>
-                  <span className={`text-xs mt-2 ${
-                    currentStep >= step.id ? 'text-primary-500' : 'text-primary-400/50'
-                  }`}>
-                    {step.name}
-                  </span>
+          {/* Progress bar — simple linear bar instead of 5 cramped circles */}
+          <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary-500 transition-all duration-300"
+              style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+            />
+          </div>
+          {/* Step dots — compact row */}
+          <div className="flex justify-between mt-2">
+            {STEPS.map(step => (
+              <div key={step.id} className="flex flex-col items-center">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all text-[9px] font-bold ${
+                  currentStep > step.id
+                    ? 'bg-primary-500 border-primary-500 text-black'
+                    : currentStep === step.id
+                      ? 'bg-primary-500/20 border-primary-500 text-primary-400'
+                      : 'bg-white/5 border-white/10 text-primary-400/30'
+                }`}>
+                  {currentStep > step.id ? <Check className="w-2.5 h-2.5" /> : step.id}
                 </div>
-                {index < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${
-                    currentStep > step.id ? 'bg-primary-500' : 'bg-primary-500/20'
-                  }`} />
-                )}
+                <span className={`hidden sm:block text-[9px] mt-1 ${currentStep >= step.id ? 'text-primary-400' : 'text-primary-400/25'}`}>
+                  {step.name}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Step Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {currentStep === 1 && (
             <Step1BasicInfo formData={formData} updateFormData={updateFormData} />
           )}
@@ -257,34 +254,34 @@ export default function PromotionWizard({
         </div>
 
         {/* Footer with Navigation */}
-        <div className="p-6 border-t border-primary-500/20 flex items-center justify-between">
+        <div className="px-4 py-3 border-t border-primary-500/15 flex items-center justify-between gap-3">
           <button
             onClick={currentStep === 1 ? onCancel : prevStep}
-            className="px-4 py-2 bg-black/40 border border-primary-500/20 text-primary-500 rounded-lg hover:bg-primary-500/10 transition-all"
+            className="flex items-center gap-1 px-4 py-2.5 bg-white/5 border border-white/10 text-primary-400 rounded-xl hover:bg-white/10 transition-all text-sm min-h-[44px]"
           >
             {currentStep === 1 ? 'Cancel' : (
               <>
-                <ChevronLeft className="w-4 h-4 inline mr-1" />
+                <ChevronLeft className="w-4 h-4" />
                 Back
               </>
             )}
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 justify-end">
             {currentStep < STEPS.length ? (
               <button
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="px-6 py-2 bg-primary-500 text-black rounded-lg hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="flex items-center gap-1 px-6 py-2.5 bg-primary-500 text-black rounded-xl hover:bg-primary-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm font-bold min-h-[44px]"
               >
                 Next
-                <ChevronRight className="w-4 h-4 inline ml-1" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
                 disabled={saving || !canProceed()}
-                className="px-6 py-2 bg-primary-500 text-black rounded-lg hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="flex items-center gap-1 px-6 py-2.5 bg-primary-500 text-black rounded-xl hover:bg-primary-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm font-bold min-h-[44px]"
               >
                 {saving ? 'Saving...' : isEditing ? 'Update Promotion' : 'Create Promotion'}
               </button>

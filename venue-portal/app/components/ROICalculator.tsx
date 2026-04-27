@@ -56,7 +56,7 @@ export default function ROICalculator() {
   }
 
   return (
-    <div className="bg-black border-2 border-primary-500/30 rounded-lg shadow-xl p-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-3 mb-6">
         <Calculator className="w-6 h-6 text-primary-500" />
         <div>
