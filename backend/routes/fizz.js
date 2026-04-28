@@ -13,6 +13,7 @@ const Message = require('../models/Message')
 const Story = require('../models/Story')
 const FizzFriendRequest = require('../models/FizzFriendRequest')
 const Notification = require('../models/Notification')
+const Payment = require('../models/Payment')
 const webpush = require('web-push')
 const auth = require('../middleware/auth')
 
@@ -193,6 +194,24 @@ router.post('/send', auth, async (req, res) => {
     // Debit sender, credit recipient
     await User.findByIdAndUpdate(req.user.userId, { $inc: { 'fizzWallet.balance': -amount } })
     await User.findByIdAndUpdate(recipientId, { $inc: { 'fizzWallet.balance': amount } })
+
+    // Record venue revenue so it appears in venue portal earnings
+    if (venueId) {
+      try {
+        await Payment.create({
+          senderId: req.user.userId,
+          recipientId,
+          venueId,
+          amount,
+          currency: 'usd',
+          type: 'shot_redeemed',
+          source: 'fizz',
+          status: 'succeeded',
+        })
+      } catch (payErr) {
+        console.error('Fizz: failed to record venue payment', payErr.message)
+      }
+    }
 
     const rp = recipient.fizzProfile || {}
     const recipientName = `${rp.firstName || recipient.firstName || ''} ${rp.lastName || recipient.lastName || ''}`.trim()

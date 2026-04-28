@@ -44,6 +44,12 @@ const paymentSchema = new mongoose.Schema({
   },
   refunded: { type: Boolean, default: false },
   refundedAt: { type: Date },
+  /** Which consumer app originated this payment: 'som' (Shot On Me) or 'fizz' */
+  source: {
+    type: String,
+    enum: ['som', 'fizz'],
+    default: 'som'
+  },
   metadata: {
     type: Map,
     of: String

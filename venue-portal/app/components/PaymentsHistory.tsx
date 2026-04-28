@@ -11,6 +11,7 @@ interface Payment {
   amount: number
   type: string
   status: string
+  source?: string
   createdAt: string
   senderId?: {
     name?: string
@@ -148,12 +149,21 @@ export default function PaymentsHistory() {
                     <DollarSign className="w-5 h-5 text-primary-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-primary-500">
-                      {payment.type === 'shot_redeemed' ? 'Shot Redeemed' :
-                       payment.type === 'tap_and_pay' ? 'Tap & Pay' :
-                       payment.type === 'transfer' ? 'Transfer' :
-                       payment.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Payment'}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-primary-500">
+                        {payment.type === 'shot_redeemed' ? 'Shot Redeemed' :
+                         payment.type === 'tap_and_pay' ? 'Tap & Pay' :
+                         payment.type === 'transfer' ? 'Transfer' :
+                         payment.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Payment'}
+                      </p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                        payment.source === 'fizz'
+                          ? 'bg-violet-500/15 text-violet-400 border-violet-500/25'
+                          : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25'
+                      }`}>
+                        {payment.source === 'fizz' ? 'FIZZ' : 'SOM'}
+                      </span>
+                    </div>
                     <div className="flex items-center space-x-2 mt-1">
                       <Clock className="w-3 h-3 text-primary-400/70" />
                       <p className="text-xs text-primary-400/70">
