@@ -13,6 +13,8 @@ interface Venue {
   _id: string
   name: string
   coverPhoto?: string
+  category?: string
+  platform?: string
   address: {
     street?: string
     city?: string
@@ -51,6 +53,8 @@ export default function VenueManager() {
     email: '',
     website: '',
     description: '',
+    category: 'other',
+    platform: 'som' as 'som' | 'fizz' | 'both',
     subscriptionTier: 'free' as 'free' | 'basic' | 'premium' | 'enterprise',
     isFeatured: false,
     featuredUntil: '',
@@ -145,6 +149,8 @@ export default function VenueManager() {
           email: myVenue.email || '',
           website: myVenue.website || '',
           description: myVenue.description || '',
+          category: myVenue.category || 'other',
+          platform: (myVenue.platform as 'som' | 'fizz' | 'both') || 'som',
           subscriptionTier: myVenue.subscriptionTier || 'free',
           isFeatured: myVenue.isFeatured || false,
           featuredUntil: myVenue.featuredUntil ? new Date(myVenue.featuredUntil).toISOString().slice(0, 16) : '',
@@ -198,6 +204,8 @@ export default function VenueManager() {
           email: formData.email,
           website: formData.website,
           description: formData.description,
+          category: formData.category,
+          platform: formData.platform,
           schedule,
           subscriptionTier: formData.subscriptionTier,
           isFeatured: formData.isFeatured,
@@ -628,6 +636,38 @@ export default function VenueManager() {
                 ) : (
                   'Not set'
                 )}
+              </p>
+            )}
+          </div>
+
+          {/* Platform — which app(s) this venue appears in */}
+          <div>
+            <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">App Platform</label>
+            {editing ? (
+              <div className="flex gap-2">
+                {([
+                  { value: 'som', label: 'Shot On Me', sub: 'Bars & restaurants' },
+                  { value: 'fizz', label: 'Fizz', sub: 'Coffee, soda & treats' },
+                  { value: 'both', label: 'Both Apps', sub: 'All audiences' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, platform: opt.value })}
+                    className={`flex-1 rounded-xl p-2.5 text-left border transition-all ${
+                      formData.platform === opt.value
+                        ? 'border-primary-500/60 bg-primary-500/10'
+                        : 'border-primary-500/15 bg-black/40'
+                    }`}
+                  >
+                    <p className={`text-xs font-bold ${formData.platform === opt.value ? 'text-primary-500' : 'text-white/50'}`}>{opt.label}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{opt.sub}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-primary-400 text-sm capitalize">
+                {formData.platform === 'both' ? 'Both Apps (SOM + Fizz)' : formData.platform === 'fizz' ? 'Fizz only' : 'Shot On Me only'}
               </p>
             )}
           </div>

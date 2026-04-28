@@ -65,11 +65,12 @@ export default function ProfileTab({
 
   const openEdit = () => {
     const fp = (user as any)?.fizzProfile || {}
-    setEditFirst(fp.firstName || user?.firstName || '')
-    setEditLast(fp.lastName || user?.lastName || '')
-    setEditUsername(fp.username || user?.username || '')
+    // Strictly Fizz profile fields only — never inherit from SOM account
+    setEditFirst(fp.firstName || '')
+    setEditLast(fp.lastName || '')
+    setEditUsername(fp.username || '')
     setEditBio(fp.bio || '')
-    setEditPic(fp.profilePicture || user?.profilePicture || '')
+    setEditPic(fp.profilePicture || '')
     setShowEditProfile(true)
   }
 
@@ -121,10 +122,12 @@ export default function ProfileTab({
   ]
 
   const fp = (user as any)?.fizzProfile || {}
-  const displayFirst = fp.firstName || user?.firstName || ''
-  const displayLast = fp.lastName || user?.lastName || ''
-  const displayUsername = fp.username || user?.username || ''
-  const displayPic = fp.profilePicture || user?.profilePicture || ''
+  // Strictly Fizz profile — no SOM field fallbacks
+  const displayFirst = fp.firstName || ''
+  const displayLast = fp.lastName || ''
+  const displayUsername = fp.username || ''
+  const displayPic = fp.profilePicture || ''
+  const fizzProfileIncomplete = !displayFirst && !displayUsername
 
   return (
     <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
@@ -207,7 +210,7 @@ export default function ProfileTab({
                 ? <img src={displayPic} alt="" className="w-full h-full object-cover" />
                 : (
                   <div className="w-full h-full flex items-center justify-center text-2xl font-black" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>
-                    {displayFirst[0]}{displayLast[0]}
+                    {displayFirst ? displayFirst[0] : '🫧'}
                   </div>
                 )
               }
@@ -216,23 +219,36 @@ export default function ProfileTab({
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-xl font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    {displayFirst} {displayLast}
+                    {displayFirst || displayLast ? `${displayFirst} ${displayLast}`.trim() : 'Your Fizz Name'}
                   </h2>
-                  {displayUsername && <p className="text-sm text-white/40">@{displayUsername}</p>}
-                  <p className="text-xs text-white/25 mt-0.5">{user?.email}</p>
+                  {displayUsername
+                    ? <p className="text-sm text-white/40">@{displayUsername}</p>
+                    : <p className="text-sm text-white/25 italic">No username set</p>
+                  }
                 </div>
                 <button onClick={openEdit} className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(200,241,53,0.1)' }}>
                   <Pencil className="w-4 h-4" style={{ color: '#C8F135' }} />
                 </button>
               </div>
               {fp.bio && <p className="text-xs text-white/40 mt-1.5 leading-relaxed">{fp.bio}</p>}
-              {/* Points pill */}
               <div className="flex items-center gap-1 mt-2">
                 <Sparkles className="w-3.5 h-3.5" style={{ color: '#C8F135' }} />
                 <span className="text-xs font-bold" style={{ color: '#C8F135' }}>{points} pts</span>
               </div>
             </div>
           </div>
+
+          {/* Onboarding nudge — shown only when Fizz profile not set up */}
+          {fizzProfileIncomplete && (
+            <button
+              onClick={openEdit}
+              className="w-full mt-4 py-2.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 relative z-10"
+              style={{ background: 'rgba(200,241,53,0.12)', border: '1px dashed rgba(200,241,53,0.35)', color: '#C8F135' }}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Set up your Fizz profile — separate from Shot On Me
+            </button>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mt-4 relative z-10">

@@ -6,7 +6,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
-import { X, Loader, Check } from 'lucide-react'
+import { X, Loader, Check, CreditCard, ShieldCheck } from 'lucide-react'
 
 const QUICK_AMOUNTS = [10, 25, 50, 100]
 
@@ -107,6 +107,11 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess }: AddFundsMo
   const [succeeded, setSucceeded] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
+  // SOM shared-cards permission
+  const [hasSOMCards, setHasSOMCards] = useState(false)
+  const [somCardsDismissed, setSomCardsDismissed] = useState(false)
+  const [somCardsAllowed, setSomCardsAllowed] = useState<boolean | null>(null)
+
   const init = useCallback(async (selectedAmount: number) => {
     if (!token) return
     abortRef.current?.abort()
@@ -143,10 +148,25 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess }: AddFundsMo
     }
   }, [API_URL, token])
 
+  // Check if user has saved SOM payment methods
+  const checkSOMCards = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/payment-methods`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const methods = res.data.paymentMethods || res.data || []
+      setHasSOMCards(methods.length > 0)
+    } catch { /* ignore */ }
+  }, [API_URL, token])
+
   // Initialise when modal opens
   useEffect(() => {
     if (isOpen) {
       setSucceeded(false)
+      setSomCardsDismissed(false)
+      setSomCardsAllowed(null)
+      checkSOMCards()
       init(amount)
     } else {
       abortRef.current?.abort()
@@ -205,6 +225,37 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess }: AddFundsMo
           </div>
         ) : (
           <>
+            {/* SOM shared-cards permission banner */}
+            {hasSOMCards && !somCardsDismissed && somCardsAllowed === null && (
+              <div className="mb-4 p-4 rounded-2xl" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+                <div className="flex items-start gap-3">
+                  <CreditCard className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#00D4FF' }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-white">Use your Shot On Me cards?</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      You have saved payment methods on Shot On Me. Allow Fizz to use the same cards, or add a new one.
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => { setSomCardsAllowed(true); setSomCardsDismissed(true) }}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                        style={{ background: 'rgba(0,212,255,0.2)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.3)' }}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Allow
+                      </button>
+                      <button
+                        onClick={() => { setSomCardsAllowed(false); setSomCardsDismissed(true) }}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}
+                      >
+                        Use new card
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Amount selector */}
             <div className="grid grid-cols-4 gap-2 mb-5">
               {QUICK_AMOUNTS.map(a => (

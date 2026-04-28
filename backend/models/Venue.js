@@ -38,8 +38,20 @@ const venueSchema = new mongoose.Schema({
   coverPhoto: { type: String, default: '' },
   category: {
     type: String,
-    enum: ['restaurant', 'bar', 'cafe', 'club', 'other'],
+    enum: [
+      // SOM (nightlife)
+      'restaurant', 'bar', 'cafe', 'club', 'other',
+      // Fizz (non-alcohol / family-friendly)
+      'coffee shop', 'juice bar', 'dirty soda shop', 'soda shop',
+      'tea house', 'smoothie bar', 'bakery', 'ice cream', 'creamery',
+    ],
     default: 'other'
+  },
+  /** Which consumer app(s) this venue appears in */
+  platform: {
+    type: String,
+    enum: ['som', 'fizz', 'both'],
+    default: 'som'
   },
   isActive: {
     type: Boolean,

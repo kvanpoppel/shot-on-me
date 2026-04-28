@@ -5,6 +5,7 @@ import { Elements } from '@stripe/react-stripe-js'
 import { Stripe, loadStripe } from '@stripe/stripe-js'
 import { AuthProvider } from '../contexts/AuthContext'
 import { SocketProvider } from '../contexts/SocketContext'
+import { GoogleMapsProvider } from '../contexts/GoogleMapsContext'
 import { ErrorBoundary } from './ErrorBoundary'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import axios from 'axios'
@@ -55,12 +56,14 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary fallback={<div className="min-h-screen flex items-center justify-center text-red-400" style={{ background: '#1A1A2E' }}>Auth Error — Please refresh</div>}>
       <AuthProvider>
-        <ErrorBoundary fallback={<div className="min-h-screen flex items-center justify-center text-red-400" style={{ background: '#1A1A2E' }}>Socket Error — Please refresh</div>}>
-          <SocketProvider>
-            <PushSetup />
-            {children}
-          </SocketProvider>
-        </ErrorBoundary>
+        <GoogleMapsProvider>
+          <ErrorBoundary fallback={<div className="min-h-screen flex items-center justify-center text-red-400" style={{ background: '#1A1A2E' }}>Socket Error — Please refresh</div>}>
+            <SocketProvider>
+              <PushSetup />
+              {children}
+            </SocketProvider>
+          </ErrorBoundary>
+        </GoogleMapsProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

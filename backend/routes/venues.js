@@ -62,13 +62,19 @@ router.get('/slug/:slug/public', async (req, res) => {
 // GET /api/venues/public — public venue discovery for consumer app
 router.get('/public', async (req, res) => {
   try {
-    const { city, limit = 50 } = req.query;
+    const { city, limit = 50, platform } = req.query;
     const filter = { isActive: true };
     if (city && city !== 'All') {
       filter['address.city'] = { $regex: new RegExp(`^${city}$`, 'i') };
     }
+    // Filter by platform ('som', 'fizz', or 'both' matches either)
+    if (platform === 'fizz') {
+      filter.platform = { $in: ['fizz', 'both'] };
+    } else if (platform === 'som') {
+      filter.platform = { $in: ['som', 'both', null] }; // null = legacy, treated as SOM
+    }
     const venues = await Venue.find(filter)
-      .select('name category address.city address.state coverPhoto branding.logoUrl description')
+      .select('name category platform address.city address.state coverPhoto branding.logoUrl description')
       .sort({ isFeatured: -1, createdAt: -1 })
       .limit(parseInt(limit))
       .lean();
@@ -128,9 +134,17 @@ router.get('/', auth, async (req, res) => {
       
       console.log(`[Venues API] Venue owner query returned ${venues.length} venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
     } else {
-      // For regular users, return all active venues with pagination
-      totalCount = await Venue.countDocuments({ isActive: true });
-      venues = await Venue.find({ isActive: true })
+      // For regular users, return active venues filtered by platform
+      const platformParam = req.query.platform;
+      let platformFilter = {};
+      if (platformParam === 'fizz') {
+        platformFilter = { platform: { $in: ['fizz', 'both'] } };
+      } else if (platformParam === 'som') {
+        platformFilter = { $or: [{ platform: { $in: ['som', 'both'] } }, { platform: { $exists: false } }] };
+      }
+      const userQuery = { isActive: true, ...platformFilter };
+      totalCount = await Venue.countDocuments(userQuery);
+      venues = await Venue.find(userQuery)
         .skip(skipNum)
         .limit(limitNum)
         .lean();
@@ -354,7 +368,7 @@ router.put('/:venueId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this venue' });
     }
 
-    const { name, address, phone, email, website, schedule, location, description, subscriptionTier, isFeatured, featuredUntil, subscriptionExpiresAt, amenities } = req.body;
+    const { name, address, phone, email, website, schedule, location, description, subscriptionTier, isFeatured, featuredUntil, subscriptionExpiresAt, amenities, category, platform } = req.body;
 
     // Update fields if provided
     if (name) venue.name = name;
@@ -372,6 +386,9 @@ router.put('/:venueId', auth, async (req, res) => {
     }
     // Amenities
     if (amenities) venue.amenities = { ...(venue.amenities || {}), ...amenities };
+    // Category and platform
+    if (category !== undefined) venue.category = category;
+    if (platform !== undefined && ['som', 'fizz', 'both'].includes(platform)) venue.platform = platform;
     // Subscription and featured status
     if (subscriptionTier !== undefined) venue.subscriptionTier = subscriptionTier;
     if (isFeatured !== undefined) venue.isFeatured = isFeatured;
