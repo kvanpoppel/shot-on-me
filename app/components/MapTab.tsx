@@ -38,6 +38,19 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [googlePlacesResults, setGooglePlacesResults] = useState<any[]>([])
+  const [amenityFilters, setAmenityFilters] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try { const s = localStorage.getItem('som-amenity-filters'); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
+  })
+  const [showVibeDropdown, setShowVibeDropdown] = useState(false)
+  const toggleAmenity = (key: string) => {
+    setAmenityFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      try { localStorage.setItem('som-amenity-filters', JSON.stringify(Array.from(next))) } catch {}
+      return next
+    })
+  }
 
   useEffect(() => {
     if (token) {
@@ -290,6 +303,14 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       
     }
 
+    // Apply amenity filters (AND logic)
+    if (amenityFilters.size > 0) {
+      filtered = filtered.filter(venue => {
+        const a = venue.amenities || {}
+        return Array.from(amenityFilters).every(key => a[key] === true)
+      })
+    }
+
     // Apply promotion filter
     if (filter === 'all') return filtered
     return filtered.filter((venue) => {
@@ -343,7 +364,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         label: venue.name?.[0] || 'V',
         onClick: () => setSelectedVenue(venue)
       }))
-  }, [venues, filter, searchQuery, googlePlace])
+  }, [venues, filter, searchQuery, googlePlace, amenityFilters])
 
   return (
     <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto">
@@ -429,6 +450,63 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
               Map
             </button>
           </div>
+        </div>
+
+        {/* Vibes dropdown filter */}
+        <div className="relative mb-3">
+          <button
+            onClick={() => setShowVibeDropdown(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              amenityFilters.size > 0
+                ? 'bg-primary-500/15 border border-primary-500/40 text-primary-400'
+                : 'bg-black/40 border border-primary-500/20 text-primary-400/60'
+            }`}
+          >
+            Vibes {amenityFilters.size > 0 && `(${amenityFilters.size})`}
+            <span className={`text-[10px] transition-transform ${showVibeDropdown ? 'rotate-180' : ''}`}>▼</span>
+          </button>
+          {showVibeDropdown && (
+            <div className="absolute top-full left-0 mt-1.5 z-30 rounded-xl border border-primary-500/20 bg-black/95 backdrop-blur-md shadow-xl p-3 w-72">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/50">Filter by vibe</p>
+                {amenityFilters.size > 0 && (
+                  <button onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} ; setShowVibeDropdown(false) }} className="text-[10px] font-semibold text-red-400">
+                    Clear all
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { key: 'dogFriendly',    label: '🐕 Dogs OK' },
+                  { key: 'kidsFriendly',   label: '👶 Kids OK' },
+                  { key: 'hasFood',        label: '🍕 Food' },
+                  { key: 'byob',           label: '🥂 BYOB' },
+                  { key: 'trivia',         label: '🎯 Trivia' },
+                  { key: 'liveMusic',      label: '🎵 Live Music' },
+                  { key: 'outdoorSeating', label: '🌿 Outdoor' },
+                  { key: 'happyHour',      label: '🍺 Happy Hr' },
+                  { key: 'poolTables',     label: '🎱 Pool' },
+                  { key: 'danceFloor',     label: '🕺 Dancing' },
+                  { key: 'sportsTv',       label: '📺 Sports' },
+                  { key: 'karaoke',        label: '🎤 Karaoke' },
+                  { key: 'arcade',         label: '🎮 Arcade' },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => toggleAmenity(key)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      amenityFilters.has(key)
+                        ? 'bg-primary-500/20 border border-primary-500/50 text-primary-400'
+                        : 'bg-black/40 border border-primary-500/10 text-primary-400/50'
+                    }`}
+                  >
+                    {label}
+                    {amenityFilters.has(key) && <span className="ml-auto text-primary-500">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

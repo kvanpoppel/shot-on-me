@@ -81,7 +81,13 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [circularFriendAvatars, setCircularFriendAvatars] = useState<Map<string, string>>(new Map())
   const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
   const [justSavedPlaceId, setJustSavedPlaceId] = useState<string | null>(null)
-  const [amenityFilters, setAmenityFilters] = useState<Set<string>>(new Set())
+  const [amenityFilters, setAmenityFilters] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const saved = localStorage.getItem('som-amenity-filters')
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    } catch { return new Set() }
+  })
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loadingRecs, setLoadingRecs] = useState(false)
   const [hasPreferences, setHasPreferences] = useState(false)
@@ -117,6 +123,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
+      try { localStorage.setItem('som-amenity-filters', JSON.stringify(Array.from(next))) } catch {}
       return next
     })
   }
@@ -1463,42 +1470,65 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             </div>
           </div>
           
-          {/* Amenity filter chips */}
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4 mt-1">
-            {([
-              { key: 'dogFriendly',    label: '🐕 Dogs' },
-              { key: 'kidsFriendly',   label: '👶 Kids' },
-              { key: 'hasFood',        label: '🍕 Food' },
-              { key: 'byob',           label: '🥂 BYOB' },
-              { key: 'trivia',         label: '🎯 Trivia' },
-              { key: 'liveMusic',      label: '🎵 Live Music' },
-              { key: 'outdoorSeating', label: '🌿 Outdoor' },
-              { key: 'happyHour',      label: '🍺 Happy Hr' },
-              { key: 'poolTables',     label: '🎱 Pool' },
-              { key: 'danceFloor',     label: '🕺 Dancing' },
-              { key: 'sportsTv',       label: '📺 Sports' },
-              { key: 'karaoke',        label: '🎤 Karaoke' },
-              { key: 'arcade',         label: '🎮 Arcade' },
-            ] as const).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => toggleAmenityFilter(key)}
-                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
-                  amenityFilters.has(key)
-                    ? 'bg-primary-500 text-black shadow-md'
-                    : 'bg-black/60 border border-primary-500/20 text-primary-400/70 hover:border-primary-500/40'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-            {amenityFilters.size > 0 && (
-              <button
-                onClick={() => setAmenityFilters(new Set())}
-                className="flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/20 border border-red-500/30 text-red-400 whitespace-nowrap"
-              >
-                Clear
-              </button>
+          {/* Amenity filter dropdown */}
+          <div className="relative mt-1">
+            <button
+              onClick={() => setShowFilterDropdown(prev => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                amenityFilters.size > 0
+                  ? 'bg-primary-500/15 border border-primary-500/40 text-primary-400'
+                  : 'bg-black/60 border border-primary-500/20 text-primary-400/70'
+              }`}
+            >
+              <Settings className="w-3 h-3" />
+              Vibes {amenityFilters.size > 0 && `(${amenityFilters.size})`}
+              <ChevronDown className={`w-3 h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showFilterDropdown && (
+              <div className="filter-dropdown-container absolute top-full left-0 right-0 mt-1.5 z-30 rounded-xl border border-primary-500/20 bg-black/95 backdrop-blur-md shadow-xl p-3 max-w-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/50">Filter by vibe</p>
+                  {amenityFilters.size > 0 && (
+                    <button
+                      onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} }}
+                      className="text-[10px] font-semibold text-red-400 hover:text-red-300"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {([
+                    { key: 'dogFriendly',    label: '🐕 Dogs OK' },
+                    { key: 'kidsFriendly',   label: '👶 Kids OK' },
+                    { key: 'hasFood',        label: '🍕 Food' },
+                    { key: 'byob',           label: '🥂 BYOB' },
+                    { key: 'trivia',         label: '🎯 Trivia' },
+                    { key: 'liveMusic',      label: '🎵 Live Music' },
+                    { key: 'outdoorSeating', label: '🌿 Outdoor' },
+                    { key: 'happyHour',      label: '🍺 Happy Hr' },
+                    { key: 'poolTables',     label: '🎱 Pool' },
+                    { key: 'danceFloor',     label: '🕺 Dancing' },
+                    { key: 'sportsTv',       label: '📺 Sports' },
+                    { key: 'karaoke',        label: '🎤 Karaoke' },
+                    { key: 'arcade',         label: '🎮 Arcade' },
+                  ] as const).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => toggleAmenityFilter(key)}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${
+                        amenityFilters.has(key)
+                          ? 'bg-primary-500/20 border border-primary-500/50 text-primary-400'
+                          : 'bg-black/40 border border-primary-500/10 text-primary-400/50 hover:border-primary-500/30'
+                      }`}
+                    >
+                      <span>{label}</span>
+                      {amenityFilters.has(key) && <span className="ml-auto text-primary-500">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
