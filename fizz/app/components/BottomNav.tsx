@@ -11,7 +11,7 @@ interface BottomNavProps {
 const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: 'home',     icon: Home,          label: 'Home' },
   { id: 'feed',     icon: Newspaper,     label: 'Feed' },
-  { id: 'sips',     icon: Coffee,        label: 'Discover' },
+  { id: 'sips',     icon: Coffee,        label: 'Sips' },
   { id: 'wallet',   icon: Wallet,        label: 'Wallet' },
   { id: 'messages', icon: MessageSquare, label: 'Messages' },
   { id: 'send',     icon: Send,          label: 'Send' },
