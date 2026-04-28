@@ -60,13 +60,38 @@ export default function VenueManager() {
     featuredUntil: '',
     subscriptionExpiresAt: ''
   })
-  const [activeSection, setActiveSection] = useState<'info' | 'amenities' | 'wine' | 'happyhour' | 'special' | 'weekend' | 'trending' | 'tonight'>('info')
+  const [activeSection, setActiveSection] = useState<'info' | 'wine' | 'happyhour' | 'special' | 'weekend' | 'trending' | 'tonight'>('info')
   const [amenities, setAmenities] = useState({
     kidsFriendly: false, dogFriendly: false, hasFood: false, byob: false,
     trivia: false, liveMusic: false, outdoorSeating: false, happyHour: false,
     poolTables: false, danceFloor: false, sportsTv: false, karaoke: false, arcade: false,
   })
   const [amenitiesSaving, setAmenitiesSaving] = useState(false)
+  const [amenitiesOpen, setAmenitiesOpen] = useState(false)
+  const amenitiesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleAmenityToggle = (key: string, value: boolean) => {
+    const updated = { ...amenities, [key]: value }
+    setAmenities(updated as typeof amenities)
+    // Debounced auto-save — fires 600ms after last toggle
+    if (amenitiesSaveTimer.current) clearTimeout(amenitiesSaveTimer.current)
+    amenitiesSaveTimer.current = setTimeout(async () => {
+      if (!token || !venue) return
+      setAmenitiesSaving(true)
+      try {
+        await axios.put(
+          `${getApiUrl()}/venues/${venue._id}`,
+          { amenities: updated },
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        showSuccess('Amenities saved!')
+      } catch {
+        showError('Failed to save amenities.')
+      } finally {
+        setAmenitiesSaving(false)
+      }
+    }, 600)
+  }
   const [menuSaving, setMenuSaving] = useState(false)
   const [wineMenu, setWineMenu] = useState<Array<{ name: string; description: string; price: string; varietal: string }>>([])
   const [happyHour, setHappyHour] = useState({ times: '', description: '' })
@@ -693,6 +718,69 @@ export default function VenueManager() {
         </div>
       </div>
 
+      {/* ── Amenities collapsible dropdown ── */}
+      <div className="border-t border-primary-500/20 pt-4">
+        <button
+          type="button"
+          onClick={() => setAmenitiesOpen(o => !o)}
+          className="w-full flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary-500" />
+            <h3 className="text-sm font-semibold text-primary-500 uppercase tracking-wide">Amenities</h3>
+            {amenitiesSaving && <span className="text-[10px] text-primary-400/50 animate-pulse">Saving…</span>}
+            {!amenitiesSaving && Object.values(amenities).filter(Boolean).length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-500/15 text-primary-400 border border-primary-500/25">
+                {Object.values(amenities).filter(Boolean).length} selected
+              </span>
+            )}
+          </div>
+          <span className="text-primary-400/40 text-xs transition-transform duration-200" style={{ transform: amenitiesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </button>
+
+        {amenitiesOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {([
+              { key: 'kidsFriendly',   label: '👶 Kids Friendly' },
+              { key: 'dogFriendly',    label: '🐕 Dog Friendly' },
+              { key: 'hasFood',        label: '🍕 Food Served' },
+              { key: 'byob',           label: '🥂 BYOB' },
+              { key: 'trivia',         label: '🎯 Trivia Night' },
+              { key: 'liveMusic',      label: '🎵 Live Music' },
+              { key: 'outdoorSeating', label: '🌿 Outdoor Seating' },
+              { key: 'happyHour',      label: '🍺 Happy Hour' },
+              { key: 'poolTables',     label: '🎱 Pool Tables' },
+              { key: 'danceFloor',     label: '🕺 Dance Floor' },
+              { key: 'sportsTv',       label: '📺 Sports TV' },
+              { key: 'karaoke',        label: '🎤 Karaoke' },
+              { key: 'arcade',         label: '🎮 Arcade' },
+            ] as const).map(({ key, label }) => (
+              <label
+                key={key}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none min-h-[44px] ${
+                  amenities[key]
+                    ? 'bg-primary-500/15 border-primary-500/60 text-primary-400'
+                    : 'bg-black/30 border-primary-500/15 text-primary-400/50 hover:border-primary-500/30'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={amenities[key]}
+                  onChange={e => handleAmenityToggle(key, e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                  amenities[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/30'
+                }`}>
+                  {amenities[key] && <span className="text-black text-xs font-bold leading-none">✓</span>}
+                </div>
+                <span className="text-sm font-medium">{label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Hours of Operation */}
       <div className="border-t border-primary-500/20 pt-4">
         <div className="flex items-center space-x-2 mb-3">
@@ -919,7 +1007,6 @@ export default function VenueManager() {
         <div className="flex overflow-x-auto scrollbar-hide bg-black/60 border-b border-primary-500/15">
           {([
             { id: 'info',      label: 'Info',         icon: MapPin },
-            { id: 'amenities', label: 'Amenities',    icon: Sparkles },
             { id: 'wine',      label: 'Wine',         icon: Wine },
             { id: 'happyhour', label: 'Happy Hour',   icon: Clock },
             { id: 'special',   label: 'Special',      icon: Tag },
@@ -990,73 +1077,6 @@ export default function VenueManager() {
           )}
 
           {/* Amenities */}
-          {activeSection === 'amenities' && (
-            <div className="space-y-4">
-              <p className="text-primary-400/60 text-xs">Tell guests what your venue offers. These appear as filter badges in the Shot On Me app and power AI recommendations.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { key: 'kidsFriendly',   label: '👶 Kids Friendly' },
-                  { key: 'dogFriendly',    label: '🐕 Dog Friendly' },
-                  { key: 'hasFood',        label: '🍕 Food Served' },
-                  { key: 'byob',           label: '🥂 BYOB' },
-                  { key: 'trivia',         label: '🎯 Trivia Night' },
-                  { key: 'liveMusic',      label: '🎵 Live Music' },
-                  { key: 'outdoorSeating', label: '🌿 Outdoor Seating' },
-                  { key: 'happyHour',      label: '🍺 Happy Hour' },
-                  { key: 'poolTables',     label: '🎱 Pool Tables' },
-                  { key: 'danceFloor',     label: '🕺 Dance Floor' },
-                  { key: 'sportsTv',       label: '📺 Sports TV' },
-                  { key: 'karaoke',        label: '🎤 Karaoke' },
-                  { key: 'arcade',         label: '🎮 Arcade' },
-                ] as const).map(({ key, label }) => (
-                  <label
-                    key={key}
-                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none ${
-                      amenities[key]
-                        ? 'bg-primary-500/15 border-primary-500/60 text-primary-400'
-                        : 'bg-black/30 border-primary-500/15 text-primary-400/50 hover:border-primary-500/30'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={amenities[key]}
-                      onChange={(e) => setAmenities({ ...amenities, [key]: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                      amenities[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/30'
-                    }`}>
-                      {amenities[key] && <span className="text-black text-xs font-bold leading-none">✓</span>}
-                    </div>
-                    <span className="text-sm font-medium">{label}</span>
-                  </label>
-                ))}
-              </div>
-              <button
-                onClick={async () => {
-                  if (!token || !venue) return
-                  setAmenitiesSaving(true)
-                  try {
-                    await axios.put(
-                      `${getApiUrl()}/venues/${venue._id}`,
-                      { amenities },
-                      { headers: { Authorization: `Bearer ${token}` } }
-                    )
-                    showSuccess('Amenities saved!')
-                  } catch {
-                    showError('Failed to save amenities.')
-                  } finally {
-                    setAmenitiesSaving(false)
-                  }
-                }}
-                disabled={amenitiesSaving}
-                className="flex items-center gap-2 bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-600 disabled:opacity-50 transition-all"
-              >
-                <Save className="w-4 h-4" />
-                {amenitiesSaving ? 'Saving...' : 'Save Amenities'}
-              </button>
-            </div>
-          )}
 
           {/* Wine Menu */}
           {activeSection === 'wine' && (

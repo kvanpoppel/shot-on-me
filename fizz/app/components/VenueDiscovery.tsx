@@ -131,7 +131,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   // Google Places search when category is selected
   const searchPlaces = useCallback((category: VenueCategory, center: { lat: number; lng: number }) => {
-    if (!isLoaded || !serviceRef.current) return
+    if (!serviceRef.current) return
     setPlacesLoading(true)
     setPlaces([])
 
@@ -164,7 +164,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
       }
       setPlacesLoading(false)
     })
-  }, [isLoaded])
+  }, [])
 
   const handleCategorySelect = (cat: VenueCategory) => {
     if (cat === selectedCategory) {
@@ -177,13 +177,16 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     searchPlaces(cat, center)
   }
 
+  // Init PlacesService as soon as Google Maps API loads — no map mount needed
+  useEffect(() => {
+    if (isLoaded && !serviceRef.current) {
+      serviceRef.current = new google.maps.places.PlacesService(document.createElement('div'))
+    }
+  }, [isLoaded])
+
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map
-    // PlacesService needs a map instance or a div
-    serviceRef.current = new google.maps.places.PlacesService(map)
-    // If a category is already selected, search now
-    if (selectedCategory) searchPlaces(selectedCategory, mapCenter)
-  }, [selectedCategory, mapCenter, searchPlaces])
+  }, [])
 
   // Derived list — combine DB venues + Places results, deduped
   const displayList = selectedCategory
