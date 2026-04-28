@@ -296,7 +296,7 @@ export default function Dashboard() {
                     <span className="text-sm text-primary-400">{insightLabelMap[key] || key}</span>
                   </div>
                   <span className="text-xs font-semibold text-primary-500 bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full">
-                    {count} apply{count !== 1 ? 'ies' : 'y'}
+                    {count as number} {(count as number) !== 1 ? 'applies' : 'apply'}
                   </span>
                 </div>
               ))}

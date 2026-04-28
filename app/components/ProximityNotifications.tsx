@@ -133,7 +133,7 @@ export default function ProximityNotifications() {
 
                   const closest = venuesWithActivePromos[0]
                   // Use the first non-expired promo for notification text
-                  const activePromo = closest.promotions.find((p) => {
+                  const activePromo = closest.promotions.find((p: any) => {
                     const expiry = (p.isFlashDeal && p.flashDealEndsAt)
                       ? new Date(p.flashDealEndsAt)
                       : (p.endTime ? new Date(p.endTime) : null)
