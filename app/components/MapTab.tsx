@@ -117,8 +117,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         headers: { Authorization: `Bearer ${token}` }
       })
       const fetchedVenues = response.data.venues || []
-      console.log('Fetched venues:', fetchedVenues.length)
-      
       // Deduplicate venues by name and location
       // Normalize venue names for comparison (remove apostrophes, lowercase, trim)
       const normalizeName = (name: string) => {
@@ -140,7 +138,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                              normalizedName.includes("kate") && normalizedName.includes("venue") && !normalizedName.includes("pub")
         
         if (isKatesVenue) {
-          console.log(`Filtering out venue: "${venue.name}" (normalized: "${normalizedName}") (ID: ${venue._id}) - only showing "Kate's Pub"`)
           return false
         }
         
@@ -159,12 +156,10 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             )
             // If same name and same location (within 100m), it's a duplicate
             if (distance < 0.1) {
-              console.log(`Removing duplicate venue: "${venue.name}" (ID: ${venue._id}) - same as "${existing.name}" (ID: ${existing._id})`)
               return false
             }
           } else {
             // Same normalized name but no location or different location - keep the first one
-            console.log(`Removing duplicate venue: "${venue.name}" (ID: ${venue._id}) - same name as "${existing.name}" (ID: ${existing._id})`)
             return false
           }
         }
@@ -173,7 +168,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         return true
       })
       
-      console.log('Unique venues after deduplication:', uniqueVenues.length)
       setVenues(uniqueVenues)
     } catch (error) {
       console.error('Failed to fetch venues:', error)
@@ -210,7 +204,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                            (normalizedName.includes("kate") && normalizedName.includes("venue") && !normalizedName.includes("pub"))
       
       if (isKatesVenue) {
-        console.log(`Filtering out venue in getFilteredVenues: "${venue.name}" (normalized: "${normalizedName}") (ID: ${venue._id})`)
         return false
       }
       return true
@@ -271,8 +264,6 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       }
       
       const query = normalize(searchQuery)
-      console.log('Searching for:', query, 'in', filtered.length, 'venues')
-      
       filtered = filtered.filter((venue) => {
         // Normalize all searchable fields
         const name = normalize(venue.name || '')
@@ -294,13 +285,9 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         const wordMatch = queryWords.every(word => allFields.includes(word))
         
         const matches = nameMatch || cityMatch || stateMatch || streetMatch || descriptionMatch || wordMatch
-        if (matches) {
-          console.log('Match found:', venue.name)
-        }
         return matches
       })
       
-      console.log('Filtered results:', filtered.length)
     }
 
     // Apply promotion filter

@@ -44,6 +44,8 @@ export default function ProfileTab({
   const [editPic, setEditPic] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editUploading, setEditUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
   const editFileRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -56,7 +58,9 @@ export default function ProfileTab({
       ])
       if (histRes.status === 'fulfilled') setHistory((histRes.value.data.shots || histRes.value.data || []).slice(0, 20))
       if (meRes.status === 'fulfilled') setPoints(meRes.value.data.user?.points || meRes.value.data.points || 0)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load profile data. Check your connection.')
+    } finally {
       setLoading(false)
     }
   }, [API_URL, token])
@@ -85,13 +89,16 @@ export default function ProfileTab({
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       })
       setEditPic(res.data.url)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setEditError('Photo upload failed. Try a smaller image.')
+    } finally {
       setEditUploading(false)
     }
   }
 
   const handleSaveProfile = async () => {
     setEditSaving(true)
+    setEditError(null)
     try {
       await axios.put(`${API_URL}/fizz/profile`, {
         firstName: editFirst,
@@ -102,7 +109,9 @@ export default function ProfileTab({
       }, { headers: { Authorization: `Bearer ${token}` } })
       await updateUser({})
       setShowEditProfile(false)
-    } catch { /* ignore */ } finally {
+    } catch (err: any) {
+      setEditError(err.response?.data?.error || 'Failed to save profile. Please try again.')
+    } finally {
       setEditSaving(false)
     }
   }
@@ -190,6 +199,12 @@ export default function ProfileTab({
                 />
                 <p className="text-right text-xs mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>{editBio.length}/160</p>
               </div>
+              {editError && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+                  <X className="w-4 h-4 flex-shrink-0" />
+                  <span>{editError}</span>
+                </div>
+              )}
               <button onClick={handleSaveProfile} disabled={editSaving} className="fizz-btn-primary w-full py-4 gap-2 disabled:opacity-40">
                 {editSaving ? 'Saving...' : <><Check className="w-4 h-4" /> Save Changes</>}
               </button>
@@ -198,6 +213,13 @@ export default function ProfileTab({
         </>
       )}
 
+
+      {error && (
+        <div className="mx-4 mt-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+          <X className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Profile hero */}
       <div className="px-4 pt-5 pb-4">

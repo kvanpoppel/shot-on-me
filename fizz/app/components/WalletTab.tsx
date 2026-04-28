@@ -28,6 +28,7 @@ export default function WalletTab() {
   const [redeemCode, setRedeemCode] = useState('')
   const [showRedeem, setShowRedeem] = useState(false)
   const [redeemMsg, setRedeemMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const balance = user?.fizzWallet?.balance ?? user?.wallet?.balance ?? 0
   const pending = user?.fizzWallet?.pendingBalance ?? user?.wallet?.pendingBalance ?? 0
@@ -46,7 +47,9 @@ export default function WalletTab() {
       if (pointsRes.status === 'fulfilled') {
         setPoints(pointsRes.value.data.user?.points || pointsRes.value.data.points || 0)
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load wallet history. Pull down to retry.')
+    } finally {
       setLoading(false)
     }
   }, [API_URL, token])
@@ -192,6 +195,13 @@ export default function WalletTab() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-white text-base">Transaction History</h2>
         </div>
+
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+            <X className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-4">

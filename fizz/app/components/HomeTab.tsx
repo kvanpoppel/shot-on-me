@@ -52,6 +52,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
   const [promotions, setPromotions] = useState<any[]>([])
   const [activity, setActivity] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -75,7 +76,9 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         const promos = promoRes.value.data.promotions || promoRes.value.data || []
         setPromotions(promos.slice(0, 4))
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load venues. Check your connection and try again.')
+    } finally {
       setLoading(false)
     }
   }, [API_URL, token, selectedCity])
@@ -186,6 +189,12 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="mx-4 mb-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Trending venues */}
       <section className="mb-4">

@@ -1,36 +1,74 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin } from 'lucide-react'
+import { MapPin, Loader2 } from 'lucide-react'
+import axios from 'axios'
+import { useVenue } from '../contexts/VenueContext'
+import { useAuth } from '../contexts/AuthContext'
+import { getApiUrl } from '../utils/api'
 
-const daysOfWeek = [
-  { name: 'Monday', key: 'monday' },
-  { name: 'Tuesday', key: 'tuesday' },
-  { name: 'Wednesday', key: 'wednesday' },
-  { name: 'Thursday', key: 'thursday' },
-  { name: 'Friday', key: 'friday' },
-  { name: 'Saturday', key: 'saturday' },
-  { name: 'Sunday', key: 'sunday' }
-]
+interface VenueDetails {
+  name: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    country?: string
+  }
+  location?: {
+    latitude?: number
+    longitude?: number
+  }
+}
 
 export default function ScheduleManager() {
   const router = useRouter()
-  const [schedule, setSchedule] = useState(
-    daysOfWeek.reduce((acc, day) => {
-      acc[day.key] = { open: '09:00', close: '22:00', isOpen: true }
-      return acc
-    }, {} as Record<string, { open: string; close: string; isOpen: boolean }>)
-  )
+  const { venueId, venueName } = useVenue()
+  const { token } = useAuth()
+  const [venue, setVenue] = useState<VenueDetails | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const updateDay = (dayKey: string, field: string, value: string | boolean) => {
-    setSchedule({
-      ...schedule,
-      [dayKey]: {
-        ...schedule[dayKey],
-        [field]: value
+  useEffect(() => {
+    const fetchVenueDetails = async () => {
+      if (!token || !venueId) {
+        setLoading(false)
+        return
       }
-    })
+      try {
+        const res = await axios.get(`${getApiUrl()}/venues/${venueId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const v = res.data?.venue || res.data
+        if (v) setVenue(v)
+      } catch {
+        // fall back to context name
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchVenueDetails()
+  }, [token, venueId])
+
+  const displayName = venue?.name || venueName || 'Your Venue'
+
+  const addressParts = [
+    venue?.address?.street,
+    venue?.address?.city,
+    venue?.address?.state,
+    venue?.address?.zipCode
+  ].filter(Boolean)
+  const displayAddress = addressParts.length > 0 ? addressParts.join(', ') : null
+
+  const buildMapsUrl = () => {
+    if (venue?.location?.latitude && venue?.location?.longitude) {
+      return `https://www.google.com/maps?q=${venue.location.latitude},${venue.location.longitude}`
+    }
+    if (displayAddress) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`
+    }
+    return null
   }
 
   return (
@@ -42,34 +80,47 @@ export default function ScheduleManager() {
           </div>
           <h2 className="text-base font-semibold text-primary-500 tracking-tight">Venue Info</h2>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/dashboard/settings')}
           className="text-primary-500/80 hover:text-primary-500 font-medium text-xs transition-all"
         >
           Edit
         </button>
       </div>
-      
-      <div className="space-y-1.5 mb-2">
-        <div>
-          <p className="text-primary-400/70 text-xs mb-0.5 uppercase tracking-wider font-medium">Name</p>
-          <p className="text-primary-500 font-medium text-xs tracking-tight">Kates Pub</p>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="w-4 h-4 text-primary-500/60 animate-spin" />
         </div>
-        <div>
-          <p className="text-primary-400/70 text-xs mb-0.5 uppercase tracking-wider font-medium">Address</p>
-          <p className="text-primary-400/80 text-xs font-light">123 Main St, Austin, TX, 78701</p>
-        </div>
-      </div>
-      <button 
-        onClick={() => {
-          // Get venue location and open in Google Maps
-          // This would need venue data - for now, just navigate to settings
-          window.location.href = '/dashboard/settings'
-        }}
-        className="w-full bg-black/40 border border-primary-500/20 text-primary-500 py-1.5 rounded hover:bg-primary-500/10 hover:border-primary-500/30 transition-all font-medium text-xs backdrop-blur-sm"
-      >
-        Open in Google Maps
-      </button>
+      ) : (
+        <>
+          <div className="space-y-1.5 mb-2">
+            <div>
+              <p className="text-primary-400/70 text-xs mb-0.5 uppercase tracking-wider font-medium">Name</p>
+              <p className="text-primary-500 font-medium text-xs tracking-tight">{displayName}</p>
+            </div>
+            <div>
+              <p className="text-primary-400/70 text-xs mb-0.5 uppercase tracking-wider font-medium">Address</p>
+              <p className="text-primary-400/80 text-xs font-light">
+                {displayAddress || 'No address on file'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const url = buildMapsUrl()
+              if (url) {
+                window.open(url, '_blank', 'noopener,noreferrer')
+              } else {
+                router.push('/dashboard/settings')
+              }
+            }}
+            className="w-full bg-black/40 border border-primary-500/20 text-primary-500 py-1.5 rounded hover:bg-primary-500/10 hover:border-primary-500/30 transition-all font-medium text-xs backdrop-blur-sm"
+          >
+            Open in Google Maps
+          </button>
+        </>
+      )}
     </div>
   )
 }

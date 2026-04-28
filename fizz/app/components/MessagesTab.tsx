@@ -71,6 +71,7 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [msgImageUrl, setMsgImageUrl] = useState<string | null>(null)
   const [uploadingImg, setUploadingImg] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const userId = user?.id || (user as any)?._id
 
@@ -81,7 +82,9 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       setConversations(res.data.conversations || [])
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load conversations.')
+    } finally {
       setLoading(false)
     }
   }, [API_URL, token])
@@ -95,7 +98,9 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
       })
       setMessages(res.data.messages || [])
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load messages.')
+    } finally {
       setMsgLoading(false)
     }
   }, [API_URL, token])
@@ -107,7 +112,9 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       setFriends(res.data.friends || [])
-    } catch { /* ignore */ }
+    } catch {
+      setError('Could not load friends list.')
+    }
   }, [API_URL, token])
 
   useEffect(() => { fetchConversations() }, [fetchConversations])
@@ -170,7 +177,9 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       })
       setMsgImageUrl(res.data.url)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Image upload failed. Try a smaller file.')
+    } finally {
       setUploadingImg(false)
     }
   }
@@ -215,7 +224,11 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
       }
       fetchConversations()
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Message failed to send. Try again.')
+      setInput(text)
+      if (imgUrl) setMsgImageUrl(imgUrl)
+    } finally {
       setSending(false)
     }
   }
@@ -260,6 +273,14 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
           </p>
           </div>
         </div>
+
+        {/* Error banner */}
+        {error && (
+          <div className="mx-4 mt-2 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError(null)}><X className="w-3 h-3" /></button>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2">
@@ -408,6 +429,14 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Error banner */}
+      {error && (
+        <div className="mx-4 mt-2 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)}><X className="w-3 h-3" /></button>
+        </div>
       )}
 
       {/* List */}

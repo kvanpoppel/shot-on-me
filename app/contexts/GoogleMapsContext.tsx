@@ -3,7 +3,7 @@
 import { createContext, useContext, ReactNode, useEffect } from 'react'
 import { useJsApiLoader } from '@react-google-maps/api'
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBAUfIjkw1qX7KVA1JYS-CetjTFdFovkB8'
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
 interface GoogleMapsContextType {
   isLoaded: boolean

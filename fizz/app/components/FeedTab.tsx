@@ -29,12 +29,14 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null)
   const [reportingPostId, setReportingPostId] = useState<string | null>(null)
   const [reportReason, setReportReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const PAGE_SIZE = 20
 
   const fetchFeed = useCallback(async () => {
     setLoading(true)
     setHasMore(true)
+    setError(null)
     try {
       const res = await axios.get(`${API_URL}/fizz/feed`, {
         params: { skip: 0, limit: PAGE_SIZE },
@@ -43,7 +45,9 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       const fetched = res.data.posts || res.data || []
       setPosts(fetched)
       if (fetched.length < PAGE_SIZE) setHasMore(false)
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load your feed. Check your connection.')
+    } finally {
       setLoading(false)
     }
   }, [API_URL, token])
@@ -59,7 +63,9 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       const more = res.data.posts || []
       if (more.length < PAGE_SIZE) setHasMore(false)
       setPosts(prev => [...prev, ...more])
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not load more posts.')
+    } finally {
       setLoadingMore(false)
     }
   }, [API_URL, token, posts.length, loadingMore, hasMore])
@@ -85,14 +91,18 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
           ? { ...p, likes: res.data.likeCount ?? (p.likes || 0) + 1, likedByMe: res.data.liked ?? true }
           : p
       ))
-    } catch { /* ignore */ }
+    } catch {
+      setError('Could not like this post.')
+    }
   }
 
   const handleDeletePost = async (postId: string) => {
     try {
       await axios.delete(`${API_URL}/fizz/feed/${postId}`, { headers: { Authorization: `Bearer ${token}` } })
       setPosts(prev => prev.filter(p => (p._id || p.id) !== postId))
-    } catch { /* ignore */ }
+    } catch {
+      setError('Could not delete post. Try again.')
+    }
     setMenuPostId(null)
   }
 
@@ -102,7 +112,9 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       await axios.put(`${API_URL}/fizz/feed/${postId}`, { content: editContent }, { headers: { Authorization: `Bearer ${token}` } })
       setPosts(prev => prev.map(p => (p._id || p.id) === postId ? { ...p, content: editContent } : p))
       setEditingPostId(null)
-    } catch { /* ignore */ }
+    } catch {
+      setError('Could not save edit. Try again.')
+    }
   }
 
   const handleShare = async (postId: string) => {
@@ -113,14 +125,18 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       if (navigator.share) {
         await navigator.share({ title: 'Check out this Fizz!', url: window.location.href }).catch(() => {})
       }
-    } catch { /* ignore */ }
+    } catch {
+      setError('Could not share post.')
+    }
   }
 
   const handleReportPost = async (postId: string) => {
     if (!reportReason.trim()) return
     try {
       await axios.post(`${API_URL}/fizz/feed/${postId}/report`, { reason: reportReason }, { headers: { Authorization: `Bearer ${token}` } })
-    } catch { /* ignore */ } finally {
+    } catch {
+      setError('Could not submit report. Try again.')
+    } finally {
       setReportingPostId(null)
       setReportReason('')
     }
@@ -315,6 +331,14 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       <div className="-mx-4 mb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
         <StoriesRow />
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-3 text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+          <X className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="ml-auto"><X className="w-3 h-3" /></button>
+        </div>
+      )}
 
       {/* CTA */}
       <button

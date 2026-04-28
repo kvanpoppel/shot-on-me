@@ -49,7 +49,7 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         setVenue(res.data.venue || res.data)
-      }).catch(() => {})
+      }).catch(() => { setError('Could not load venue details') })
     }
   }, [prefillVenueId, API_URL, token])
 
@@ -67,7 +67,9 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
           headers: { Authorization: `Bearer ${token}` }
         })
         setSearchResults(res.data.users || res.data || [])
-      } catch { /* ignore */ } finally {
+      } catch {
+        setError('Search failed — check your connection')
+      } finally {
         setSearching(false)
       }
     }, 400)
@@ -188,6 +190,14 @@ export default function SendFizz({ prefillVenueId, prefillRecipient, onClose }: 
           }}
         />
       </div>
+
+      {error && step !== 'confirm' && (
+        <div className="mx-4 mt-3 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+          <X className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError('')}><X className="w-3 h-3" /></button>
+        </div>
+      )}
 
       <div className="px-4 py-5 pb-8">
 
