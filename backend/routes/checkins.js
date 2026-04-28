@@ -431,6 +431,15 @@ router.post('/', auth, async (req, res) => {
       console.log(`📬 Notified ${user.friends.length} friends about check-in`);
     }
 
+    // Notify venue portal about the check-in in real time
+    {
+      const io = req.app.get('io');
+      if (io) {
+        const userName = `${user.firstName || user.name?.split(' ')[0] || 'Someone'}`;
+        io.to(`venue-${venueId}`).emit('venue-checkin', { userName, venueId: venueId.toString(), timestamp: new Date() });
+      }
+    }
+
     res.status(201).json({
       message: 'Checked in successfully!',
       checkIn,

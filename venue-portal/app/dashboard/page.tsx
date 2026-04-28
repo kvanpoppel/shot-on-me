@@ -109,7 +109,7 @@ export default function Dashboard() {
   const { user, loading, token } = useAuth()
   const { venueId, venueName, tier, followerCount } = useVenue()
   const { socket } = useSocket()
-  const { showError } = useToast()
+  const { showError, showSuccess, showInfo } = useToast()
   const router = useRouter()
 
   const [stats, setStats] = useState({ totalRevenue: '—', totalRedemptions: 0, activePromos: 0 })
@@ -146,10 +146,37 @@ export default function Dashboard() {
     socket.on('promotion-updated', refresh)
     socket.on('new-promotion', refresh)
     socket.on('promotion-deleted', refresh)
+
+    // Real-time venue activity listeners
+    const onFizzReceived = (d: any) => {
+      if (d.venueId === venueId) {
+        showSuccess(`Someone just sent a $${d.amount} Fizz at your venue!`)
+        fetchStats()
+      }
+    }
+    const onVenueCheckin = (d: any) => {
+      if (d.venueId === venueId) {
+        showInfo(`New check-in at your venue!`)
+        fetchStats()
+      }
+    }
+    const onVenuePaid = (d: any) => {
+      if (d.venueId === venueId) {
+        showSuccess(`Payment received!`)
+        fetchStats()
+      }
+    }
+    socket.on('fizz-received', onFizzReceived)
+    socket.on('venue-checkin', onVenueCheckin)
+    socket.on('venue-paid', onVenuePaid)
+
     return () => {
       socket.off('promotion-updated', refresh)
       socket.off('new-promotion', refresh)
       socket.off('promotion-deleted', refresh)
+      socket.off('fizz-received', onFizzReceived)
+      socket.off('venue-checkin', onVenueCheckin)
+      socket.off('venue-paid', onVenuePaid)
     }
   }, [socket, venueId])
 

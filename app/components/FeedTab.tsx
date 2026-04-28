@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X } from 'lucide-react'
+import { MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
+
+const REACTION_EMOJIS = ['\u2764\uFE0F', '\uD83D\uDD25', '\uD83D\uDE02', '\uD83D\uDC4F', '\uD83D\uDE2E', '\uD83C\uDF89'] as const
+type ReactionEmoji = typeof REACTION_EMOJIS[number]
 
 interface FeedPost {
   _id: string
@@ -22,6 +25,8 @@ interface FeedPost {
   media: Array<{ type: string; url: string; thumbnail?: string }>
   likes: Array<{ user: string | { _id: string; firstName: string; profilePicture?: string } }>
   comments: Array<{ user: { firstName: string; profilePicture?: string }; content: string; createdAt: string }>
+  reactionCounts?: Record<string, number>
+  userReactions?: string[]
   location?: {
     venue?: { _id: string; name: string }
     coordinates?: { latitude: number; longitude: number }
@@ -68,6 +73,9 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [selectedMedia, setSelectedMedia] = useState<File[]>([])
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
+  const [openReactionPicker, setOpenReactionPicker] = useState<string | null>(null)
+  const reactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (token) {
@@ -301,18 +309,67 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     }
   }
 
-  const handleLike = async (postId: string) => {
+  const handleReaction = async (postId: string, emoji: string) => {
+    // Optimistic update
+    setPosts(prev => prev.map(post => {
+      if (post._id !== postId) return post
+      const userReactions = post.userReactions || []
+      const reactionCounts = { ...(post.reactionCounts || {}) }
+      const alreadyReacted = userReactions.includes(emoji)
+
+      if (alreadyReacted) {
+        // Remove reaction
+        reactionCounts[emoji] = Math.max((reactionCounts[emoji] || 1) - 1, 0)
+        if (reactionCounts[emoji] === 0) delete reactionCounts[emoji]
+        return { ...post, reactionCounts, userReactions: userReactions.filter(e => e !== emoji) }
+      } else {
+        // Add reaction
+        reactionCounts[emoji] = (reactionCounts[emoji] || 0) + 1
+        return { ...post, reactionCounts, userReactions: [...userReactions, emoji] }
+      }
+    }))
+    setOpenReactionPicker(null)
+
     try {
       await axios.post(
-        `${API_URL}/feed/${postId}/like`,
-        {},
+        `${API_URL}/feed/${postId}/reaction`,
+        { emoji },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       fetchFeed()
     } catch (error) {
-      console.error('Failed to like post:', error)
+      console.error('Failed to react to post:', error)
+      fetchFeed() // revert optimistic update
     }
   }
+
+  const handleQuickReaction = (postId: string) => {
+    handleReaction(postId, '\u2764\uFE0F')
+  }
+
+  const startReactionPicker = useCallback((postId: string) => {
+    reactionTimerRef.current = setTimeout(() => {
+      setOpenReactionPicker(postId)
+    }, 500)
+  }, [])
+
+  const cancelReactionPicker = useCallback(() => {
+    if (reactionTimerRef.current) {
+      clearTimeout(reactionTimerRef.current)
+      reactionTimerRef.current = null
+    }
+  }, [])
+
+  // Close reaction picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (openReactionPicker && pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setOpenReactionPicker(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openReactionPicker])
 
   const handleComment = async (postId: string, e: React.FormEvent) => {
     e.preventDefault()
@@ -445,12 +502,18 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
     return `${Math.floor(diffInSeconds / 86400)}d ago`
   }
 
-  const isLiked = (post: FeedPost) => {
-    return post.likes.some((like: any) => {
-      const likeUserId = typeof like.user === 'string' ? like.user : (like.user as any)?._id || (like.user as any)?.id
-      const currentUserId = user?.id || (user as any)?._id
-      return likeUserId === currentUserId
-    })
+  const hasAnyReaction = (post: FeedPost) => {
+    return (post.userReactions || []).length > 0
+  }
+
+  const getTotalReactions = (post: FeedPost): number => {
+    const counts = post.reactionCounts || {}
+    return Object.values(counts).reduce((sum, c) => sum + c, 0) || post.likes.length
+  }
+
+  const getReactionEntries = (post: FeedPost): [string, number][] => {
+    const counts = post.reactionCounts || {}
+    return Object.entries(counts).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
   }
 
   if (loading) {
@@ -825,7 +888,10 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
           posts.map((post) => {
             const authorId = post.author._id || post.author.id
             const isFriend = (user as any)?.friends?.includes(authorId) || authorId === user?.id
-            const liked = isLiked(post)
+            const userReactions = post.userReactions || []
+            const reactionEntries = getReactionEntries(post)
+            const totalReactions = getTotalReactions(post)
+            const hasReacted = hasAnyReaction(post)
             
             return (
               <div key={post._id} className="bg-gradient-to-b from-black via-black to-black/80 border border-primary-500/20 rounded-xl p-4 hover:border-primary-500/40 transition-all shadow-lg">
@@ -935,28 +1001,78 @@ export default function FeedTab({ onViewProfile }: FeedTabProps) {
                   </div>
                 )}
 
+                {/* Reaction Counts Display */}
+                {reactionEntries.length > 0 && (
+                  <div className="flex items-center flex-wrap gap-2 pt-2">
+                    {reactionEntries.map(([emoji, count]) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleReaction(post._id, emoji)}
+                        className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-sm transition-all ${
+                          userReactions.includes(emoji)
+                            ? 'bg-primary-500/20 border border-primary-500/50'
+                            : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{emoji}</span>
+                        <span className={`text-xs font-semibold ${
+                          userReactions.includes(emoji) ? 'text-primary-500' : 'text-primary-400/70'
+                        }`}>{count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-3 border-t border-primary-500/20">
                   <div className="flex items-center space-x-6">
+                    {/* Reaction button with picker */}
+                    <div className="relative">
+                      <button
+                        onClick={() => handleQuickReaction(post._id)}
+                        onMouseEnter={() => startReactionPicker(post._id)}
+                        onMouseLeave={cancelReactionPicker}
+                        onTouchStart={() => startReactionPicker(post._id)}
+                        onTouchEnd={cancelReactionPicker}
+                        className={`flex items-center space-x-2 transition-all ${
+                          hasReacted
+                            ? 'text-primary-500'
+                            : 'text-primary-400 hover:text-primary-500'
+                        }`}
+                      >
+                        <span className="text-lg leading-none">{hasReacted ? (userReactions[0] || '\u2764\uFE0F') : '\u2764\uFE0F'}</span>
+                        <span className="font-semibold">{totalReactions || ''}</span>
+                      </button>
+
+                      {/* Floating reaction picker */}
+                      {openReactionPicker === post._id && (
+                        <div
+                          ref={pickerRef}
+                          className="absolute bottom-full left-0 mb-2 flex items-center space-x-1 bg-black/95 border border-primary-500/30 rounded-full px-2 py-1.5 shadow-xl shadow-black/50 z-20 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                        >
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleReaction(post._id, emoji)}
+                              className={`text-xl hover:scale-125 transition-transform px-1 rounded-full ${
+                                userReactions.includes(emoji) ? 'bg-primary-500/20' : ''
+                              }`}
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <button
-                      onClick={() => handleLike(post._id)}
-                      className={`flex items-center space-x-2 transition-all ${
-                        liked
-                          ? 'text-primary-500'
-                          : 'text-primary-400 hover:text-primary-500'
-                      }`}
-                    >
-                      <Heart className={`w-5 h-5 ${liked ? 'fill-primary-500' : ''}`} />
-                      <span className="font-semibold">{post.likes.length}</span>
-                    </button>
-                    <button 
                       onClick={() => setSelectedPostId(selectedPostId === post._id ? null : post._id)}
                       className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
                     >
                       <MessageCircle className="w-5 h-5" />
                       <span className="font-semibold">{post.comments.length}</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleShare(post._id)}
                       className="flex items-center space-x-2 text-primary-400 hover:text-primary-500 transition-colors"
                     >

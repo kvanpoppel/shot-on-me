@@ -208,6 +208,12 @@ router.post('/send', auth, async (req, res) => {
           source: 'fizz',
           status: 'succeeded',
         })
+        // Notify the venue portal in real time
+        if (io) {
+          const sp = sender.fizzProfile || {}
+          const senderName = `${sp.firstName || sender.firstName || ''} ${sp.lastName || sender.lastName || ''}`.trim() || 'Someone'
+          io.to(`venue-${venueId}`).emit('fizz-received', { amount, senderName, venueId, timestamp: new Date() })
+        }
       } catch (payErr) {
         console.error('Fizz: failed to record venue payment', payErr.message)
       }
@@ -444,14 +450,34 @@ router.get('/feed', auth, async (req, res) => {
       .lean()
 
     res.json({
-      posts: posts.map(p => ({
-        ...p,
-        author: sanitizeUser(p.author),
-        likes: p.likes?.length || 0,
-        likedByMe: p.likes?.some(l => l.user?.toString() === req.user.userId) || false,
-        commentCount: p.comments?.length || 0,
-        comments: undefined, // don't send full comment content in feed, use separate endpoint
-      }))
+      posts: posts.map(p => {
+        // Build reactionCounts from reactions array
+        const reactionCounts = {}
+        const userReactions = []
+        if (p.reactions) {
+          for (const r of p.reactions) {
+            if (!reactionCounts[r.emoji]) reactionCounts[r.emoji] = 0
+            reactionCounts[r.emoji]++
+            if (r.user?.toString() === req.user.userId && !userReactions.includes(r.emoji)) {
+              userReactions.push(r.emoji)
+            }
+          }
+        }
+        // Backward compat: compute likes/likedByMe from reactions (❤️) + legacy likes
+        const legacyLikeCount = p.likes?.length || 0
+        const heartCount = reactionCounts['❤️'] || 0
+        const likedByMe = userReactions.includes('❤️') || (p.likes?.some(l => l.user?.toString() === req.user.userId) || false)
+        return {
+          ...p,
+          author: sanitizeUser(p.author),
+          likes: legacyLikeCount + heartCount,
+          likedByMe,
+          reactionCounts,
+          userReactions,
+          commentCount: p.comments?.length || 0,
+          comments: undefined, // don't send full comment content in feed, use separate endpoint
+        }
+      })
     })
   } catch (e) {
     res.status(500).json({ message: e.message })
@@ -512,13 +538,130 @@ router.post('/feed/:postId/like', auth, async (req, res) => {
   }
 })
 
+// POST /api/fizz/feed/:postId/reaction — toggle emoji reaction on a post
+const VALID_REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉']
+router.post('/feed/:postId/reaction', auth, async (req, res) => {
+  try {
+    const { emoji } = req.body
+    if (!emoji || !VALID_REACTION_EMOJIS.includes(emoji)) {
+      return res.status(400).json({ message: 'Invalid emoji. Must be one of: ' + VALID_REACTION_EMOJIS.join(' ') })
+    }
+    const post = await FeedPost.findOne({ _id: req.params.postId, source: 'fizz' })
+    if (!post) return res.status(404).json({ message: 'Post not found' })
+
+    const uid = req.user.userId
+    const existing = post.reactions.find(r => r.user.toString() === uid && r.emoji === emoji)
+
+    if (existing) {
+      // Toggle off — remove this specific reaction
+      await FeedPost.findByIdAndUpdate(post._id, {
+        $pull: { reactions: { user: uid, emoji } }
+      })
+    } else {
+      // Add reaction (allow multiple different emojis from same user)
+      await FeedPost.findByIdAndUpdate(post._id, {
+        $push: { reactions: { user: uid, emoji, createdAt: new Date() } }
+      })
+      // Notify post author (only on add, not remove)
+      if (post.author?.toString() !== uid) {
+        const reactor = await User.findById(uid).select('fizzProfile firstName name')
+        const fp = reactor?.fizzProfile || {}
+        const reactorName = fp.firstName || reactor?.firstName || 'Someone'
+        await notifyFizz(post.author.toString(), 'feed_like', `${reactorName} reacted ${emoji} to your post`, uid)
+      }
+    }
+
+    // Fetch updated post to return current state
+    const updated = await FeedPost.findById(post._id).lean()
+    const reactionCounts = {}
+    const userReactions = []
+    for (const r of (updated.reactions || [])) {
+      if (!reactionCounts[r.emoji]) reactionCounts[r.emoji] = 0
+      reactionCounts[r.emoji]++
+      if (r.user?.toString() === uid && !userReactions.includes(r.emoji)) {
+        userReactions.push(r.emoji)
+      }
+    }
+    res.json({ reactionCounts, userReactions })
+  } catch (e) {
+    res.status(500).json({ message: e.message })
+  }
+})
+
+// POST /api/fizz/feed/:postId/comments/:commentId/reaction — toggle emoji reaction on a comment
+router.post('/feed/:postId/comments/:commentId/reaction', auth, async (req, res) => {
+  try {
+    const { emoji } = req.body
+    if (!emoji || !VALID_REACTION_EMOJIS.includes(emoji)) {
+      return res.status(400).json({ message: 'Invalid emoji. Must be one of: ' + VALID_REACTION_EMOJIS.join(' ') })
+    }
+    const post = await FeedPost.findOne({ _id: req.params.postId, source: 'fizz' })
+    if (!post) return res.status(404).json({ message: 'Post not found' })
+
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return res.status(404).json({ message: 'Comment not found' })
+
+    const uid = req.user.userId
+    const existing = comment.reactions.find(r => r.user.toString() === uid && r.emoji === emoji)
+
+    if (existing) {
+      // Toggle off
+      await FeedPost.findOneAndUpdate(
+        { _id: post._id },
+        { $pull: { 'comments.$[c].reactions': { user: uid, emoji } } },
+        { arrayFilters: [{ 'c._id': new mongoose.Types.ObjectId(req.params.commentId) }] }
+      )
+    } else {
+      // Add reaction
+      await FeedPost.findOneAndUpdate(
+        { _id: post._id },
+        { $push: { 'comments.$[c].reactions': { user: uid, emoji, createdAt: new Date() } } },
+        { arrayFilters: [{ 'c._id': new mongoose.Types.ObjectId(req.params.commentId) }] }
+      )
+    }
+
+    // Fetch updated comment to return current state
+    const updated = await FeedPost.findById(post._id).lean()
+    const updatedComment = updated.comments.find(c => c._id.toString() === req.params.commentId)
+    const reactionCounts = {}
+    const userReactions = []
+    for (const r of (updatedComment?.reactions || [])) {
+      if (!reactionCounts[r.emoji]) reactionCounts[r.emoji] = 0
+      reactionCounts[r.emoji]++
+      if (r.user?.toString() === uid && !userReactions.includes(r.emoji)) {
+        userReactions.push(r.emoji)
+      }
+    }
+    res.json({ reactionCounts, userReactions })
+  } catch (e) {
+    res.status(500).json({ message: e.message })
+  }
+})
+
 // GET /api/fizz/feed/:postId/comments
 router.get('/feed/:postId/comments', auth, async (req, res) => {
   try {
     const post = await FeedPost.findOne({ _id: req.params.postId, source: 'fizz' })
       .populate('comments.user', 'fizzProfile name firstName lastName profilePicture')
+      .populate('comments.reactions.user', 'fizzProfile name firstName lastName profilePicture')
     if (!post) return res.status(404).json({ message: 'Post not found' })
-    res.json({ comments: post.comments || [] })
+    const comments = (post.comments || []).map(c => {
+      const cObj = c.toObject ? c.toObject() : c
+      const reactionCounts = {}
+      const userReactions = []
+      if (cObj.reactions) {
+        for (const r of cObj.reactions) {
+          if (!reactionCounts[r.emoji]) reactionCounts[r.emoji] = 0
+          reactionCounts[r.emoji]++
+          const rUserId = r.user?._id?.toString() || r.user?.toString()
+          if (rUserId === req.user.userId && !userReactions.includes(r.emoji)) {
+            userReactions.push(r.emoji)
+          }
+        }
+      }
+      return { ...cObj, reactionCounts, userReactions }
+    })
+    res.json({ comments })
   } catch (e) {
     res.status(500).json({ message: e.message })
   }

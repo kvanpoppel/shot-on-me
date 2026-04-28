@@ -4,11 +4,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { Heart, MessageCircle, MapPin, Sparkles, MoreHorizontal, Pencil, Trash2, X, Check, Share2, Flag } from 'lucide-react'
+import { MessageCircle, MapPin, Sparkles, MoreHorizontal, Pencil, Trash2, X, Check, Share2, Flag, SmilePlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PostComposer from './PostComposer'
 import StoriesRow from './StoriesRow'
 import CommentsSheet from './CommentsSheet'
+
+const REACTION_EMOJIS = ['❤️', '🔥', '😂', '👏', '😮', '🎉'] as const
+type ReactionEmoji = typeof REACTION_EMOJIS[number]
+
+interface ReactionCounts {
+  [emoji: string]: number
+}
 
 interface FeedTabProps {
   onSendFizz?: () => void
@@ -81,18 +88,43 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
     return () => observer.disconnect()
   }, [loadMore])
 
-  const handleLike = async (postId: string) => {
+  const handleReaction = async (postId: string, emoji: ReactionEmoji) => {
+    // Optimistic update
+    setPosts(prev => prev.map(p => {
+      if ((p._id || p.id) !== postId) return p
+      const currentCounts: ReactionCounts = { ...(p.reactionCounts || {}) }
+      const currentUserReactions: string[] = [...(p.userReactions || [])]
+      const alreadyReacted = currentUserReactions.includes(emoji)
+      if (alreadyReacted) {
+        currentCounts[emoji] = Math.max((currentCounts[emoji] || 1) - 1, 0)
+        if (currentCounts[emoji] === 0) delete currentCounts[emoji]
+        const idx = currentUserReactions.indexOf(emoji)
+        if (idx > -1) currentUserReactions.splice(idx, 1)
+      } else {
+        currentCounts[emoji] = (currentCounts[emoji] || 0) + 1
+        currentUserReactions.push(emoji)
+      }
+      // Backward compat: keep likes in sync for heart
+      const likedByMe = currentUserReactions.includes('❤️')
+      const likes = currentCounts['❤️'] || 0
+      return { ...p, reactionCounts: currentCounts, userReactions: currentUserReactions, likedByMe, likes }
+    }))
+
     try {
-      const res = await axios.post(`${API_URL}/fizz/feed/${postId}/like`, {}, {
+      const res = await axios.post(`${API_URL}/fizz/feed/${postId}/reaction`, { emoji }, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setPosts(prev => prev.map(p =>
-        (p._id === postId || p.id === postId)
-          ? { ...p, likes: res.data.likeCount ?? (p.likes || 0) + 1, likedByMe: res.data.liked ?? true }
-          : p
-      ))
+      // Reconcile with server response if it has the fields
+      if (res.data.reactionCounts || res.data.userReactions) {
+        setPosts(prev => prev.map(p =>
+          (p._id === postId || p.id === postId)
+            ? { ...p, reactionCounts: res.data.reactionCounts ?? p.reactionCounts, userReactions: res.data.userReactions ?? p.userReactions }
+            : p
+        ))
+      }
     } catch {
-      setError('Could not like this post.')
+      // Revert on error by re-fetching — simple approach
+      setError('Could not react to this post.')
     }
   }
 
@@ -142,6 +174,8 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
     }
   }
 
+  const [pickerPostId, setPickerPostId] = useState<string | null>(null)
+
   const PostCard = ({ post }: { post: any }) => {
     const authorName = `${post.author?.firstName || post.user?.firstName || ''} ${post.author?.lastName || post.user?.lastName || ''}`.trim() || 'A friend'
     const timeAgo = post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true }) : ''
@@ -150,6 +184,20 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
     const authorId = post.author?.id || post.author?._id
     const isOwn = authorId && userId && (authorId.toString() === userId.toString())
     const isEditing = editingPostId === postId
+
+    // Reaction data with backward compat
+    const reactionCounts: ReactionCounts = post.reactionCounts || {}
+    const userReactions: string[] = post.userReactions || []
+    const hasReactionCounts = post.reactionCounts && Object.keys(post.reactionCounts).length > 0
+    // Backward compat: if no reactionCounts, show likes as heart
+    const displayCounts: ReactionCounts = hasReactionCounts
+      ? reactionCounts
+      : (post.likes ? { '❤️': post.likes } : {})
+    const displayUserReactions: string[] = hasReactionCounts
+      ? userReactions
+      : (post.likedByMe ? ['❤️'] : [])
+
+    const showPicker = pickerPostId === postId
 
     return (
       <div className="overflow-hidden" style={{ background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
@@ -256,15 +304,73 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
           <img src={post.imageUrl} alt="" className="w-full max-h-64 object-cover" />
         )}
 
+        {/* Reaction counts display */}
+        {Object.keys(displayCounts).length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-1.5 flex-wrap">
+            {Object.entries(displayCounts)
+              .filter(([, count]) => count > 0)
+              .sort((a, b) => b[1] - a[1])
+              .map(([emoji, count]) => {
+                const isActive = displayUserReactions.includes(emoji)
+                return (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(postId, emoji as ReactionEmoji)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all"
+                    style={{
+                      background: isActive ? 'rgba(200,241,53,0.12)' : 'rgba(255,255,255,0.05)',
+                      border: isActive ? '1px solid #C8F135' : '1px solid rgba(255,255,255,0.08)',
+                      color: isActive ? '#C8F135' : 'rgba(255,255,255,0.5)',
+                    }}
+                  >
+                    <span>{emoji}</span>
+                    <span>{count}</span>
+                  </button>
+                )
+              })}
+          </div>
+        )}
+
         {/* Actions */}
-        <div className="flex items-center gap-4 px-4 py-3 border-t border-white/5">
+        <div className="flex items-center gap-4 px-4 py-3 border-t border-white/5 relative">
+          {/* Reaction picker floating pill */}
+          {showPicker && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setPickerPostId(null)} />
+              <div
+                className="absolute bottom-full left-3 mb-2 flex items-center gap-1 px-2 py-1.5 rounded-full shadow-xl z-40"
+                style={{ background: '#252540', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                {REACTION_EMOJIS.map(emoji => {
+                  const isActive = displayUserReactions.includes(emoji)
+                  return (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        handleReaction(postId, emoji)
+                        setPickerPostId(null)
+                      }}
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-lg transition-all hover:scale-125"
+                      style={{
+                        background: isActive ? 'rgba(200,241,53,0.2)' : 'transparent',
+                        border: isActive ? '1.5px solid #C8F135' : '1.5px solid transparent',
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
           <button
-            onClick={() => handleLike(post._id || post.id)}
+            onClick={() => setPickerPostId(showPicker ? null : postId)}
             className="flex items-center gap-1.5 text-sm transition-colors"
-            style={post.likedByMe ? { color: '#FF5F57' } : { color: 'rgba(255,255,255,0.4)' }}
+            style={{ color: displayUserReactions.length > 0 ? '#C8F135' : 'rgba(255,255,255,0.4)' }}
           >
-            <Heart className={`w-4 h-4 ${post.likedByMe ? 'fill-current' : ''}`} />
-            <span>{post.likes || 0}</span>
+            <SmilePlus className="w-4 h-4" />
+            <span className="text-xs">React</span>
           </button>
           <button
             onClick={() => setCommentsPostId(postId)}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useSocket } from '../contexts/SocketContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
 import {
@@ -60,6 +61,7 @@ function Avatar({ u }: { u: any }) {
 
 export default function TonightTab({ onSendFizz, onClose }: { onSendFizz?: (venueId?: string) => void; onClose?: () => void }) {
   const { token, user } = useAuth()
+  const { socket } = useSocket()
   const API_URL = useApiUrl()
   const [data, setData] = useState<TonightData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,6 +92,18 @@ export default function TonightTab({ onSendFizz, onClose }: { onSendFizz?: (venu
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)
   }, [fetchData])
+
+  // Real-time: re-fetch immediately when promotions or check-ins happen
+  useEffect(() => {
+    if (!socket) return
+    const refresh = () => { fetchData() }
+    socket.on('new-promotion', refresh)
+    socket.on('venue-checkin', refresh)
+    return () => {
+      socket.off('new-promotion', refresh)
+      socket.off('venue-checkin', refresh)
+    }
+  }, [socket, fetchData])
 
   const isEmpty = !data || (
     !data.friendsOut?.length &&
