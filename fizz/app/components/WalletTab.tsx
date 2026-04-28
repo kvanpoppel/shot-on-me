@@ -38,11 +38,11 @@ export default function WalletTab() {
     setLoading(true)
     try {
       const [histRes, pointsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/shots/history`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/payments/history`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       if (histRes.status === 'fulfilled') {
-        setHistory(histRes.value.data.shots || histRes.value.data || [])
+        setHistory(histRes.value.data.payments || histRes.value.data.shots || histRes.value.data || [])
       }
       if (pointsRes.status === 'fulfilled') {
         setPoints(pointsRes.value.data.user?.points || pointsRes.value.data.points || 0)

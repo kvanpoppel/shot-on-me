@@ -98,7 +98,6 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   // Map state
   const mapRef = useRef<google.maps.Map | null>(null)
-  const serviceRef = useRef<google.maps.places.PlacesService | null>(null)
   const [mapCenter, setMapCenter] = useState(CITY_CENTERS['Indianapolis'])
   const [selectedPin, setSelectedPin] = useState<PlaceResult | null>(null)
 
@@ -129,42 +128,71 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     if (center) setMapCenter(center)
   }, [selectedCity])
 
-  // Google Places search when category is selected
-  const searchPlaces = useCallback((category: VenueCategory, center: { lat: number; lng: number }) => {
-    if (!serviceRef.current) return
+  // Google Places search using the new Place class (searchNearby)
+  const searchPlaces = useCallback(async (category: VenueCategory, center: { lat: number; lng: number }) => {
+    if (!isLoaded) return
     setPlacesLoading(true)
     setPlaces([])
 
-    const request: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(center.lat, center.lng),
-      radius: 8000,
-      type: FIZZ_PLACES_TYPES[category] as any,
-      keyword: FIZZ_PLACES_KEYWORDS[category],
-    }
+    try {
+      // Use the new google.maps.places.Place API if available, fall back to PlacesService
+      if (typeof google !== 'undefined' && google.maps?.places?.Place?.searchNearby) {
+        const { places: results } = await google.maps.places.Place.searchNearby({
+          fields: ['id', 'displayName', 'formattedAddress', 'location', 'rating', 'userRatingCount', 'photos', 'businessStatus'],
+          locationRestriction: {
+            center: { lat: center.lat, lng: center.lng },
+            radius: 8000,
+          },
+          includedPrimaryTypes: [FIZZ_PLACES_TYPES[category]],
+          maxResultCount: 20,
+        } as any)
 
-    serviceRef.current.nearbySearch(request, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const mapped: PlaceResult[] = results.slice(0, 20).map(r => ({
-          placeId: r.place_id || '',
-          name: r.name || '',
-          address: r.vicinity || '',
-          lat: r.geometry?.location?.lat() || center.lat,
-          lng: r.geometry?.location?.lng() || center.lng,
+        const mapped: PlaceResult[] = (results || []).map((r: any) => ({
+          placeId: r.id || '',
+          name: r.displayName?.text || r.displayName || '',
+          address: r.formattedAddress || '',
+          lat: r.location?.lat() ?? center.lat,
+          lng: r.location?.lng() ?? center.lng,
           rating: r.rating,
-          totalRatings: r.user_ratings_total,
-          photo: r.photos?.[0]?.getUrl({ maxWidth: 400 }),
-          isOpen: r.opening_hours?.isOpen(),
-          types: r.types,
+          totalRatings: r.userRatingCount,
+          photo: r.photos?.[0]?.getURI?.({ maxWidth: 400 }) || undefined,
+          isOpen: r.businessStatus === 'OPERATIONAL',
         }))
         setPlaces(mapped)
-        // Auto-switch to map when we get results
-        setView('map')
+        if (mapped.length > 0) setView('map')
       } else {
-        setPlaces([])
+        // Fallback: use legacy PlacesService if new API not available
+        const svc = new google.maps.places.PlacesService(document.createElement('div'))
+        svc.nearbySearch({
+          location: new google.maps.LatLng(center.lat, center.lng),
+          radius: 8000,
+          type: FIZZ_PLACES_TYPES[category] as any,
+          keyword: FIZZ_PLACES_KEYWORDS[category],
+        }, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            const mapped: PlaceResult[] = results.slice(0, 20).map(r => ({
+              placeId: r.place_id || '',
+              name: r.name || '',
+              address: r.vicinity || '',
+              lat: r.geometry?.location?.lat() || center.lat,
+              lng: r.geometry?.location?.lng() || center.lng,
+              rating: r.rating,
+              totalRatings: r.user_ratings_total,
+              photo: r.photos?.[0]?.getUrl({ maxWidth: 400 }),
+              isOpen: r.opening_hours?.isOpen(),
+            }))
+            setPlaces(mapped)
+            if (mapped.length > 0) setView('map')
+          }
+          setPlacesLoading(false)
+        })
+        return // early return — callback handles setPlacesLoading
       }
-      setPlacesLoading(false)
-    })
-  }, [])
+    } catch (err) {
+      console.error('Places search failed:', err)
+    }
+    setPlacesLoading(false)
+  }, [isLoaded])
 
   const handleCategorySelect = (cat: VenueCategory) => {
     if (cat === selectedCategory) {
@@ -176,13 +204,6 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     const center = CITY_CENTERS[selectedCity] || mapCenter
     searchPlaces(cat, center)
   }
-
-  // Init PlacesService as soon as Google Maps API loads — no map mount needed
-  useEffect(() => {
-    if (isLoaded && !serviceRef.current) {
-      serviceRef.current = new google.maps.places.PlacesService(document.createElement('div'))
-    }
-  }, [isLoaded])
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map

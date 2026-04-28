@@ -53,10 +53,10 @@ export default function ProfileTab({
     setLoading(true)
     try {
       const [histRes, meRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/shots/history`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/payments/history`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
-      if (histRes.status === 'fulfilled') setHistory((histRes.value.data.shots || histRes.value.data || []).slice(0, 20))
+      if (histRes.status === 'fulfilled') setHistory((histRes.value.data.payments || histRes.value.data.shots || histRes.value.data || []).slice(0, 20))
       if (meRes.status === 'fulfilled') setPoints(meRes.value.data.user?.points || meRes.value.data.points || 0)
     } catch {
       setError('Could not load profile data. Check your connection.')
