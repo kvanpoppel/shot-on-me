@@ -60,12 +60,27 @@ router.get('/stats', auth, async (req, res) => {
       console.error('Error fetching Stripe balance for dashboard:', error);
     }
 
+    // Yesterday's stats
+    const yesterdayStart = new Date(now); yesterdayStart.setDate(yesterdayStart.getDate() - 1); yesterdayStart.setHours(0, 0, 0, 0);
+    const yesterdayEnd = new Date(now); yesterdayEnd.setDate(yesterdayEnd.getDate() - 1); yesterdayEnd.setHours(23, 59, 59, 999);
+
+    const [yesterdayRevenueAgg, yesterdayRedemptions] = await Promise.all([
+      Payment.aggregate([
+        { $match: { venueId, type: { $in: ['shot_redeemed', 'transfer'] }, status: { $in: ['succeeded', 'redeemed'] }, createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Payment.countDocuments({ venueId, type: { $in: ['shot_redeemed', 'transfer'] }, status: { $in: ['succeeded', 'redeemed'] }, createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd } })
+    ]);
+    const yesterdayRevenue = yesterdayRevenueAgg[0]?.total || 0;
+
     // Count active promotions
     const activePromos = venue.promotions.filter(p => p.isActive).length;
 
     res.json({
       totalRevenue: totalRevenue.toFixed(2),
       totalRedemptions,
+      yesterdayRevenue: yesterdayRevenue.toFixed(2),
+      yesterdayRedemptions,
       pendingPayouts: pendingPayouts.toFixed(2),
       activePromos,
       venueId: venueId.toString(),

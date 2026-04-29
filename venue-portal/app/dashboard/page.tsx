@@ -8,6 +8,7 @@ import { useSocket } from '../contexts/SocketContext'
 import { useToast } from '../components/ToastContainer'
 import { useFeatureAvailable } from '../components/FeatureGate'
 import DashboardLayout from '../components/DashboardLayout'
+import PromotionWizard from '../components/promotions/PromotionWizard'
 import axios from 'axios'
 import { getApiUrl } from '../utils/api'
 import {
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react'
 
 interface Promotion {
-  _id: string; title: string; offer?: string; type: string
+  _id: string; title: string; offer?: string; description?: string; type: string
   isActive?: boolean; startTime: string; endTime: string
   isFlashDeal?: boolean; flashDealEndsAt?: string
 }
@@ -66,6 +67,8 @@ export default function Dashboard() {
   const [dismissedAI, setDismissedAI] = useState<Set<number>>(new Set())
   const [endingId, setEndingId] = useState<string | null>(null)
   const [confirmEndId, setConfirmEndId] = useState<string | null>(null)
+  const [showWizard, setShowWizard] = useState(false)
+  const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
   const [notifyOpen, setNotifyOpen] = useState(false)
   const [notifyTitle, setNotifyTitle] = useState('')
   const [notifyMsg, setNotifyMsg] = useState('')
@@ -163,6 +166,22 @@ export default function Dashboard() {
     finally { setEndingId(null) }
   }
 
+  const handleWizardSave = async (formData: any) => {
+    if (!venueId || !token) return
+    try {
+      if (editingPromo) {
+        await axios.put(`${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`, formData, { headers: { Authorization: `Bearer ${token}` } })
+        showSuccess('Deal updated!')
+      } else {
+        await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, formData, { headers: { Authorization: `Bearer ${token}` } })
+        showSuccess('Deal published!')
+      }
+      setShowWizard(false)
+      setEditingPromo(null)
+      fetchData()
+    } catch (e: any) { showError(e?.response?.data?.error || 'Failed to save deal') }
+  }
+
   const sendNotify = async () => {
     if (!token || !venueId || !notifyTitle.trim()) return
     setSending(true)
@@ -198,7 +217,7 @@ export default function Dashboard() {
               <Crown className="w-3.5 h-3.5" /> Upgrade
             </button>
           ) : (
-            <button onClick={() => router.push('/dashboard/promotions?action=new')} className="flex items-center gap-1.5 rounded-xl bg-primary-500 px-3.5 py-2 text-xs font-bold text-black min-h-[40px]">
+            <button onClick={() => { setEditingPromo(null); setShowWizard(true) }} className="flex items-center gap-1.5 rounded-xl bg-primary-500 px-3.5 py-2 text-xs font-bold text-black min-h-[40px]">
               <Plus className="w-3.5 h-3.5" /> New Deal
             </button>
           )}
@@ -252,7 +271,7 @@ export default function Dashboard() {
                       {urgent && <AlertCircle className="w-3 h-3 inline mr-0.5" />}{left}
                     </span>
                     <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={() => router.push(`/dashboard/promotions?edit=${p._id}`)} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-primary-500/15">
+                      <button onClick={() => { setEditingPromo(p); setShowWizard(true) }} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-primary-500/15">
                         <Pencil className="w-3 h-3 inline" />
                       </button>
                       {confirmEndId === p._id ? (
@@ -383,6 +402,25 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* Promotion Wizard — opens inline as modal */}
+      {showWizard && (
+        <PromotionWizard
+          isEditing={!!editingPromo}
+          initialData={editingPromo ? {
+            title: editingPromo.title,
+            offer: editingPromo.offer || '',
+            description: editingPromo.description || '',
+            type: editingPromo.type,
+            startTime: editingPromo.startTime,
+            endTime: editingPromo.endTime,
+            isFlashDeal: editingPromo.isFlashDeal || false,
+            flashDealEndsAt: editingPromo.flashDealEndsAt || '',
+          } : undefined}
+          onSave={handleWizardSave}
+          onCancel={() => { setShowWizard(false); setEditingPromo(null) }}
+        />
+      )}
     </DashboardLayout>
   )
 }
