@@ -341,11 +341,6 @@ function Home() {
             <VenueProfilePage
               venueId={viewingVenueId}
               onClose={() => setViewingVenueId(null)}
-              onSendDrink={() => {
-                setViewingVenueId(null)
-                setAutoOpenSendForm(true)
-                setActiveTab('wallet')
-              }}
             />
           </div>
         </div>
