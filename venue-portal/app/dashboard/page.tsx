@@ -13,7 +13,7 @@ import { getApiUrl } from '../utils/api'
 import {
   Plus, Clock, ChevronRight, Loader2, Send, Crown,
   Sparkles, AlertCircle, Megaphone, ChevronDown,
-  ThumbsUp, X, CheckCircle2,
+  ThumbsUp, X, CheckCircle2, Pencil,
 } from 'lucide-react'
 
 interface Promotion {
@@ -251,14 +251,19 @@ export default function Dashboard() {
                     <span className={`text-[11px] font-semibold flex-shrink-0 ${urgent ? 'text-rose-400' : 'text-white/25'}`}>
                       {urgent && <AlertCircle className="w-3 h-3 inline mr-0.5" />}{left}
                     </span>
-                    {confirmEndId === p._id ? (
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => setConfirmEndId(null)} className="text-[9px] text-white/30 px-1.5 py-1 rounded border border-white/10">No</button>
-                        <button onClick={() => endDeal(p._id)} disabled={endingId === p._id} className="text-[9px] font-bold text-white bg-rose-500 px-1.5 py-1 rounded">{endingId === p._id ? '...' : 'End'}</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => endDeal(p._id)} className="text-[9px] text-rose-400/40 hover:text-rose-400 px-1.5 py-1 rounded border border-rose-500/10 flex-shrink-0">End</button>
-                    )}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => router.push(`/dashboard/promotions?edit=${p._id}`)} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-white/[0.06]">
+                        <Pencil className="w-3 h-3 inline" />
+                      </button>
+                      {confirmEndId === p._id ? (
+                        <>
+                          <button onClick={() => setConfirmEndId(null)} className="text-[9px] text-white/30 px-1.5 py-1 rounded border border-white/10">No</button>
+                          <button onClick={() => endDeal(p._id)} disabled={endingId === p._id} className="text-[9px] font-bold text-white bg-rose-500 px-1.5 py-1 rounded">{endingId === p._id ? '...' : 'End'}</button>
+                        </>
+                      ) : (
+                        <button onClick={() => endDeal(p._id)} className="text-[9px] text-rose-400/40 hover:text-rose-400 px-1.5 py-1 rounded border border-rose-500/10">End</button>
+                      )}
+                    </div>
                   </div>
                 )
               })}
