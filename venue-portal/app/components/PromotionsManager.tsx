@@ -5,7 +5,7 @@ import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useVenue } from '../contexts/VenueContext'
 import { useSocket } from '../contexts/SocketContext'
-import { Plus, Edit, Trash2, Sparkles, FileText, BarChart3, BookOpen, Bell, Zap, Crown } from 'lucide-react'
+import { Plus, Edit, BarChart3, BookmarkPlus, Square, Crown } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { useToast } from './ToastContainer'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
@@ -14,7 +14,6 @@ import QuickActions from './promotions/QuickActions'
 import PromotionAnalytics from './promotions/PromotionAnalytics'
 import PromotionLibrary from './promotions/PromotionLibrary'
 import SaveToLibraryModal from './promotions/SaveToLibraryModal'
-import SmartPromotionGenerator from './SmartPromotionGenerator'
 import { useFeatureAvailable } from './FeatureGate'
 
 interface Promotion {
@@ -81,94 +80,168 @@ export interface PromotionsManagerRef {
   handleShowTemplates: () => void
 }
 
+// --- Helpers ---
+
+const formatLocalDateTime = (date: Date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${d}T${h}:${min}`
+}
+
+const TYPE_EMOJI: Record<string, string> = {
+  'happy-hour': '🍻',
+  'flash-deal': '⚡',
+  'special': '🎉',
+  'exclusive': '👑',
+  'event': '🎶',
+}
+
+const defaultTargeting = {
+  followersOnly: false,
+  locationBased: false,
+  radiusMiles: 5,
+  userSegments: ['all'] as string[],
+  minCheckIns: 0,
+  timeBased: false,
+  timeWindow: { start: '', end: '' },
+}
+
+function getQuickActionData(action: string): Partial<PromotionFormData> {
+  const now = new Date()
+
+  if (action === 'happy-hour') {
+    const start = new Date(now); start.setHours(16, 0, 0, 0)
+    const end = new Date(now); end.setHours(19, 0, 0, 0)
+    return {
+      title: 'Happy Hour', description: 'Discounted drinks and appetizers!',
+      type: 'happy-hour', startTime: formatLocalDateTime(start), endTime: formatLocalDateTime(end),
+      isFlashDeal: false, pointsReward: 10,
+      targeting: { ...defaultTargeting, timeBased: true, timeWindow: { start: '16:00', end: '19:00' } },
+    }
+  }
+  if (action === 'flash-deal') {
+    const start = new Date(now)
+    const end = new Date(now); end.setHours(end.getHours() + 1)
+    return {
+      title: 'Flash Deal', description: 'Limited time offer — act fast!',
+      type: 'flash-deal', startTime: formatLocalDateTime(start), endTime: formatLocalDateTime(end),
+      isFlashDeal: true, flashDealEndsAt: formatLocalDateTime(end), pointsReward: 25,
+      targeting: { ...defaultTargeting, followersOnly: true, locationBased: true },
+    }
+  }
+  if (action === 'weekend') {
+    const friday = new Date(now)
+    friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7 || 7))
+    friday.setHours(0, 0, 0, 0)
+    const sunday = new Date(friday); sunday.setDate(sunday.getDate() + 2); sunday.setHours(23, 59, 0, 0)
+    return {
+      title: 'Weekend Special', description: 'Deals all weekend long!',
+      type: 'special', startTime: formatLocalDateTime(friday), endTime: formatLocalDateTime(sunday),
+      isFlashDeal: false, pointsReward: 15, targeting: { ...defaultTargeting },
+    }
+  }
+  if (action === 'vip') {
+    const start = new Date(now); start.setHours(20, 0, 0, 0)
+    const end = new Date(now); end.setDate(end.getDate() + 1); end.setHours(2, 0, 0, 0)
+    return {
+      title: 'VIP Exclusive', description: 'Special deal for our VIP members!',
+      type: 'exclusive', startTime: formatLocalDateTime(start), endTime: formatLocalDateTime(end),
+      isFlashDeal: false, pointsReward: 50,
+      targeting: { ...defaultTargeting, followersOnly: true, userSegments: ['vip'], minCheckIns: 10 },
+    }
+  }
+  return {}
+}
+
+type ModalState = null | 'wizard' | 'templates' | 'library' | 'analytics' | 'save-to-library'
+
+function getStatus(promo: Promotion): 'live' | 'upcoming' | 'expiring' | 'ended' {
+  const now = Date.now()
+  const start = new Date(promo.startTime).getTime()
+  const end = new Date(promo.endTime).getTime()
+  if (!promo.isActive || now > end) return 'ended'
+  if (now < start) return 'upcoming'
+  const hoursLeft = (end - now) / 3_600_000
+  if (hoursLeft <= 24) return 'expiring'
+  return 'live'
+}
+
+// --- Component ---
+
 const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProps>(
   ({ hideQuickActions = false, compactView = false }: PromotionsManagerProps, ref) => {
   const { token } = useAuth()
-  const { venueId, tier } = useVenue()
+  const { venueId } = useVenue()
   const { socket } = useSocket()
   const { showSuccess, showError } = useToast()
   const hasUnlimitedDeals = useFeatureAvailable('growth')
+
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [showWizard, setShowWizard] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null)
-  const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
-  const [quickActionData, setQuickActionData] = useState<Partial<PromotionFormData> | null>(null)
   const [saving, setSaving] = useState(false)
-  const [viewingAnalytics, setViewingAnalytics] = useState<{ promotionId: string; title: string } | null>(null)
-  const [showLibrary, setShowLibrary] = useState(false)
-  const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null)
-  const [aiEnhancingAction, setAiEnhancingAction] = useState<string | null>(null)
-  const [publishingQuickAction, setPublishingQuickAction] = useState<string | null>(null)
-  const [showAdvancedTools, setShowAdvancedTools] = useState(false)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+
+  const [modal, setModal] = useState<ModalState>(null)
+  const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
+  const [analyticsPromoId, setAnalyticsPromoId] = useState<{ id: string; title: string } | null>(null)
+  const [savingToLibraryId, setSavingToLibraryId] = useState<string | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null)
+  const [quickActionData, setQuickActionData] = useState<Partial<PromotionFormData> | null>(null)
+
+  // --- Data fetching ---
+
+  const fetchPromotions = async (vid?: string) => {
+    const id = vid || venueId
+    if (!id) return
+    try {
+      const res = await axios.get(`${getApiUrl()}/venues/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setPromotions(res.data.venue?.promotions || [])
+    } catch { /* keep current */ } finally { setLoading(false) }
+  }
 
   useEffect(() => {
     if (venueId) fetchPromotions(venueId)
     else setLoading(false)
   }, [venueId])
 
-  // Listen for real-time promotion updates
+  // --- Socket ---
+
   useEffect(() => {
     if (!socket || !venueId) return
-
-    const handlePromotionUpdate = (data: { venueId: string; promotion: any }) => {
-      if (data.venueId === venueId) {
-        fetchPromotions()
-      }
+    const handler = (data: { venueId: string }) => {
+      if (data.venueId === venueId) fetchPromotions()
     }
-
-    const handleNewPromotion = (data: { venueId: string; promotion: any }) => {
-      if (data.venueId === venueId) {
-        fetchPromotions()
-      }
-    }
-
-    const handlePromotionDeleted = (data: { venueId: string; promotionId: string }) => {
-      if (data.venueId === venueId) {
-        fetchPromotions()
-      }
-    }
-
-    socket.on('promotion-updated', handlePromotionUpdate)
-    socket.on('new-promotion', handleNewPromotion)
-    socket.on('promotion-deleted', handlePromotionDeleted)
-
+    socket.on('promotion-updated', handler)
+    socket.on('new-promotion', handler)
+    socket.on('promotion-deleted', handler)
     return () => {
-      socket.off('promotion-updated', handlePromotionUpdate)
-      socket.off('new-promotion', handleNewPromotion)
-      socket.off('promotion-deleted', handlePromotionDeleted)
+      socket.off('promotion-updated', handler)
+      socket.off('new-promotion', handler)
+      socket.off('promotion-deleted', handler)
     }
   }, [socket, venueId])
 
-  const fetchPromotions = async (vid?: string) => {
-    if (!vid && !venueId) return
-    const vId = vid || venueId
-    if (!vId) return
+  // --- Actions ---
 
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues/${vId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setPromotions(response.data.venue?.promotions || [])
-    } catch {
-      // keep current list
-    } finally {
-      setLoading(false)
-    }
+  const closeAll = () => {
+    setModal(null)
+    setEditingPromo(null)
+    setSelectedTemplate(null)
+    setQuickActionData(null)
+    setAnalyticsPromoId(null)
+    setSavingToLibraryId(null)
   }
 
   const handleSavePromotion = async (formData: PromotionFormData) => {
-    if (!venueId || !token) {
-      showError('No venue found. Please create a venue first.')
-      return
-    }
-
+    if (!venueId || !token) { showError('No venue found.'); return }
     setSaving(true)
     try {
-      const promotionData = {
+      const payload = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
@@ -185,434 +258,75 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           daysOfWeek: formData.recurrencePattern.daysOfWeek || [],
           dayOfMonth: formData.recurrencePattern.dayOfMonth,
           endDate: formData.recurrencePattern.endDate || undefined,
-          maxOccurrences: formData.recurrencePattern.maxOccurrences || 12
-        } : undefined
+          maxOccurrences: formData.recurrencePattern.maxOccurrences || 12,
+        } : undefined,
       }
-
       if (editingPromo) {
-        const response = await axios.put(
-          `${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`,
-          promotionData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        const message = response.data?.notificationsSent
-          ? 'Promotion activated — push notifications sent!'
-          : 'Promotion updated successfully.'
-        showSuccess(message)
+        const res = await axios.put(`${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`, payload,
+          { headers: { Authorization: `Bearer ${token}` } })
+        showSuccess(res.data?.notificationsSent ? 'Deal activated — notifications sent!' : 'Deal updated.')
       } else {
-        await axios.post(
-          `${getApiUrl()}/venues/${venueId}/promotions`,
-          promotionData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        showSuccess('Promotion created — push notifications sent!')
+        await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, payload,
+          { headers: { Authorization: `Bearer ${token}` } })
+        showSuccess('Deal created — notifications sent!')
       }
-
-      setShowWizard(false)
-      setShowTemplates(false)
-      setEditingPromo(null)
-      setSelectedTemplate(null)
-      setQuickActionData(null)
+      closeAll()
       fetchPromotions()
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to save promotion'
-      showError(errorMessage)
-    } finally {
-      setSaving(false)
-    }
+    } catch (err: any) {
+      showError(err.response?.data?.error || err.message || 'Failed to save deal')
+    } finally { setSaving(false) }
   }
 
-  const handleTemplateSelect = (template: TemplateType | null) => {
-    if (template) {
-      setSelectedTemplate(template)
-      setShowTemplates(false)
-      setShowWizard(true)
-    } else {
-      // Create from scratch
-      setSelectedTemplate(null)
-      setShowTemplates(false)
-      setShowWizard(true)
-    }
+  const handleDelete = async (promoId: string) => {
+    if (!venueId || !token) return
+    try {
+      await axios.delete(`${getApiUrl()}/venues/${venueId}/promotions/${promoId}`,
+        { headers: { Authorization: `Bearer ${token}` } })
+      showSuccess('Deal ended.')
+      fetchPromotions()
+    } catch (err: any) { showError(err.response?.data?.error || 'Failed to end deal') }
   }
 
   const handleEdit = (promo: Promotion) => {
     setEditingPromo(promo)
     setSelectedTemplate(null)
     setQuickActionData(null)
-    setShowWizard(true)
-  }
-
-  const handleDelete = async (promoId: string) => {
-    if (!venueId || !token) return
-    if (confirmDeleteId !== promoId) {
-      setConfirmDeleteId(promoId)
-      return
-    }
-    setConfirmDeleteId(null)
-    try {
-      await axios.delete(
-        `${getApiUrl()}/venues/${venueId}/promotions/${promoId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      showSuccess('Promotion deleted.')
-      fetchPromotions()
-    } catch (error: any) {
-      showError(error.response?.data?.error || 'Failed to delete promotion')
-    }
-  }
-
-  // Quick action handlers
-  const formatLocalDateTime = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day}T${hours}:${minutes}`
-  }
-
-  const parseTime = (input: unknown, fallbackHour: number, fallbackMinute: number) => {
-    const raw = typeof input === 'string' ? input.trim() : ''
-    const parts = raw.split(':')
-    const hours = Number(parts[0])
-    const minutes = Number(parts[1] || 0)
-    return {
-      hours: Number.isFinite(hours) ? Math.min(Math.max(hours, 0), 23) : fallbackHour,
-      minutes: Number.isFinite(minutes) ? Math.min(Math.max(minutes, 0), 59) : fallbackMinute
-    }
-  }
-
-  const buildDateWithTime = (baseDate: Date, timeValue: unknown, fallbackHour: number, fallbackMinute: number) => {
-    const date = new Date(baseDate)
-    const { hours, minutes } = parseTime(timeValue, fallbackHour, fallbackMinute)
-    date.setHours(hours, minutes, 0, 0)
-    return date
-  }
-
-  const normalizeDaysOfWeek = (days: unknown) => {
-    const dayNameToIndex: Record<string, number> = {
-      sunday: 0,
-      monday: 1,
-      tuesday: 2,
-      wednesday: 3,
-      thursday: 4,
-      friday: 5,
-      saturday: 6
-    }
-
-    if (!Array.isArray(days)) return undefined
-    const mapped = days
-      .map((day) => dayNameToIndex[String(day).toLowerCase()])
-      .filter((day) => Number.isInteger(day))
-    return mapped.length > 0 ? mapped : undefined
-  }
-
-  const getActionMatcher = (action: string) => (suggestion: any) => {
-    const promo = suggestion?.suggestedPromotion || {}
-    const suggestionType = String(suggestion?.type || '').toLowerCase()
-    const promoType = String(promo?.type || '').toLowerCase()
-    const title = String(promo?.title || suggestion?.title || '').toLowerCase()
-    const description = String(promo?.description || suggestion?.description || '').toLowerCase()
-    const days = Array.isArray(promo?.daysOfWeek) ? promo.daysOfWeek.map((d: string) => String(d).toLowerCase()) : []
-
-    if (action === 'happy-hour') {
-      return promoType === 'happy-hour' || title.includes('happy hour') || suggestionType.includes('peak')
-    }
-    if (action === 'weekend') {
-      return title.includes('weekend') || suggestionType.includes('weekend') || days.some((d: string) => ['friday', 'saturday', 'sunday'].includes(d))
-    }
-    if (action === 'flash-deal') {
-      return promoType === 'flash-deal' || title.includes('flash') || description.includes('limited') || description.includes('urgent')
-    }
-    if (action === 'vip') {
-      return promoType === 'exclusive' || title.includes('vip') || title.includes('exclusive') || suggestionType.includes('retention')
-    }
-    return false
-  }
-
-  const buildAIEnhancedQuickActionData = async (action: string) => {
-    if (!token || !venueId) return null
-
-    try {
-      const apiUrl = getApiUrl()
-      const suggestionsRes = await axios.get(`${apiUrl}/ai-automation/suggestions?venueId=${venueId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      const suggestions = suggestionsRes.data?.suggestions || []
-      if (!Array.isArray(suggestions) || suggestions.length === 0) return null
-
-      const matchedSuggestion = suggestions.find(getActionMatcher(action)) || suggestions[0]
-      const promo = matchedSuggestion?.suggestedPromotion || {}
-      const base = getQuickActionData(action)
-      const baseTargeting = {
-        followersOnly: base.targeting?.followersOnly ?? false,
-        locationBased: base.targeting?.locationBased ?? false,
-        radiusMiles: base.targeting?.radiusMiles ?? 5,
-        userSegments: base.targeting?.userSegments ?? ['all'],
-        minCheckIns: base.targeting?.minCheckIns ?? 0,
-        timeBased: base.targeting?.timeBased ?? false,
-        timeWindow: base.targeting?.timeWindow ?? { start: '', end: '' }
-      }
-
-      const now = new Date()
-      const startDate = buildDateWithTime(now, promo.startTime, 17, 0)
-      const endDate = buildDateWithTime(now, promo.endTime, 22, 0)
-      if (endDate <= startDate) {
-        endDate.setHours(endDate.getHours() + 2)
-      }
-
-      if (action === 'flash-deal') {
-        const flashStart = new Date(now)
-        const flashEnd = new Date(now)
-        flashEnd.setHours(flashEnd.getHours() + 1)
-        return {
-          ...base,
-          title: promo.title || 'AI Flash Deal',
-          description: promo.description || 'AI-selected limited time offer based on current venue activity.',
-          type: 'flash-deal',
-          startTime: formatLocalDateTime(flashStart),
-          endTime: formatLocalDateTime(flashEnd),
-          isFlashDeal: true,
-          flashDealEndsAt: formatLocalDateTime(flashEnd),
-          targeting: {
-            ...baseTargeting,
-            followersOnly: true,
-            userSegments: ['all']
-          }
-        }
-      }
-
-      const normalizedDays = normalizeDaysOfWeek(promo.daysOfWeek)
-      const isVip = action === 'vip'
-      const isWeekend = action === 'weekend'
-
-      return {
-        ...base,
-        title: promo.title || base.title,
-        description: promo.description || base.description,
-        type: isVip ? 'exclusive' : (promo.type || base.type),
-        startTime: formatLocalDateTime(startDate),
-        endTime: formatLocalDateTime(endDate),
-        isRecurring: isWeekend,
-        recurrencePattern: isWeekend ? {
-          type: 'weekly' as const,
-          frequency: 1,
-          daysOfWeek: normalizedDays || [5, 6, 0],
-          endDate: '',
-          maxOccurrences: 12
-        } : undefined,
-        targeting: {
-          ...baseTargeting,
-          followersOnly: isVip ? true : baseTargeting.followersOnly,
-          userSegments: isVip ? ['vip'] : baseTargeting.userSegments,
-          minCheckIns: isVip ? Math.max(baseTargeting.minCheckIns, 5) : baseTargeting.minCheckIns
-        }
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('AI quick action enhancement failed:', error)
-      }
-      return null
-    }
-  }
-
-  const getQuickActionData = (action: string): Partial<PromotionFormData> => {
-    const now = new Date()
-    const tomorrow = new Date(now)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    switch (action) {
-      case 'happy-hour':
-        const happyHourStart = new Date(now)
-        happyHourStart.setHours(16, 0, 0, 0) // 4 PM
-        const happyHourEnd = new Date(now)
-        happyHourEnd.setHours(19, 0, 0, 0) // 7 PM
-        
-        return {
-          title: 'Happy Hour',
-          description: 'Join us for discounted drinks and appetizers!',
-          type: 'happy-hour',
-          startTime: happyHourStart.toISOString().slice(0, 16),
-          endTime: happyHourEnd.toISOString().slice(0, 16),
-          isFlashDeal: false,
-          pointsReward: 10,
-          targeting: {
-            followersOnly: false,
-            locationBased: false,
-            radiusMiles: 5,
-            userSegments: ['all'],
-            minCheckIns: 0,
-            timeBased: true,
-            timeWindow: { start: '16:00', end: '19:00' }
-          }
-        }
-
-      case 'flash-deal':
-        const flashStart = new Date(now)
-        const flashEnd = new Date(now)
-        flashEnd.setHours(flashEnd.getHours() + 1) // 1 hour from now
-        
-        return {
-          title: 'Flash Deal',
-          description: 'Limited time offer - act fast!',
-          type: 'flash-deal',
-          startTime: flashStart.toISOString().slice(0, 16),
-          endTime: flashEnd.toISOString().slice(0, 16),
-          isFlashDeal: true,
-          flashDealEndsAt: flashEnd.toISOString().slice(0, 16),
-          pointsReward: 25,
-          targeting: {
-            followersOnly: true,
-            locationBased: true,
-            radiusMiles: 5,
-            userSegments: ['all'],
-            minCheckIns: 0,
-            timeBased: false,
-            timeWindow: { start: '', end: '' }
-          }
-        }
-
-      case 'weekend':
-        const friday = new Date(now)
-        friday.setDate(friday.getDate() + (5 - friday.getDay() + 7) % 7) // Next Friday
-        friday.setHours(0, 0, 0, 0)
-        const sunday = new Date(friday)
-        sunday.setDate(sunday.getDate() + 2)
-        sunday.setHours(23, 59, 59)
-        
-        return {
-          title: 'Weekend Special',
-          description: 'Special deals all weekend long!',
-          type: 'special',
-          startTime: friday.toISOString().slice(0, 16),
-          endTime: sunday.toISOString().slice(0, 16),
-          isFlashDeal: false,
-          pointsReward: 15,
-          targeting: {
-            followersOnly: false,
-            locationBased: false,
-            radiusMiles: 5,
-            userSegments: ['all'],
-            minCheckIns: 0,
-            timeBased: false,
-            timeWindow: { start: '', end: '' }
-          }
-        }
-
-      case 'vip':
-        return {
-          title: 'VIP Exclusive Offer',
-          description: 'Special deal just for our VIP members!',
-          type: 'exclusive',
-          startTime: now.toISOString().slice(0, 16),
-          endTime: tomorrow.toISOString().slice(0, 16),
-          isFlashDeal: false,
-          pointsReward: 50,
-          targeting: {
-            followersOnly: true,
-            locationBased: false,
-            radiusMiles: 5,
-            userSegments: ['vip'],
-            minCheckIns: 10,
-            timeBased: false,
-            timeWindow: { start: '', end: '' }
-          }
-        }
-
-      default:
-        return {}
-    }
+    setModal('wizard')
   }
 
   const handleQuickAction = (action: string) => {
-    if (aiEnhancingAction) return
-
-    const openQuickActionWizard = async () => {
-      const fallbackData = getQuickActionData(action)
-      setAiEnhancingAction(action)
-      const aiEnhancedData = await buildAIEnhancedQuickActionData(action)
-
-      setQuickActionData(aiEnhancedData || fallbackData)
-      setSelectedTemplate(null)
-      setEditingPromo(null)
-      setShowWizard(true)
-
-      if (aiEnhancedData) {
-        showSuccess('AI tuned this promotion with live venue insights.')
-      } else {
-        showError('AI was unavailable, loaded best-practice quick setup.')
-      }
-      setAiEnhancingAction(null)
-    }
-
-    openQuickActionWizard()
+    const data = getQuickActionData(action)
+    setQuickActionData(data)
+    setSelectedTemplate(null)
+    setEditingPromo(null)
+    setModal('wizard')
   }
 
-  const handleInstantQuickAction = (action: string) => {
-    if (aiEnhancingAction || publishingQuickAction || !venueId || !token) return
-
-    const publishQuickAction = async () => {
-      setPublishingQuickAction(action)
-
-      const fallbackData = getQuickActionData(action)
-      const aiEnhancedData = await buildAIEnhancedQuickActionData(action)
-      const sourceData = aiEnhancedData || fallbackData
-
-      try {
-        const promotionData = {
-          title: sourceData.title || 'Quick Promotion',
-          description: sourceData.description || '',
-          type: sourceData.type || 'special',
-          startTime: sourceData.startTime
-            ? new Date(sourceData.startTime).toISOString()
-            : new Date().toISOString(),
-          endTime: sourceData.endTime
-            ? new Date(sourceData.endTime).toISOString()
-            : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-          isFlashDeal: !!sourceData.isFlashDeal,
-          flashDealEndsAt: sourceData.flashDealEndsAt
-            ? new Date(sourceData.flashDealEndsAt).toISOString()
-            : undefined,
-          pointsReward: sourceData.pointsReward || 0,
-          targeting: sourceData.targeting || {
-            followersOnly: false,
-            locationBased: false,
-            radiusMiles: 5,
-            userSegments: ['all'],
-            minCheckIns: 0,
-            timeBased: false,
-            timeWindow: { start: '', end: '' }
-          },
-          isRecurring: !!sourceData.isRecurring,
-          recurrencePattern: sourceData.isRecurring ? sourceData.recurrencePattern : undefined
-        }
-
-        await axios.post(
-          `${getApiUrl()}/venues/${venueId}/promotions`,
-          promotionData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-
-        fetchPromotions()
-        if (aiEnhancedData) {
-          showSuccess('AI deal published instantly.')
-        } else {
-          showSuccess('Deal published instantly with best-practice defaults.')
-        }
-      } catch (error: any) {
-        const errorMessage = error.response?.data?.error || error.message || 'Failed to publish quick deal'
-        showError(errorMessage)
-      } finally {
-        setPublishingQuickAction(null)
-      }
-    }
-
-    publishQuickAction()
+  const handleInstantQuickAction = async (action: string) => {
+    if (publishing || !venueId || !token) return
+    setPublishing(true)
+    const data = getQuickActionData(action)
+    try {
+      await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, {
+        title: data.title || 'Quick Deal',
+        description: data.description || '',
+        type: data.type || 'special',
+        startTime: data.startTime ? new Date(data.startTime).toISOString() : new Date().toISOString(),
+        endTime: data.endTime ? new Date(data.endTime).toISOString() : new Date(Date.now() + 7_200_000).toISOString(),
+        isFlashDeal: !!data.isFlashDeal,
+        flashDealEndsAt: data.flashDealEndsAt ? new Date(data.flashDealEndsAt).toISOString() : undefined,
+        pointsReward: data.pointsReward || 0,
+        targeting: data.targeting || defaultTargeting,
+        isRecurring: false,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      showSuccess('Deal published instantly!')
+      fetchPromotions()
+    } catch (err: any) {
+      showError(err.response?.data?.error || 'Failed to publish deal')
+    } finally { setPublishing(false) }
   }
 
   const handleNewPromotion = () => {
-    // Free tier: max 1 active promotion
     if (!hasUnlimitedDeals && promotions.filter(p => p.isActive).length >= 1) {
       showError('Free plan allows 1 active deal. Upgrade for unlimited.')
       return
@@ -620,355 +334,185 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
     setSelectedTemplate(null)
     setEditingPromo(null)
     setQuickActionData(null)
-    setShowWizard(true)
+    setModal('wizard')
   }
 
-  const handleShowTemplates = () => {
-    setShowTemplates(true)
+  const handleShowTemplates = () => setModal('templates')
+
+  const handleTemplateSelect = (template: TemplateType | null) => {
+    setSelectedTemplate(template || null)
+    setModal('wizard')
   }
 
-  // Expose methods via ref
+  // --- Ref ---
+
   useImperativeHandle(ref, () => ({
     handleQuickAction,
     handleInstantQuickAction,
     handleNewPromotion,
-    handleShowTemplates
+    handleShowTemplates,
   }))
 
-  if (loading) {
+  // --- Render helpers ---
+
+  const activeCount = promotions.filter(p => getStatus(p) === 'live' || getStatus(p) === 'expiring').length
+  const atFreeLimit = !hasUnlimitedDeals && activeCount >= 1
+
+  const statusPill = (status: 'live' | 'upcoming' | 'expiring' | 'ended') => {
+    if (status === 'live') return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live
+      </span>
+    )
+    if (status === 'expiring') return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Expiring Soon
+      </span>
+    )
+    if (status === 'upcoming') return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary-400" /> Upcoming
+      </span>
+    )
     return (
-      <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
-        <div className="text-center py-4 text-primary-400/70 text-sm font-light">Loading promotions...</div>
-      </div>
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-400/40">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary-400/40" /> Ended
+      </span>
     )
   }
 
-  if (!venueId) {
-    return (
-      <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
-        <div className="text-center py-4 text-primary-400/80 text-sm">
-          <p className="mb-2 font-light">No venue found. Please create a venue first.</p>
-          <a
-            href="/dashboard/settings"
-            className="inline-block bg-primary-500 text-black px-4 py-1.5 rounded-lg font-medium hover:bg-primary-400 transition-all text-sm"
-          >
-            Go to Settings
-          </a>
-        </div>
-      </div>
-    )
-  }
+  // --- Loading / No venue ---
+
+  if (loading) return (
+    <div className="bg-black/40 border border-primary-500/15 rounded-xl p-6">
+      <p className="text-center text-primary-400/50 text-sm">Loading deals...</p>
+    </div>
+  )
+
+  if (!venueId) return (
+    <div className="bg-black/40 border border-primary-500/15 rounded-xl p-6 text-center">
+      <p className="text-primary-400/50 text-sm mb-3">No venue found.</p>
+      <a href="/dashboard/settings" className="bg-primary-500 text-black px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-400 transition-colors">
+        Go to Settings
+      </a>
+    </div>
+  )
+
+  // --- Main render ---
 
   return (
     <>
-      <div className="bg-black/40 border border-primary-500/15 rounded-lg p-3 backdrop-blur-sm">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center space-x-2">
-            <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-1.5">
-              <Sparkles className="w-4 h-4 text-primary-500" />
-            </div>
-            <h2 className="text-base font-semibold text-primary-500 tracking-tight">Promotions</h2>
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold text-white">Your Deals</h2>
             {promotions.length > 0 && (
-              <span className="text-xs text-primary-400/70">({promotions.length})</span>
+              <span className="bg-primary-500/15 text-primary-500 text-xs font-medium px-2 py-0.5 rounded-full">
+                {promotions.length}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="flex items-center space-x-1 bg-primary-500/20 border border-primary-500/30 text-primary-500 px-2.5 py-1.5 rounded hover:bg-primary-500/30 transition-all font-medium text-xs"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Template</span>
+          {atFreeLimit ? (
+            <a href="/dashboard/settings"
+              className="flex items-center gap-1.5 bg-primary-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-400 transition-colors">
+              <Crown className="w-4 h-4" /> Upgrade
+            </a>
+          ) : (
+            <button onClick={handleNewPromotion}
+              className="flex items-center gap-1.5 bg-primary-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-400 transition-colors">
+              <Plus className="w-4 h-4" /> New Deal
             </button>
-            <button
-              onClick={() => setShowLibrary(true)}
-              className="flex items-center space-x-1 bg-primary-500/20 border border-primary-500/30 text-primary-500 px-2.5 py-1.5 rounded hover:bg-primary-500/30 transition-all font-medium text-xs"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Library</span>
-            </button>
-            <button
-              onClick={() => {
-                setSelectedTemplate(null)
-                setEditingPromo(null)
-                setQuickActionData(null)
-                setShowWizard(true)
-              }}
-              className="flex items-center space-x-1 bg-primary-500 text-black px-2.5 py-1.5 rounded hover:bg-primary-600 transition-all font-medium text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New</span>
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* Promotions List - Show First, Most Important */}
+        {/* Quick Launch — instant publish */}
+        {!hideQuickActions && (
+          <QuickActions
+            onStartHappyHour={() => handleInstantQuickAction('happy-hour')}
+            onFlashDeal={() => handleInstantQuickAction('flash-deal')}
+            onWeekendSpecial={() => handleInstantQuickAction('weekend')}
+            onVipExclusive={() => handleInstantQuickAction('vip')}
+          />
+        )}
+
+        {/* Active Deals */}
         {promotions.length === 0 ? (
-          <div className="text-center py-8 text-primary-400/80">
-            <p className="mb-3 font-light text-base">No promotions yet. Create your first promotion!</p>
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="mt-2 bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-600 transition-all"
-            >
-              + Create Promotion
+          <div className="bg-black/40 border border-primary-500/15 rounded-xl p-8 text-center">
+            <p className="text-primary-400/50 text-sm mb-4">No deals yet. Create your first deal to start driving traffic.</p>
+            <button onClick={handleNewPromotion}
+              className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-400 transition-colors">
+              Create Your First Deal
             </button>
           </div>
         ) : (
-          <div className={`space-y-2 mb-4 ${compactView ? 'max-h-[320px] overflow-y-auto pr-1' : ''}`}>
+          <div className={`space-y-2 ${compactView ? 'max-h-[340px] overflow-y-auto pr-1' : ''}`}>
             {promotions.map((promo) => {
-              const isActive = promo.isActive
-              const now = new Date()
-              const startTime = new Date(promo.startTime)
-              const endTime = new Date(promo.endTime)
-              const isCurrentlyActive = isActive && now >= startTime && now <= endTime
-              
-              // Calculate time until expiration for color gradient
-              const timeUntilEnd = endTime.getTime() - now.getTime()
-              const hoursUntilEnd = timeUntilEnd / (1000 * 60 * 60)
-              const isExpiringSoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 24 // Expiring within 24 hours
-              const isExpiringVerySoon = isCurrentlyActive && hoursUntilEnd > 0 && hoursUntilEnd <= 4 // Expiring within 4 hours
-              
-              // Enhanced color scheme based on status with more vibrant gradients
-              let gradientClass = 'from-black/50 to-black/40'
-              let borderClass = 'border-primary-500/20'
-              let accentGlow = ''
-              let leftAccent = ''
-              
-              if (isCurrentlyActive) {
-                if (isExpiringVerySoon) {
-                  // Red gradient for expiring very soon (urgent) - More vibrant
-                  gradientClass = 'from-red-600/30 via-red-500/20 via-orange-500/15 to-black/50'
-                  borderClass = 'border-red-500/60'
-                  accentGlow = 'shadow-red-500/20'
-                  leftAccent = 'border-l-4 border-l-red-500'
-                } else if (isExpiringSoon) {
-                  // Orange gradient for expiring soon (warning) - More prominent
-                  gradientClass = 'from-orange-500/30 via-orange-400/20 via-yellow-500/15 to-black/50'
-                  borderClass = 'border-orange-500/50'
-                  accentGlow = 'shadow-orange-500/20'
-                  leftAccent = 'border-l-4 border-l-orange-500'
-                } else {
-                  // Green gradient for active and healthy - More vibrant
-                  gradientClass = 'from-emerald-500/25 via-green-500/20 via-primary-500/10 to-black/50'
-                  borderClass = 'border-emerald-500/50'
-                  accentGlow = 'shadow-emerald-500/15'
-                  leftAccent = 'border-l-4 border-l-emerald-500'
-                }
-              } else if (now < startTime) {
-                // Blue gradient for upcoming promotions - More vibrant
-                gradientClass = 'from-blue-500/25 via-cyan-500/20 via-blue-400/10 to-black/50'
-                borderClass = 'border-blue-500/40'
-                accentGlow = 'shadow-blue-500/15'
-                leftAccent = 'border-l-4 border-l-blue-500'
-              } else {
-                // Gray for inactive/expired
-                gradientClass = 'from-gray-600/15 via-gray-500/10 to-black/50'
-                borderClass = 'border-gray-500/30'
-                accentGlow = ''
-                leftAccent = ''
-              }
-              
+              const status = getStatus(promo)
+              const emoji = TYPE_EMOJI[promo.type] || '🎯'
+
               return (
-                <div 
-                  key={promo._id} 
-                  onClick={() => handleEdit(promo)}
-                  className={`bg-gradient-to-br ${gradientClass} border-2 ${borderClass} ${leftAccent} rounded-xl p-4 hover:border-primary-500/70 hover:shadow-2xl ${accentGlow} transition-all backdrop-blur-sm cursor-pointer group shadow-lg relative overflow-hidden`}
-                >
-                  {/* Subtle animated gradient overlay for active promotions */}
-                  {isCurrentlyActive && !isExpiringSoon && !isExpiringVerySoon && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent animate-pulse-slow pointer-events-none"></div>
-                  )}
-                  {isExpiringSoon && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-transparent animate-pulse pointer-events-none"></div>
-                  )}
-                  {isExpiringVerySoon && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/15 via-transparent to-transparent animate-pulse pointer-events-none"></div>
-                  )}
-                  <div className="flex justify-between items-start relative z-10">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className={`font-bold text-base tracking-tight ${
-                          isCurrentlyActive 
-                            ? (isExpiringVerySoon ? 'text-red-300' : isExpiringSoon ? 'text-orange-300' : 'text-emerald-300')
-                            : (now < startTime ? 'text-blue-300' : 'text-primary-500')
-                        }`}>
-                          {promo.title}
-                        </h3>
-                        {isCurrentlyActive && (
-                          <span className={`${
-                            isExpiringVerySoon 
-                              ? 'bg-red-500/50 border-red-400/70 text-red-100 shadow-red-500/30' 
-                              : isExpiringSoon 
-                                ? 'bg-orange-500/40 border-orange-400/60 text-orange-100 shadow-orange-500/30'
-                                : 'bg-emerald-500/40 border-emerald-400/60 text-emerald-100 shadow-emerald-500/30'
-                          } border-2 px-2.5 py-1 rounded-lg text-xs font-bold shadow-lg ${isExpiringVerySoon ? 'animate-pulse' : ''}`}>
-                            {isExpiringVerySoon ? '⚠️ EXPIRING SOON' : isExpiringSoon ? '⏰ EXPIRING TODAY' : '✓ LIVE'}
-                          </span>
-                        )}
-                        {now < startTime && (
-                          <span className="bg-blue-500/30 border border-blue-500/50 text-blue-300 px-2 py-0.5 rounded-lg text-xs font-bold">
-                            UPCOMING
-                          </span>
-                        )}
-                        {promo.isFlashDeal && (
-                          <span className="bg-red-500/20 border border-red-500/40 text-red-400 px-2 py-0.5 rounded-lg text-xs font-bold">
-                            FLASH
-                          </span>
-                        )}
-                      </div>
-                      {isExpiringSoon && isCurrentlyActive && (
-                        <div className="mb-2">
-                          <p className="text-xs font-medium text-orange-400">
-                            ⏰ Expires in {Math.floor(hoursUntilEnd)} hour{Math.floor(hoursUntilEnd) !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      )}
-                      {promo.description && (
-                        <p className="text-sm text-primary-400/90 mt-1 mb-2 line-clamp-2 font-light">{promo.description}</p>
-                      )}
-                      <div className="flex items-center space-x-3 mt-2 text-xs text-primary-400/80">
-                        <span className="capitalize bg-primary-500/15 border border-primary-500/30 text-primary-500 px-2.5 py-1 rounded-lg font-medium">
-                          {promo.type.replace('-', ' ')}
-                        </span>
-                        <span className="text-primary-400/70 font-light">
-                          {new Date(promo.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                        {promo.startTime && promo.endTime && (
-                          <span className="text-primary-400/70 font-light">
-                            {new Date(promo.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(promo.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                          </span>
-                        )}
-                      </div>
+                <div key={promo._id}
+                  className="bg-black/40 border border-primary-500/15 rounded-xl p-4 hover:border-primary-500/30 transition-colors">
+                  {/* Top row: emoji + title + status */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base flex-shrink-0">{emoji}</span>
+                      <h3 className="text-sm font-semibold text-white truncate">{promo.title}</h3>
                     </div>
-                    <div className="flex items-center space-x-1 ml-3 flex-shrink-0">
-                      {confirmDeleteId === promo._id ? (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
-                            className="px-2 py-1 text-[11px] font-semibold text-primary-400 hover:text-primary-300 rounded-lg border border-primary-500/25 hover:border-primary-500/45 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(promo._id) }}
-                            className="px-2 py-1 text-[11px] font-semibold text-red-300 bg-red-500/15 hover:bg-red-500/25 rounded-lg border border-red-500/30 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setViewingAnalytics({ promotionId: promo._id, title: promo.title }) }}
-                            className="p-2 text-primary-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
-                            title="View analytics"
-                          >
-                            <BarChart3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEdit(promo) }}
-                            className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors"
-                            title="Edit promotion"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(promo._id) }}
-                            className="p-2 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Delete promotion"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {statusPill(status)}
+                  </div>
+
+                  {/* Description */}
+                  {promo.description && (
+                    <p className="text-xs text-primary-400/50 mb-3 line-clamp-1">{promo.description}</p>
+                  )}
+
+                  {/* Time range */}
+                  <p className="text-xs text-primary-400/40 mb-3">
+                    {new Date(promo.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {' '}
+                    {new Date(promo.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    {' — '}
+                    {new Date(promo.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+
+                  {/* Action row */}
+                  <div className="flex items-center gap-1 border-t border-primary-500/10 pt-2">
+                    <button onClick={() => handleEdit(promo)}
+                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                      <Edit className="w-3 h-3" /> Edit
+                    </button>
+                    <button onClick={() => { setAnalyticsPromoId({ id: promo._id, title: promo.title }); setModal('analytics') }}
+                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                      <BarChart3 className="w-3 h-3" /> Stats
+                    </button>
+                    <button onClick={() => handleDelete(promo._id)}
+                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                      <Square className="w-3 h-3" /> End Deal
+                    </button>
+                    <button onClick={() => { setSavingToLibraryId(promo._id); setModal('save-to-library') }}
+                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                      <BookmarkPlus className="w-3 h-3" /> Save
+                    </button>
                   </div>
                 </div>
               )
             })}
           </div>
         )}
-
-        {compactView ? (
-          <div className="mb-3 rounded-lg border border-primary-500/20 bg-black/30 p-2">
-            <button
-              onClick={() => setShowAdvancedTools((prev) => !prev)}
-              className="w-full rounded-md border border-primary-500/20 bg-black/40 px-3 py-2 text-left text-xs font-semibold text-primary-400 hover:border-primary-500/35 hover:text-primary-500"
-            >
-              {showAdvancedTools ? 'Hide Advanced AI Tools' : 'Show Advanced AI Tools'}
-            </button>
-            {showAdvancedTools ? (
-              <div className="pt-2 space-y-2">
-                <div className="bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/35 rounded-lg p-3">
-                  <div className="flex items-start gap-2.5">
-                    <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
-                      <Bell className="w-4 h-4 text-primary-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
-                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
-                      </div>
-                      <p className="text-xs text-primary-400/90 font-light leading-relaxed">
-                        Promotions trigger instant follower notifications for faster conversion.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <SmartPromotionGenerator onGenerated={fetchPromotions} />
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            {/* Push Notification Banner - Key Feature Highlight */}
-            <div className="mb-3 bg-gradient-to-r from-primary-500/20 to-cyan-500/20 border border-primary-500/40 rounded-lg p-3">
-              <div className="flex items-start gap-2.5">
-                <div className="bg-primary-500/30 rounded-lg p-1.5 flex-shrink-0">
-                  <Bell className="w-4 h-4 text-primary-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-bold text-primary-500">Real-Time Push Notifications</h3>
-                    <Zap className="w-3.5 h-3.5 text-yellow-500" />
-                  </div>
-                  <p className="text-xs text-primary-400/90 font-light leading-relaxed">
-                    When you create or activate a promotion, users instantly receive push notifications on their mobile devices. This drives immediate engagement and spending at your venue. Target followers, nearby users, or specific segments to maximize impact.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Smart Generator */}
-            <div className="mb-3">
-              <SmartPromotionGenerator onGenerated={fetchPromotions} />
-            </div>
-          </>
-        )}
-
-        {/* Quick Actions - Only show if not hidden */}
-        {!hideQuickActions && (
-          <div className="mb-3">
-            <QuickActions
-              onStartHappyHour={() => handleQuickAction('happy-hour')}
-              onFlashDeal={() => handleQuickAction('flash-deal')}
-              onWeekendSpecial={() => handleQuickAction('weekend')}
-              onVipExclusive={() => handleQuickAction('vip')}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Templates Modal */}
-      {showTemplates && (
+      {/* --- Modals --- */}
+
+      {modal === 'templates' && (
         <PromotionTemplates
           onSelectTemplate={handleTemplateSelect}
-          onClose={() => setShowTemplates(false)}
+          onClose={closeAll}
         />
       )}
 
-      {/* Wizard Modal */}
-      {showWizard && (
+      {modal === 'wizard' && (
         <PromotionWizard
           template={selectedTemplate}
           initialData={quickActionData || (editingPromo ? {
@@ -988,50 +532,39 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               userSegments: editingPromo.targeting?.userSegments || ['all'],
               minCheckIns: editingPromo.targeting?.minCheckIns || 0,
               timeBased: editingPromo.targeting?.timeBased || false,
-              timeWindow: editingPromo.targeting?.timeWindow || { start: '', end: '' }
-            }
+              timeWindow: editingPromo.targeting?.timeWindow || { start: '', end: '' },
+            },
           } : undefined)}
           onSave={handleSavePromotion}
-          onCancel={() => {
-            setShowWizard(false)
-            setEditingPromo(null)
-            setSelectedTemplate(null)
-            setQuickActionData(null)
-          }}
+          onCancel={closeAll}
           isEditing={!!editingPromo}
         />
       )}
 
-      {/* Analytics Modal */}
-      {viewingAnalytics && venueId && (
+      {modal === 'analytics' && analyticsPromoId && venueId && (
         <PromotionAnalytics
           venueId={venueId}
-          promotionId={viewingAnalytics.promotionId}
-          promotionTitle={viewingAnalytics.title}
-          onClose={() => setViewingAnalytics(null)}
+          promotionId={analyticsPromoId.id}
+          promotionTitle={analyticsPromoId.title}
+          onClose={closeAll}
         />
       )}
 
-      {/* Library Modal */}
-      {showLibrary && (
+      {modal === 'library' && (
         <PromotionLibrary
-          onSelectPromotion={(promotionData) => {
-            setQuickActionData(promotionData)
-            setShowLibrary(false)
-            setShowWizard(true)
+          onSelectPromotion={(data) => {
+            setQuickActionData(data)
+            setModal('wizard')
           }}
-          onClose={() => setShowLibrary(false)}
+          onClose={closeAll}
         />
       )}
 
-      {/* Save to Library Modal */}
-      {savingToLibrary && promotions.find(p => p._id === savingToLibrary) && (
+      {modal === 'save-to-library' && savingToLibraryId && promotions.find(p => p._id === savingToLibraryId) && (
         <SaveToLibraryModal
-          promotion={promotions.find(p => p._id === savingToLibrary)!}
-          onClose={() => setSavingToLibrary(null)}
-          onSaved={() => {
-            setSavingToLibrary(null)
-          }}
+          promotion={promotions.find(p => p._id === savingToLibraryId)!}
+          onClose={closeAll}
+          onSaved={closeAll}
         />
       )}
     </>
