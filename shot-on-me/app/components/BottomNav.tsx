@@ -95,9 +95,7 @@ export default function BottomNav({ activeTab, setActiveTab, isSearchOpen = fals
               >
                 <Icon className="w-4 h-4 mb-0.5" />
                 {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-primary-500 text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {tab.badge > 9 ? '9+' : tab.badge}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 bg-primary-500 rounded-full w-2.5 h-2.5" />
                 )}
                 <span className="text-[9px] font-medium leading-tight">
                   {tab.label}

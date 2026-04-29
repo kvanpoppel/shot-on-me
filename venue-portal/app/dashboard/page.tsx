@@ -149,7 +149,9 @@ export default function Dashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const activeDeals = promotions.filter(isLive)
   const isFreeTier = tier === 'free'
-  const atLimit = isFreeTier && activeDeals.length >= 1
+  const isGrowthTier = tier === 'basic' || tier === 'growth'
+  const isPerformancePlus = tier === 'premium' || tier === 'performance' || tier === 'enterprise'
+  const atLimit = isPerformancePlus ? false : isGrowthTier ? activeDeals.length >= 4 : activeDeals.length >= 2
 
   return (
     <DashboardLayout>

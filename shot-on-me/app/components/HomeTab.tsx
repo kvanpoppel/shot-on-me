@@ -921,30 +921,18 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
         )}
       </div>
 
-      {/* 2. Find & Invite Friends */}
+      {/* 2. Invite Friends */}
       <div className="px-4 mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFindFriends(true) }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
-            <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
-              <Users className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-tight">Find Friends</h3>
-            </div>
-          </button>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInviteModal(true) }}
-            className="group relative bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
-            <div className="relative z-10 flex flex-col items-center justify-center space-y-1">
-              <UserPlus className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-tight">Invite Friends</h3>
-            </div>
-          </button>
-        </div>
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInviteModal(true) }}
+          className="group relative w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.01] active:scale-[0.98] overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
+          <div className="relative z-10 flex items-center justify-center gap-2">
+            <UserPlus className="w-5 h-5" />
+            <h3 className="text-sm font-bold tracking-tight">Invite Friends</h3>
+          </div>
+        </button>
       </div>
 
       {/* 3. Happening Now — deals + venues, one unified section */}

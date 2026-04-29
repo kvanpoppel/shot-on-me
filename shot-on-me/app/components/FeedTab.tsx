@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Flame, Compass, UserCheck, MoreVertical, Flag, Trash2, ThumbsUp } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Flame, Compass, UserCheck, MoreVertical, Flag, Trash2, ThumbsUp, Pencil, Check } from 'lucide-react'
 import UserAvatarButton from './UserAvatarButton'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
@@ -175,6 +175,9 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [commentMenuOpen, setCommentMenuOpen] = useState<{ postId: string; commentId: string } | null>(null)
   const [activePostReactionPicker, setActivePostReactionPicker] = useState<string | null>(null)
   const commentMenuRef = useRef<HTMLDivElement | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null)
 
   // Auto-open post form when navigating from ProfileTab
   useEffect(() => {
@@ -205,13 +208,16 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       if (activePostReactionPicker && !target.closest('[data-post-reaction-picker]')) {
         setActivePostReactionPicker(null)
       }
+      if (postMenuOpen && !target.closest('[data-post-menu]')) {
+        setPostMenuOpen(null)
+      }
     }
 
-    if (commentMenuOpen || activePostReactionPicker) {
+    if (commentMenuOpen || activePostReactionPicker || postMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [commentMenuOpen, activePostReactionPicker])
+  }, [commentMenuOpen, activePostReactionPicker, postMenuOpen])
 
   // Sentinel ref for IntersectionObserver infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -1293,6 +1299,30 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     }
   }
 
+  const handleEditPost = async (postId: string) => {
+    if (!token || !editContent.trim()) return
+
+    const previousPosts = [...posts]
+    // Optimistic update
+    setPosts(prev => prev.map(p => p._id === postId ? { ...p, content: editContent.trim() } : p))
+    setEditingPostId(null)
+
+    try {
+      await axios.put(`${API_URL}/feed/${postId}`, { content: editContent.trim() }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const toast = document.createElement('div')
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.textContent = 'Post updated'
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 3000)
+    } catch (error: any) {
+      console.error('Failed to edit post:', error)
+      setPosts(previousPosts)
+      alert(error.response?.data?.message || 'Failed to update post.')
+    }
+  }
+
   const handleDeleteComment = async (postId: string, commentId: string) => {
     if (!token) {
       alert('Please log in to delete comments')
@@ -2294,6 +2324,43 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       </div>
                     </div>
                   </div>
+                  {/* Post menu (edit/delete/report) */}
+                  <div className="relative flex-shrink-0" data-post-menu>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPostMenuOpen(postMenuOpen === post._id ? null : post._id) }}
+                      className="p-1.5 rounded-full text-primary-400/50 hover:text-primary-400 hover:bg-primary-500/10 transition-all"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                    {postMenuOpen === post._id && (
+                      <div className="absolute right-0 top-full mt-1 bg-zinc-950 border border-primary-500/30 rounded-xl shadow-2xl z-50 overflow-hidden min-w-[140px]">
+                        {!isVenuePost && (authorId === user?.id || authorId === (user as any)?._id) && (
+                          <>
+                            <button
+                              onClick={() => { setEditingPostId(post._id); setEditContent(post.content || ''); setPostMenuOpen(null) }}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary-400 hover:bg-primary-500/10 transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button
+                              onClick={() => { handleDeletePost(post._id); setPostMenuOpen(null) }}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </>
+                        )}
+                        {(isVenuePost || authorId !== user?.id && authorId !== (user as any)?._id) && (
+                          <button
+                            onClick={() => { handleReportPost(post._id); setPostMenuOpen(null) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            <Flag className="w-3.5 h-3.5" /> Report
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Venue/Location Badge */}
@@ -2355,8 +2422,33 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     </div>
                   </div>
                 ) : (
-                  /* Content */
-                  post.content && (
+                  /* Content — with inline edit mode */
+                  editingPostId === post._id ? (
+                    <div className="mb-3">
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full bg-black/60 border border-primary-500/40 rounded-lg p-3 text-primary-400/90 text-sm focus:outline-none focus:border-primary-500 resize-none"
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() => handleEditPost(post._id)}
+                          disabled={!editContent.trim()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-black text-xs font-bold rounded-lg hover:bg-primary-400 transition-all disabled:opacity-40"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Save
+                        </button>
+                        <button
+                          onClick={() => setEditingPostId(null)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-primary-500/30 text-primary-400 text-xs font-medium rounded-lg hover:bg-primary-500/10 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : post.content ? (
                     <p className="text-primary-400/90 mb-3 leading-relaxed font-light">
                       {post.content.split(/(@\w+)/g).map((part, i) =>
                         /^@\w+/.test(part) ? (
@@ -2364,7 +2456,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                         ) : part
                       )}
                     </p>
-                  )
+                  ) : null
                 )}
 
                 {/* Media */}

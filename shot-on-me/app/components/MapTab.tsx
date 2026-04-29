@@ -1247,29 +1247,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       {/* Header - Optimized Compact Design */}
       {viewMode === 'map' ? (
         <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 p-2 sm:p-2.5">
-          {/* Top Row: Back Button, Location, Temperature, Settings - Compact */}
+          {/* Top Row: Location, Temperature, Settings - Compact */}
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
-            {/* User avatar — tap to go to profile */}
-            <button
-              onClick={() => setActiveTab?.('profile')}
-              className="flex-shrink-0 flex items-center justify-center active:scale-90 transition-all"
-              title="Your profile"
-            >
-              {user?.profilePicture ? (
-                <img
-                  src={user.profilePicture}
-                  alt="You"
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-primary-500 shadow-lg shadow-primary-500/30"
-                />
-              ) : (
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
-                  <span className="text-primary-500 text-xs font-bold leading-none">
-                    {user?.name?.[0]?.toUpperCase() || 'Y'}
-                  </span>
-                </div>
-              )}
-            </button>
-            
             {/* Location Bar - Compact */}
             <div className="flex-1 min-w-0 bg-white rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg">
               <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black flex-shrink-0" />
@@ -1333,26 +1312,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       ) : (
         <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 px-4 py-2">
           <div className="flex items-center justify-center relative mb-2">
-            {/* User avatar — tap to go to profile */}
-            <button
-              onClick={() => setActiveTab?.('profile')}
-              className="absolute left-0 flex items-center justify-center active:scale-90 transition-all"
-              title="Your profile"
-            >
-              {user?.profilePicture ? (
-                <img
-                  src={user.profilePicture}
-                  alt="You"
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-primary-500 shadow-lg shadow-primary-500/30"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
-                  <span className="text-primary-500 text-xs font-bold leading-none">
-                    {user?.name?.[0]?.toUpperCase() || 'Y'}
-                  </span>
-                </div>
-              )}
-            </button>
             <h1 className="text-xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
             <button
               onClick={handleRefresh}

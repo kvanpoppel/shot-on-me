@@ -90,6 +90,15 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  dailyPointsToday: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  dailyPointsDate: {
+    type: Date,
+    default: null
+  },
   rewardCashBalance: {
     type: Number,
     default: 0,

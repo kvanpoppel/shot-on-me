@@ -21,6 +21,10 @@ const feedPostSchema = new mongoose.Schema({
     required: true,
     maxlength: 1000
   },
+  editedAt: {
+    type: Date,
+    default: null
+  },
   media: [{
     url: String,
     type: { type: String, enum: ['image', 'video'] },

@@ -184,10 +184,11 @@ function getStatus(promo: Promotion): 'live' | 'upcoming' | 'expiring' | 'ended'
 const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProps>(
   ({ hideQuickActions = false, compactView = false }: PromotionsManagerProps, ref) => {
   const { token } = useAuth()
-  const { venueId } = useVenue()
+  const { venueId, tier } = useVenue()
   const { socket } = useSocket()
   const { showSuccess, showError } = useToast()
-  const hasUnlimitedDeals = useFeatureAvailable('growth')
+  const isPerformancePlus = useFeatureAvailable('premium')
+  const isGrowthPlus = useFeatureAvailable('growth')
 
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
@@ -337,9 +338,16 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   }
 
   const handleNewPromotion = () => {
-    if (!hasUnlimitedDeals && promotions.filter(p => p.isActive).length >= 1) {
-      showError('Free plan allows 1 active deal. Upgrade for unlimited.')
-      return
+    const activeCount = promotions.filter(p => p.isActive).length
+    if (!isPerformancePlus) {
+      if (!isGrowthPlus && activeCount >= 2) {
+        showError('Free plan allows 2 active deals. Upgrade to Growth for more.')
+        return
+      }
+      if (isGrowthPlus && activeCount >= 4) {
+        showError('Growth plan allows 4 active deals. Upgrade to Performance for unlimited.')
+        return
+      }
     }
     setSelectedTemplate(null)
     setEditingPromo(null)
@@ -365,8 +373,8 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
 
   // --- Render helpers ---
 
-  const activeCount = promotions.filter(p => getStatus(p) === 'live' || getStatus(p) === 'expiring').length
-  const atFreeLimit = !hasUnlimitedDeals && activeCount >= 1
+  const activeDealCount = promotions.filter(p => getStatus(p) === 'live' || getStatus(p) === 'expiring').length
+  const atLimit = isPerformancePlus ? false : isGrowthPlus ? activeDealCount >= 4 : activeDealCount >= 2
 
   const statusPill = (status: 'live' | 'upcoming' | 'expiring' | 'ended') => {
     if (status === 'live') return (
@@ -423,7 +431,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
               </span>
             )}
           </div>
-          {atFreeLimit ? (
+          {atLimit ? (
             <a href="/dashboard/settings"
               className="flex items-center gap-1.5 bg-primary-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-400 transition-colors">
               <Crown className="w-4 h-4" /> Upgrade

@@ -849,6 +849,44 @@ router.post('/:postId/comment/:commentId/reaction', auth, async (req, res) => {
   }
 });
 
+// Edit a post (text content only)
+router.put('/:postId', auth, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const post = await FeedPost.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (post.author.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: 'Not authorized to edit this post' });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'Post content cannot be empty' });
+    }
+
+    post.content = content.trim();
+    post.editedAt = new Date();
+    await post.save();
+
+    // Re-populate for response
+    await post.populate('author', 'firstName lastName profilePicture username');
+
+    const socketIO = io || req.app.get('io');
+    if (socketIO) {
+      socketIO.emit('post-updated', { postId, content: post.content, editedAt: post.editedAt });
+    }
+
+    res.json({ message: 'Post updated successfully', post });
+  } catch (error) {
+    console.error('Error editing post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Delete a post
 router.delete('/:postId', auth, async (req, res) => {
   try {

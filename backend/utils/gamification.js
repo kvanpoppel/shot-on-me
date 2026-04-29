@@ -4,14 +4,68 @@ const Badge = require('../models/Badge');
 const Referral = require('../models/Referral');
 const { checkReferralCompletion } = require('../routes/referrals');
 
-// Award points to user
+// Daily points cap (max 15 points per user per day, excluding badge rewards)
+const DAILY_POINTS_CAP = 15;
+
+// Get how many points a user has earned today (activity-based, not badge rewards)
+const getDailyPointsEarned = async (userId) => {
+  const DailyVenuePoints = require('../models/DailyVenuePoints');
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  // Sum all DailyVenuePoints for today across all venues
+  const result = await DailyVenuePoints.aggregate([
+    { $match: { user: new (require('mongoose').Types.ObjectId)(userId), date: { $gte: startOfDay } } },
+    { $group: { _id: null, total: { $sum: '$totalPoints' } } }
+  ]);
+
+  // Also check user's dailyPointsToday field as a fallback tracker
+  const venuePoints = result.length > 0 ? result[0].total : 0;
+  const user = await User.findById(userId).select('dailyPointsToday dailyPointsDate');
+  const userDailyDate = user?.dailyPointsDate ? new Date(user.dailyPointsDate) : null;
+  const isToday = userDailyDate && userDailyDate.setHours(0,0,0,0) === startOfDay.getTime();
+  const trackedPoints = isToday ? (user?.dailyPointsToday || 0) : 0;
+
+  return Math.max(venuePoints, trackedPoints);
+};
+
+// Award points to user (with daily cap of 15)
 const awardPoints = async (userId, points, reason = '') => {
   try {
     const user = await User.findById(userId);
     if (!user) return;
 
-    user.points = (user.points || 0) + points;
+    // Check daily cap
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const userDailyDate = user.dailyPointsDate ? new Date(user.dailyPointsDate) : null;
+    const isToday = userDailyDate && new Date(userDailyDate).setHours(0,0,0,0) === startOfDay.getTime();
+    const earnedToday = isToday ? (user.dailyPointsToday || 0) : 0;
+
+    if (earnedToday >= DAILY_POINTS_CAP) {
+      console.log(`⚠️ User ${userId} already at daily cap (${earnedToday}/${DAILY_POINTS_CAP}), no points awarded for: ${reason}`);
+      return user.points;
+    }
+
+    // Cap the points to not exceed daily limit
+    const allowable = Math.min(points, DAILY_POINTS_CAP - earnedToday);
+    if (allowable <= 0) return user.points;
+
+    user.points = (user.points || 0) + allowable;
+
+    // Track daily earned points
+    if (!isToday) {
+      user.dailyPointsToday = allowable;
+      user.dailyPointsDate = startOfDay;
+    } else {
+      user.dailyPointsToday = earnedToday + allowable;
+    }
+
     await user.save();
+
+    if (allowable < points) {
+      console.log(`⚠️ Capped points for user ${userId}: requested ${points}, awarded ${allowable} (daily total: ${user.dailyPointsToday}/${DAILY_POINTS_CAP})`);
+    }
 
     // Check for badge unlocks
     await checkBadges(userId);

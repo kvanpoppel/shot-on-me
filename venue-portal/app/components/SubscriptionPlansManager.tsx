@@ -25,7 +25,7 @@ const PLANS: Plan[] = [
     price: '$0',
     priceSub: 'Free forever',
     features: [
-      { label: '1 active deal at a time', included: true },
+      { label: 'Up to 2 active deals', included: true },
       { label: 'Basic venue profile', included: true },
       { label: 'Manual promotion creation', included: true },
       { label: 'AI-powered deal suggestions', included: false },
@@ -39,7 +39,8 @@ const PLANS: Plan[] = [
     price: '$79',
     priceSub: '/mo',
     features: [
-      { label: 'Unlimited deals', included: true },
+      { label: 'Up to 4 active deals', included: true },
+      { label: '4 quick launches, then upgrade', included: true },
       { label: 'AI-powered deal suggestions', included: true },
       { label: 'AI Insights & analytics', included: true },
       { label: 'Guest location data', included: true },
@@ -54,6 +55,7 @@ const PLANS: Plan[] = [
     price: '$199',
     priceSub: '/mo',
     features: [
+      { label: 'Unlimited deals', included: true },
       { label: 'Everything in Growth', included: true },
       { label: 'Team / staff access', included: true },
       { label: 'Priority support', included: true },
