@@ -861,12 +861,21 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     )
   }
 
-  // Consolidated venue items: active deals first, then featured, then trending
-  const venueItems: { type: 'deal'; deal: QuickDeal } | { type: 'venue'; venue: any }[] = []
-  filteredDeals.slice(0, 5).forEach(deal => (venueItems as any[]).push({ type: 'deal', deal }))
-  if (filteredDeals.length === 0) {
+  // Consolidated venue items: group deals by venue (one card per venue with deal count)
+  const venueItems: ({ type: 'venue-deals'; venueId: string; venueName: string; deals: QuickDeal[] } | { type: 'venue'; venue: any })[] = []
+  if (filteredDeals.length > 0) {
+    const grouped = new Map<string, QuickDeal[]>()
+    filteredDeals.forEach(deal => {
+      const vid = deal.venue._id
+      if (!grouped.has(vid)) grouped.set(vid, [])
+      grouped.get(vid)!.push(deal)
+    })
+    Array.from(grouped.entries()).slice(0, 5).forEach(([vid, deals]) => {
+      venueItems.push({ type: 'venue-deals', venueId: vid, venueName: deals[0].venue.name, deals })
+    })
+  } else {
     const fallback = featuredVenues.length > 0 ? featuredVenues : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
-    fallback.slice(0, 4).forEach((venue: any) => (venueItems as any[]).push({ type: 'venue', venue }))
+    fallback.slice(0, 4).forEach((venue: any) => venueItems.push({ type: 'venue', venue }))
   }
 
   return (
@@ -948,38 +957,51 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             </button>
           </div>
           <div className="space-y-2.5">
-            {(venueItems as any[]).map((item: any, idx: number) => {
-              if (item.type === 'deal') {
-                const deal: QuickDeal = item.deal
+            {venueItems.map((item, idx) => {
+              if (item.type === 'venue-deals') {
+                const { venueId, venueName, deals } = item
+                // Sort deals: soonest-ending first
+                const sorted = [...deals].sort((a, b) => new Date(a.promotion.endTime).getTime() - new Date(b.promotion.endTime).getTime())
+                const soonest = sorted[0]
                 return (
                   <div
-                    key={`deal-${idx}`}
+                    key={`vd-${venueId}`}
                     onClick={() => {
-                      if (onViewVenue && deal.venue._id) { onViewVenue(deal.venue._id) }
-                      else { setActiveTab?.('map'); if (deal.venue._id) localStorage.setItem('highlightVenue', deal.venue._id) }
+                      if (onViewVenue) { onViewVenue(venueId) }
+                      else { localStorage.setItem('highlightVenue', venueId); setActiveTab?.('map') }
                     }}
                     className="bg-black/50 border border-primary-500/25 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:bg-black/70 transition-all active:scale-[0.98]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-primary-500 truncate">{deal.venue.name}</p>
-                        <p className="text-sm text-white/80 mt-0.5 line-clamp-1">{deal.promotion.title}</p>
-                        <div className="flex items-center gap-1 mt-1.5 text-xs text-primary-400/60">
-                          <Clock className="w-3 h-3" />
-                          <span>{getTimeRemaining(deal.promotion.endTime)}</span>
+                        <p className="font-bold text-primary-500 truncate">{venueName}</p>
+                        <p className="text-sm text-white/80 mt-0.5 line-clamp-1">{soonest.promotion.title}</p>
+                        {deals.length > 1 && (
+                          <p className="text-xs text-primary-400/50 mt-0.5">+ {deals.length - 1} more deal{deals.length > 2 ? 's' : ''}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-1 text-xs text-primary-400/60">
+                            <Clock className="w-3 h-3" />
+                            <span>{getTimeRemaining(soonest.promotion.endTime)}</span>
+                          </div>
+                          {deals.length > 1 && (
+                            <span className="text-[10px] font-semibold text-primary-500 bg-primary-500/15 border border-primary-500/25 px-1.5 py-0.5 rounded-full">{deals.length} deals</span>
+                          )}
                         </div>
                       </div>
-                      {deal.promotion.type === 'happy-hour' && (
-                        <span className="text-xs font-bold text-primary-500 bg-primary-500/15 border border-primary-500/30 px-2 py-1 rounded-lg flex-shrink-0 animate-pulse">LIVE</span>
-                      )}
-                      {deal.promotion.type === 'flash-deal' && (
-                        <span className="text-xs font-bold text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-1 rounded-lg flex-shrink-0 animate-pulse">FLASH</span>
-                      )}
+                      <div className="flex flex-col items-end gap-1">
+                        {sorted.some(d => d.promotion.type === 'happy-hour') && (
+                          <span className="text-[10px] font-bold text-primary-500 bg-primary-500/15 border border-primary-500/30 px-2 py-0.5 rounded-lg">LIVE</span>
+                        )}
+                        {sorted.some(d => d.promotion.type === 'flash-deal') && (
+                          <span className="text-[10px] font-bold text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-0.5 rounded-lg">FLASH</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
               }
-              const venue = item.venue
+              const venue = (item as any).venue
               return (
                 <div
                   key={`venue-${venue._id}`}
