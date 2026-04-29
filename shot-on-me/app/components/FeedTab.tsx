@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Flame, Compass, UserCheck, MoreVertical, Flag, Trash2, ThumbsUp, Pencil, Check } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Camera, Video, MapPin, Users, UserPlus, TrendingUp, Sparkles, CheckCircle2, Clock, X, ArrowLeft, ArrowRight, Flame, Compass, UserCheck, MoreVertical, Flag, Trash2, ThumbsUp, Pencil, Check, Plus } from 'lucide-react'
 import UserAvatarButton from './UserAvatarButton'
 import StatusIndicator from './StatusIndicator'
 import StoriesCarousel from './StoriesCarousel'
@@ -3282,6 +3282,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             setSendDrinkTarget(null)
           }}
         />
+      )}
+      {/* Floating "New Post" button — always visible */}
+      {!showPostForm && (
+        <button
+          onClick={() => setShowPostForm(true)}
+          className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-primary-500 text-black shadow-lg shadow-primary-500/30 flex items-center justify-center hover:bg-primary-400 active:scale-90 transition-all"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       )}
     </div>
   )
