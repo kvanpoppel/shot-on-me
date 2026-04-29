@@ -116,19 +116,19 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-black border border-white/[0.08] rounded-2xl w-full max-w-lg my-6">
+      <div className="bg-black border border-primary-500/20 rounded-2xl w-full max-w-lg my-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/15">
           <h2 className="text-base font-bold text-white">{isEditing ? 'Edit Deal' : 'New Deal'}</h2>
-          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-primary-400/60 hover:text-white"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="px-5 pb-5 space-y-4 pt-4">
 
           {/* 1. Pick Type */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/20 mb-2">What type of deal?</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">What type of deal?</p>
             <div className="flex flex-wrap gap-2">
               {DEAL_TYPES.map(dt => (
                 <button key={dt.value} type="button"
@@ -136,7 +136,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                   className={`px-3.5 py-2 rounded-full border text-sm font-semibold transition-all ${
                     formData.type === dt.value
                       ? 'border-primary-500 bg-primary-500/15 text-primary-400'
-                      : 'border-white/[0.08] bg-white/[0.02] text-white/40 hover:border-white/20'
+                      : 'border-primary-500/20 bg-black/40 text-primary-400/60 hover:border-primary-500/30'
                   }`}>
                   {dt.emoji} {dt.label}
                 </button>
@@ -154,48 +154,48 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                     className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
                       formData.title === s.title && formData.offer === s.offer
                         ? 'border-primary-500/40 bg-primary-500/10'
-                        : 'border-white/[0.04] bg-black/30 hover:border-primary-500/20'
+                        : 'border-primary-500/10 bg-black/30 hover:border-primary-500/20'
                     }`}>
                     <p className="text-sm font-semibold text-white">{s.title}</p>
                     <p className="text-[11px] text-primary-500/70">{s.offer}</p>
-                    <p className="text-[10px] text-white/20 mt-0.5">{s.desc}</p>
+                    <p className="text-[10px] text-primary-400/40 mt-0.5">{s.desc}</p>
                   </button>
                 ))}
               </div>
-              <p className="text-[9px] text-white/15 mt-2 text-center">Tap a suggestion or type your own below</p>
+              <p className="text-[9px] text-primary-400/30 mt-2 text-center">Tap a suggestion or type your own below</p>
             </div>
           )}
 
           {/* 3. Deal Details */}
           <div className="space-y-3">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/20 mb-1.5">Deal Name *</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-1.5">Deal Name *</label>
               <input type="text" value={formData.title} onChange={e => update({ title: e.target.value })}
                 placeholder="e.g. Tito's Tuesday"
-                className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 text-sm focus:border-primary-500/40 focus:outline-none" />
+                className="w-full px-3.5 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white placeholder-primary-400/40 text-sm focus:border-primary-500/40 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/20 mb-1.5">The Offer *</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-1.5">The Offer *</label>
               <input type="text" value={formData.offer} onChange={e => update({ offer: e.target.value })}
                 placeholder="e.g. $5 wells, BOGO shots, 25% off bottles"
-                className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 text-sm focus:border-primary-500/40 focus:outline-none" />
+                className="w-full px-3.5 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white placeholder-primary-400/40 text-sm focus:border-primary-500/40 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/20 mb-1.5">Details <span className="font-normal text-white/10">(optional)</span></label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-1.5">Details <span className="font-normal text-white/10">(optional)</span></label>
               <textarea value={formData.description} onChange={e => update({ description: e.target.value })}
                 placeholder="Fine print, exclusions..." rows={2}
-                className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 text-sm resize-none focus:border-primary-500/40 focus:outline-none" />
+                className="w-full px-3.5 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white placeholder-primary-400/40 text-sm resize-none focus:border-primary-500/40 focus:outline-none" />
             </div>
           </div>
 
           {/* 4. Schedule */}
           <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/20">When?</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
             <div className="grid grid-cols-2 gap-2">
               {(['now', 'later'] as const).map(m => (
                 <button key={m} type="button" onClick={() => setScheduleMode(m)}
                   className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
-                    scheduleMode === m ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-white/[0.08] bg-white/[0.02] text-white/30 hover:border-white/15'
+                    scheduleMode === m ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
                   }`}>
                   {m === 'now' ? 'Start Now' : 'Schedule'}
                 </button>
@@ -207,7 +207,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                 {DURATIONS.map(d => (
                   <button key={d.mins} type="button" onClick={() => setDurationMins(d.mins)}
                     className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
-                      durationMins === d.mins ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-white/[0.08] bg-white/[0.02] text-white/30 hover:border-white/15'
+                      durationMins === d.mins ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
                     }`}>
                     {d.label}
                   </button>
@@ -218,14 +218,14 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             {scheduleMode === 'later' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-white/20 mb-1">Start</label>
+                  <label className="block text-[10px] text-primary-400/40 mb-1">Start</label>
                   <input type="datetime-local" value={formData.startTime} onChange={e => update({ startTime: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/20 mb-1">End</label>
+                  <label className="block text-[10px] text-primary-400/40 mb-1">End</label>
                   <input type="datetime-local" value={formData.endTime} min={formData.startTime} onChange={e => update({ endTime: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
                 </div>
               </div>
             )}
@@ -233,11 +233,11 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             {/* Recurring */}
             <button type="button" onClick={() => canRecur && update({ isRecurring: !formData.isRecurring })}
               className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl border transition-all ${
-                !canRecur ? 'border-white/[0.04] bg-white/[0.01] cursor-not-allowed' :
-                formData.isRecurring ? 'border-primary-500 bg-primary-500/10' : 'border-white/[0.08] bg-white/[0.02] hover:border-white/15'
+                !canRecur ? 'border-primary-500/10 bg-black/30 cursor-not-allowed' :
+                formData.isRecurring ? 'border-primary-500 bg-primary-500/10' : 'border-primary-500/20 bg-black/40 hover:border-primary-500/25'
               }`}>
-              {!canRecur && <Lock className="w-3.5 h-3.5 text-white/20" />}
-              <span className={`text-sm font-semibold ${canRecur ? 'text-white/60' : 'text-white/20'}`}>Recurring</span>
+              {!canRecur && <Lock className="w-3.5 h-3.5 text-primary-400/40" />}
+              <span className={`text-sm font-semibold ${canRecur ? 'text-white/60' : 'text-primary-400/40'}`}>Recurring</span>
               {!canRecur && <span className="text-[9px] text-primary-500/40 ml-auto">Growth plan</span>}
               {canRecur && (
                 <div className={`ml-auto w-9 h-5 rounded-full transition-colors flex-shrink-0 ${formData.isRecurring ? 'bg-primary-500' : 'bg-white/15'}`}>
@@ -257,7 +257,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                         const days = on ? formData.recurrencePattern.daysOfWeek.filter(d => d !== idx) : [...formData.recurrencePattern.daysOfWeek, idx].sort()
                         update({ recurrencePattern: { ...formData.recurrencePattern, daysOfWeek: days } })
                       }}
-                      className={`py-2 rounded-lg text-xs font-bold border transition-all ${on ? 'bg-primary-500 border-primary-500 text-black' : 'bg-white/[0.02] border-white/[0.06] text-white/30'}`}>
+                      className={`py-2 rounded-lg text-xs font-bold border transition-all ${on ? 'bg-primary-500 border-primary-500 text-black' : 'bg-black/40 border-primary-500/15 text-primary-400/50'}`}>
                       {name}
                     </button>
                   )
@@ -272,7 +272,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
               className="w-full py-3.5 bg-primary-500 text-black font-bold text-sm rounded-xl hover:bg-primary-400 transition-all disabled:opacity-30 min-h-[48px]">
               {saving ? 'Publishing...' : isEditing ? 'Save Changes' : 'Publish Deal'}
             </button>
-            <button onClick={onCancel} className="w-full py-2 text-white/25 text-sm hover:text-white/40">Cancel</button>
+            <button onClick={onCancel} className="w-full py-2 text-primary-400/50 text-sm hover:text-primary-400/60">Cancel</button>
           </div>
 
         </div>

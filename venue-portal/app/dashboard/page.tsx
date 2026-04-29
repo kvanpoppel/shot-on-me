@@ -191,7 +191,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between pt-1">
           <div>
             <p className="text-lg font-bold text-white">{greeting}</p>
-            <p className="text-[11px] text-white/25">{venueName} · {followerCount} followers</p>
+            <p className="text-[11px] text-primary-400/50">{venueName} · {followerCount} followers</p>
           </div>
           {atLimit ? (
             <button onClick={() => router.push('/dashboard/settings')} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-3.5 py-2 text-xs font-bold text-black min-h-[40px]">
@@ -207,18 +207,18 @@ export default function Dashboard() {
         {/* ─ SECTION 1: WHAT'S LIVE ─ */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/20">Right Now</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40">Right Now</p>
             <button onClick={() => router.push('/dashboard/promotions')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
               All deals <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
           {loadingData ? (
-            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-white/[0.02] animate-pulse" />)}</div>
+            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-black/40 animate-pulse" />)}</div>
           ) : live.length === 0 ? (
             /* Empty state — Quick Launch IS the content */
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm text-white/50 text-center mb-4">No deals running — go live in one tap</p>
+            <div className="rounded-xl border border-primary-500/15 bg-black/40 p-5">
+              <p className="text-sm text-primary-400/70 text-center mb-4">No deals running — go live in one tap</p>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { key: 'happy-hour', emoji: '🍻', label: 'Happy Hour' },
@@ -228,7 +228,7 @@ export default function Dashboard() {
                   <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={!!launchingDeal || atLimit}
                     className="rounded-xl border border-primary-500/15 bg-black/40 py-3 text-center hover:border-primary-500/30 transition-all disabled:opacity-30 min-h-[56px]">
                     {launchingDeal === d.key ? <Loader2 className="w-4 h-4 animate-spin text-primary-500 mx-auto" /> : (
-                      <><p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-white/30 mt-0.5">{d.label}</p></>
+                      <><p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/50 mt-0.5">{d.label}</p></>
                     )}
                   </button>
                 ))}
@@ -242,22 +242,22 @@ export default function Dashboard() {
                 const left = timeLeft(end)
                 const urgent = new Date(end).getTime() - Date.now() < 3600000
                 return (
-                  <div key={p._id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 flex items-center gap-3">
+                  <div key={p._id} className="rounded-xl border border-primary-500/15 bg-black/40 px-4 py-3 flex items-center gap-3">
                     <span className="text-base flex-shrink-0">{TYPE_EMOJI[p.type] || '🎉'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{p.title}</p>
                       {p.offer && <p className="text-[11px] text-primary-500/80 truncate">{p.offer}</p>}
                     </div>
-                    <span className={`text-[11px] font-semibold flex-shrink-0 ${urgent ? 'text-rose-400' : 'text-white/25'}`}>
+                    <span className={`text-[11px] font-semibold flex-shrink-0 ${urgent ? 'text-rose-400' : 'text-primary-400/50'}`}>
                       {urgent && <AlertCircle className="w-3 h-3 inline mr-0.5" />}{left}
                     </span>
                     <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={() => router.push(`/dashboard/promotions?edit=${p._id}`)} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-white/[0.06]">
+                      <button onClick={() => router.push(`/dashboard/promotions?edit=${p._id}`)} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-primary-500/15">
                         <Pencil className="w-3 h-3 inline" />
                       </button>
                       {confirmEndId === p._id ? (
                         <>
-                          <button onClick={() => setConfirmEndId(null)} className="text-[9px] text-white/30 px-1.5 py-1 rounded border border-white/10">No</button>
+                          <button onClick={() => setConfirmEndId(null)} className="text-[9px] text-primary-400/50 px-1.5 py-1 rounded border border-primary-500/20">No</button>
                           <button onClick={() => endDeal(p._id)} disabled={endingId === p._id} className="text-[9px] font-bold text-white bg-rose-500 px-1.5 py-1 rounded">{endingId === p._id ? '...' : 'End'}</button>
                         </>
                       ) : (
@@ -277,7 +277,7 @@ export default function Dashboard() {
                     { key: 'vip', emoji: '👑' },
                   ].map(d => (
                     <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={!!launchingDeal}
-                      className="flex-1 rounded-lg border border-white/[0.04] bg-white/[0.01] py-2 text-center text-sm hover:bg-white/[0.03] transition-all disabled:opacity-30">
+                      className="flex-1 rounded-lg border border-primary-500/10 bg-black/30 py-2 text-center text-sm hover:bg-black/50 transition-all disabled:opacity-30">
                       {launchingDeal === d.key ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-500 mx-auto" /> : d.emoji}
                     </button>
                   ))}
@@ -289,11 +289,11 @@ export default function Dashboard() {
           {/* Upcoming */}
           {upcoming.length > 0 && (
             <div className="mt-3 px-1">
-              <p className="text-[9px] uppercase tracking-widest text-white/15 mb-1.5">Upcoming</p>
+              <p className="text-[9px] uppercase tracking-widest text-primary-400/30 mb-1.5">Upcoming</p>
               {upcoming.map(p => (
                 <div key={p._id} className="flex items-center justify-between py-1">
-                  <span className="text-xs text-white/30 truncate">{TYPE_EMOJI[p.type] || '🎉'} {p.title}</span>
-                  <span className="text-[10px] text-white/15 flex-shrink-0 ml-2">{new Date(p.startTime).toLocaleDateString([], { weekday: 'short' })} {new Date(p.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span className="text-xs text-primary-400/50 truncate">{TYPE_EMOJI[p.type] || '🎉'} {p.title}</span>
+                  <span className="text-[10px] text-primary-400/30 flex-shrink-0 ml-2">{new Date(p.startTime).toLocaleDateString([], { weekday: 'short' })} {new Date(p.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
               ))}
             </div>
@@ -303,7 +303,7 @@ export default function Dashboard() {
         {/* ─ SECTION 2: AI SUGGESTION OR UPGRADE HINT ─ */}
         {hasAI && visibleAI.length > 0 ? (
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/20 mb-2">AI Recommends</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">AI Recommends</p>
             {visibleAI.map((s, idx) => {
               const realIdx = aiSuggestions.indexOf(s)
               return (
@@ -318,7 +318,7 @@ export default function Dashboard() {
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-500 text-black text-[11px] font-bold disabled:opacity-40 min-h-[32px]">
                       {approvingAI === realIdx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
                     </button>
-                    <button onClick={() => setDismissedAI(prev => new Set(prev).add(realIdx))} className="p-1.5 rounded-lg text-white/15 hover:text-white/40">
+                    <button onClick={() => setDismissedAI(prev => new Set(prev).add(realIdx))} className="p-1.5 rounded-lg text-primary-400/30 hover:text-primary-400/60">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -327,22 +327,22 @@ export default function Dashboard() {
             })}
           </div>
         ) : !hasAI && !loadingData ? (
-          <div className="rounded-xl border border-white/[0.04] bg-white/[0.015] p-4 flex items-center gap-3">
+          <div className="rounded-xl border border-primary-500/10 bg-black/30 p-4 flex items-center gap-3">
             <Sparkles className="w-4 h-4 text-primary-500/25 flex-shrink-0" />
-            <p className="text-[11px] text-white/25 flex-1">AI deal suggestions available on Growth plan</p>
+            <p className="text-[11px] text-primary-400/50 flex-1">AI deal suggestions available on Growth plan</p>
             <button onClick={() => router.push('/dashboard/settings')} className="text-[10px] font-bold text-primary-500/60 hover:text-primary-500 flex-shrink-0">Upgrade</button>
           </div>
         ) : null}
 
         {/* ─ SECTION 3: YESTERDAY + NOTIFY ─ */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-            <p className="text-[10px] text-white/20 mb-1">Yesterday</p>
+          <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
+            <p className="text-[10px] text-primary-400/40 mb-1">Yesterday</p>
             <p className="text-lg font-bold text-white">${stats.yesterdayRevenue}</p>
-            <p className="text-[10px] text-white/15">{stats.yesterdayRedemptions} redeemed</p>
+            <p className="text-[10px] text-primary-400/30">{stats.yesterdayRedemptions} redeemed</p>
           </div>
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-            <p className="text-[10px] text-white/20 mb-1">All Time</p>
+          <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
+            <p className="text-[10px] text-primary-400/40 mb-1">All Time</p>
             <p className="text-lg font-bold text-white">${stats.totalRevenue}</p>
             <button onClick={() => router.push('/dashboard/money')} className="text-[10px] text-primary-400/40 hover:text-primary-400 mt-1 flex items-center gap-0.5">
               See details <ChevronRight className="w-3 h-3" />
@@ -351,27 +351,27 @@ export default function Dashboard() {
         </div>
 
         {/* Notify */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+        <div className="rounded-xl border border-primary-500/15 bg-black/40 overflow-hidden">
           <button onClick={() => { setNotifyOpen(o => !o); if (sent) { setSent(false); setNotifyTitle(''); setNotifyMsg('') } }}
             className="w-full flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
               <Megaphone className="w-3.5 h-3.5 text-primary-500/60" />
               <p className="text-xs font-semibold text-white/60">Notify {followerCount} followers</p>
             </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-white/15 transition-transform ${notifyOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-primary-400/30 transition-transform ${notifyOpen ? 'rotate-180' : ''}`} />
           </button>
           {notifyOpen && (
-            <div className="px-4 pb-4 border-t border-white/[0.04] pt-3">
+            <div className="px-4 pb-4 border-t border-primary-500/10 pt-3">
               {sent ? (
                 <div className="text-center py-3">
                   <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
                   <p className="text-xs font-bold text-white">Sent!</p>
-                  <button onClick={() => { setSent(false); setNotifyTitle(''); setNotifyMsg('') }} className="text-[10px] text-white/25 mt-1">Send another</button>
+                  <button onClick={() => { setSent(false); setNotifyTitle(''); setNotifyMsg('') }} className="text-[10px] text-primary-400/50 mt-1">Send another</button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <input value={notifyTitle} onChange={e => setNotifyTitle(e.target.value)} placeholder="e.g. Happy Hour is LIVE! 🍻" maxLength={60}
-                    className="w-full rounded-lg border border-white/[0.06] bg-black/40 px-3 py-2 text-sm text-white placeholder-white/15 focus:border-primary-500/30 focus:outline-none" />
+                    className="w-full rounded-lg border border-primary-500/15 bg-black/40 px-3 py-2 text-sm text-white placeholder-primary-400/30 focus:border-primary-500/30 focus:outline-none" />
                   <button onClick={sendNotify} disabled={sending || !notifyTitle.trim()}
                     className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary-500 py-2 text-xs font-bold text-black disabled:opacity-30 min-h-[40px]">
                     {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Send className="w-3.5 h-3.5" /> Send</>}
