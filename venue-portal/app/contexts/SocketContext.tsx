@@ -26,7 +26,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       }
     })
     newSocket.on('disconnect', () => setConnected(false))
-    newSocket.on('connect_error', () => {})
+    newSocket.on('connect_error', (err) => console.error('Socket connect error:', err?.message))
     setSocket(newSocket)
     return () => { newSocket.disconnect(); socketRef.current = null }
   }, [user?.id, token])

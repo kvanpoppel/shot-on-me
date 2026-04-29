@@ -53,8 +53,8 @@ export function VenueProvider({ children }: { children: ReactNode }) {
         setSubscriptionExpiresAt(myVenue.subscriptionExpiresAt || null)
         setFollowerCount(Number(myVenue.followerCount) || 0)
       }
-    } catch {
-      // keep defaults
+    } catch (e: any) {
+      console.error('VenueContext fetch failed:', e?.message, e?.response?.status)
     } finally {
       setLoading(false)
     }
