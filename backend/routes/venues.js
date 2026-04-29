@@ -579,14 +579,9 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
 
     await venue.save();
 
-    const responseMessage = isRecurring 
-      ? `Created ${instances.length} recurring promotion instances successfully`
-      : 'Promotion created successfully';
-
     res.status(201).json({
-      message: responseMessage,
-      promotion: isRecurring ? instances[0] : basePromotion,
-      instances: isRecurring ? instances.length : undefined,
+      message: 'Promotion created successfully',
+      promotion: basePromotion,
       venue
     });
   } catch (error) {

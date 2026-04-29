@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [confirmEndId, setConfirmEndId] = useState<string | null>(null)
   const [showWizard, setShowWizard] = useState(false)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
+  const [dealsOpen, setDealsOpen] = useState(true)
   const [notifyOpen, setNotifyOpen] = useState(false)
   const [notifyTitle, setNotifyTitle] = useState('')
   const [notifyMsg, setNotifyMsg] = useState('')
@@ -223,15 +224,20 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ─ SECTION 1: WHAT'S LIVE ─ */}
+        {/* ─ SECTION 1: WHAT'S LIVE (collapsible) ─ */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40">Right Now</p>
+            <button onClick={() => setDealsOpen(o => !o)} className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40">Right Now</p>
+              {live.length > 0 && <span className="text-[10px] font-bold text-emerald-400">{live.length} live</span>}
+              <ChevronDown className={`w-3 h-3 text-primary-400/30 transition-transform ${dealsOpen ? '' : '-rotate-90'}`} />
+            </button>
             <button onClick={() => router.push('/dashboard/promotions')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
               All deals <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
+          {dealsOpen && (<>
           {loadingData ? (
             <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-black/40 animate-pulse" />)}</div>
           ) : live.length === 0 ? (
@@ -317,6 +323,7 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+          </>)}
         </div>
 
         {/* ─ SECTION 2: AI SUGGESTION OR UPGRADE HINT ─ */}
