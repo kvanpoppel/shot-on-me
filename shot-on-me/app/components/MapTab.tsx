@@ -37,7 +37,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const venuesContainerRef = useRef<HTMLDivElement>(null)
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'favorites' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight' | 'wine'>('all')
+  const [filter, setFilter] = useState<'all' | 'favorites' | 'for-you' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight' | 'wine'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list') // Default to list view to show venues
   const [isMounted, setIsMounted] = useState(false)
@@ -579,6 +579,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
     // Apply promotion filter
     if (filter === 'all') return rankVenues(filtered)
+    if (filter === 'for-you') {
+      const recIds = new Set(recommendations.map((r: any) => r._id?.toString()))
+      return rankVenues(filtered.filter(venue => recIds.has(venue._id?.toString())))
+    }
     if (filter === 'favorites') {
       return rankVenues(filtered.filter(venue => favoriteVenueIds.has(venue._id?.toString())))
     }
@@ -1391,6 +1395,17 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 All
               </button>
               <button
+                onClick={() => setFilter('for-you')}
+                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  filter === 'for-you'
+                    ? 'bg-primary-500 text-black shadow-lg'
+                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
+                }`}
+              >
+                <Sparkles className={`w-3 h-3 ${filter === 'for-you' ? 'fill-black' : ''}`} />
+                For You
+              </button>
+              <button
                 onClick={() => setFilter('favorites')}
                 className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   filter === 'favorites'
@@ -1840,42 +1855,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             </div>
           )}
 
-          {/* AI Recommendations — For You */}
-          {recommendations.length > 0 && filter === 'all' && amenityFilters.size === 0 && !searchQuery && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Sparkles className="w-4 h-4 text-primary-500" />
-                <span className="text-sm font-bold text-primary-500">For You</span>
-                {!hasPreferences && (
-                  <span className="text-[10px] text-primary-400/40 ml-1">Set preferences in Profile to personalize</span>
-                )}
-              </div>
-              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-3 px-3">
-                {recommendations.slice(0, 6).map((venue: any) => (
-                  <div
-                    key={venue._id}
-                    onClick={() => setViewingVenueId(venue._id)}
-                    className="flex-shrink-0 w-44 bg-black/50 border border-primary-500/20 rounded-2xl overflow-hidden cursor-pointer hover:border-primary-500/50 transition-all"
-                  >
-                    <div className="h-24 bg-gradient-to-br from-primary-500/10 to-black/40 relative overflow-hidden">
-                      {venue.coverPhoto ? (
-                        <img src={venue.coverPhoto} alt={venue.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-3xl font-bold text-primary-500/40">{venue.name?.[0]?.toUpperCase()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2.5">
-                      <p className="font-bold text-primary-400 text-xs line-clamp-1">{venue.name}</p>
-                      {venue.matchReason && (
-                        <p className="text-[10px] text-primary-500/70 mt-1 line-clamp-2 leading-tight">{venue.matchReason}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-b border-primary-500/10 mt-2 mb-1" />
+          {/* "For You" hint — only when no recommendations and filter is for-you */}
+          {filter === 'for-you' && recommendations.length === 0 && (
+            <div className="text-center py-8 text-primary-400/60">
+              <Sparkles className="w-8 h-8 mx-auto mb-2 text-primary-500/30" />
+              <p className="text-sm font-medium">Set your vibe preferences in Profile</p>
+              <p className="text-xs mt-1 text-primary-400/40">We'll match you with venues you'll love</p>
             </div>
           )}
 

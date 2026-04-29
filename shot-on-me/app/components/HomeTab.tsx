@@ -40,6 +40,7 @@ interface HomeTabProps {
   onSendShot?: () => void
   onViewProfile?: (userId: string) => void
   onSendMoney?: () => void
+  onViewVenue?: (venueId: string) => void
 }
 
 interface QuickDeal {
@@ -70,7 +71,7 @@ interface AIRecommendation {
   source: 'friends' | 'time' | 'trending'
 }
 
-export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSendMoney }: HomeTabProps) {
+export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSendMoney, onViewVenue }: HomeTabProps) {
   const { token, user } = useAuth()
   const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
@@ -954,8 +955,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                   <div
                     key={`deal-${idx}`}
                     onClick={() => {
-                      setActiveTab?.('map')
-                      if (deal.venue._id) localStorage.setItem('highlightVenue', deal.venue._id)
+                      if (onViewVenue && deal.venue._id) { onViewVenue(deal.venue._id) }
+                      else { setActiveTab?.('map'); if (deal.venue._id) localStorage.setItem('highlightVenue', deal.venue._id) }
                     }}
                     className="bg-black/50 border border-primary-500/25 rounded-xl p-4 cursor-pointer hover:border-primary-500/50 hover:bg-black/70 transition-all active:scale-[0.98]"
                   >
@@ -982,7 +983,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
               return (
                 <div
                   key={`venue-${venue._id}`}
-                  onClick={() => { if (venue._id) localStorage.setItem('highlightVenue', venue._id); setActiveTab?.('map') }}
+                  onClick={() => { if (onViewVenue && venue._id) { onViewVenue(venue._id) } else { if (venue._id) localStorage.setItem('highlightVenue', venue._id); setActiveTab?.('map') } }}
                   className="bg-black/50 border border-primary-500/20 rounded-xl p-4 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between gap-3">

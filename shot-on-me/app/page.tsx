@@ -25,6 +25,7 @@ import ReferralScreen from './components/ReferralScreen'
 import MyVenuesTab from './components/MyVenuesTab'
 import WhatsHappeningTab from './components/WhatsHappeningTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import VenueProfilePage from './components/VenueProfilePage'
 import { Tab } from '@/app/types'
 
 function Home() {
@@ -41,6 +42,7 @@ function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [pendingVenueId, setPendingVenueId] = useState<string | null>(null)
   const [savedGoogleVenues, setSavedGoogleVenues] = useState<any[]>([])
+  const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
 
   const refreshSavedVenues = async () => {
     if (!token) { console.log('[page] refreshSavedVenues: no token'); return }
@@ -247,13 +249,14 @@ function Home() {
       <ProximityNotifications />
       <main className={`bg-black ${activeTab === 'messages' || activeTab === 'groups' ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto'}`}>
         {activeTab === 'home' && (
-          <HomeTab 
-            setActiveTab={setActiveTab} 
-            onViewProfile={setViewingProfile} 
+          <HomeTab
+            setActiveTab={setActiveTab}
+            onViewProfile={setViewingProfile}
+            onViewVenue={setViewingVenueId}
             onSendMoney={() => {
               setAutoOpenSendForm(true)
               setActiveTab('wallet')
-            }} 
+            }}
           />
         )}
         {activeTab === 'wallet' && <WalletTab
@@ -321,6 +324,31 @@ function Home() {
             setActiveTab('wallet')
           }}
         />
+      )}
+
+      {/* Venue detail modal — opens from Home tab venue cards */}
+      {viewingVenueId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
+          <div className="h-full overflow-y-auto">
+            <div className="sticky top-0 z-10 flex justify-end p-3">
+              <button
+                onClick={() => setViewingVenueId(null)}
+                className="w-10 h-10 rounded-full bg-black/80 border border-primary-500/30 flex items-center justify-center text-primary-400"
+              >
+                ✕
+              </button>
+            </div>
+            <VenueProfilePage
+              venueId={viewingVenueId}
+              onClose={() => setViewingVenueId(null)}
+              onSendDrink={() => {
+                setViewingVenueId(null)
+                setAutoOpenSendForm(true)
+                setActiveTab('wallet')
+              }}
+            />
+          </div>
+        </div>
       )}
     </ErrorBoundary>
   )
