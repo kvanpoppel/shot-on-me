@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import axios from 'axios'
 import { Users, MapPin, Clock, TrendingUp, Loader, User } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
@@ -23,8 +24,8 @@ function guestCode(userId: string) {
 }
 
 export default function LiveActivityDashboard() {
-  const { token, user } = useAuth()
-  const [venueId, setVenueId] = useState<string | null>(null)
+  const { token } = useAuth()
+  const { venueId } = useVenue()
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,53 +55,12 @@ export default function LiveActivityDashboard() {
   }, [venueId, token])
 
   useEffect(() => {
-    if (token) {
-      fetchVenue()
-    }
-  }, [token])
-
-  useEffect(() => {
     if (venueId && token) {
       fetchLiveActivity()
       const interval = setInterval(fetchLiveActivity, 30000) // Update every 30 seconds
       return () => clearInterval(interval)
     }
   }, [venueId, token, fetchLiveActivity])
-
-  const fetchVenue = async () => {
-    if (!token || !user) return
-    
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      // Handle both response formats: { venues: [...] } or direct array
-      let venues: any[] = []
-      if (Array.isArray(response.data)) {
-        venues = response.data
-      } else if (response.data?.venues) {
-        venues = response.data.venues
-      }
-      
-      // Improved venue matching: handle both populated owner object and owner ID string
-      const myVenue = venues.find((v: any) => {
-        const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-        const userId = user?.id?.toString()
-        return ownerId === userId
-      })
-      
-      if (myVenue) {
-        setVenueId(myVenue._id?.toString() || myVenue._id)
-      } else if (venues.length > 0) {
-        // Fallback to first venue if no match found (for backwards compatibility)
-        setVenueId(venues[0]._id?.toString() || venues[0]._id)
-      }
-    } catch (error) {
-      console.error('Failed to fetch venue:', error)
-    }
-  }
 
 
   if (!venueId) {

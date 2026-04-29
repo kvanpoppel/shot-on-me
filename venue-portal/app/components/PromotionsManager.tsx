@@ -115,6 +115,11 @@ function getQuickActionData(action: string): Partial<PromotionFormData> {
   if (action === 'happy-hour') {
     const start = new Date(now); start.setHours(16, 0, 0, 0)
     const end = new Date(now); end.setHours(19, 0, 0, 0)
+    // If the window has already passed today, schedule for tomorrow
+    if (now >= end) {
+      start.setDate(start.getDate() + 1)
+      end.setDate(end.getDate() + 1)
+    }
     return {
       title: 'Happy Hour', description: 'Discounted drinks and appetizers!',
       type: 'happy-hour', startTime: formatLocalDateTime(start), endTime: formatLocalDateTime(end),
@@ -146,6 +151,11 @@ function getQuickActionData(action: string): Partial<PromotionFormData> {
   if (action === 'vip') {
     const start = new Date(now); start.setHours(20, 0, 0, 0)
     const end = new Date(now); end.setDate(end.getDate() + 1); end.setHours(2, 0, 0, 0)
+    // If the window has already passed today (past 2 AM next day), push both forward
+    if (now >= end) {
+      start.setDate(start.getDate() + 1)
+      end.setDate(end.getDate() + 1)
+    }
     return {
       title: 'VIP Exclusive', description: 'Special deal for our VIP members!',
       type: 'exclusive', startTime: formatLocalDateTime(start), endTime: formatLocalDateTime(end),

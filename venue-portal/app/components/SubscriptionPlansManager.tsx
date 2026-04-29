@@ -1,20 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import axios from 'axios'
-import { useAuth } from '../contexts/AuthContext'
 import { useVenue } from '../contexts/VenueContext'
-import { getApiUrl } from '../utils/api'
-import { useToast } from './ToastContainer'
 import { Check, Crown } from 'lucide-react'
 
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
 export default function SubscriptionPlansManager() {
-  const { token } = useAuth()
-  const { venueId, tier: currentTier } = useVenue()
-  const { showSuccess, showError } = useToast()
-  const [updatingTier, setUpdatingTier] = useState<SubscriptionTier | null>(null)
+  const { venueId, venueName, tier: currentTier } = useVenue()
 
   const subscriptionPlans: {
     tier: SubscriptionTier
@@ -77,25 +69,6 @@ export default function SubscriptionPlansManager() {
     }
   ]
 
-  const handleTierChange = async (tier: SubscriptionTier) => {
-    if (!token || !venueId || tier === currentTier) return
-
-    try {
-      setUpdatingTier(tier)
-      const apiUrl = getApiUrl()
-      await axios.put(
-        `${apiUrl}/venues/${venueId}`,
-        { subscriptionTier: tier },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      showSuccess(`Subscription updated to ${tier}.`)
-    } catch (error: any) {
-      showError(error.response?.data?.message || 'Failed to update subscription tier')
-    } finally {
-      setUpdatingTier(null)
-    }
-  }
-
   return (
     <div className="pt-2 space-y-4">
       <div className="p-3 rounded-lg border border-primary-500/20 bg-black/40">
@@ -113,7 +86,6 @@ export default function SubscriptionPlansManager() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {subscriptionPlans.map((plan) => {
           const isCurrent = (currentTier as string) === plan.tier
-          const isUpdating = updatingTier === plan.tier
           return (
             <div
               key={plan.tier}
@@ -138,13 +110,21 @@ export default function SubscriptionPlansManager() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleTierChange(plan.tier)}
-                disabled={!venueId || isCurrent || updatingTier !== null}
-                className="mt-4 w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-all"
-              >
-                {isCurrent ? 'Current Plan' : isUpdating ? 'Updating...' : plan.cta}
-              </button>
+              {isCurrent ? (
+                <button
+                  disabled
+                  className="mt-4 w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-all"
+                >
+                  Current Plan
+                </button>
+              ) : (
+                <a
+                  href={`mailto:shotonme@yahoo.com?subject=${encodeURIComponent(`Upgrade Request - ${venueName}`)}&body=${encodeURIComponent(`I'd like to upgrade to the ${plan.name} plan.`)}`}
+                  className="mt-4 w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 text-xs transition-all block text-center"
+                >
+                  Contact Us to Upgrade
+                </a>
+              )}
             </div>
           )
         })}

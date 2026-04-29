@@ -297,11 +297,7 @@ export default function EarningsDashboard() {
             {data.payouts.map(payout => (
               <div
                 key={payout.id}
-                onClick={() => {
-                  // Show payout details
-                  console.log('Payout details:', payout)
-                }}
-                className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-primary-500/10 hover:bg-black/60 hover:border-primary-500/30 cursor-pointer transition-all group"
+                className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-primary-500/10 transition-all"
               >
                 <div>
                   <p className="font-medium text-primary-500">${payout.amount.toFixed(2)}</p>

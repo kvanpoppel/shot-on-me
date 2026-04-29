@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import axios from 'axios'
 import { MapPin, Clock, User, Loader2 } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
@@ -25,29 +26,13 @@ function guestCode(userId: string) {
 
 export default function CheckInsHistory() {
   const { token } = useAuth()
+  const { venueId } = useVenue()
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
   const [loading, setLoading] = useState(true)
-  const [venueId, setVenueId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (token) fetchVenueId()
-  }, [token])
 
   useEffect(() => {
     if (venueId && token) fetchCheckIns()
   }, [venueId, token])
-
-  const fetchVenueId = async () => {
-    try {
-      const res = await axios.get(`${getApiUrl()}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const id = Array.isArray(res.data)
-        ? res.data[0]?._id
-        : res.data?.venues?.[0]?._id
-      setVenueId(id)
-    } catch {}
-  }
 
   const fetchCheckIns = async () => {
     if (!venueId || !token) return

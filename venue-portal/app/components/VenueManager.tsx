@@ -232,10 +232,6 @@ export default function VenueManager() {
           category: formData.category,
           platform: formData.platform,
           schedule,
-          subscriptionTier: formData.subscriptionTier,
-          isFeatured: formData.isFeatured,
-          featuredUntil: formData.featuredUntil || null,
-          subscriptionExpiresAt: formData.subscriptionExpiresAt || null
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
@@ -877,7 +873,7 @@ export default function VenueManager() {
         </div>
       )}
 
-      {/* Subscription & Featured Status */}
+      {/* Subscription & Featured Status (read-only — managed by admin) */}
       <div className="border-t border-primary-500/20 pt-4">
         <div className="flex items-center space-x-2 mb-3">
           <Crown className="w-4 h-4 text-primary-500" />
@@ -886,69 +882,20 @@ export default function VenueManager() {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Subscription Tier</label>
-            {editing ? (
-              <select
-                value={formData.subscriptionTier}
-                onChange={(e) => setFormData({ ...formData, subscriptionTier: e.target.value as any })}
-                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 focus:ring-2 focus:ring-primary-500 text-sm"
-              >
-                <option value="free">Free Trial</option>
-                <option value="basic">Basic</option>
-                <option value="premium">Premium</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-            ) : (
-              <p className="text-primary-400 text-sm capitalize">{formData.subscriptionTier}</p>
-            )}
+            <p className="text-primary-400 text-sm capitalize">{formData.subscriptionTier}</p>
           </div>
           <div>
-            <label className="flex items-center space-x-2">
-              {editing ? (
-                <>
-                  <input
-                    type="checkbox"
-                    checked={formData.isFeatured}
-                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                    className="border-primary-500 text-primary-500 focus:ring-primary-500 bg-black"
-                  />
-                  <span className="text-primary-400 text-sm">Featured Venue</span>
-                </>
-              ) : (
-                <span className="text-primary-400 text-sm">
-                  {formData.isFeatured ? (
-                    <span className="flex items-center space-x-1 text-yellow-400">
-                      <Star className="w-4 h-4" />
-                      <span>Featured</span>
-                    </span>
-                  ) : (
-                    'Not Featured'
-                  )}
+            <span className="text-primary-400 text-sm">
+              {formData.isFeatured ? (
+                <span className="flex items-center space-x-1 text-yellow-400">
+                  <Star className="w-4 h-4" />
+                  <span>Featured</span>
                 </span>
+              ) : (
+                'Not Featured'
               )}
-            </label>
+            </span>
           </div>
-          {editing && formData.isFeatured && (
-            <div>
-              <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Featured Until</label>
-              <input
-                type="datetime-local"
-                value={formData.featuredUntil}
-                onChange={(e) => setFormData({ ...formData, featuredUntil: e.target.value })}
-                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 text-sm"
-              />
-            </div>
-          )}
-          {editing && formData.subscriptionTier !== 'free' && (
-            <div>
-              <label className="block text-xs font-medium text-primary-500 mb-1 uppercase tracking-wide">Subscription Expires</label>
-              <input
-                type="datetime-local"
-                value={formData.subscriptionExpiresAt}
-                onChange={(e) => setFormData({ ...formData, subscriptionExpiresAt: e.target.value })}
-                className="w-full px-3 py-2 bg-black border border-primary-500/30 rounded-lg text-primary-500 text-sm"
-              />
-            </div>
-          )}
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import axios from 'axios'
 import { DollarSign, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
@@ -26,40 +27,15 @@ interface Payment {
 
 export default function PaymentsHistory() {
   const { token } = useAuth()
+  const { venueId } = useVenue()
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
-  const [venueId, setVenueId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (token) {
-      fetchVenueId()
-    }
-  }, [token])
 
   useEffect(() => {
     if (venueId && token) {
       fetchPayments()
     }
   }, [venueId, token])
-
-  const fetchVenueId = async () => {
-    if (!token) return
-    
-    try {
-      const apiUrl = getApiUrl()
-      const response = await axios.get(`${apiUrl}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      const venueId = Array.isArray(response.data) 
-        ? response.data[0]?._id 
-        : response.data?.venues?.[0]?._id
-      
-      setVenueId(venueId)
-    } catch (error) {
-      console.error('Error fetching venue:', error)
-    }
-  }
 
   const fetchPayments = async () => {
     if (!venueId || !token) return
