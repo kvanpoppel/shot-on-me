@@ -1,128 +1,225 @@
 'use client'
 
 import { useVenue } from '../contexts/VenueContext'
-import { Check, Crown } from 'lucide-react'
+import { Check, Crown, Lock, Mail } from 'lucide-react'
 
 type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
 
-export default function SubscriptionPlansManager() {
-  const { venueId, venueName, tier: currentTier } = useVenue()
+interface PlanFeature {
+  label: string
+  included: boolean
+}
 
-  const subscriptionPlans: {
-    tier: SubscriptionTier
-    name: string
-    monthlyPrice: string
-    description: string
-    features: string[]
-    cta: string
-  }[] = [
-    {
-      tier: 'free',
-      name: 'Starter',
-      monthlyPrice: '$0/mo',
-      description: 'For getting your venue online and testing the basics.',
-      features: [
-        'Basic promotion creation',
-        'Venue profile and hours',
-        'Manual campaign management'
-      ],
-      cta: 'Current baseline'
-    },
-    {
-      tier: 'basic',
-      name: 'Growth',
-      monthlyPrice: '$79/mo',
-      description: 'For venues focused on consistent weekly traffic.',
-      features: [
-        'AI-assisted promotion generation',
-        'Standard analytics dashboard',
-        'Promotion performance alerts',
-        'Team access controls'
-      ],
-      cta: 'Upgrade to Growth'
-    },
-    {
-      tier: 'premium',
-      name: 'Performance',
-      monthlyPrice: '$199/mo',
-      description: 'For venues using AI automation as a core growth engine.',
-      features: [
-        'Continuous AI specials optimization',
-        'Advanced forecasting and recommendation confidence',
-        'Auto-post and optimization workflows',
-        'Priority support'
-      ],
-      cta: 'Upgrade to Performance'
-    },
-    {
-      tier: 'enterprise',
-      name: 'Multi-Venue Enterprise',
-      monthlyPrice: 'Custom',
-      description: 'For groups with multiple locations and advanced needs.',
-      features: [
-        'Everything in Performance',
-        'Custom AI strategies',
-        'Multi-venue reporting',
-        'Dedicated account support'
-      ],
-      cta: 'Contact for Enterprise'
-    }
-  ]
+interface Plan {
+  tier: SubscriptionTier
+  name: string
+  price: string
+  priceSub: string
+  features: PlanFeature[]
+}
+
+const PLANS: Plan[] = [
+  {
+    tier: 'free',
+    name: 'Starter',
+    price: '$0',
+    priceSub: 'Free forever',
+    features: [
+      { label: '1 active deal at a time', included: true },
+      { label: 'Basic venue profile', included: true },
+      { label: 'Manual promotion creation', included: true },
+      { label: 'AI-powered deal suggestions', included: false },
+      { label: 'Analytics & insights', included: false },
+      { label: 'Bank payouts', included: false },
+    ],
+  },
+  {
+    tier: 'basic',
+    name: 'Growth',
+    price: '$79',
+    priceSub: '/mo',
+    features: [
+      { label: 'Unlimited deals', included: true },
+      { label: 'AI-powered deal suggestions', included: true },
+      { label: 'AI Insights & analytics', included: true },
+      { label: 'Guest location data', included: true },
+      { label: 'Revenue forecasting (ROI Calculator)', included: true },
+      { label: 'Bank payouts', included: true },
+      { label: 'Recurring deals', included: true },
+    ],
+  },
+  {
+    tier: 'premium',
+    name: 'Performance',
+    price: '$199',
+    priceSub: '/mo',
+    features: [
+      { label: 'Everything in Growth', included: true },
+      { label: 'Team / staff access', included: true },
+      { label: 'Priority support', included: true },
+      { label: 'Featured venue placement', included: true },
+      { label: 'Advanced automation', included: true },
+    ],
+  },
+  {
+    tier: 'enterprise',
+    name: 'Enterprise',
+    price: 'Custom',
+    priceSub: 'Tailored pricing',
+    features: [
+      { label: 'Everything in Performance', included: true },
+      { label: 'Multi-venue management', included: true },
+      { label: 'Dedicated account manager', included: true },
+      { label: 'Custom integrations', included: true },
+    ],
+  },
+]
+
+const TIER_ORDER: SubscriptionTier[] = ['free', 'basic', 'premium', 'enterprise']
+
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export default function SubscriptionPlansManager() {
+  const { venueName, tier: currentTier, subscriptionExpiresAt } = useVenue()
+
+  const normalizedTier = (currentTier || 'free') as SubscriptionTier
+  const currentIdx = TIER_ORDER.indexOf(normalizedTier)
+
+  // Determine if the subscription is still active (not expired)
+  const now = new Date()
+  const expiryDate = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null
+  const isExpired = expiryDate ? expiryDate < now : true
+  const isPaidTier = normalizedTier !== 'free'
+  const isLocked = isPaidTier && !isExpired // paid and not yet expired
+
+  const mailtoLink = (planName: string) =>
+    `mailto:shotonme@yahoo.com?subject=${encodeURIComponent(
+      `Subscription Inquiry - ${venueName}`
+    )}&body=${encodeURIComponent(
+      `Hi Shot On Me team,\n\nI'd like to discuss upgrading to the ${planName} plan for ${venueName}.\n\nThanks!`
+    )}`
 
   return (
     <div className="pt-2 space-y-4">
+      {/* Current plan banner */}
       <div className="p-3 rounded-lg border border-primary-500/20 bg-black/40">
         <div className="flex items-center gap-2">
           <Crown className="w-4 h-4 text-primary-500" />
           <p className="text-sm text-primary-400">
-            Current plan: <span className="font-semibold text-primary-500 capitalize">{currentTier}</span>
+            Current plan:{' '}
+            <span className="font-semibold text-primary-500">
+              {PLANS.find((p) => p.tier === normalizedTier)?.name || 'Starter'}
+            </span>
           </p>
         </div>
-        <p className="text-xs text-primary-400/70 mt-1">
-          AI optimization value increases as plans unlock more automation and analytics depth.
-        </p>
+        {isPaidTier && expiryDate && (
+          <p className="text-xs text-primary-400/70 mt-1">
+            {isExpired
+              ? `Expired on ${formatDate(subscriptionExpiresAt!)}`
+              : `Renews / expires on ${formatDate(subscriptionExpiresAt!)}`}
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        {subscriptionPlans.map((plan) => {
-          const isCurrent = (currentTier as string) === plan.tier
+      {/* Plan cards — 2x2 on md+, single column on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {PLANS.map((plan) => {
+          const isCurrent = normalizedTier === plan.tier
+          const planIdx = TIER_ORDER.indexOf(plan.tier)
+          const isEnterprise = plan.tier === 'enterprise'
+
+          // CTA logic
+          let ctaLabel: string
+          let ctaHref: string | null = null
+          let ctaDisabled = false
+
+          if (isCurrent) {
+            ctaLabel = 'Current Plan'
+            ctaDisabled = true
+          } else if (isEnterprise) {
+            ctaLabel = 'Contact Sales'
+            ctaHref = mailtoLink('Enterprise')
+          } else if (isLocked) {
+            // Paid tier is still active — locked until expiry
+            ctaLabel = `Change plan after ${formatDate(subscriptionExpiresAt!)}`
+            ctaDisabled = true
+          } else {
+            // Free tier, or paid but expired — can request upgrade
+            ctaLabel = planIdx > currentIdx ? 'Contact Us to Upgrade' : 'Contact Us'
+            ctaHref = mailtoLink(plan.name)
+          }
+
           return (
             <div
               key={plan.tier}
-              className={`rounded-lg border p-4 ${
-                isCurrent ? 'border-primary-500/60 bg-primary-500/10' : 'border-primary-500/20 bg-black/40'
+              className={`relative rounded-xl border p-5 flex flex-col transition-all ${
+                isCurrent
+                  ? 'border-primary-500/60 bg-primary-500/10 shadow-lg shadow-primary-500/5'
+                  : 'border-primary-500/20 bg-black/40'
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold text-primary-500">{plan.name}</p>
-                  <p className="text-xs text-primary-400/70 mt-0.5">{plan.description}</p>
+              {/* Current plan badge */}
+              {isCurrent && (
+                <span className="absolute -top-2.5 left-4 bg-primary-500 text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                  Current Plan
+                </span>
+              )}
+
+              {/* Header */}
+              <div className="mb-4">
+                <p className="text-lg font-bold text-primary-400">{plan.name}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-extrabold text-white">{plan.price}</span>
+                  <span className="text-sm text-primary-400/70">{plan.priceSub}</span>
                 </div>
-                <p className="text-sm font-semibold text-primary-400">{plan.monthlyPrice}</p>
+                {isCurrent && isPaidTier && expiryDate && !isExpired && (
+                  <p className="text-xs text-primary-400/60 mt-1">
+                    Expires {formatDate(subscriptionExpiresAt!)}
+                  </p>
+                )}
               </div>
 
-              <ul className="mt-3 space-y-1.5">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-xs text-primary-400/85">
-                    <Check className="w-3.5 h-3.5 mt-0.5 text-primary-500" />
-                    <span>{feature}</span>
+              {/* Features */}
+              <ul className="flex-1 space-y-2 mb-5">
+                {plan.features.map((f) => (
+                  <li key={f.label} className="flex items-start gap-2 text-xs">
+                    <Check
+                      className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                        f.included ? 'text-primary-500' : 'text-primary-500/25'
+                      }`}
+                    />
+                    <span
+                      className={f.included ? 'text-primary-400/90' : 'text-primary-400/40'}
+                    >
+                      {f.label}
+                    </span>
                   </li>
                 ))}
               </ul>
 
-              {isCurrent ? (
+              {/* CTA */}
+              {ctaDisabled ? (
                 <button
                   disabled
-                  className="mt-4 w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-all"
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-xs transition-all ${
+                    isCurrent
+                      ? 'bg-primary-500 text-black opacity-60 cursor-default'
+                      : 'bg-primary-500/10 text-primary-400/50 border border-primary-500/10 cursor-not-allowed'
+                  }`}
                 >
-                  Current Plan
+                  {!isCurrent && <Lock className="w-3 h-3" />}
+                  {ctaLabel}
                 </button>
               ) : (
                 <a
-                  href={`mailto:shotonme@yahoo.com?subject=${encodeURIComponent(`Upgrade Request - ${venueName}`)}&body=${encodeURIComponent(`I'd like to upgrade to the ${plan.name} plan.`)}`}
-                  className="mt-4 w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 text-xs transition-all block text-center"
+                  href={ctaHref!}
+                  className="w-full flex items-center justify-center gap-2 bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 text-xs transition-all"
                 >
-                  Contact Us to Upgrade
+                  <Mail className="w-3 h-3" />
+                  {ctaLabel}
                 </a>
               )}
             </div>

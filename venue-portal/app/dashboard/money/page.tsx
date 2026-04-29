@@ -12,6 +12,7 @@ import PayoutsHistory from '../../components/PayoutsHistory'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
 import { useToast } from '../../components/ToastContainer'
+import FeatureGate from '../../components/FeatureGate'
 import { DollarSign, TrendingUp, Landmark, CreditCard } from 'lucide-react'
 
 type Tab = 'earnings' | 'payments' | 'payouts'
@@ -151,9 +152,11 @@ function MoneyPageContent() {
             <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
               <EarningsDashboard />
             </div>
-            <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
-              <ROICalculator />
-            </div>
+            <FeatureGate requires="growth" message="AI revenue forecasting is a Growth feature">
+              <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
+                <ROICalculator />
+              </div>
+            </FeatureGate>
           </div>
         )}
 
@@ -166,9 +169,11 @@ function MoneyPageContent() {
         {activeTab === 'payouts' && (
           <div className="space-y-4">
             {stripeConnected && (
-              <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
-                <PayoutsHistory />
-              </div>
+              <FeatureGate requires="growth" message="Payout requests are a Growth feature">
+                <div className="rounded-xl border border-primary-500/20 bg-black/40 p-4">
+                  <PayoutsHistory />
+                </div>
+              </FeatureGate>
             )}
             {!stripeConnected && !loadingStatus && (
               <div className="rounded-xl border border-primary-500/15 bg-black/40 p-8 text-center">

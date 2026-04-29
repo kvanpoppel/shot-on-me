@@ -19,11 +19,19 @@ function meetsRequirement(currentTier: string, requiredTier: string): boolean {
 }
 
 const TIER_LABEL: Record<string, string> = {
-  basic:       'Basic',
+  basic:       'Growth',
   growth:      'Growth',
-  premium:     'Growth',      // map premium → Growth for display
+  premium:     'Performance',
   performance: 'Performance',
   enterprise:  'Enterprise',
+}
+
+const TIER_PRICE: Record<string, string> = {
+  basic:       '$79/mo',
+  growth:      '$79/mo',
+  premium:     '$199/mo',
+  performance: '$199/mo',
+  enterprise:  'Contact us',
 }
 
 interface FeatureGateProps {
@@ -88,7 +96,7 @@ export default function FeatureGate({
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-5 py-2.5 text-sm font-bold text-black hover:opacity-90 transition-all shadow-lg shadow-primary-500/20 min-h-[44px]"
         >
           <Crown className="w-3.5 h-3.5" />
-          Upgrade — $79/mo
+          Upgrade — {TIER_PRICE[requires] ?? '$79/mo'}
         </button>
       </div>
     </div>

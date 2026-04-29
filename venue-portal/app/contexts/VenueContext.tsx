@@ -10,6 +10,7 @@ interface VenueContextType {
   venueName: string
   venueSlug: string | null
   tier: string
+  subscriptionExpiresAt: string | null
   followerCount: number
   loading: boolean
   refetch: () => void
@@ -23,6 +24,7 @@ export function VenueProvider({ children }: { children: ReactNode }) {
   const [venueName, setVenueName] = useState<string>('Your Venue')
   const [venueSlug, setVenueSlug] = useState<string | null>(null)
   const [tier, setTier] = useState<string>('free')
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null)
   const [followerCount, setFollowerCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
@@ -48,6 +50,7 @@ export function VenueProvider({ children }: { children: ReactNode }) {
         setVenueName(myVenue.name || 'Your Venue')
         setVenueSlug(myVenue.slug || null)
         setTier(myVenue.subscriptionTier || 'free')
+        setSubscriptionExpiresAt(myVenue.subscriptionExpiresAt || null)
         setFollowerCount(Number(myVenue.followerCount) || 0)
       }
     } catch {
@@ -62,7 +65,7 @@ export function VenueProvider({ children }: { children: ReactNode }) {
   }, [fetchVenue])
 
   return (
-    <VenueContext.Provider value={{ venueId, venueName, venueSlug, tier, followerCount, loading, refetch: fetchVenue }}>
+    <VenueContext.Provider value={{ venueId, venueName, venueSlug, tier, subscriptionExpiresAt, followerCount, loading, refetch: fetchVenue }}>
       {children}
     </VenueContext.Provider>
   )

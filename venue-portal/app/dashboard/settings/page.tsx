@@ -8,6 +8,7 @@ import VenueManager from '../../components/VenueManager'
 import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import StaffManager from '../../components/StaffManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
+import FeatureGate from '../../components/FeatureGate'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
 import { useToast } from '../../components/ToastContainer'
@@ -226,16 +227,18 @@ function SettingsPageContent() {
           </CollapsibleSection>
 
           {/* Staff */}
-          <CollapsibleSection
-            title="Staff & Team"
-            subtitle="Manage team member access to the portal"
-            defaultOpen={false}
-            icon={<Users className="w-4 h-4" />}
-          >
-            <div className="pt-2">
-              <StaffManager />
-            </div>
-          </CollapsibleSection>
+          <FeatureGate requires="premium" message="Team access is a Performance feature">
+            <CollapsibleSection
+              title="Staff & Team"
+              subtitle="Manage team member access to the portal"
+              defaultOpen={false}
+              icon={<Users className="w-4 h-4" />}
+            >
+              <div className="pt-2">
+                <StaffManager />
+              </div>
+            </CollapsibleSection>
+          </FeatureGate>
 
           {/* QR Code */}
           <CollapsibleSection

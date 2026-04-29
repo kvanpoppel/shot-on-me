@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useVenue } from '../contexts/VenueContext'
 import axios from 'axios'
 import { Users, MapPin, Clock, TrendingUp, Loader, User } from 'lucide-react'
+import FeatureGate from './FeatureGate'
 import { getApiUrl } from '../utils/api'
 
 interface CheckIn {
@@ -131,6 +132,7 @@ export default function LiveActivityDashboard() {
       </div>
 
       {/* Nearby Users (Privacy-Protected) */}
+      <FeatureGate requires="growth" message="Nearby users insight is a Growth feature">
       <div className="bg-black/40 border border-primary-500/20 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-primary-500 flex items-center gap-2">
@@ -199,6 +201,7 @@ export default function LiveActivityDashboard() {
           </div>
         )}
       </div>
+      </FeatureGate>
 
       {/* Engagement Stats */}
       <div className="grid grid-cols-2 gap-4">
