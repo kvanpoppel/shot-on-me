@@ -424,6 +424,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       
       let newPosts = response.data.posts || []
 
+      // Client-side sort for trending: most reactions first
+      if (currentFilter === 'trending') {
+        newPosts = [...newPosts].sort((a: any, b: any) => {
+          const aReactions = Number(a.totalReactions || 0) + (a.comments?.length || 0)
+          const bReactions = Number(b.totalReactions || 0) + (b.comments?.length || 0)
+          return bReactions - aReactions
+        })
+      }
+
       // AI ranking for "For You" feed
       if (aiEnabled && currentFilter === 'foryou') {
         const viewedSet = new Set(aiSignals.viewedProfileIds || [])
@@ -1726,8 +1735,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 onClick={() => setShowPostForm(!showPostForm)}
                 className="bg-primary-500 text-black px-3 py-2 rounded-lg font-medium hover:bg-primary-600 transition-all text-sm flex items-center gap-1.5"
               >
-                <Camera className="w-4 h-4" />
-                <span className="hidden sm:inline">Post</span>
+                <Plus className="w-4 h-4" />
+                Post
               </button>
             </div>
           </div>
@@ -1818,7 +1827,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 <MapPin className="w-4 h-4 text-primary-500" />
                 <div className="text-left">
                   <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
-                  <p className="text-xs text-primary-400">{venue.followerCount || 0} followers</p>
+                  <p className="text-xs text-primary-400">{venue.category || 'Tap to view'}</p>
                 </div>
               </button>
             ))}
@@ -3282,15 +3291,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             setSendDrinkTarget(null)
           }}
         />
-      )}
-      {/* Floating "New Post" button — always visible */}
-      {!showPostForm && (
-        <button
-          onClick={() => setShowPostForm(true)}
-          className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-primary-500 text-black shadow-lg shadow-primary-500/30 flex items-center justify-center hover:bg-primary-400 active:scale-90 transition-all"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
       )}
     </div>
   )

@@ -3,48 +3,28 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { X, MapPin, CreditCard, DollarSign, AlertCircle, CheckCircle, Loader } from 'lucide-react'
+import { X, CreditCard, DollarSign, AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
-
-interface Venue {
-  _id: string
-  name: string
-  address?: {
-    street?: string
-    city?: string
-    state?: string
-  }
-  location?: {
-    coordinates: [number, number]
-  }
-}
 
 interface TapAndPayModalProps {
   isOpen: boolean
   onClose: () => void
-  venue?: Venue
   onSuccess?: (payment: any) => void
 }
 
-export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: TapAndPayModalProps) {
+export default function TapAndPayModal({ isOpen, onClose, onSuccess }: TapAndPayModalProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
   const [amount, setAmount] = useState('')
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(venue || null)
-  const [venues, setVenues] = useState<Venue[]>([])
-  const [showVenueSelector, setShowVenueSelector] = useState(!venue)
   const [cardStatus, setCardStatus] = useState<any>(null)
 
   useEffect(() => {
     if (isOpen && token) {
       fetchCardStatus()
-      if (!venue) {
-        fetchVenues()
-      }
     }
-  }, [isOpen, token, venue])
+  }, [isOpen, token])
 
   const fetchCardStatus = async () => {
     if (!token) return
@@ -58,21 +38,9 @@ export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: Ta
     }
   }
 
-  const fetchVenues = async () => {
-    if (!token) return
-    try {
-      const response = await axios.get(`${API_URL}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setVenues(response.data.venues || [])
-    } catch (error) {
-      console.error('Failed to fetch venues:', error)
-    }
-  }
-
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedVenue || !amount || !token) return
+    if (!amount || !token) return
 
     const paymentAmount = parseFloat(amount)
     
@@ -100,7 +68,6 @@ export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: Ta
       const response = await axios.post(
         `${API_URL}/tap-and-pay/process`,
         {
-          venueId: selectedVenue._id,
           amount: paymentAmount
         },
         {
@@ -168,75 +135,8 @@ export default function TapAndPayModal({ isOpen, onClose, venue, onSuccess }: Ta
           </div>
         )}
 
-        {/* Venue Selector */}
-        {showVenueSelector && (
-          <div className="mb-4">
-            <label className="block text-primary-500 text-sm font-medium mb-2">
-              Select Venue
-            </label>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {venues.map((v) => (
-                <button
-                  key={v._id}
-                  onClick={() => {
-                    setSelectedVenue(v)
-                    setShowVenueSelector(false)
-                  }}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedVenue?._id === v._id
-                      ? 'bg-primary-500/20 border-primary-500/50'
-                      : 'bg-black/40 border-primary-500/20 hover:border-primary-500/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-primary-500 font-semibold truncate">{v.name}</p>
-                      {v.address && (
-                        <p className="text-primary-400/70 text-xs truncate">
-                          {[v.address.street, v.address.city, v.address.state].filter(Boolean).join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {venues.length === 0 && (
-              <p className="text-primary-400/60 text-sm text-center py-4">
-                No venues available
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Selected Venue Display */}
-        {selectedVenue && !showVenueSelector && (
-          <div className="mb-4 p-3 bg-primary-500/10 border border-primary-500/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-primary-500 font-semibold truncate">{selectedVenue.name}</p>
-                  {selectedVenue.address && (
-                    <p className="text-primary-400/70 text-xs truncate">
-                      {[selectedVenue.address.street, selectedVenue.address.city, selectedVenue.address.state].filter(Boolean).join(', ')}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setShowVenueSelector(true)}
-                className="text-primary-400 hover:text-primary-500 text-xs ml-2"
-              >
-                Change
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Payment Form */}
-        {selectedVenue && (
+        {canPay && (
           <form onSubmit={handlePayment} className="space-y-4">
             {/* Amount Input */}
             <div>

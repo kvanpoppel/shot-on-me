@@ -366,22 +366,6 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
               )}
             </div>
 
-            {/* Messages Button */}
-            <button
-              onClick={() => {
-                setShowMessages(true)
-                fetchUnreadMessageCount()
-              }}
-              className="relative p-2 text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all pointer-events-auto"
-              aria-label="Messages"
-            >
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
-              {unreadMessageCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-                </span>
-              )}
-            </button>
             <button
               onClick={() => {
                 setShowActivityFeed(true)

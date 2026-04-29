@@ -41,6 +41,7 @@ interface HomeTabProps {
   onViewProfile?: (userId: string) => void
   onSendMoney?: () => void
   onViewVenue?: (venueId: string) => void
+  onOpenAddFunds?: () => void
 }
 
 interface QuickDeal {
@@ -71,7 +72,7 @@ interface AIRecommendation {
   source: 'friends' | 'time' | 'trending'
 }
 
-export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSendMoney, onViewVenue }: HomeTabProps) {
+export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSendMoney, onViewVenue, onOpenAddFunds }: HomeTabProps) {
   const { token, user } = useAuth()
   const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
@@ -889,7 +890,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
             <p className="text-white font-semibold text-base mb-1">Ready to send your first shot?</p>
             <p className="text-primary-400/60 text-xs mb-4">Add money to your wallet to buy drinks for friends at the bar.</p>
             <button
-              onClick={() => setActiveTab?.('wallet')}
+              onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
               className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98]"
             >
               + Add Money to Get Started
@@ -910,7 +911,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
                 Send a Shot
               </button>
               <button
-                onClick={() => setActiveTab?.('wallet')}
+                onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
                 className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
                 <Wallet className="w-4 h-4" />
