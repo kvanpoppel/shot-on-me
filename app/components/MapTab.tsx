@@ -32,12 +32,15 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
   const { socket } = useSocket()
   const [venues, setVenues] = useState<any[]>([])
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
-  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials'>('all')
+  const [filter, setFilter] = useState<'all' | 'happy-hour' | 'specials' | 'favorites'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [googlePlacesResults, setGooglePlacesResults] = useState<any[]>([])
+  const [savedVenues, setSavedVenues] = useState<any[]>([])
+  const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
+  const [favoriteVenueIds, setFavoriteVenueIds] = useState<Set<string>>(new Set())
   const [amenityFilters, setAmenityFilters] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
     try { const s = localStorage.getItem('som-amenity-filters'); return s ? new Set(JSON.parse(s)) : new Set() } catch { return new Set() }
@@ -52,9 +55,65 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
     })
   }
 
+  // Fetch saved Google venues + SOM favorites
+  const fetchSavedVenues = async () => {
+    if (!token) return
+    try {
+      const [savedRes, favRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/favorites/venues`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      if (savedRes.status === 'fulfilled') {
+        const sv = savedRes.value.data?.venues || []
+        setSavedVenues(sv)
+        setSavedPlaceIds(new Set(sv.map((v: any) => v.placeId)))
+      }
+      if (favRes.status === 'fulfilled') {
+        const favs = favRes.value.data?.venues || favRes.value.data || []
+        setFavoriteVenueIds(new Set(favs.map((v: any) => v._id?.toString())))
+      }
+    } catch {}
+  }
+
+  const handleSaveVenue = async (venue: any) => {
+    if (!token) return
+    const placeId = venue._id || venue.place_id
+    if (savedPlaceIds.has(placeId)) {
+      // Unsave
+      setSavedPlaceIds(prev => { const n = new Set(prev); n.delete(placeId); return n })
+      setSavedVenues(prev => prev.filter(v => v.placeId !== placeId))
+      try { await axios.delete(`${API_URL}/saved-venues/${placeId}`, { headers: { Authorization: `Bearer ${token}` } }) } catch {}
+    } else {
+      // Save
+      const newSaved = {
+        placeId, name: venue.name,
+        address: venue.address || {},
+        website: venue.website || '',
+        googleMapsUrl: '',
+        rating: venue.rating?.average || venue.rating || 0,
+        coverPhoto: venue.coverPhoto || '',
+      }
+      setSavedPlaceIds(prev => new Set(Array.from(prev).concat(placeId)))
+      setSavedVenues(prev => [...prev, newSaved])
+      try { await axios.post(`${API_URL}/saved-venues`, newSaved, { headers: { Authorization: `Bearer ${token}` } }) } catch {}
+    }
+  }
+
+  const handleToggleFavorite = async (venueId: string) => {
+    if (!token) return
+    const wasFav = favoriteVenueIds.has(venueId)
+    setFavoriteVenueIds(prev => {
+      const n = new Set(prev)
+      if (wasFav) n.delete(venueId); else n.add(venueId)
+      return n
+    })
+    try { await axios.post(`${API_URL}/favorites/venues/${venueId}`, {}, { headers: { Authorization: `Bearer ${token}` } }) } catch {}
+  }
+
   useEffect(() => {
     if (token) {
       fetchVenues()
+      fetchSavedVenues()
       getCurrentLocation()
     }
   }, [token])
@@ -311,12 +370,15 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       })
     }
 
-    // Apply promotion filter
+    // Apply promotion / favorites filter
     if (filter === 'all') return filtered
+    if (filter === 'favorites') {
+      return filtered.filter(v => favoriteVenueIds.has(v._id?.toString()))
+    }
     return filtered.filter((venue) => {
       const promotions = venue.promotions || []
-      return promotions.some((p: any) => 
-        filter === 'happy-hour' 
+      return promotions.some((p: any) =>
+        filter === 'happy-hour'
           ? p.type === 'happy-hour' || p.title?.toLowerCase().includes('happy hour')
           : p.type === 'special' || p.title?.toLowerCase().includes('special')
       )
@@ -364,7 +426,7 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
         label: venue.name?.[0] || 'V',
         onClick: () => setSelectedVenue(venue)
       }))
-  }, [venues, filter, searchQuery, googlePlace, amenityFilters])
+  }, [venues, filter, searchQuery, googlePlace, amenityFilters, favoriteVenueIds])
 
   return (
     <div className="min-h-screen pb-16 bg-black max-w-4xl mx-auto">
@@ -424,6 +486,17 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
             >
               <Tag className="w-3.5 h-3.5 inline mr-1.5" />
               Specials
+            </button>
+            <button
+              onClick={() => setFilter('favorites')}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
+                filter === 'favorites'
+                  ? 'bg-primary-500 text-black'
+                  : 'bg-black/40 border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/30 backdrop-blur-sm'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5 inline mr-1.5" />
+              Favorites
             </button>
           </div>
           <div className="flex space-x-2">
@@ -541,10 +614,40 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
       {/* Venue Advertisement Cards - List View */}
       {viewMode === 'list' && (
       <div className="p-4 space-y-4">
-        {/* Debug info - remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-primary-400/50 mb-2">
-            Debug: {venues.length} total venues, {getFilteredVenues().length} filtered, search: "{searchQuery}", filter: {filter}
+
+        {/* Saved Venues Section */}
+        {savedVenues.length > 0 && filter !== 'favorites' && !searchQuery && (
+          <div className="mb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary-400/40 mb-2">Your Saved Spots</p>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {savedVenues.map((sv: any) => (
+                <div
+                  key={sv.placeId}
+                  className="flex-shrink-0 w-40 rounded-xl border border-primary-500/15 bg-black/40 overflow-hidden cursor-pointer hover:border-primary-500/30 transition-all"
+                  onClick={() => {
+                    const url = sv.website || sv.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sv.name)}`
+                    window.open(url, '_blank', 'noopener,noreferrer')
+                  }}
+                >
+                  <div className="h-20 bg-black/60 flex items-center justify-center relative">
+                    {sv.coverPhoto
+                      ? <img src={sv.coverPhoto} alt={sv.name} className="w-full h-full object-cover" />
+                      : <MapPin className="w-5 h-5 text-primary-500/30" />
+                    }
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSaveVenue({ _id: sv.placeId, name: sv.name }) }}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60"
+                    >
+                      <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
+                    </button>
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-semibold text-primary-400 truncate">{sv.name}</p>
+                    {sv.address?.city && <p className="text-[10px] text-primary-400/40 truncate">{sv.address.city}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {getFilteredVenues().length === 0 ? (
@@ -600,15 +703,33 @@ export default function MapTab({ setActiveTab }: MapTabProps) {
                         </span>
                       </div>
                     </div>
-                    {(venue.rating || venue.user_ratings_total) && (
-                      <div className="flex items-center text-primary-500">
-                        <Star className="w-4 h-4 fill-primary-500 mr-1" />
-                        <span className="text-sm font-semibold">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating || 'N/A'}</span>
-                        {venue.user_ratings_total && (
-                          <span className="text-xs text-primary-400 ml-1">({venue.user_ratings_total})</span>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Save button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSaveVenue(venue) }}
+                        className="p-1.5 rounded-lg transition-all hover:bg-primary-500/10"
+                        title={savedPlaceIds.has(venue._id) ? 'Unsave venue' : 'Save venue'}
+                      >
+                        <Star className={`w-4 h-4 ${savedPlaceIds.has(venue._id) ? 'fill-primary-500 text-primary-500' : 'text-primary-400/40'}`} />
+                      </button>
+                      {/* Favorite button */}
+                      {!venue.isGooglePlace && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleToggleFavorite(venue._id) }}
+                          className="p-1.5 rounded-lg transition-all hover:bg-red-500/10"
+                          title={favoriteVenueIds.has(venue._id?.toString()) ? 'Unfavorite' : 'Favorite'}
+                        >
+                          <span className={`text-sm ${favoriteVenueIds.has(venue._id?.toString()) ? '' : 'opacity-30'}`}>
+                            {favoriteVenueIds.has(venue._id?.toString()) ? '❤️' : '🤍'}
+                          </span>
+                        </button>
+                      )}
+                      {(venue.rating || venue.user_ratings_total) && (
+                        <div className="flex items-center text-primary-500">
+                          <span className="text-sm font-semibold">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating || ''}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
