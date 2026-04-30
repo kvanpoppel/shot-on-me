@@ -1,43 +1,26 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { 
-  Wallet, 
-  UserPlus, 
-  Sparkles, 
-  MapPin, 
-  Clock, 
-  TrendingUp, 
-  Gift, 
+import {
+  Wallet,
+  UserPlus,
+  MapPin,
+  Clock,
   ArrowRight,
-  Bell,
-  Share2,
   Users,
-  Martini,
-  Search,
-  Zap,
-  Star,
-  Heart,
   Send,
-  X,
-  Activity,
-  Radio,
-  List
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
 import { Tab } from '@/app/types'
 import InviteFriendsModal from './InviteFriendsModal'
 import FindFriends from './FindFriends'
-import GoogleMapComponent from './GoogleMap'
-import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
 interface HomeTabProps {
   setActiveTab?: (tab: Tab) => void
-  onSendShot?: () => void
   onViewProfile?: (userId: string) => void
   onSendMoney?: () => void
   onViewVenue?: (venueId: string) => void
@@ -72,8 +55,9 @@ interface AIRecommendation {
   source: 'friends' | 'time' | 'trending'
 }
 
-export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSendMoney, onViewVenue, onOpenAddFunds }: HomeTabProps) {
+export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onViewVenue, onOpenAddFunds }: HomeTabProps) {
   const { token, user } = useAuth()
+  const userId = user?.id || (user as any)?._id || null
   const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
   const API_URL = useApiUrl()
@@ -85,16 +69,8 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([])
-  const [showSearch, setShowSearch] = useState(false)
-  const [showSearchModal, setShowSearchModal] = useState(false)
-  const [liveActivity, setLiveActivity] = useState<any[]>([]) // Venue-specific events
-  const [trendingFriendActivity, setTrendingFriendActivity] = useState<any[]>([]) // Aggregated friend activity
-  const [featuredVenues, setFeaturedVenues] = useState<any[]>([]) // Featured/promoted venues for Spotlight
-  const [activityStrip, setActivityStrip] = useState<string[]>([])
-  const [showFriendsMap, setShowFriendsMap] = useState(false) // Toggle between list and map view for friends
-  const [showFindFriends, setShowFindFriends] = useState(false) // Control FindFriends modal
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const { isLoaded: mapsLoaded } = useGoogleMaps()
+  const [featuredVenues, setFeaturedVenues] = useState<any[]>([])
+  const [showFindFriends, setShowFindFriends] = useState(false)
 
   const getVenueBadge = (venue: any) => {
     if (!venue) return null
@@ -106,6 +82,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
+  const isFetchingRef = useRef(false)
   const userIdRef = useRef<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
@@ -114,94 +91,31 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     setIsMounted(true)
   }, [])
 
-  // Scroll to top when HomeTab mounts or becomes visible
+  // Scroll to top when HomeTab mounts
   useEffect(() => {
-    if (!isMounted || typeof window === 'undefined') return
-    
-    // Force scroll to absolute top - ensure the very top is visible
-    const scrollToTop = () => {
-      try {
-        // Set scroll position to 0 on all scrollable elements
-        if (typeof window !== 'undefined') {
-          window.scrollTo(0, 0)
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-        }
-        
-        if (typeof document !== 'undefined') {
-          // Force scroll on document elements
-          if (document.documentElement) {
-            document.documentElement.scrollTop = 0
-            document.documentElement.scrollLeft = 0
-            document.documentElement.style.scrollBehavior = 'auto'
-            document.documentElement.style.overflowY = 'auto'
-          }
-          if (document.body) {
-            document.body.scrollTop = 0
-            document.body.scrollLeft = 0
-            document.body.style.scrollBehavior = 'auto'
-            document.body.style.overflowY = 'auto'
-          }
-          
-          // Also try scrolling the main element
-          const mainElement = document.querySelector('main') as HTMLElement | null
-          if (mainElement) {
-            mainElement.scrollTop = 0
-            mainElement.style.scrollBehavior = 'auto'
-          }
-          
-          // Force scroll on window - check current position and force scroll if needed
-          if (typeof window !== 'undefined') {
-            if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
-              window.scrollTo(0, 0)
-            }
-            if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
-              window.scrollTo(0, 0)
-            }
-          }
-        }
-      } catch (e) {
-        // Silently handle scroll errors
-      }
-    }
-    
-    // Scroll immediately and repeatedly to ensure it sticks
-    scrollToTop()
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        scrollToTop()
-        setTimeout(scrollToTop, 0)
-        setTimeout(scrollToTop, 10)
-        setTimeout(scrollToTop, 50)
-        setTimeout(scrollToTop, 100)
-        setTimeout(scrollToTop, 200)
-        setTimeout(scrollToTop, 300)
-        setTimeout(scrollToTop, 500)
-      })
-    }
-  }, [isMounted]) // Run when component mounts
+    if (!isMounted) return
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }, [isMounted])
 
   useEffect(() => {
-    const currentUserId = user?.id || (user as any)?._id || null
-    const userIdChanged = userIdRef.current !== currentUserId
-    
+    const userIdChanged = userIdRef.current !== userId
+
     if (token && user && (!hasFetchedRef.current || userIdChanged)) {
       hasFetchedRef.current = true
-      userIdRef.current = currentUserId
-      
-      // Fetch immediately - no delay to speed up loading
+      userIdRef.current = userId
+
       fetchHomeData()
     } else if (!token || !user) {
-      // If no token or user, stop loading immediately
       setLoading(false)
     }
-  }, [token, user?.id, (user as any)?._id])
+  }, [token, userId])
 
   // Real-time wallet updates
   useEffect(() => {
     if (!socket) return
 
     const handleWalletUpdate = (data: { userId: string; balance: number }) => {
-      if (data.userId === user?.id || data.userId === (user as any)?._id) {
+      if (data.userId === userId) {
         setWalletBalance(data.balance)
       }
     }
@@ -213,154 +127,11 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     }
   }, [socket, user])
 
-  // Real-time activity feed - THE MOST ENGAGING FEATURE
+  // Fetch featured venues on load
   useEffect(() => {
-    if (!socket || !token) return
-
-    // Listen for friend activity
-    const handleFriendCheckIn = (data: any) => {
-      setLiveActivity(prev => [{
-        type: 'checkin',
-        user: data.user,
-        venue: data.venue,
-        timestamp: new Date(),
-        id: `checkin-${Date.now()}`
-      }, ...prev.slice(0, 9)]) // Keep last 10 items
-    }
-
-    const handlePaymentActivity = (data: any) => {
-      setLiveActivity(prev => [{
-        type: 'payment',
-        sender: data.sender,
-        recipient: data.recipient,
-        amount: data.amount,
-        timestamp: new Date(),
-        id: `payment-${Date.now()}`
-      }, ...prev.slice(0, 9)])
-    }
-
-    const handleNewPost = (data: any) => {
-      setLiveActivity(prev => [{
-        type: 'post',
-        user: data.author,
-        venue: data.venue,
-        timestamp: new Date(),
-        id: `post-${Date.now()}`
-      }, ...prev.slice(0, 9)])
-    }
-
-    socket.on('friend-checkin', handleFriendCheckIn)
-    socket.on('payment-sent', handlePaymentActivity)
-    socket.on('new-post', handleNewPost)
-
-    return () => {
-      socket.off('friend-checkin', handleFriendCheckIn)
-      socket.off('payment-sent', handlePaymentActivity)
-      socket.off('new-post', handleNewPost)
-    }
-  }, [socket, token])
-
-  // Get user location for map
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          })
-        },
-        () => {
-          // Default to Indianapolis if location unavailable
-          setUserLocation({ lat: 39.7684, lng: -86.1581 })
-        },
-        { timeout: 5000, maximumAge: 300000 }
-      )
-    } else {
-      // Default to Indianapolis if geolocation unavailable
-      setUserLocation({ lat: 39.7684, lng: -86.1581 })
-    }
-  }, [])
-
-  // Fetch recent activity on load
-  useEffect(() => {
-    if (token) {
-      fetchLiveActivity() // Venue-specific events
-      fetchTrendingFriendActivity() // Friend activity aggregation
-      fetchFeaturedVenues() // Featured venues for Spotlight
-      fetchActivityStrip()
-    }
+    if (token) fetchFeaturedVenues()
   }, [token])
 
-  const fetchActivityStrip = async () => {
-    if (!token) return
-    try {
-      const res = await axios.get(`${API_URL}/feed/activity-strip`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setActivityStrip(res.data.events || [])
-    } catch {}
-  }
-
-  // Fetch venue-specific events for "What's Happening Now"
-  const fetchLiveActivity = async () => {
-    if (!token) return
-    try {
-      // Fetch venue-specific ongoing events (promotions, active events)
-      const [venuesRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/venues`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { venues: [] } }))
-      ])
-
-      const venueEvents: any[] = []
-      const now = new Date()
-
-      // Get venues with active promotions (ongoing events)
-      if (venuesRes.status === 'fulfilled') {
-        const venues = venuesRes.value.data.venues || []
-        
-        venues.forEach((venue: any) => {
-          if (venue.promotions && venue.promotions.length > 0) {
-            venue.promotions.forEach((promo: any) => {
-              const startTime = new Date(promo.startTime)
-              const endTime = new Date(promo.endTime)
-              if (promo.isActive && now >= startTime && now <= endTime) {
-                venueEvents.push({
-                  type: 'venue-event',
-                  venue: {
-                    _id: venue._id,
-                    name: venue.name,
-                    address: venue.address,
-                    subscriptionTier: venue.subscriptionTier,
-                    isFeatured: venue.isFeatured
-                  },
-                  event: {
-                    title: promo.title,
-                    description: promo.description,
-                    type: promo.type,
-                    startTime: promo.startTime,
-                    endTime: promo.endTime,
-                    timeRemaining: Math.max(0, new Date(promo.endTime).getTime() - now.getTime())
-                  },
-                  timestamp: now,
-                  id: `event-${venue._id}-${promo.title}`
-                })
-              }
-            })
-          }
-        })
-      }
-
-      // Sort by time remaining (soonest ending first) and take most recent
-      venueEvents.sort((a, b) => a.event.timeRemaining - b.event.timeRemaining)
-      setLiveActivity(venueEvents.slice(0, 10))
-    } catch (error) {
-      console.error('Failed to fetch venue events:', error)
-    }
-  }
-
-  // Fetch featured venues for Venue Spotlight
   const fetchFeaturedVenues = async () => {
     if (!token) return
     try {
@@ -373,86 +144,6 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     } catch (error) {
       console.error('Failed to fetch featured venues:', error)
       setFeaturedVenues([])
-    }
-  }
-
-  // Fetch aggregated friend activity for "Trending Now"
-  const fetchTrendingFriendActivity = async () => {
-    if (!token) return
-    try {
-      // Fetch friend activity: check-ins, posts, location updates
-      const [feedRes, friendsLocationRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/feed?limit=20`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { posts: [] } })),
-        axios.get(`${API_URL}/location/friends`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { friends: [] } }))
-      ])
-
-      const activities: any[] = []
-
-      // Get friend check-ins and posts (aggregated across diverse venues)
-      if (feedRes.status === 'fulfilled') {
-        const posts = feedRes.value.data.posts || []
-        posts.forEach((post: any) => {
-          if (post.checkIn && post.checkIn.venue) {
-            activities.push({
-              type: 'friend-checkin',
-              user: post.author,
-              venue: post.checkIn.venue,
-              timestamp: post.createdAt,
-              id: `checkin-${post._id}`
-            })
-          } else if (post.location && post.location.venue) {
-            activities.push({
-              type: 'friend-post',
-              user: post.author,
-              venue: post.location.venue,
-              content: post.content,
-              timestamp: post.createdAt,
-              id: `post-${post._id}`
-            })
-          } else if (post.content || post.media?.length > 0) {
-            // General posts from friends
-            activities.push({
-              type: 'friend-activity',
-              user: post.author,
-              content: post.content,
-              timestamp: post.createdAt,
-              id: `activity-${post._id}`
-            })
-          }
-        })
-      }
-
-      // Get real-time location updates from friends
-      if (friendsLocationRes.status === 'fulfilled') {
-        const friends = friendsLocationRes.value.data.friends || []
-        friends.forEach((friend: any) => {
-          if (friend.location && friend.currentVenue) {
-            activities.push({
-              type: 'friend-location',
-              user: {
-                _id: friend._id,
-                firstName: friend.firstName,
-                lastName: friend.lastName,
-                profilePicture: friend.profilePicture
-              },
-              venue: friend.currentVenue,
-              location: friend.location,
-              timestamp: friend.location.updatedAt || new Date(),
-              id: `location-${friend._id}`
-            })
-          }
-        })
-      }
-
-      // Sort by timestamp and take most recent (most frequently shared activities)
-      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      setTrendingFriendActivity(activities.slice(0, 15))
-    } catch (error) {
-      console.error('Failed to fetch trending friend activity:', error)
     }
   }
 
@@ -554,7 +245,9 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       setLoading(false)
       return
     }
-    
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+
     // Show UI immediately - don't block on loading
     setLoading(false)
 
@@ -728,7 +421,7 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
       setNearbyFriends([])
     } finally {
       setLoading(false)
-      console.log('HomeTab: Finished loading, loading state:', false)
+      isFetchingRef.current = false
     }
   }, [token, API_URL])
 
@@ -773,30 +466,15 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
   useEffect(() => {
     if (!token || !fetchHomeData) return
 
-    // Refresh deals every 30 seconds to catch promotions that just became active
+    // Refresh deals every 60 seconds to catch promotions that just became active
     const interval = setInterval(() => {
       fetchHomeData()
-    }, 30000) // 30 seconds
+    }, 60000)
 
     return () => clearInterval(interval)
   }, [token, fetchHomeData])
 
   const [showInviteModal, setShowInviteModal] = useState(false)
-
-  const handleInviteFriend = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    
-    if (!user?.id && !(user as any)?._id) {
-      alert('Please wait for your account to load, then try again.')
-      return
-    }
-    
-    // Open invite modal for better UX
-    setShowInviteModal(true)
-  }
 
   const getTimeRemaining = (endTime: string) => {
     const now = new Date()
@@ -812,43 +490,23 @@ export default function HomeTab({ setActiveTab, onSendShot, onViewProfile, onSen
     return `${minutes}m left`
   }
 
-  const getTimeAgo = (timestamp: string | Date) => {
-    // CRITICAL: Always return empty string during SSR to prevent hydration mismatch
-    if (typeof window === 'undefined' || !isMounted) return ''
-    const now = new Date()
-    const time = new Date(timestamp)
-    const diff = now.getTime() - time.getTime()
-    
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
-    
-    if (seconds < 60) return 'Just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
-    // Use safe date formatting
-    try {
-      return time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    } catch {
-      return ''
-    }
-  }
+  // Filter venues based on search (memoized)
+  const filteredDeals = useMemo(() =>
+    searchQuery
+      ? quickDeals.filter(deal =>
+          deal.venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          deal.promotion.title.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : quickDeals,
+    [quickDeals, searchQuery]
+  )
 
-  // Filter venues based on search
-  const filteredDeals = searchQuery
-    ? quickDeals.filter(deal => 
-        deal.venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        deal.promotion.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : quickDeals
-
-  const filteredTrending = searchQuery
-    ? (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues).filter((venue: any) =>
-        venue.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : (trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues)
+  const filteredTrending = useMemo(() => {
+    const base = trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues
+    return searchQuery
+      ? base.filter((venue: any) => venue.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : base
+  }, [trendingVenuesActivity, trendingVenues, searchQuery])
 
   // Show loading only for initial load
   if (!isMounted || (loading && hasFetchedRef.current === false)) {
