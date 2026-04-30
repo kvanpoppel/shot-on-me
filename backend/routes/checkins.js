@@ -8,6 +8,46 @@ const analytics = require('../utils/analytics');
 
 const router = express.Router();
 
+// Get friends checked in at a venue (GET /api/checkins/friends-at/:venueId)
+router.get('/friends-at/:venueId', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.userId).select('friends');
+    if (!currentUser || !currentUser.friends?.length) {
+      return res.json({ friends: [] });
+    }
+
+    // Find check-ins by friends at this venue in the last 6 hours
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const friendCheckIns = await CheckIn.find({
+      venue: req.params.venueId,
+      user: { $in: currentUser.friends },
+      createdAt: { $gte: sixHoursAgo }
+    })
+      .populate('user', 'firstName lastName profilePicture')
+      .sort({ createdAt: -1 });
+
+    // Deduplicate by user (keep most recent check-in per friend)
+    const seen = new Set();
+    const uniqueFriends = friendCheckIns.filter(ci => {
+      const uid = ci.user._id.toString();
+      if (seen.has(uid)) return false;
+      seen.add(uid);
+      return true;
+    }).map(ci => ({
+      _id: ci.user._id,
+      firstName: ci.user.firstName,
+      lastName: ci.user.lastName,
+      profilePicture: ci.user.profilePicture,
+      checkedInAt: ci.createdAt
+    }));
+
+    res.json({ friends: uniqueFriends });
+  } catch (error) {
+    console.error('Error fetching friends at venue:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get check-ins (GET /api/checkins)
 // - With ?venueId=xxx: returns check-ins at that venue (venue owners only)
 // - Without venueId: returns the authenticated user's own check-ins

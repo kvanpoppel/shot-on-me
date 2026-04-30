@@ -49,6 +49,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
   const [checkInResult, setCheckInResult] = useState<any>(null)
   const [loyaltyData, setLoyaltyData] = useState<any>(null)
   const [showReferralInvite, setShowReferralInvite] = useState(false)
+  const [friendsHere, setFriendsHere] = useState<any[]>([])
   const [activeVenueTab, setActiveVenueTab] = useState<'info' | 'happyhour' | 'special' | 'wine' | 'weekend' | 'trending' | 'tonight' | 'reviews'>('info')
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
       checkFollowStatus()
       fetchReviews()
       fetchLoyalty()
+      fetchFriendsHere()
     }
   }, [token, venueId, API_URL])
 
@@ -71,6 +73,18 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
       // Loyalty data might not exist yet, that's okay
       console.log('No loyalty data yet')
       return null
+    }
+  }
+
+  const fetchFriendsHere = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/checkins/friends-at/${venueId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
+      })
+      setFriendsHere(res.data.friends || [])
+    } catch {
+      setFriendsHere([])
     }
   }
 
@@ -450,6 +464,30 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
             <span className="hidden sm:inline text-sm sm:text-base">Invite</span>
           </button>
         </div>
+
+        {/* Friends Here */}
+        {friendsHere.length > 0 && (
+          <div className="bg-primary-500/5 border border-primary-500/20 rounded-xl p-3">
+            <p className="text-xs font-semibold text-primary-500 mb-2">
+              <Users className="w-3.5 h-3.5 inline mr-1" />
+              {friendsHere.length} friend{friendsHere.length !== 1 ? 's' : ''} checked in
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              {friendsHere.map((f: any) => (
+                <div key={f._id} className="flex items-center gap-1.5 bg-black/40 rounded-full pl-1 pr-2.5 py-1">
+                  {f.profilePicture ? (
+                    <img src={f.profilePicture} alt={f.firstName} className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary-500/20 flex items-center justify-center">
+                      <span className="text-primary-500 text-[10px] font-bold">{f.firstName?.[0]}{f.lastName?.[0]}</span>
+                    </div>
+                  )}
+                  <span className="text-xs text-white font-medium">{f.firstName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Directions, Website & Share */}
         <div className="flex gap-2 sm:gap-3">

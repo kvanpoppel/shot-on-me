@@ -14,7 +14,6 @@ import {
   Clock,
   ArrowLeft,
   UserPlus,
-  Navigation,
   Share2
 } from 'lucide-react'
 import BackButton from './BackButton'
@@ -164,11 +163,6 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
     }
   }
 
-  const handleGetDirections = () => {
-    if (!friend?.location) return
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${friend.location.latitude},${friend.location.longitude}`
-    window.open(url, '_blank')
-  }
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
@@ -279,15 +273,6 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
         <div className="flex space-x-2">
           {isFriend ? (
             <>
-              {friend.location && friend.location.isVisible && (
-                <button
-                  onClick={handleGetDirections}
-                  className="flex-1 bg-primary-500/10 border border-primary-500/20 text-primary-500 py-2 rounded-lg font-medium hover:bg-primary-500/20 transition-all flex items-center justify-center space-x-2"
-                >
-                  <Navigation className="w-4 h-4" />
-                  <span>Get Directions</span>
-                </button>
-              )}
               {isFriend && (
                 <button
                   onClick={() => setShowSendDrink(true)}
