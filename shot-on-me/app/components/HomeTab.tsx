@@ -580,21 +580,82 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         )}
       </div>
 
-      {/* 2. Invite Friends */}
+      {/* 2. Friends Out Tonight — always visible */}
       <div className="px-4 mb-6">
-        <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInviteModal(true) }}
-          className="group relative w-full bg-black/50 border-2 border-primary-500/30 text-primary-500 rounded-2xl p-4 hover:border-primary-500/50 hover:bg-black/70 transition-all hover:scale-[1.01] active:scale-[0.98] overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-16 h-16 bg-primary-500/5 rounded-full blur-2xl" />
-          <div className="relative z-10 flex items-center justify-center gap-2">
-            <UserPlus className="w-5 h-5" />
-            <h3 className="text-sm font-bold tracking-tight">Invite Friends</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-bold text-primary-500">Friends Out Tonight</h2>
+          {nearbyFriends.length > 0 && (
+            <button onClick={() => setActiveTab?.('happening')} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
+              See All <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        {nearbyFriends.length > 0 ? (
+          <div className="space-y-2">
+            {nearbyFriends.map((friend) => (
+              <div
+                key={friend._id || friend.id}
+                className="bg-black/50 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3 hover:border-primary-500/40 hover:bg-black/60 transition-all"
+              >
+                <div
+                  onClick={() => onViewProfile?.(friend._id || friend.id)}
+                  className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                >
+                  <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+                    {friend.profilePicture ? (
+                      <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                        <span className="text-primary-500 font-medium text-sm">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-primary-500 text-sm">{friend.firstName} {friend.lastName}</p>
+                    <p className="text-xs text-primary-400/60">
+                      {friend.currentVenueName
+                        ? `📍 ${friend.currentVenueName}`
+                        : friend.distance
+                          ? typeof friend.distance === 'number'
+                            ? friend.distance < 0.1 ? `${Math.round(friend.distance * 5280)}ft away` : `${friend.distance.toFixed(1)}mi away`
+                            : String(friend.distance).replace('miles', 'mi')
+                          : 'Out tonight'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
+                  className="bg-primary-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-primary-400 transition-all active:scale-[0.98] flex-shrink-0"
+                >
+                  🍺 Send
+                </button>
+              </div>
+            ))}
           </div>
-        </button>
+        ) : (
+          <div className="bg-black/40 border border-primary-500/15 rounded-xl p-4 text-center">
+            <p className="text-primary-400/70 text-sm mb-3">No friends out yet tonight</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowFindFriends(true)}
+                className="flex-1 border border-primary-500/30 text-primary-500 font-semibold py-2.5 rounded-xl text-sm hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Users className="w-4 h-4" />
+                Find Friends
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex-1 bg-primary-500 text-black font-bold py-2.5 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" />
+                Invite
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 3. Happening Now — deals + venues, one unified section */}
+      {/* 3. Happening Now — deals + venues */}
       {venueItems.length > 0 && (
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
@@ -607,7 +668,6 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
             {venueItems.map((item, idx) => {
               if (item.type === 'venue-deals') {
                 const { venueId, venueName, deals } = item
-                // Sort deals: soonest-ending first
                 const sorted = [...deals].sort((a, b) => new Date(a.promotion.endTime).getTime() - new Date(b.promotion.endTime).getTime())
                 const soonest = sorted[0]
                 return (
@@ -671,50 +731,8 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         </div>
       )}
 
-      {/* 4. Friends out tonight */}
-      {nearbyFriends.length > 0 && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-bold text-primary-500">Friends Out Tonight</h2>
-            <button onClick={() => setActiveTab?.('happening')} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
-              See All <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {nearbyFriends.map((friend) => (
-              <div
-                key={friend._id || friend.id}
-                onClick={() => onViewProfile?.(friend._id || friend.id)}
-                className="bg-black/50 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary-500/40 hover:bg-black/60 transition-all active:scale-[0.98]"
-              >
-                <div className="w-10 h-10 border border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-                  {friend.profilePicture ? (
-                    <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                      <span className="text-primary-500 font-medium text-sm">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-primary-500 text-sm">{friend.firstName} {friend.lastName}</p>
-                  {friend.distance && (
-                    <p className="text-xs text-primary-400/60">
-                      {typeof friend.distance === 'number'
-                        ? friend.distance < 0.1 ? `${Math.round(friend.distance * 5280)}ft away` : `${friend.distance.toFixed(1)}mi away`
-                        : String(friend.distance).replace('miles', 'mi')}
-                    </p>
-                  )}
-                </div>
-                <ArrowRight className="w-4 h-4 text-primary-400/50 flex-shrink-0" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 5. New user fallback — only when no deals and no friends */}
-      {quickDeals.length === 0 && nearbyFriends.length === 0 && (
+      {/* 4. How it Works — only for new users with no deals */}
+      {quickDeals.length === 0 && (
         <div className="px-4 space-y-4 pb-2">
           <div>
             <p className="text-primary-400/50 text-[10px] font-bold uppercase tracking-widest mb-3">How it works</p>
@@ -733,29 +751,6 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
                 </div>
               ))}
             </div>
-          </div>
-          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5">
-            <p className="text-white font-bold text-base mb-1">Your crew is out there tonight</p>
-            <p className="text-primary-400/60 text-sm mb-4">Find friends on Shot On Me and see where they're headed. Never miss a round.</p>
-            <button
-              onClick={() => setShowFindFriends(true)}
-              className="w-full border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <Users className="w-4 h-4" />
-              Find Your Friends
-            </button>
-          </div>
-          <div className="relative bg-gradient-to-br from-primary-500/15 via-black/70 to-black/90 border border-primary-500/30 rounded-2xl p-5 overflow-hidden">
-            <div className="absolute top-0 right-0 w-28 h-28 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
-            <p className="text-white font-bold text-base mb-1 relative z-10">Be the one who buys the round</p>
-            <p className="text-primary-400/60 text-sm mb-4 relative z-10">Invite friends — the more people on Shot On Me, the more shots fly.</p>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 relative z-10"
-            >
-              <UserPlus className="w-4 h-4" />
-              Invite Friends Now
-            </button>
           </div>
           <div className="bg-black/40 border border-primary-500/15 rounded-2xl p-5">
             <div className="flex items-center gap-3 mb-4">
