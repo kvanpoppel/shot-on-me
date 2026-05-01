@@ -731,47 +731,6 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         </div>
       )}
 
-      {/* 4. How it Works — only for new users with no deals */}
-      {quickDeals.length === 0 && (
-        <div className="px-4 space-y-4 pb-2">
-          <div>
-            <p className="text-primary-400/50 text-[10px] font-bold uppercase tracking-widest mb-3">How it works</p>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { Icon: Wallet, label: 'Add Money',  sub: 'Fund your wallet once'    },
-                { Icon: MapPin, label: 'Hit the Bar', sub: 'Find a tap & pay venue'   },
-                { Icon: Send,   label: 'Send a Shot', sub: 'Buy a drink for a friend' },
-              ] as const).map(({ Icon, label, sub }) => (
-                <div key={label} className="bg-black/50 border border-primary-500/20 rounded-xl p-3 text-center">
-                  <div className="w-8 h-8 bg-primary-500/15 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Icon className="w-4 h-4 text-primary-500" />
-                  </div>
-                  <p className="text-primary-500 font-bold text-xs leading-tight">{label}</p>
-                  <p className="text-primary-400/50 text-[10px] mt-0.5 leading-tight">{sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-black/40 border border-primary-500/15 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-4 h-4 text-primary-500" />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">Find venues near you</p>
-                <p className="text-primary-400/50 text-xs">Deals go live the moment you arrive</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="w-full border border-primary-500/25 text-primary-400 font-medium py-2.5 rounded-xl text-sm hover:border-primary-500/50 hover:text-primary-500 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              Explore the Map
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
