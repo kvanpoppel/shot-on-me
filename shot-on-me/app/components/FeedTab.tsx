@@ -116,7 +116,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const { socket } = useSocket()
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
-  const [friendActivity, setFriendActivity] = useState<FriendActivity[]>([])
   const [nearbyFriends, setNearbyFriends] = useState<any[]>([])
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,6 +138,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [showingReactionPicker, setShowingReactionPicker] = useState<{ postId: string; commentId: string } | null>(null)
   const [posting, setPosting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [sendDrinkTarget, setSendDrinkTarget] = useState<{ id: string; name: string; firstName: string; avatar?: string } | null>(null)
   const [showFriendInvite, setShowFriendInvite] = useState(false)
@@ -165,9 +165,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [pullToRefresh, setPullToRefresh] = useState(false)
-  const [pullStartY, setPullStartY] = useState(0)
-  const [postViews, setPostViews] = useState<Map<string, number>>(new Map())
   const [aiSignals, setAiSignals] = useState<{ viewedProfileIds: string[]; addedFriendIds: string[] }>({
     viewedProfileIds: [],
     addedFriendIds: []
@@ -256,10 +253,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       setHasMore(true)
       
       // Fetch feed first (most important)
-      fetchFeed(1, feedFilter).then(() => {
-        // After feed loads, fetch friend activity from feed data (no separate API call needed)
-        fetchFriendActivity()
-      })
+      fetchFeed(1, feedFilter)
       
       // Fetch non-critical data in parallel (don't block UI)
       Promise.all([
@@ -286,7 +280,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           if (exists) return prev
           return [data.post, ...prev]
         })
-        fetchFriendActivity()
       }
     }
 
@@ -481,36 +474,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     } finally {
       setLoading(false)
       setLoadingMore(false)
-      setPullToRefresh(false)
-    }
-  }
-
-  const fetchFriendActivity = async () => {
-    if (!token) return
-    try {
-      // Derive friend activity directly from posts state (no separate API call)
-      // This is more efficient and reduces redundant requests
-      const activity: FriendActivity[] = posts
-        .filter((post: FeedPost) => {
-          if (post.venueAuthor) return false // skip venue posts in friend activity
-          const authorId = post.author?._id || post.author?.id
-          const userId = user?.id || (user as any)?._id
-          return authorId !== userId
-        })
-        .slice(0, 5)
-        .map((post: FeedPost) => ({
-          userId: post.author?._id || post.author?.id || '',
-          name: `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim(),
-          profilePicture: post.author?.profilePicture,
-          action: post.checkIn ? 'checked-in' : 'posted',
-          venue: post.checkIn?.venue?.name || post.location?.venue?.name,
-          time: post.createdAt
-        }))
-      
-      setFriendActivity(activity)
-    } catch (error) {
-      console.error('Failed to process friend activity:', error)
-      setFriendActivity([])
     }
   }
 
@@ -656,13 +619,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       
       trackFriendAddForAI(friendId)
 
-      // Success - refresh data
-      await Promise.all([
-        fetchFriendSuggestions(),
-        fetchFeed()
-      ])
-      
-      // Success feedback is handled by UI update
+      // Success - refresh suggestions
+      await fetchFriendSuggestions()
     } catch (error: any) {
       console.error('❌ Error adding friend:', error)
       console.error('Error response:', error.response?.data)
@@ -688,12 +646,9 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         console.error('Request setup error:', error.message)
       }
       
-      // Don't show alert for "already a friend" - just refresh
+      // Don't show alert for "already a friend" - just refresh suggestions
       if (error.response?.status === 400 && (errorMessage.includes('already') || errorMessage.includes('Already'))) {
-        await Promise.all([
-          fetchFriendSuggestions(),
-          fetchFeed()
-        ])
+        await fetchFriendSuggestions()
         return
       }
       
@@ -706,18 +661,20 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     if (!token) return
     try {
       // Create a check-in post
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/feed`,
-        { 
+        {
           content: `Checked in at ${venueName} 🍻`,
           venueId,
           checkIn: true
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      fetchFeed().then(() => {
-        fetchFriendActivity()
-      })
+      // Prepend check-in post locally instead of refetching entire feed
+      const newPost = response.data.post
+      if (newPost) {
+        setPosts(prev => [newPost, ...prev])
+      }
       setSelectedVenue(null)
     } catch (error) {
       console.error('Failed to check in:', error)
@@ -762,15 +719,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       await axios.post(
         `${API_URL}/feed/${postId}/like`,
         {},
-        { 
+        {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
         }
       )
-      // Refresh to get accurate like count
-      fetchFeed().then(() => {
-        fetchFriendActivity()
-      })
+      // Server syncs via socket — optimistic update already applied
     } catch (error) {
       console.error('Failed to like post:', error)
       // Revert optimistic update on error
@@ -861,18 +815,14 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       }
     } catch (error: any) {
       console.error('Failed to react to post:', error)
-      
+
       // Revert optimistic update on error
       setPosts(previousPosts)
-      
+
       const errorMessage = error.response?.data?.message || error.message || 'Failed to react. Please try again.'
       if (error.response?.status !== 401) { // Don't alert on auth errors
         alert(errorMessage)
       }
-      // Refresh feed to get correct state
-      fetchFeed().then(() => {
-        fetchFriendActivity()
-      })
     }
   }
 
@@ -1186,6 +1136,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       return
     }
     setPosting(true)
+    setUploadProgress(0)
 
     try {
       const formData = new FormData()
@@ -1216,7 +1167,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-              console.log(`Upload progress: ${percentCompleted}%`)
+              setUploadProgress(percentCompleted)
             }
           }
         }
@@ -1228,12 +1179,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       setMediaPreviews([])
       setMentionQuery(null)
       setShowPostForm(false)
-      
-      // Refresh feed to show new post
-      fetchFeed().then(() => {
-        fetchFriendActivity()
-      })
-      
+
+      // Prepend new post locally instead of refetching entire feed
+      const newPost = response.data.post
+      if (newPost) {
+        setPosts(prev => [newPost, ...prev])
+      }
+
       // Scroll to top to see new post
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error: any) {
@@ -1242,6 +1194,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       alert(errorMessage)
     } finally {
       setPosting(false)
+      setUploadProgress(0)
     }
   }
 
@@ -2167,7 +2120,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               disabled={posting || (!newPostContent.trim() && !selectedVenue && selectedMedia.length === 0)}
               className="flex-1 bg-primary-500 text-black py-2 rounded-lg font-semibold hover:bg-primary-600 disabled:opacity-50"
             >
-              {posting ? 'Posting...' : 'Post'}
+              {posting ? (uploadProgress > 0 ? `Uploading ${uploadProgress}%` : 'Posting...') : 'Post'}
             </button>
           </div>
         </form>
