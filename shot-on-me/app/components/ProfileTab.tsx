@@ -427,6 +427,20 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
         )}
       </div>
 
+      {/* Invite Friends — compact row */}
+      <div className="px-4 py-2">
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="w-full flex items-center justify-between bg-primary-500/8 border border-primary-500/20 rounded-xl px-3 py-2.5 hover:border-primary-500/40 transition-all active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-primary-500" />
+            <span className="text-sm text-primary-400">Invite friends to Shot On Me</span>
+          </div>
+          <span className="text-xs font-bold text-primary-500">Invite</span>
+        </button>
+      </div>
+
       {/* View Tabs */}
       <div className="flex border-b border-primary-500/10">
         <button
@@ -661,25 +675,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
             )}
           </div>
         )}
-
-        {/* Invite Friends — always visible between content and vibe prefs */}
-        <div className="mt-4 mx-1 bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
-              <UserPlus className="w-5 h-5 text-primary-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-semibold text-sm">Invite friends to Shot On Me</p>
-              <p className="text-primary-400/60 text-xs">More friends = more shots flying</p>
-            </div>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="bg-primary-500 text-black text-xs font-bold px-4 py-2 rounded-xl hover:bg-primary-400 transition-all active:scale-[0.98] flex-shrink-0"
-            >
-              Invite
-            </button>
-          </div>
-        </div>
 
         {activeView === 'vibe' && (
           <div className="space-y-4">
