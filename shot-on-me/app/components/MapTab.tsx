@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Share2, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink, Sparkles } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink, Sparkles } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -25,6 +25,26 @@ interface MapTabProps {
   onSavedVenuesChange?: () => void
 }
 
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 3959 // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c // Returns distance in miles
+}
+
+function getTierWeight(tier?: string) {
+  switch (tier) {
+    case 'enterprise': return 4
+    case 'premium': return 3
+    case 'basic': return 1
+    default: return 0
+  }
+}
+
 export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenSettings, onVenueSaved, savedGoogleVenues: savedGoogleVenuesProp = [], onSavedVenuesChange }: MapTabProps) {
   const API_URL = useApiUrl()
   const { token, user } = useAuth()
@@ -35,7 +55,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [venuesHasMore, setVenuesHasMore] = useState(true)
   const [loadingMoreVenues, setLoadingMoreVenues] = useState(false)
   const venuesContainerRef = useRef<HTMLDivElement>(null)
-  const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'favorites' | 'for-you' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight' | 'wine'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -90,7 +109,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   })
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loadingRecs, setLoadingRecs] = useState(false)
-  const [hasPreferences, setHasPreferences] = useState(false)
 
   // Load already-saved Google venues from backend on mount
   useEffect(() => {
@@ -112,7 +130,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     axios.get(`${API_URL}/venues/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         setRecommendations(res.data.recommendations || [])
-        setHasPreferences(res.data.hasPreferences || false)
       })
       .catch(() => {})
       .finally(() => setLoadingRecs(false))
@@ -450,26 +467,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     }
   }, [token, API_URL, user])
 
-  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 3959 // Earth's radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLng = (lng2 - lng1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c // Returns distance in miles
-  }, [])
-
-  const getTierWeight = useCallback((tier?: string) => {
-    switch (tier) {
-      case 'enterprise': return 4
-      case 'premium': return 3
-      case 'basic': return 1
-      default: return 0
-    }
-  }, [])
-
   const rankVenues = useCallback((source: any[]) => {
     return [...source].sort((a: any, b: any) => {
       const activeA = (a.promotions || []).filter((p: any) => p?.isActive).length
@@ -492,7 +489,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
       return scoreB - scoreA
     })
-  }, [getTierWeight, trendingVenues])
+  }, [trendingVenues])
 
   const getVenueBadge = useCallback((venue: any) => {
     if (!venue) return null
@@ -717,7 +714,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       }
       return false
     }))
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues, calculateDistance, favoriteVenueIds, rankVenues, amenityFilters])
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues, favoriteVenueIds, rankVenues, amenityFilters, recommendations])
 
   // Get category icon
   const getCategoryIcon = useCallback((category: string) => {
@@ -1062,6 +1059,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       fetchWeatherData(39.7684, -86.1581) // Default to Indianapolis
     }
   }, [token, API_URL, fetchVenues, fetchTrendingVenues, fetchFriends, fetchFavoriteVenues, getCurrentLocation, fetchWeatherData])
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setVenuesPage(1)
+    setVenuesHasMore(true)
+  }, [filter])
 
   // Infinite scroll for venues
   useEffect(() => {
@@ -1815,12 +1818,19 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           )}
 
           {/* "For You" hint — only when no recommendations and filter is for-you */}
-          {filter === 'for-you' && recommendations.length === 0 && (
-            <div className="text-center py-8 text-primary-400/60">
-              <Sparkles className="w-8 h-8 mx-auto mb-2 text-primary-500/30" />
-              <p className="text-sm font-medium">Set your vibe preferences in Profile</p>
-              <p className="text-xs mt-1 text-primary-400/40">We'll match you with venues you'll love</p>
-            </div>
+          {filter === 'for-you' && getFilteredVenues.length === 0 && !loading && (
+            loadingRecs ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500 mx-auto mb-2" />
+                <p className="text-primary-400/60 text-sm">Finding venues for you...</p>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-primary-400/60">
+                <Sparkles className="w-8 h-8 mx-auto mb-2 text-primary-500/30" />
+                <p className="text-sm font-medium">Set your vibe preferences in Profile</p>
+                <p className="text-xs mt-1 text-primary-400/40">We'll match you with venues you'll love</p>
+              </div>
+            )
           )}
 
           {loading ? (
@@ -2182,46 +2192,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             onClose={() => setViewingVenueId(null)}
           />
         </ErrorBoundary>
-      )}
-
-      {/* Venue Selection Modal */}
-      {selectedVenue && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-black border-2 border-primary-500 rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-primary-500 mb-4">Send a Drink to {selectedVenue.name}</h3>
-            <p className="text-primary-400 text-sm mb-4">
-              This will redirect you to the Send Shot form with {selectedVenue.name} pre-selected.
-            </p>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  localStorage.setItem('selectedVenue', JSON.stringify({
-                    id: selectedVenue._id,
-                    name: selectedVenue.name,
-                    address: selectedVenue.address?.street || '',
-                    city: selectedVenue.address?.city || '',
-                    state: selectedVenue.address?.state || '',
-                    placeId: selectedVenue.placeId
-                  }))
-                  localStorage.setItem('profileAction', 'send-money')
-                  setSelectedVenue(null)
-                  if (setActiveTab) {
-                    setActiveTab('profile')
-                  }
-                }}
-                className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold hover:bg-primary-600 transition-all"
-              >
-                Continue
-              </button>
-              <button
-                onClick={() => setSelectedVenue(null)}
-                className="flex-1 bg-black border border-primary-500 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/10 transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Quick Send Sheet — opens on top of friend modal */}
