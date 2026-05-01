@@ -2817,7 +2817,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                     )}
                                   </div>
                                   
-                                  {/* Reply & More Menu */}
+                                  {/* Reply, Send Drink & More Menu */}
                                   <div className="relative group/comment-menu" ref={commentMenuRef}>
                                     <button
                                       onClick={(e) => {
@@ -2828,6 +2828,23 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                                     >
                                       Reply
                                     </button>
+                                    {comment.user._id && comment.user._id !== (user?.id || (user as any)?._id) && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setSendDrinkTarget({
+                                            id: comment.user._id!,
+                                            name: `${comment.user.firstName} ${comment.user.lastName || ''}`.trim(),
+                                            firstName: comment.user.firstName,
+                                            avatar: comment.user.profilePicture,
+                                          })
+                                        }}
+                                        className="text-xs text-primary-400 hover:text-primary-300 px-2 py-1 rounded hover:bg-primary-500/10 transition-all"
+                                        title={`Send drink to ${comment.user.firstName}`}
+                                      >
+                                        🍺
+                                      </button>
+                                    )}
                                     
                                     {/* Comment More Menu - Click to show */}
                                     <button
