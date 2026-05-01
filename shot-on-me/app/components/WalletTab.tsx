@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Send, QrCode, History, Plus, Sparkles, CreditCard, Radio, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2, CheckCircle2, XCircle, Clock, X, Search, User, MapPin, Phone, AlertTriangle, Lock } from 'lucide-react'
 import { useSocket } from '../contexts/SocketContext'
+import InviteFriendsModal from './InviteFriendsModal'
 import AddFundsModal from './AddFundsModal'
 import PaymentMethodsManager from './PaymentMethodsManager'
 import VirtualCardManager from './VirtualCardManager'
@@ -45,6 +46,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [loadingMorePayments, setLoadingMorePayments] = useState(false)
   const paymentsContainerRef = useRef<HTMLDivElement>(null)
   const [showAddFunds, setShowAddFunds] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
   const [showTapAndPay, setShowTapAndPay] = useState(false)
   const [showCardPayment, setShowCardPayment] = useState(false)
@@ -903,6 +905,12 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           >
             <Send className="w-4 h-4" />
             Send Money
+          </button>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="w-full mt-3 border border-primary-500/20 text-primary-400/80 py-2.5 rounded-2xl font-medium flex items-center justify-center gap-2 text-xs hover:border-primary-500/40 hover:text-primary-500 transition-all"
+          >
+            Invite friends so they can buy you a shot 🍻
           </button>
         </div>
       )}
@@ -1798,6 +1806,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           </div>
         </div>
       )}
+      <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
     </div>
   )
 }

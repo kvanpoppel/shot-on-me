@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import InviteFriendsModal from './InviteFriendsModal'
 import axios from 'axios'
 import {
   Grid3x3,
@@ -69,6 +70,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const [loading, setLoading] = useState(true)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends' | 'vibe'>('posts')
+  const [showInviteModal, setShowInviteModal] = useState(false)
   const [venuePrefs, setVenuePrefs] = useState({
     kidsFriendly: false, dogFriendly: false, hasFood: false, byob: false,
     trivia: false, liveMusic: false, outdoorSeating: false, happyHour: false,
@@ -660,6 +662,25 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
           </div>
         )}
 
+        {/* Invite Friends — always visible between content and vibe prefs */}
+        <div className="mt-4 mx-1 bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-500/15 rounded-full flex items-center justify-center flex-shrink-0">
+              <UserPlus className="w-5 h-5 text-primary-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm">Invite friends to Shot On Me</p>
+              <p className="text-primary-400/60 text-xs">More friends = more shots flying</p>
+            </div>
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="bg-primary-500 text-black text-xs font-bold px-4 py-2 rounded-xl hover:bg-primary-400 transition-all active:scale-[0.98] flex-shrink-0"
+            >
+              Invite
+            </button>
+          </div>
+        </div>
+
         {activeView === 'vibe' && (
           <div className="space-y-4">
             <div>
@@ -716,6 +737,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
           </div>
         )}
       </div>
+      <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
     </div>
   )
 }
