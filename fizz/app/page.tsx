@@ -41,6 +41,7 @@ function FizzApp() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [prefillVenueId, setPrefillVenueId] = useState<string | undefined>()
   const [prefillRecipient, setPrefillRecipient] = useState<PrefillRecipient | undefined>()
+  const [initialCategory, setInitialCategory] = useState<string | undefined>()
 
   // Overlay modals
   const [showNotifications, setShowNotifications] = useState(false)
@@ -191,7 +192,7 @@ function FizzApp() {
         {activeTab === 'home' && (
           <HomeTab
             onSendFizz={handleSendFizz}
-            onDiscover={() => setActiveTab('sips')}
+            onDiscover={(category?: string) => { setInitialCategory(category); setActiveTab('sips') }}
           />
         )}
         {activeTab === 'feed' && (
@@ -202,6 +203,8 @@ function FizzApp() {
             onSendFizz={handleSendFizz}
             savedGoogleVenues={savedGoogleVenues}
             onSavedVenuesChange={refreshSavedVenues}
+            initialCategory={initialCategory}
+            onCategoryConsumed={() => setInitialCategory(undefined)}
           />
         )}
         {activeTab === 'send' && (

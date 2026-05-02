@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Flame, Clock } from 'lucide-react'
-import { Venue, FIZZ_CATEGORIES, FIZZ_CITIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
+import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Clock } from 'lucide-react'
+import { Venue, FIZZ_CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface HomeTabProps {
   onSendFizz?: (venueId?: string) => void
-  onDiscover?: () => void
+  onDiscover?: (category?: string) => void
 }
 
 const FIZZ_TYPE_LABEL: Record<string, { label: string; color: string }> = {
@@ -47,10 +47,9 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
 
-  const [selectedCity, setSelectedCity] = useState(FIZZ_CITIES[0])
   const [venues, setVenues] = useState<Venue[]>([])
   const [promotions, setPromotions] = useState<any[]>([])
-  const [activity, setActivity] = useState<any[]>([])
+  const [detectedCity, setDetectedCity] = useState('Your Area')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,29 +58,45 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
     try {
       const [venuesRes, promoRes] = await Promise.allSettled([
         axios.get(`${API_URL}/venues`, {
-          params: { city: selectedCity, limit: 10 },
+          params: { limit: 10 },
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API_URL}/venues/promotions/active`, {
-          params: { city: selectedCity },
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
 
       if (venuesRes.status === 'fulfilled') {
         const all = venuesRes.value.data.venues || venuesRes.value.data || []
-        setVenues(all.filter(isFizzVenue).slice(0, 8))
+        const filtered = all.filter(isFizzVenue)
+        setVenues(filtered.slice(0, 8))
+        // Detect city from venue data
+        const firstCity = filtered.find((v: any) => v.city || v.address?.city)
+        if (firstCity) setDetectedCity((firstCity as any).city || (firstCity as any).address?.city)
       }
       if (promoRes.status === 'fulfilled') {
-        const promos = promoRes.value.data.promotions || promoRes.value.data || []
-        setPromotions(promos.slice(0, 4))
+        const raw = promoRes.value.data.promotions || promoRes.value.data || []
+        // API returns venue objects with nested promotions — flatten to individual promo items
+        const flattened: any[] = []
+        raw.forEach((item: any) => {
+          if (item.promotions && Array.isArray(item.promotions)) {
+            // Venue object with nested promotions
+            item.promotions.forEach((p: any) => {
+              flattened.push({ ...p, venueId: item._id, venueName: item.name })
+            })
+          } else {
+            // Already a flat promotion object
+            flattened.push(item)
+          }
+        })
+        setPromotions(flattened.slice(0, 4))
       }
     } catch {
       setError('Could not load venues. Check your connection and try again.')
     } finally {
       setLoading(false)
     }
-  }, [API_URL, token, selectedCity])
+  }, [API_URL, token])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -157,42 +172,10 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         </div>
       </div>
 
-      {/* Dirty Soda featured strip */}
-      <div className="px-4 mb-4">
-        <div className="rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden cursor-pointer" style={{ background: 'linear-gradient(90deg,#231C18,#1C1810)', border: '1px solid rgba(255,95,87,0.22)' }} onClick={() => onDiscover?.()}>
-          <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-20 text-7xl pr-3 pointer-events-none select-none">🧋</div>
-          <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl" style={{ background: 'rgba(255,95,87,0.15)' }}>🧋</div>
-          <div className="flex-1 min-w-0 relative z-10">
-            <div className="dirty-soda-badge inline-block mb-1" style={{ fontSize: 10, padding: '2px 8px' }}>VIRAL TREND</div>
-            <p className="font-bold text-white text-[14px] leading-tight">Dirty Soda Shops Near You</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Soda + cream + your fave flavors</p>
-          </div>
-          <ChevronRight className="w-4 h-4 flex-shrink-0 relative z-10" style={{ color: 'rgba(255,154,87,0.70)' }} />
-        </div>
-      </div>
-
-      {/* City tabs */}
-      <div className="px-4 mb-4">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {FIZZ_CITIES.map(city => (
-            <button
-              key={city}
-              onClick={() => setSelectedCity(city)}
-              className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-              style={selectedCity === city
-                ? { background: '#C8F135', color: '#1A1A2E' }
-                : { background: '#252540', color: 'rgba(255,255,255,0.5)' }
-              }
-            >
-              {city}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {error && (
-        <div className="mx-4 mb-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
+        <div className="mx-4 mb-4 flex items-center justify-between px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
           <span>{error}</span>
+          <button onClick={() => { setError(null); fetchData() }} className="font-bold text-xs ml-3 flex-shrink-0" style={{ color: '#C8F135' }}>Retry</button>
         </div>
       )}
 
@@ -201,9 +184,9 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         <div className="flex items-center justify-between px-4 mb-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" style={{ color: '#C8F135' }} />
-            <h2 className="font-bold text-white text-base">Trending in {selectedCity}</h2>
+            <h2 className="font-bold text-white text-base">Trending in {detectedCity}</h2>
           </div>
-          <button onClick={onDiscover} className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#C8F135' }}>
+          <button onClick={() => onDiscover?.()} className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#C8F135' }}>
             See all <ChevronRight className="w-3 h-3" />
           </button>
         </div>
@@ -221,8 +204,8 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         ) : (
           <div className="mx-4 py-6 text-center fizz-card">
             <p className="text-3xl mb-2">🫧</p>
-            <p className="text-white/40 text-sm">No venues yet in {selectedCity}</p>
-            <p className="text-white/25 text-xs mt-1">Check back soon or try another city</p>
+            <p className="text-white/40 text-sm">No venues yet in {detectedCity}</p>
+            <p className="text-white/25 text-xs mt-1">Check back soon — new spots are added daily</p>
           </div>
         )}
       </section>
@@ -239,7 +222,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
               const typeInfo = FIZZ_TYPE_LABEL[promo.type]
               const timeLeft = getTimeLeft(promo)
               return (
-                <div key={promo._id} className="fizz-card p-4 flex items-start gap-3">
+                <div key={promo._id} className="fizz-card p-4 flex items-start gap-3 cursor-pointer hover:border-lime-fizz/20 transition-all active:scale-[0.98]" onClick={() => onSendFizz?.(promo.venueId || promo._id)}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(255,95,87,0.15)' }}>
                     🎉
                   </div>
@@ -271,13 +254,13 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
       )}
 
       {/* Quick categories */}
-      <section className="px-4 mb-6">
+      <section className="px-4 pb-4">
         <h2 className="font-bold text-white text-sm mb-3">Browse by Category</h2>
         <div className="grid grid-cols-4 gap-2">
           {FIZZ_CATEGORIES.map(cat => (
             <button
               key={cat}
-              onClick={onDiscover}
+              onClick={() => onDiscover?.(cat)}
               className="hover:border-lime-fizz/30 transition-all flex flex-col items-center gap-1.5 p-2"
               style={{ background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}
             >

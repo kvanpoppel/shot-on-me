@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import {
   Wallet,
   UserPlus,
-  MapPin,
   Clock,
   ArrowRight,
   Users,
@@ -44,21 +43,9 @@ interface QuickDeal {
   distance?: string
 }
 
-interface AIRecommendation {
-  id: string
-  venue: {
-    _id: string
-    name: string
-  }
-  reason: string
-  confidence: number
-  source: 'friends' | 'time' | 'trending'
-}
-
 export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onViewVenue, onOpenAddFunds }: HomeTabProps) {
   const { token, user } = useAuth()
   const userId = user?.id || (user as any)?._id || null
-  const aiEnabled = (user as any)?.notificationPreferences?.aiPersonalizationEnabled ?? true
   const { socket } = useSocket()
   const API_URL = useApiUrl()
   const [walletBalance, setWalletBalance] = useState(0)
@@ -67,18 +54,8 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   const [trendingVenuesActivity, setTrendingVenuesActivity] = useState<any[]>([])
   const [nearbyFriends, setNearbyFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([])
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([])
   const [showFindFriends, setShowFindFriends] = useState(false)
-
-  const getVenueBadge = (venue: any) => {
-    if (!venue) return null
-    if (venue.isFeatured) return { label: 'Featured', className: 'bg-primary-500/20 text-primary-400 border-primary-500/40' }
-    if (venue.subscriptionTier === 'enterprise') return { label: 'Enterprise', className: 'bg-purple-500/20 text-purple-300 border-purple-500/40' }
-    if (venue.subscriptionTier === 'premium') return { label: 'AI Optimized', className: 'bg-primary-500/20 text-primary-400 border-primary-500/40' }
-    return null
-  }
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
@@ -144,99 +121,6 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
     } catch (error) {
       console.error('Failed to fetch featured venues:', error)
       setFeaturedVenues([])
-    }
-  }
-
-  // AI-powered personalized recommendations
-  useEffect(() => {
-    if (!aiEnabled) {
-      setAiRecommendations([])
-      return
-    }
-    if (token && user && quickDeals.length > 0) {
-      generateAIRecommendations()
-    }
-  }, [token, user, quickDeals, nearbyFriends, aiEnabled])
-
-  const generateAIRecommendations = async () => {
-    try {
-      // AI logic: Recommend deals based on:
-      // 1. Time of day (happy hours in evening)
-      // 2. Nearby friends' activity
-      // 3. User's past venue preferences
-      // 4. Trending venues with high activity
-      
-      const now = new Date()
-      const hour = now.getHours()
-      const recommendations: AIRecommendation[] = []
-
-      // Time-based recommendations
-      if (hour >= 17 && hour <= 22) {
-        // Evening - prioritize happy hours
-        const happyHours = quickDeals.filter(d => d.promotion.type === 'happy-hour')
-        recommendations.push(
-          ...happyHours.slice(0, 2).map((deal) => ({
-            id: `time-${deal.venue._id}`,
-            venue: {
-              _id: deal.venue._id,
-              name: deal.venue.name
-            },
-            reason: `Great timing: ${deal.promotion.title}`,
-            confidence: 82,
-            source: 'time' as const
-          }))
-        )
-      }
-
-      // Friend activity-based recommendations
-      if (nearbyFriends.length > 0) {
-        const friendVenues = trendingVenuesActivity.filter(v => 
-          nearbyFriends.some(f => f.currentVenue === v._id)
-        )
-        recommendations.push(
-          ...friendVenues.slice(0, 2).map((venue: any) => {
-            const friendsAtVenue = nearbyFriends.filter(f => f.currentVenue === venue._id).length
-            return {
-              id: `friends-${venue._id}`,
-              venue: {
-                _id: venue._id,
-                name: venue.name
-              },
-              reason: `${friendsAtVenue} friend${friendsAtVenue !== 1 ? 's' : ''} active here now`,
-              confidence: Math.min(98, 75 + friendsAtVenue * 8),
-              source: 'friends' as const
-            }
-          })
-        )
-      }
-
-      // Trending venues with high activity
-      const trending = trendingVenuesActivity
-        .filter(v => v.activity && v.activity.totalActivity > 5)
-        .slice(0, 2)
-      recommendations.push(
-        ...trending.map((venue: any) => ({
-          id: `trending-${venue._id}`,
-          venue: {
-            _id: venue._id,
-            name: venue.name
-          },
-          reason: `${venue.activity?.totalActivity || 0} actions in the last 24h`,
-          confidence: 70,
-          source: 'trending' as const
-        }))
-      )
-
-      // Remove duplicates by venue, prioritize confidence, and limit to top 3
-      const byVenue = new Map<string, AIRecommendation>()
-      recommendations
-        .sort((a, b) => b.confidence - a.confidence)
-        .forEach((rec) => {
-          if (!byVenue.has(rec.venue._id)) byVenue.set(rec.venue._id, rec)
-        })
-      setAiRecommendations(Array.from(byVenue.values()).slice(0, 3))
-    } catch (error) {
-      console.error('Error generating AI recommendations:', error)
     }
   }
 
@@ -490,24 +374,6 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
     return `${minutes}m left`
   }
 
-  // Filter venues based on search (memoized)
-  const filteredDeals = useMemo(() =>
-    searchQuery
-      ? quickDeals.filter(deal =>
-          deal.venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          deal.promotion.title.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : quickDeals,
-    [quickDeals, searchQuery]
-  )
-
-  const filteredTrending = useMemo(() => {
-    const base = trendingVenuesActivity.length > 0 ? trendingVenuesActivity : trendingVenues
-    return searchQuery
-      ? base.filter((venue: any) => venue.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      : base
-  }, [trendingVenuesActivity, trendingVenues, searchQuery])
-
   // Show loading only for initial load
   if (!isMounted || (loading && hasFetchedRef.current === false)) {
     return (
@@ -522,9 +388,9 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
 
   // Consolidated venue items: group deals by venue (one card per venue with deal count)
   const venueItems: ({ type: 'venue-deals'; venueId: string; venueName: string; deals: QuickDeal[] } | { type: 'venue'; venue: any })[] = []
-  if (filteredDeals.length > 0) {
+  if (quickDeals.length > 0) {
     const grouped = new Map<string, QuickDeal[]>()
-    filteredDeals.forEach(deal => {
+    quickDeals.forEach(deal => {
       const vid = deal.venue._id
       if (!grouped.has(vid)) grouped.set(vid, [])
       grouped.get(vid)!.push(deal)
@@ -543,24 +409,31 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
       {/* 1. Wallet Hero */}
       <div className="px-4 pt-2 mb-5">
         {walletBalance === 0 ? (
-          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
-            <p className="text-primary-400/70 text-sm mb-0.5">Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋</p>
-            <p className="text-white font-semibold text-base mb-1">Ready to send your first shot?</p>
-            <p className="text-primary-400/60 text-xs mb-4">Add money to your wallet to buy drinks for friends at the bar.</p>
+          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
+            <p className="text-primary-400/60 text-sm mb-0.5 relative z-10">Hey there,</p>
+            <h2 className="text-[28px] font-bold text-white leading-tight relative z-10">
+              {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
+            </h2>
+            <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">Ready to send your first shot?</p>
             <button
               onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
-              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98]"
+              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] relative z-10"
             >
               + Add Money to Get Started
             </button>
-            <p className="text-center text-primary-400/40 text-xs mt-3">You can also receive shots — no balance needed</p>
+            <p className="text-center text-primary-400/40 text-xs mt-3 relative z-10">You can also receive shots — no balance needed</p>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10">
-            <p className="text-primary-400/70 text-sm mb-0.5">Hey {(user as any)?.name?.split(' ')[0] || 'there'} 👋</p>
-            <p className="text-primary-400/60 text-xs">Wallet balance</p>
-            <p className="text-4xl font-bold text-white mt-1 mb-4">${walletBalance.toFixed(2)}</p>
-            <div className="flex gap-3">
+          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
+            <p className="text-primary-400/60 text-sm mb-0.5 relative z-10">Hey there,</p>
+            <h2 className="text-[28px] font-bold text-white leading-tight relative z-10">
+              {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
+            </h2>
+            <p className="text-primary-400 text-sm font-semibold mt-2 relative z-10">Wallet Balance</p>
+            <p className="text-4xl font-bold text-white mt-1 mb-4 relative z-10">${walletBalance.toFixed(2)}</p>
+            <div className="flex gap-3 relative z-10">
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
                 className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
@@ -656,14 +529,16 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
       </div>
 
       {/* 3. Happening Now — deals + venues */}
-      {venueItems.length > 0 && (
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-bold text-primary-500">Happening Now</h2>
+      <div className="px-4 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-bold text-primary-500">Happening Now</h2>
+          {venueItems.length > 0 && (
             <button onClick={() => setActiveTab?.('map')} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
               See All <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          )}
+        </div>
+        {venueItems.length > 0 ? (
           <div className="space-y-2.5">
             {venueItems.map((item, idx) => {
               if (item.type === 'venue-deals') {
@@ -728,9 +603,47 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
               )
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-black/40 border border-primary-500/15 rounded-xl p-4 text-center">
+            <p className="text-primary-400/70 text-sm mb-2">No deals happening right now</p>
+            <button
+              onClick={() => setActiveTab?.('map')}
+              className="text-primary-500 font-semibold text-sm hover:text-primary-400 transition-all"
+            >
+              Explore venues nearby
+            </button>
+          </div>
+        )}
+      </div>
 
+      {/* 4. Vibes — quick category browse */}
+      <div className="px-4 mb-6">
+        <h2 className="text-xl font-bold text-primary-500 mb-3">Vibes</h2>
+        <div className="grid grid-cols-4 gap-2">
+          {([
+            { key: 'happyHour',      emoji: '🍻', label: 'Happy Hr' },
+            { key: 'trivia',         emoji: '🧠', label: 'Trivia' },
+            { key: 'liveMusic',      emoji: '🎸', label: 'Live Music' },
+            { key: 'karaoke',        emoji: '🎤', label: 'Karaoke' },
+            { key: 'sportsTv',       emoji: '🏈', label: 'Sports' },
+            { key: 'danceFloor',     emoji: '🕺', label: 'Dancing' },
+            { key: 'poolTables',     emoji: '🎱', label: 'Pool' },
+            { key: 'outdoorSeating', emoji: '🌅', label: 'Outdoor' },
+          ] as const).map(({ key, emoji, label }) => (
+            <button
+              key={key}
+              onClick={() => {
+                try { localStorage.setItem('som-vibe-jump', key) } catch {}
+                setActiveTab?.('map')
+              }}
+              className="bg-black/50 border border-primary-500/15 rounded-xl p-2.5 flex flex-col items-center gap-1.5 hover:border-primary-500/40 hover:bg-primary-500/5 transition-all active:scale-[0.96]"
+            >
+              <span className="text-xl">{emoji}</span>
+              <span className="text-[10px] font-semibold text-primary-400/70 text-center leading-tight">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Modals */}
       <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />

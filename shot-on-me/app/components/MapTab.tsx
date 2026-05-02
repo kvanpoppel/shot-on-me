@@ -103,6 +103,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [amenityFilters, setAmenityFilters] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
     try {
+      // One-shot vibe jump from Home tab — read and clear
+      const vibeJump = localStorage.getItem('som-vibe-jump')
+      if (vibeJump) {
+        localStorage.removeItem('som-vibe-jump')
+        return new Set([vibeJump])
+      }
       const saved = localStorage.getItem('som-amenity-filters')
       return saved ? new Set(JSON.parse(saved)) : new Set()
     } catch { return new Set() }

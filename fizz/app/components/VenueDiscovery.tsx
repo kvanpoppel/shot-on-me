@@ -55,6 +55,8 @@ interface VenueDiscoveryProps {
   onSendFizz?: (venueId?: string) => void
   savedGoogleVenues?: SavedVenue[]
   onSavedVenuesChange?: () => void
+  initialCategory?: string
+  onCategoryConsumed?: () => void
 }
 
 function isFizzVenue(venue: Venue): boolean {
@@ -76,7 +78,7 @@ const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
   'Salt Lake City': { lat: 40.7608, lng: -111.8910 },
 }
 
-export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onSavedVenuesChange }: VenueDiscoveryProps) {
+export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onSavedVenuesChange, initialCategory, onCategoryConsumed }: VenueDiscoveryProps) {
   const { token } = useAuth()
   const API_URL = useApiUrl()
   const { isLoaded } = useGoogleMaps()
@@ -121,6 +123,19 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
   }, [API_URL, token, selectedCity])
 
   useEffect(() => { fetchDbVenues() }, [fetchDbVenues])
+
+  // Apply initial category from Home tab navigation
+  useEffect(() => {
+    if (initialCategory && isLoaded) {
+      const cat = initialCategory as VenueCategory
+      if (FIZZ_CATEGORIES.includes(cat)) {
+        setSelectedCategory(cat)
+        const center = CITY_CENTERS[selectedCity] || mapCenter
+        searchPlaces(cat, center)
+      }
+      onCategoryConsumed?.()
+    }
+  }, [initialCategory, isLoaded])
 
   // Update map center when city changes
   useEffect(() => {
