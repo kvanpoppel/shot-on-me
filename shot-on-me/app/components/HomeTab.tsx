@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import {
-  Wallet,
   UserPlus,
   Clock,
   ArrowRight,
@@ -416,13 +415,22 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
               {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
             </h2>
             <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">Ready to send your first shot?</p>
-            <button
-              onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
-              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] relative z-10"
-            >
-              + Add Money to Get Started
-            </button>
-            <p className="text-center text-primary-400/40 text-xs mt-3 relative z-10">You can also receive shots — no balance needed</p>
+            <div className="flex gap-3 relative z-10">
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
+                className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Send className="w-4 h-4" />
+                Send a Shot
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" />
+                Invite Friends
+              </button>
+            </div>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
@@ -441,11 +449,11 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
                 Send a Shot
               </button>
               <button
-                onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
+                onClick={() => setShowInviteModal(true)}
                 className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
-                <Wallet className="w-4 h-4" />
-                Add Money
+                <UserPlus className="w-4 h-4" />
+                Invite Friends
               </button>
             </div>
           </div>
