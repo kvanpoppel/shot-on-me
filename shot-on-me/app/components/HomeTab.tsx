@@ -431,8 +431,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
             <h2 className="text-[28px] font-bold text-white leading-tight relative z-10">
               {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
             </h2>
-            <p className="text-primary-400 text-sm font-semibold mt-2 relative z-10">Wallet Balance</p>
-            <p className="text-4xl font-bold text-white mt-1 mb-4 relative z-10">${walletBalance.toFixed(2)}</p>
+            <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">What are you buying tonight?</p>
             <div className="flex gap-3 relative z-10">
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
