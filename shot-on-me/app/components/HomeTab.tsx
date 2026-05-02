@@ -460,6 +460,17 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         )}
       </div>
 
+      {/* Find Friends row */}
+      <div className="px-4 mb-5">
+        <button
+          onClick={() => setShowFindFriends(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-primary-500/30 text-primary-500 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98]"
+        >
+          <Users className="w-4 h-4" />
+          Find Friends on Shot On Me
+        </button>
+      </div>
+
       {/* 2. Friends Out Tonight — always visible */}
       <div className="px-4 mb-6">
         <div className="flex items-center justify-between mb-3">

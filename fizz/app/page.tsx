@@ -193,6 +193,7 @@ function FizzApp() {
           <HomeTab
             onSendFizz={handleSendFizz}
             onDiscover={(category?: string) => { setInitialCategory(category); setActiveTab('sips') }}
+            onFindFriends={() => setShowFindFriends(true)}
           />
         )}
         {activeTab === 'feed' && (
