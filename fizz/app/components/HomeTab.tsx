@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Clock } from 'lucide-react'
+import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Clock, UserPlus } from 'lucide-react'
+import InviteFriendsModal from './InviteFriendsModal'
 import { Venue, FIZZ_CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface HomeTabProps {
@@ -52,6 +53,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
   const [detectedCity, setDetectedCity] = useState('Your Area')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -172,6 +174,18 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         </div>
       </div>
 
+      {/* Invite friends row */}
+      <div className="px-4 mb-4">
+        <button
+          onClick={() => setShowInvite(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+          style={{ background: 'rgba(200,241,53,0.10)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.12)' }}
+        >
+          <UserPlus className="w-4 h-4" />
+          Invite Friends to Fizz
+        </button>
+      </div>
+
       {error && (
         <div className="mx-4 mb-4 flex items-center justify-between px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(255,95,87,0.15)', color: '#FF5F57' }}>
           <span>{error}</span>
@@ -271,6 +285,7 @@ export default function HomeTab({ onSendFizz, onDiscover }: HomeTabProps) {
         </div>
       </section>
       </div>
+      <InviteFriendsModal isOpen={showInvite} onClose={() => setShowInvite(false)} />
     </div>
   )
 }
