@@ -257,10 +257,6 @@ function Home() {
               setAutoOpenSendForm(true)
               setActiveTab('wallet')
             }}
-            onOpenAddFunds={() => {
-              setAutoOpenAddFunds(true)
-              setActiveTab('wallet')
-            }}
           />
         )}
         {activeTab === 'wallet' && <WalletTab

@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
 import {
-  Wallet,
   Clock,
   ArrowRight,
   Users,
@@ -21,7 +20,6 @@ interface HomeTabProps {
   onViewProfile?: (userId: string) => void
   onSendMoney?: () => void
   onViewVenue?: (venueId: string) => void
-  onOpenAddFunds?: () => void
 }
 
 interface QuickDeal {
@@ -41,7 +39,7 @@ interface QuickDeal {
   distance?: string
 }
 
-export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onViewVenue, onOpenAddFunds }: HomeTabProps) {
+export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onViewVenue }: HomeTabProps) {
   const { token, user } = useAuth()
   const userId = user?.id || (user as any)?._id || null
   const { socket } = useSocket()
@@ -405,48 +403,21 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
 
       {/* 1. Wallet Hero */}
       <div className="px-4 pt-2 mb-5">
-        {walletBalance === 0 ? (
-          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
             <p className="text-primary-400/60 text-sm mb-0.5 relative z-10">Hey there,</p>
             <h2 className="text-[28px] font-bold text-white leading-tight relative z-10">
               {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
             </h2>
-            <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">Ready to send your first shot?</p>
+            <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">{walletBalance === 0 ? 'Ready to send your first shot?' : 'What are you buying tonight?'}</p>
             <button
-              onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
-              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] relative z-10"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
+              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 relative z-10"
             >
-              + Add Money to Get Started
+              <Send className="w-4 h-4" />
+              Send a Shot
             </button>
-            <p className="text-center text-primary-400/40 text-xs mt-3 relative z-10">You can also receive shots — no balance needed</p>
           </div>
-        ) : (
-          <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
-            <p className="text-primary-400/60 text-sm mb-0.5 relative z-10">Hey there,</p>
-            <h2 className="text-[28px] font-bold text-white leading-tight relative z-10">
-              {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
-            </h2>
-            <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">What are you buying tonight?</p>
-            <div className="flex gap-3 relative z-10">
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
-                className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
-              >
-                <Send className="w-4 h-4" />
-                Send a Shot
-              </button>
-              <button
-                onClick={() => { if (onOpenAddFunds) onOpenAddFunds(); else setActiveTab?.('wallet') }}
-                className="flex-1 border border-primary-500/40 text-primary-500 font-semibold py-3 rounded-xl text-sm hover:border-primary-500/60 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
-              >
-                <Wallet className="w-4 h-4" />
-                Add Money
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Find Friends row */}
