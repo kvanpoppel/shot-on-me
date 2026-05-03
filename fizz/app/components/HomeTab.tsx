@@ -174,7 +174,7 @@ export default function HomeTab({ onSendFizz, onDiscover, onFindFriends }: HomeT
         </div>
       </div>
 
-      {/* Find Friends */}
+      {/* Invite Friends */}
       <div className="px-4 mb-4">
         <button
           onClick={onFindFriends}
@@ -182,7 +182,7 @@ export default function HomeTab({ onSendFizz, onDiscover, onFindFriends }: HomeT
           style={{ background: 'rgba(200,241,53,0.10)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.12)' }}
         >
           <Users className="w-4 h-4" />
-          Find Friends
+          Invite Friends to Fizz
         </button>
       </div>
 
