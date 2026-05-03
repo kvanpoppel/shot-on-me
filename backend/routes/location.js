@@ -1,5 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
+const CheckIn = require('../models/CheckIn');
+const Payment = require('../models/Payment');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -186,7 +188,7 @@ router.get('/check-proximity', auth, async (req, res) => {
   }
 });
 
-// Get nearby friends
+// Get friends out tonight — based on check-ins and transactions, not live location
 router.get('/friends', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -194,52 +196,77 @@ router.get('/friends', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get user's location
-    if (!user.location || !user.location.latitude || !user.location.longitude) {
-      return res.json({ friends: [] });
-    }
-
-    // Get friends list
     const friendIds = user.friends || [];
     if (friendIds.length === 0) {
       return res.json({ friends: [] });
     }
 
-    // Find friends with locations
-    const friends = await User.find({
-      _id: { $in: friendIds },
-      'location.latitude': { $exists: true },
-      'location.longitude': { $exists: true },
-      'location.isVisible': true
-    }).select('name firstName lastName profilePicture location');
+    // Only show activity from the last 3 hours
+    const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
-    // Calculate distances and add to response
-    const friendsWithDistance = friends.map(friend => {
-      const distance = calculateDistance(
-        user.location.latitude,
-        user.location.longitude,
-        friend.location.latitude,
-        friend.location.longitude
-      );
-      
-      // Calculate time since last update
-      const lastUpdated = friend.location?.lastUpdated ? new Date(friend.location.lastUpdated) : new Date()
-      const timeSinceUpdate = Date.now() - lastUpdated.getTime()
-      const minutesAgo = Math.floor(timeSinceUpdate / 60000)
-      const hoursAgo = Math.floor(minutesAgo / 60)
-      
-      let timeLabel = 'now'
-      if (minutesAgo < 1) {
-        timeLabel = 'now'
-      } else if (minutesAgo < 60) {
-        timeLabel = `${minutesAgo}m`
-      } else if (hoursAgo < 24) {
-        timeLabel = `${hoursAgo}h`
-      } else {
-        const daysAgo = Math.floor(hoursAgo / 24)
-        timeLabel = `${daysAgo}d`
+    // Fetch recent check-ins and venue transactions in parallel
+    const [recentCheckIns, recentPayments] = await Promise.all([
+      CheckIn.find({
+        user: { $in: friendIds },
+        createdAt: { $gte: cutoff }
+      }).populate('venue', 'name address').sort({ createdAt: -1 }),
+      Payment.find({
+        senderId: { $in: friendIds },
+        venueId: { $exists: true, $ne: null },
+        status: 'succeeded',
+        createdAt: { $gte: cutoff }
+      }).populate('venueId', 'name address').sort({ createdAt: -1 })
+    ]);
+
+    // Build a map of friend -> most recent venue activity
+    const friendActivity = new Map();
+
+    // Check-ins take priority
+    for (const ci of recentCheckIns) {
+      const fid = ci.user.toString();
+      if (!friendActivity.has(fid)) {
+        friendActivity.set(fid, {
+          venueId: ci.venue?._id,
+          venueName: ci.venue?.name,
+          activityTime: ci.createdAt,
+          source: 'checkin'
+        });
       }
-      
+    }
+
+    // Fill in from transactions if no check-in
+    for (const pay of recentPayments) {
+      const fid = pay.senderId.toString();
+      if (!friendActivity.has(fid)) {
+        friendActivity.set(fid, {
+          venueId: pay.venueId?._id,
+          venueName: pay.venueId?.name,
+          activityTime: pay.createdAt,
+          source: 'transaction'
+        });
+      }
+    }
+
+    if (friendActivity.size === 0) {
+      return res.json({ friends: [] });
+    }
+
+    // Fetch friend profiles
+    const activeFriendIds = Array.from(friendActivity.keys());
+    const friends = await User.find({
+      _id: { $in: activeFriendIds }
+    }).select('name firstName lastName profilePicture');
+
+    const result = friends.map(friend => {
+      const activity = friendActivity.get(friend._id.toString());
+      const minutesAgo = Math.floor((Date.now() - activity.activityTime.getTime()) / 60000);
+      let timeLabel = 'now';
+      if (minutesAgo >= 60) {
+        timeLabel = `${Math.floor(minutesAgo / 60)}h ago`;
+      } else if (minutesAgo >= 1) {
+        timeLabel = `${minutesAgo}m ago`;
+      }
+
       return {
         _id: friend._id,
         id: friend._id,
@@ -247,20 +274,20 @@ router.get('/friends', auth, async (req, res) => {
         firstName: friend.firstName || friend.name?.split(' ')[0] || '',
         lastName: friend.lastName || friend.name?.split(' ').slice(1).join(' ') || '',
         profilePicture: friend.profilePicture,
-        location: friend.location,
-        distance: distance.toFixed(1) + ' miles',
-        lastUpdated: friend.location?.lastUpdated || lastUpdated,
-        timeLabel: timeLabel
+        currentVenueName: activity.venueName,
+        currentVenueId: activity.venueId,
+        activityTime: activity.activityTime,
+        timeLabel
       };
     });
 
-    // Sort by distance
-    friendsWithDistance.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+    // Sort by most recent activity first
+    result.sort((a, b) => b.activityTime - a.activityTime);
 
-    res.json({ friends: friendsWithDistance });
+    res.json({ friends: result });
   } catch (error) {
-    console.error('Error fetching nearby friends:', error);
-    res.status(500).json({ message: 'Server error'});
+    console.error('Error fetching friends out tonight:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

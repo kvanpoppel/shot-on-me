@@ -466,11 +466,10 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
                     <p className="text-xs text-primary-400/60">
                       {friend.currentVenueName
                         ? `📍 ${friend.currentVenueName}`
-                        : friend.distance
-                          ? typeof friend.distance === 'number'
-                            ? friend.distance < 0.1 ? `${Math.round(friend.distance * 5280)}ft away` : `${friend.distance.toFixed(1)}mi away`
-                            : String(friend.distance).replace('miles', 'mi')
-                          : 'Out tonight'}
+                        : 'Out tonight'}
+                      {friend.timeLabel && friend.timeLabel !== 'now' && (
+                        <span className="ml-1.5 text-primary-400/40">· {friend.timeLabel}</span>
+                      )}
                     </p>
                   </div>
                 </div>
