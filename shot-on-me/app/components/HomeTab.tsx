@@ -52,6 +52,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   const [loading, setLoading] = useState(true)
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([])
   const [showFindFriends, setShowFindFriends] = useState(false)
+  const [myFriends, setMyFriends] = useState<any[]>([])
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
@@ -148,6 +149,25 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
       if (userResponse.status === 'fulfilled') {
         const userData = userResponse.value.data.user
         setWalletBalance(userData.wallet?.balance || 0)
+
+        // Fetch friend profiles
+        const friendIds = userData.friends || []
+        if (friendIds.length > 0) {
+          Promise.allSettled(
+            friendIds.slice(0, 20).map((fid: string) =>
+              axios.get(`${API_URL}/users/${fid}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: 5000
+              })
+            )
+          ).then(results => {
+            const profiles = results
+              .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+              .map(r => r.value.data.user || r.value.data)
+              .filter(Boolean)
+            setMyFriends(profiles)
+          })
+        }
       }
       
       let venues: any[] = []
@@ -484,19 +504,44 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
           </div>
         ) : (
           <div className="bg-black/40 border border-primary-500/15 rounded-xl p-4 text-center">
-            <p className="text-primary-400/70 text-sm mb-3">No friends out yet tonight</p>
-            <button
-              onClick={() => setShowFindFriends(true)}
-              className="w-full border border-primary-500/30 text-primary-500 font-semibold py-2.5 rounded-xl text-sm hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
-            >
-              <Users className="w-4 h-4" />
-              Invite Friends
-            </button>
+            <p className="text-primary-400/70 text-sm">No friends out yet tonight</p>
           </div>
         )}
       </div>
 
-      {/* 3. Happening Now — deals + venues */}
+      {/* 3. My Friends */}
+      {myFriends.length > 0 && (
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold text-primary-500">My Friends</h2>
+            <button onClick={() => setShowFindFriends(true)} className="text-primary-400 hover:text-primary-500 text-sm flex items-center gap-1 font-medium">
+              See All <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {myFriends.slice(0, 10).map((friend: any) => (
+              <div
+                key={friend._id || friend.id}
+                onClick={() => onViewProfile?.(friend._id || friend.id)}
+                className="flex-shrink-0 flex flex-col items-center gap-1.5 cursor-pointer w-16"
+              >
+                <div className="w-14 h-14 border-2 border-primary-500/30 rounded-full overflow-hidden">
+                  {friend.profilePicture ? (
+                    <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                      <span className="text-primary-500 font-medium text-sm">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-primary-400/80 font-medium text-center truncate w-full">{friend.firstName}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Happening Now — deals + venues */}
       <div className="px-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-bold text-primary-500">Happening Now</h2>
