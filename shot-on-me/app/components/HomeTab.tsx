@@ -420,14 +420,14 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
           </div>
       </div>
 
-      {/* Find Friends row */}
+      {/* Invite Friends row */}
       <div className="px-4 mb-5">
         <button
           onClick={() => setShowFindFriends(true)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-primary-500/30 text-primary-500 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98]"
         >
           <Users className="w-4 h-4" />
-          Find Friends on Shot On Me
+          Invite Friends to Shot On Me
         </button>
       </div>
 
@@ -491,7 +491,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
               className="w-full border border-primary-500/30 text-primary-500 font-semibold py-2.5 rounded-xl text-sm hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
               <Users className="w-4 h-4" />
-              Find Friends
+              Invite Friends
             </button>
           </div>
         )}
