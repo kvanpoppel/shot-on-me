@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
-import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Clock, UserPlus, Users } from 'lucide-react'
-import InviteFriendsModal from './InviteFriendsModal'
+import { MapPin, Zap, ChevronRight, TrendingUp, Gift, Clock, Users } from 'lucide-react'
 import { Venue, FIZZ_CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES } from '../types'
 
 interface HomeTabProps {
@@ -54,7 +53,7 @@ export default function HomeTab({ onSendFizz, onDiscover, onFindFriends }: HomeT
   const [detectedCity, setDetectedCity] = useState('Your Area')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showInvite, setShowInvite] = useState(false)
+
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -175,23 +174,15 @@ export default function HomeTab({ onSendFizz, onDiscover, onFindFriends }: HomeT
         </div>
       </div>
 
-      {/* Find + Invite friends */}
-      <div className="px-4 mb-4 flex gap-2">
+      {/* Find Friends */}
+      <div className="px-4 mb-4">
         <button
           onClick={onFindFriends}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
           style={{ background: 'rgba(200,241,53,0.10)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.12)' }}
         >
           <Users className="w-4 h-4" />
           Find Friends
-        </button>
-        <button
-          onClick={() => setShowInvite(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-          style={{ background: '#C8F135', color: '#1A1A2E' }}
-        >
-          <UserPlus className="w-4 h-4" />
-          Invite Friends
         </button>
       </div>
 
@@ -294,7 +285,6 @@ export default function HomeTab({ onSendFizz, onDiscover, onFindFriends }: HomeT
         </div>
       </section>
       </div>
-      <InviteFriendsModal isOpen={showInvite} onClose={() => setShowInvite(false)} />
     </div>
   )
 }
