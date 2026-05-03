@@ -146,14 +146,14 @@ export const OCCASION_TAGS = [
 ]
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  'Dirty Soda Shop': '🧋',
+  'Dirty Soda Shop': '🥤',
   'Coffee Shop':     '☕',
-  'Juice Bar':       '🥤',
+  'Juice Bar':       '🧃',
   'Soda Shop':       '🫧',
-  'Tea House':       '🍵',
+  'Tea House':       '🧋',
   'Smoothie Bar':    '🥝',
-  'Bakery':          '🥐',
-  'Cafe':            '🫶',
+  'Bakery':          '🧁',
+  'Cafe':            '🥐',
   'Ice Cream':       '🍦',
   'Creamery':        '🍨',
 }
