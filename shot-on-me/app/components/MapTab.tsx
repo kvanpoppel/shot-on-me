@@ -82,6 +82,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const userLocationRef = useRef<{ lat: number; lng: number } | null>(null)
   const locationWatchRef = useRef<number | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -341,7 +342,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords
-          setUserLocation({ lat: latitude, lng: longitude })
+          const loc = { lat: latitude, lng: longitude }
+          setUserLocation(loc)
+          userLocationRef.current = loc
           reverseGeocodeCity(latitude, longitude)
           fetchWeatherData(latitude, longitude)
         },
@@ -353,7 +356,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords
-          setUserLocation({ lat: latitude, lng: longitude })
+          const loc = { lat: latitude, lng: longitude }
+          setUserLocation(loc)
+          userLocationRef.current = loc
           reverseGeocodeCity(latitude, longitude)
         },
         () => { /* ignore watch errors */ },
@@ -385,9 +390,16 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       console.log('🔍 Fetching venues from:', `${API_URL}/venues`, { skip, limit, pageNum })
       console.log('🔍 User info:', { userId: (user as any)?.id || (user as any)?._id, userType: (user as any)?.userType })
       
+      const params: any = { skip, limit }
+      const loc = userLocationRef.current
+      if (loc) {
+        params.lat = loc.lat
+        params.lng = loc.lng
+        params.radius = 25 // miles
+      }
       const response = await axios.get(`${API_URL}/venues`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { skip, limit },
+        params,
         timeout: 10000
       })
       
@@ -483,6 +495,15 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       setLoadingMoreVenues(false)
     }
   }, [token, API_URL, user])
+
+  // Re-fetch venues once location becomes available (initial fetch may have gone without it)
+  const locationFetchedRef = useRef(false)
+  useEffect(() => {
+    if (userLocation && token && !locationFetchedRef.current) {
+      locationFetchedRef.current = true
+      fetchVenues(1, true)
+    }
+  }, [userLocation, token, fetchVenues])
 
   const rankVenues = useCallback((source: any[]) => {
     return [...source].sort((a: any, b: any) => {
