@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import InviteFriendsModal from './InviteFriendsModal'
 import axios from 'axios'
 import {
   Grid3x3,
@@ -14,13 +13,14 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
-  Send,
-  UserPlus,
   Settings,
   Pencil,
   X,
   Check,
-  Sparkles
+  Sparkles,
+  Flame,
+  Trophy,
+  Send,
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -69,8 +69,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const [friends, setFriends] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [activeView, setActiveView] = useState<'posts' | 'checkins' | 'friends' | 'vibe'>('posts')
-  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [activeView, setActiveView] = useState<'activity' | 'friends' | 'vibe'>('activity')
   const [venuePrefs, setVenuePrefs] = useState({
     kidsFriendly: false, dogFriendly: false, hasFood: false, byob: false,
     trivia: false, liveMusic: false, outdoorSeating: false, happyHour: false,
@@ -79,21 +78,24 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const [savingPrefs, setSavingPrefs] = useState(false)
   const [stats, setStats] = useState({
     postsCount: 0,
-    checkInsCount: 0,
+    totalCheckIns: 0,
     friendsCount: 0,
-    venuesVisited: 0
+    venuesVisited: 0,
+    points: 0,
+    checkInStreak: 0,
+    totalSent: 0,
+    totalReceived: 0,
   })
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !token) return
     if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10MB'); return }
-
     setUploadingPhoto(true)
     try {
       const formData = new FormData()
       formData.append('profilePicture', file)
-      const res = await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
+      await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       })
       if (updateUser) await updateUser({})
@@ -105,7 +107,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
     }
   }
 
-  // Load venue preferences from user object
   useEffect(() => {
     const prefs = (user as any)?.venuePreferences
     if (prefs) setVenuePrefs(p => ({ ...p, ...prefs }))
@@ -154,46 +155,75 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   const fetchPosts = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token || !user || !API_URL) return
-    
     try {
-      if (reset) {
-        setLoading(true)
-      } else {
-        setLoadingMorePosts(true)
-      }
-      
+      if (reset) setLoading(true)
+      else setLoadingMorePosts(true)
       const limit = 20
       const skip = (pageNum - 1) * limit
       const userId = user.id || (user as any)._id
-      
       const feedResponse = await axios.get(`${API_URL}/feed`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { skip, limit, userId },
         timeout: 10000
       })
-      
       const fetchedPosts = feedResponse.data.posts || []
-      
       if (reset || pageNum === 1) {
         setPosts(fetchedPosts)
       } else {
-        // Filter out duplicates when appending posts
         setPosts(prev => {
           const existingIds = new Set(prev.map(p => p._id))
           const uniqueNewPosts = fetchedPosts.filter((p: FeedPost) => !existingIds.has(p._id))
           return [...prev, ...uniqueNewPosts]
         })
       }
-      
       setPostsHasMore(feedResponse.data.hasMore !== false && fetchedPosts.length === limit)
     } catch (error) {
       console.error('Failed to fetch posts:', error)
-      if (reset || pageNum === 1) {
-        setPosts([])
-      }
+      if (reset || pageNum === 1) setPosts([])
     } finally {
       setLoading(false)
       setLoadingMorePosts(false)
+    }
+  }, [token, user, API_URL])
+
+  // Fetch real stats from /gamification/stats + friends from /users/batch
+  const fetchProfileData = useCallback(async () => {
+    if (!token || !user) return
+    try {
+      const [statsRes, userRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/gamification/stats`, { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }),
+        axios.get(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }),
+      ])
+
+      if (statsRes.status === 'fulfilled') {
+        const s = statsRes.value.data
+        setStats({
+          postsCount: s.postsCount || 0,
+          totalCheckIns: s.totalCheckIns || 0,
+          friendsCount: s.friendsCount || 0,
+          venuesVisited: s.venuesVisited || 0,
+          points: s.points || 0,
+          checkInStreak: s.checkInStreak?.current || 0,
+          totalSent: s.totalSent || 0,
+          totalReceived: s.totalReceived || 0,
+        })
+      }
+
+      if (userRes.status === 'fulfilled') {
+        const userData = userRes.value.data.user
+        const friendIds = (userData.friends || []).slice(0, 50)
+        if (friendIds.length > 0) {
+          try {
+            const batchResponse = await axios.get(`${API_URL}/users/batch`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { ids: friendIds.join(',') }
+            })
+            setFriends(batchResponse.data.users || [])
+          } catch { setFriends([]) }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile data:', error)
     }
   }, [token, user, API_URL])
 
@@ -204,17 +234,15 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
       fetchPosts(1, true)
       fetchProfileData()
     }
-  }, [token, user, fetchPosts])
+  }, [token, user, fetchPosts, fetchProfileData])
 
-  // Infinite scroll for posts
+  // Infinite scroll
   useEffect(() => {
     const handleScroll = () => {
-      if (!loadingMorePosts && postsHasMore && postsContainerRef.current) {
+      if (!loadingMorePosts && postsHasMore) {
         const scrollHeight = document.documentElement.scrollHeight
         const scrollTop = window.innerHeight + window.scrollY
-        const threshold = 500
-        
-        if (scrollTop >= scrollHeight - threshold) {
+        if (scrollTop >= scrollHeight - 500) {
           setLoadingMorePosts(true)
           setPostsPage(prev => {
             const nextPage = prev + 1
@@ -224,60 +252,14 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
         }
       }
     }
-
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadingMorePosts, postsHasMore, fetchPosts])
-
-  // Update stats when posts change
-  useEffect(() => {
-    const checkIns = posts.filter((p: FeedPost) => p.checkIn)
-    const uniqueVenues = new Set(
-      posts
-        .filter((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
-        .map((p: FeedPost) => p.checkIn?.venue?._id || p.location?.venue?._id)
-    )
-
-    setStats({
-      postsCount: posts.length,
-      checkInsCount: checkIns.length,
-      friendsCount: (user as any)?.friends?.length || 0,
-      venuesVisited: uniqueVenues.size
-    })
-  }, [posts, user])
-
-  const fetchProfileData = async () => {
-    if (!token || !user) return
-
-    try {
-      // Fetch the current user's friend list
-      const userResponse = await axios.get(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const userData = userResponse.data.user
-
-      if (userData.friends && userData.friends.length > 0) {
-        const friendIds = userData.friends.slice(0, 50) // cap at 50
-
-        // FIX: Single batch request instead of N individual requests.
-        // Previously this made up to 20 individual axios.get(`/users/${friendId}`)
-        // calls — one per friend. Now it's a single query using $in on the backend.
-        const batchResponse = await axios.get(`${API_URL}/users/batch`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { ids: friendIds.join(',') }
-        })
-        setFriends(batchResponse.data.users || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile data:', error)
-    }
-  }
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
     const date = new Date(dateString)
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
     if (seconds < 60) return `${seconds}s ago`
     const minutes = Math.floor(seconds / 60)
     if (minutes < 60) return `${minutes}m ago`
@@ -288,8 +270,13 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
     return date.toLocaleDateString()
   }
 
-  const userPosts = posts.filter(p => !p.checkIn)
-  const checkIns = posts.filter(p => p.checkIn)
+  // Vibe tags from saved preferences
+  const activeVibes = Object.entries(venuePrefs).filter(([, v]) => v).map(([k]) => k)
+  const VIBE_LABELS: Record<string, string> = {
+    kidsFriendly: '👶 Kids', dogFriendly: '🐕 Dogs', hasFood: '🍕 Food', byob: '🥂 BYOB',
+    trivia: '🎯 Trivia', liveMusic: '🎵 Music', outdoorSeating: '🌿 Patio', happyHour: '🍺 Happy Hr',
+    poolTables: '🎱 Pool', danceFloor: '🕺 Dance', sportsTv: '📺 Sports', karaoke: '🎤 Karaoke',
+  }
 
   if (loading) {
     return (
@@ -301,374 +288,267 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
-      {/* Hidden file input for photo upload */}
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handlePhotoUpload}
-      />
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
 
       {/* Profile Header */}
-      <div className="px-4 py-6 border-b border-primary-500/10">
-
-        {/* Top row: avatar + stats + icons */}
-        <div className="flex items-center space-x-6 mb-4">
-          {/* Profile Picture */}
-          <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
-            <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
-              {user?.profilePicture ? (
-                <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                  <span className="text-2xl text-primary-500 font-semibold">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
-                </div>
-              )}
-            </div>
-            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
-            </div>
-            {!user?.profilePicture && !uploadingPhoto && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
-                <Camera className="w-3 h-3 text-black" />
-              </div>
-            )}
-          </button>
-
-          {/* Stats */}
-          <div className="flex-1 flex justify-around">
-            {[
-              { value: stats.postsCount, label: 'Posts' },
-              { value: stats.friendsCount, label: 'Friends' },
-              { value: stats.checkInsCount, label: 'Check-ins' },
-              { value: stats.venuesVisited, label: 'Venues' },
-            ].map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <p className="text-lg font-semibold text-primary-500">{value}</p>
-                <p className="text-xs text-primary-400/70 font-light">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Name / username / bio — or edit form */}
+      <div className="px-4 pt-6 pb-4">
         {editing ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={editForm.firstName}
-                onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))}
-                placeholder="First name"
-                className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
-              />
-              <input
-                value={editForm.lastName}
-                onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))}
-                placeholder="Last name"
-                className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
-              />
+            <div className="flex items-center gap-4 mb-2">
+              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
+                <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                      <span className="text-2xl text-primary-500 font-semibold">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                </div>
+              </button>
+              <div className="flex-1 text-sm text-primary-400/50">Tap photo to change</div>
             </div>
-            <input
-              value={editForm.username}
-              onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
-              placeholder="username"
-              className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60"
-            />
-            <textarea
-              value={editForm.bio}
-              onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
-              placeholder="Bio (160 chars)"
-              maxLength={160}
-              rows={2}
-              className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60 resize-none"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input value={editForm.firstName} onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))} placeholder="First name" className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60" />
+              <input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Last name" className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60" />
+            </div>
+            <input value={editForm.username} onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} placeholder="username" className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60" />
+            <textarea value={editForm.bio} onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))} placeholder="Bio (160 chars)" maxLength={160} rows={2} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60 resize-none" />
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={saving} className="flex-1 bg-primary-500 text-black font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Save
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save
               </button>
-              <button onClick={() => setEditing(false)} className="flex-1 border border-primary-500/30 text-primary-400 font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:border-primary-500/50 transition-all">
-                <X className="w-4 h-4" />
-                Cancel
+              <button onClick={() => setEditing(false)} className="flex-1 border border-primary-500/30 text-primary-400 font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
+                <X className="w-4 h-4" /> Cancel
               </button>
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base font-semibold text-primary-500 tracking-tight">
-                {user?.firstName} {user?.lastName}
-              </h2>
-              {user?.username && <p className="text-sm text-primary-400/70 mt-0.5">@{user.username}</p>}
-              {(user as any)?.bio && <p className="text-sm text-primary-400/60 mt-1.5 leading-snug">{(user as any).bio}</p>}
-              {!user?.profilePicture && (
-                <button onClick={() => photoInputRef.current?.click()} className="mt-3 w-full border border-primary-500/25 rounded-xl px-4 py-2.5 flex items-center gap-3 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all text-left">
-                  <Camera className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-primary-500 text-xs font-semibold">Add a profile photo</p>
-                    <p className="text-primary-400/50 text-[10px]">Friends and venues will recognize you faster</p>
+          <>
+            {/* Avatar + name + actions */}
+            <div className="flex items-center gap-4 mb-4">
+              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
+                <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                      <span className="text-2xl text-primary-500 font-semibold">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                </div>
+                {!user?.profilePicture && !uploadingPhoto && (
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
+                    <Camera className="w-3 h-3 text-black" />
                   </div>
-                </button>
-              )}
-            </div>
-            {/* Edit + Settings icons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={openEdit} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Edit profile">
-                <Pencil className="w-4 h-4" />
+                )}
               </button>
-              {onOpenSettings && (
-                <button onClick={onOpenSettings} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Settings">
-                  <Settings className="w-4 h-4" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-white">{user?.firstName} {user?.lastName}</h2>
+                {user?.username && <p className="text-sm text-primary-400/60">@{user.username}</p>}
+                {(user as any)?.bio && <p className="text-sm text-primary-400/50 mt-1 leading-snug line-clamp-2">{(user as any).bio}</p>}
+              </div>
+              <div className="flex flex-col gap-2 flex-shrink-0">
+                <button onClick={openEdit} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Edit profile">
+                  <Pencil className="w-4 h-4" />
                 </button>
-              )}
+                {onOpenSettings && (
+                  <button onClick={onOpenSettings} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Settings">
+                    <Settings className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[
+                { value: stats.postsCount, label: 'Posts', color: 'text-primary-500' },
+                { value: stats.friendsCount, label: 'Friends', color: 'text-primary-500' },
+                { value: stats.totalCheckIns, label: 'Check-ins', color: 'text-primary-500' },
+                { value: stats.venuesVisited, label: 'Venues', color: 'text-primary-500' },
+              ].map(({ value, label, color }) => (
+                <div key={label} className="text-center py-2.5 rounded-xl bg-primary-500/5 border border-primary-500/10">
+                  <p className={`text-lg font-bold ${color}`}>{value}</p>
+                  <p className="text-[10px] text-primary-400/50 font-medium">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Highlights strip */}
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {stats.checkInStreak > 0 && (
+                <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs font-semibold text-orange-400">{stats.checkInStreak} day streak</span>
+                </div>
+              )}
+              {stats.points > 0 && (
+                <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-xs font-semibold text-yellow-400">{stats.points} pts</span>
+                </div>
+              )}
+              {stats.totalSent > 0 && (
+                <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20">
+                  <Send className="w-3.5 h-3.5 text-primary-500" />
+                  <span className="text-xs font-semibold text-primary-500">{stats.totalSent} sent</span>
+                </div>
+              )}
+              {activeVibes.slice(0, 3).map(v => (
+                <div key={v} className="flex-shrink-0 px-3 py-1.5 rounded-full bg-primary-500/5 border border-primary-500/10">
+                  <span className="text-xs text-primary-400/60">{VIBE_LABELS[v]}</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Invite Friends — compact row */}
-      <div className="px-4 py-2">
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="w-full flex items-center justify-between bg-primary-500/8 border border-primary-500/20 rounded-xl px-3 py-2.5 hover:border-primary-500/40 transition-all active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-primary-500" />
-            <span className="text-sm text-primary-400">Invite friends to Shot On Me</span>
-          </div>
-          <span className="text-xs font-bold text-primary-500">Invite</span>
-        </button>
-      </div>
-
-      {/* View Tabs */}
+      {/* Tabs */}
       <div className="flex border-b border-primary-500/10">
-        <button
-          onClick={() => setActiveView('posts')}
-          className={`flex-1 py-3 text-sm font-medium transition-all ${
-            activeView === 'posts'
-              ? 'text-primary-500 border-b-2 border-primary-500'
-              : 'text-primary-400/70 hover:text-primary-500'
-          }`}
-        >
-          <Grid3x3 className="w-4 h-4 inline mr-1.5" />
-          Posts
-        </button>
-        <button
-          onClick={() => setActiveView('checkins')}
-          className={`flex-1 py-3 text-sm font-medium transition-all ${
-            activeView === 'checkins'
-              ? 'text-primary-500 border-b-2 border-primary-500'
-              : 'text-primary-400/70 hover:text-primary-500'
-          }`}
-        >
-          <MapPin className="w-4 h-4 inline mr-1.5" />
-          Check-ins
-        </button>
-        <button
-          onClick={() => setActiveView('friends')}
-          className={`flex-1 py-3 text-sm font-medium transition-all ${
-            activeView === 'friends'
-              ? 'text-primary-500 border-b-2 border-primary-500'
-              : 'text-primary-400/70 hover:text-primary-500'
-          }`}
-        >
-          <Users className="w-4 h-4 inline mr-1.5" />
-          Friends
-        </button>
-        <button
-          onClick={() => setActiveView('vibe')}
-          className={`flex-1 py-3 text-sm font-medium transition-all ${
-            activeView === 'vibe'
-              ? 'text-primary-500 border-b-2 border-primary-500'
-              : 'text-primary-400/70 hover:text-primary-500'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 inline mr-1.5" />
-          My Vibe
-        </button>
+        {([
+          { key: 'activity' as const, icon: Grid3x3, label: 'Activity' },
+          { key: 'friends' as const, icon: Users, label: 'Friends' },
+          { key: 'vibe' as const, icon: Sparkles, label: 'My Vibe' },
+        ]).map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveView(key)}
+            className={`flex-1 py-3 text-sm font-medium transition-all ${
+              activeView === key
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-primary-400/50 hover:text-primary-500'
+            }`}
+          >
+            <Icon className="w-4 h-4 inline mr-1.5" />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Content Area */}
+      {/* Content */}
       <div className="p-4">
-        {activeView === 'posts' && (
+        {/* ── ACTIVITY TAB ── */}
+        {activeView === 'activity' && (
           <div>
-            {/* Create Post Button - Always Visible */}
-            <button
-              onClick={() => {
-                if (setActiveTab) {
-                  window.dispatchEvent(new CustomEvent('open-post-form'))
-                  setActiveTab('feed')
-                }
-              }}
-              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
-            >
-              <Camera className="w-5 h-5" />
-              <span>Create Post</span>
-            </button>
+            {/* Action buttons */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('open-post-form')); setActiveTab?.('feed') }}
+                className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all active:scale-[0.98]"
+              >
+                <Camera className="w-4 h-4" /> Post
+              </button>
+              <button
+                onClick={() => setActiveTab?.('map')}
+                className="flex-1 border border-primary-500/30 text-primary-500 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98]"
+              >
+                <MapPin className="w-4 h-4" /> Check In
+              </button>
+            </div>
 
-            {userPosts.length === 0 ? (
-              <div className="text-center py-10 px-4">
-                <Camera className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
-                <p className="text-white font-semibold mb-1">Nothing posted yet</p>
-                <p className="text-primary-400/50 text-sm">Post a moment from your night out — check-ins, shots sent, good times.</p>
+            {posts.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <Camera className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
+                <p className="text-white font-semibold mb-1">No activity yet</p>
+                <p className="text-primary-400/40 text-sm">Post a moment or check in at a venue to get started.</p>
               </div>
             ) : (
               <>
-              <div ref={postsContainerRef} className="grid grid-cols-3 gap-1">
-                {userPosts.map((post) => (
-                  <div
-                    key={post._id}
-                    className="aspect-square bg-black/40 border border-primary-500/10 rounded overflow-hidden relative group cursor-pointer"
-                  >
-                    {post.media && post.media.length > 0 ? (
-                      <img
-                        src={post.media[0].url || post.media[0].thumbnail}
-                        alt="Post"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <MessageCircle className="w-6 h-6 text-primary-500/40" />
+                <div ref={postsContainerRef} className="flex flex-col gap-3">
+                  {posts.map((post) => {
+                    const isCheckIn = !!post.checkIn
+                    const venueName = post.checkIn?.venue?.name || post.location?.venue?.name
+                    return (
+                      <div key={post._id} className="bg-black/40 border border-primary-500/10 rounded-xl overflow-hidden">
+                        {/* Media */}
+                        {post.media && post.media.length > 0 ? (
+                          <img src={post.media[0].url || post.media[0].thumbnail} alt="Post" className="w-full h-48 object-cover" />
+                        ) : isCheckIn ? (
+                          <div className="w-full h-20 flex items-center justify-center bg-primary-500/5">
+                            <CheckCircle2 className="w-6 h-6 text-primary-500/30" />
+                          </div>
+                        ) : null}
+                        <div className="p-3">
+                          {venueName && (
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                              <span className="text-xs font-semibold text-primary-500">{venueName}</span>
+                            </div>
+                          )}
+                          {post.content && <p className="text-sm text-primary-400/70 leading-snug line-clamp-3">{post.content}</p>}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-primary-400/40">
+                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.length}</span>
+                            <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.length}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeAgo(post.createdAt)}</span>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
-                      <div className="flex items-center space-x-1 text-primary-500">
-                        <Heart className="w-4 h-4" />
-                        <span className="text-sm font-medium">{post.likes.length}</span>
-                      </div>
-                      <div className="flex items-center space-x-1 text-primary-500">
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">{post.comments.length}</span>
-                      </div>
-                    </div>
+                    )
+                  })}
+                </div>
+                {loadingMorePosts && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
                   </div>
-                ))}
-              </div>
-              {loadingMorePosts && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
-                  <span className="ml-3 text-primary-400">Loading more posts...</span>
-                </div>
-              )}
-              {!postsHasMore && userPosts.length > 0 && (
-                <div className="text-center py-8 text-primary-400/50 text-sm">
-                  No more posts
-                </div>
-              )}
+                )}
+                {!postsHasMore && posts.length > 0 && (
+                  <p className="text-center py-6 text-primary-400/30 text-xs">No more activity</p>
+                )}
               </>
             )}
           </div>
         )}
 
-        {activeView === 'checkins' && (
-          <div>
-            <button
-              onClick={() => setActiveTab?.('map')}
-              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
-            >
-              <MapPin className="w-5 h-5" />
-              <span>Check In</span>
-            </button>
-
-            {checkIns.length === 0 ? (
-              <div className="text-center py-10 px-4">
-                <MapPin className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
-                <p className="text-white font-semibold mb-1">No check-ins yet</p>
-                <p className="text-primary-400/50 text-sm">Head to a tap & pay venue and check in — your history builds here.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {checkIns.map((checkIn) => (
-                  <div
-                    key={checkIn._id}
-                    className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm cursor-pointer hover:bg-black/50 hover:border-primary-500/30 transition-all"
-                    onClick={() => setActiveTab?.('map')}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-2 flex-shrink-0">
-                        <CheckCircle2 className="w-5 h-5 text-primary-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <MapPin className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                          <h3 className="font-semibold text-primary-500 text-sm tracking-tight truncate">
-                            {checkIn.checkIn?.venue?.name || checkIn.location?.venue?.name || 'Unknown Venue'}
-                          </h3>
-                        </div>
-                        {checkIn.content && (
-                          <p className="text-primary-400/80 text-sm font-light mb-2 line-clamp-2">{checkIn.content}</p>
-                        )}
-                        <div className="flex items-center space-x-4 text-xs text-primary-400/70 font-light">
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatTimeAgo(checkIn.checkIn?.checkedInAt || checkIn.createdAt)}</span>
-                          </div>
-                          {checkIn.likes.length > 0 && (
-                            <div className="flex items-center space-x-1">
-                              <Heart className="w-3 h-3" />
-                              <span>{checkIn.likes.length}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
+        {/* ── FRIENDS TAB ── */}
         {activeView === 'friends' && (
           <div>
             <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-find-friends'))
-              }}
-              className="w-full bg-primary-500 text-black py-4 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 mb-4"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-find-friends'))}
+              className="w-full bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all active:scale-[0.98] mb-4"
             >
-              <Users className="w-5 h-5" />
-              <span>Find Friends</span>
+              <Users className="w-4 h-4" /> Find Friends
             </button>
-
             {friends.length === 0 ? (
-              <div className="text-center py-10 px-4">
-                <Users className="w-10 h-10 text-primary-500/30 mx-auto mb-3" />
+              <div className="text-center py-12 px-4">
+                <Users className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
                 <p className="text-white font-semibold mb-1">No friends yet</p>
-                <p className="text-primary-400/50 text-sm">Find the people you go out with — see where they are and buy them a round.</p>
+                <p className="text-primary-400/40 text-sm">Find people you go out with — see where they are and buy them a round.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
                 {friends.map((friend) => (
                   <div
                     key={friend._id || friend.id}
-                    className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm cursor-pointer hover:bg-black/50 hover:border-primary-500/30 transition-all"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-black/30 border border-primary-500/10 cursor-pointer hover:border-primary-500/25 transition-all active:scale-[0.99]"
                     onClick={() => onViewProfile?.(friend._id || friend.id)}
                   >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="w-16 h-16 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0 mb-3">
-                        {friend.profilePicture ? (
-                          <img
-                            src={friend.profilePicture}
-                            alt={friend.firstName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                            <span className="text-primary-500 font-semibold text-lg">
-                              {friend.firstName?.[0]}{friend.lastName?.[0]}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="font-semibold text-primary-500 text-sm tracking-tight mb-1">
-                        {friend.firstName} {friend.lastName}
-                      </p>
-                      {friend.username && (
-                        <p className="text-xs text-primary-400/70 font-light">@{friend.username}</p>
+                    <div className="w-12 h-12 border border-primary-500/20 rounded-full overflow-hidden flex-shrink-0">
+                      {friend.profilePicture ? (
+                        <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                          <span className="text-primary-500 font-semibold text-sm">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+                        </div>
                       )}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-white text-sm">{friend.firstName} {friend.lastName}</p>
+                      {friend.username && <p className="text-xs text-primary-400/50">@{friend.username}</p>}
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setActiveTab?.('wallet') }}
+                      className="bg-primary-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-primary-400 transition-all active:scale-[0.98] flex-shrink-0"
+                    >
+                      Send
+                    </button>
                   </div>
                 ))}
               </div>
@@ -676,11 +556,12 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
           </div>
         )}
 
+        {/* ── MY VIBE TAB ── */}
         {activeView === 'vibe' && (
           <div className="space-y-4">
             <div>
               <p className="text-sm font-bold text-primary-500 mb-0.5">My Vibe</p>
-              <p className="text-xs text-primary-400/50 mb-4">Tell us what you like — the AI uses this to recommend venues that match your style and notify you when the right spot has your vibe tonight.</p>
+              <p className="text-xs text-primary-400/40 mb-4">Pick what you love — this powers your personalized venue recommendations.</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               {([
@@ -699,21 +580,14 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
               ] as const).map(({ key, label }) => (
                 <label
                   key={key}
-                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none active:scale-[0.98] ${
                     venuePrefs[key]
                       ? 'bg-primary-500/15 border-primary-500/50 text-primary-400'
                       : 'bg-black/30 border-primary-500/10 text-primary-400/40 hover:border-primary-500/25'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={venuePrefs[key]}
-                    onChange={(e) => setVenuePrefs({ ...venuePrefs, [key]: e.target.checked })}
-                    className="sr-only"
-                  />
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    venuePrefs[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/25'
-                  }`}>
+                  <input type="checkbox" checked={venuePrefs[key]} onChange={(e) => setVenuePrefs({ ...venuePrefs, [key]: e.target.checked })} className="sr-only" />
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${venuePrefs[key] ? 'bg-primary-500 border-primary-500' : 'border-primary-500/25'}`}>
                     {venuePrefs[key] && <span className="text-black text-xs font-bold leading-none">✓</span>}
                   </div>
                   <span className="text-sm font-medium">{label}</span>
@@ -723,16 +597,14 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
             <button
               onClick={saveVenuePrefs}
               disabled={savingPrefs}
-              className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50 mt-2"
+              className="w-full bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50"
             >
               {savingPrefs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {savingPrefs ? 'Saving...' : 'Save My Vibe'}
             </button>
-            <p className="text-[11px] text-primary-400/30 text-center">Your preferences power the "For You" section on the Venues tab.</p>
           </div>
         )}
       </div>
-      <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
     </div>
   )
 }
