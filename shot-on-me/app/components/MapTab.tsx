@@ -1744,57 +1744,42 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                       onClick={() => window.open(openUrl, '_blank', 'noopener,noreferrer')}
                       className="bg-black/40 border-2 border-primary-500/20 rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group"
                     >
-                      {/* Star button — filled = saved, click to unsave */}
-                      <div className="absolute top-2 right-2 z-10">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleUnsaveVenue(venue.placeId) }}
-                          className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg"
-                        >
-                          <Star className="w-4 h-4 fill-primary-500 text-primary-500" />
-                        </button>
-                      </div>
-
-                      {/* Image / icon area */}
-                      <div className="relative h-24 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden group/image">
+                      {/* Image */}
+                      <div className="relative h-32 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden">
                         {venue.coverPhoto ? (
-                          <img
-                            src={venue.coverPhoto}
-                            alt={venue.name}
-                            className="w-full h-full object-cover group-hover/image:scale-110 transition-transform duration-300"
-                          />
+                          <img src={venue.coverPhoto} alt={venue.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-16 h-16 bg-primary-500/20 rounded-xl flex items-center justify-center border-2 border-primary-500/30 group-hover/image:scale-110 transition-transform duration-300">
-                              <span className="text-2xl font-bold text-primary-500">
-                                {venue.name?.[0]?.toUpperCase() || 'V'}
-                              </span>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-500/15 to-primary-500/5">
+                            <div className="w-14 h-14 bg-primary-500/20 rounded-2xl flex items-center justify-center border border-primary-500/30">
+                              <span className="text-2xl font-bold text-primary-500">{venue.name?.[0]?.toUpperCase() || 'V'}</span>
                             </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-
-                      {/* Info */}
-                      <div className="p-2.5">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-primary-500 text-sm line-clamp-1">{venue.name}</h3>
-                            {(venue.address?.city || venue.address?.state) && (
-                              <p className="text-[10px] text-primary-400/60 mb-1.5 line-clamp-1">
-                                {[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}
-                              </p>
-                            )}
-                          </div>
-                          {venue.rating && (
-                            <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 px-1.5 py-0.5 rounded-full">
-                              <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
-                              <span className="text-[10px] font-bold text-primary-500">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating}</span>
-                            </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        {/* Unsave button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleUnsaveVenue(venue.placeId) }}
+                          className="absolute top-2 right-2 z-10 p-1.5 bg-black/60 backdrop-blur-sm rounded-full hover:bg-black/80 transition-all shadow-lg"
+                        >
+                          <Star className="w-4 h-4 fill-primary-500 text-primary-500" />
+                        </button>
+                        {/* Name on image */}
+                        <div className="absolute bottom-2 left-2 right-2 z-10">
+                          <h3 className="font-bold text-white text-sm leading-tight line-clamp-1 drop-shadow-lg">{venue.name}</h3>
+                          {(venue.address?.city || venue.address?.state) && (
+                            <span className="text-[10px] text-white/60">{[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}</span>
                           )}
                         </div>
-                        <div className="mt-1 pt-1 border-t border-primary-500/5">
-                          <p className="text-[8px] text-primary-400/30 text-center">No current specials</p>
-                        </div>
+                      </div>
+                      {/* Info */}
+                      <div className="p-2.5">
+                        {venue.rating && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
+                            <span className="text-[11px] font-bold text-primary-500">{typeof venue.rating === 'number' ? venue.rating.toFixed(1) : venue.rating}</span>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-primary-400/25 text-center py-0.5">Saved spot — tap to open</p>
                       </div>
                     </div>
                   )
