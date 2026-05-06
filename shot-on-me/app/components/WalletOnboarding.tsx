@@ -254,7 +254,7 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
                   onClick={() => setStep('funds')}
                   className="w-full bg-primary-500/10 border-2 border-primary-500/40 text-primary-500 py-3 rounded-xl font-semibold hover:bg-primary-500/20 transition-all flex items-center justify-center gap-2"
                 >
-                  Continue to Add Funds
+                  Continue
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
@@ -270,9 +270,9 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
                     <Wallet className="w-6 h-6 text-primary-500" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-primary-500 mb-2">Add Funds to Your Wallet</h3>
+                    <h3 className="text-xl font-bold text-primary-500 mb-2">Your Wallet</h3>
                     <p className="text-primary-400/80 text-sm mb-4 font-light leading-relaxed">
-                      Add money to your wallet to start using your tap-and-pay card at venues. You can add funds anytime from the Wallet tab.
+                      You can add money to your wallet anytime from the Wallet tab. For now, you're all set to receive shots from friends!
                     </p>
                     <div className="bg-black/40 border border-primary-500/20 rounded-lg p-4 mb-4">
                       <div className="flex items-center justify-between">
