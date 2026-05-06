@@ -324,7 +324,7 @@ export default function LoginScreen() {
 
         {/* ── Footer ── */}
         <p className="text-center text-xs text-white/18 pb-10 leading-relaxed">
-          Available at any tap &amp; pay venue in IN · IL · KY · TN · MI · OH
+          Available nationwide at any tap &amp; pay venue
           {venuePortalLoginUrl && (
             <>
               {' · '}

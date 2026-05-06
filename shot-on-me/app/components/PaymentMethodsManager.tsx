@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -73,7 +74,7 @@ export default function PaymentMethodsManager() {
       setShowAddForm(true)
     } catch (error) {
       console.error('Failed to create setup intent:', error)
-      alert('Failed to add payment method. Please try again.')
+      showToast('Failed to add payment method. Please try again.')
     }
   }
 
@@ -87,7 +88,7 @@ export default function PaymentMethodsManager() {
       await fetchPaymentMethods()
     } catch (error) {
       console.error('Failed to set default payment method:', error)
-      alert('Failed to set default payment method.')
+      showToast('Failed to set default payment method.')
     }
   }
 
@@ -103,7 +104,7 @@ export default function PaymentMethodsManager() {
       await fetchPaymentMethods()
     } catch (error) {
       console.error('Failed to delete payment method:', error)
-      alert('Failed to delete payment method.')
+      showToast('Failed to delete payment method.')
     }
   }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Type, PenTool, Crop, Music, Filter, Save, Undo, Redo, Trash2, Sparkles, Palette, Move, MapPin } from 'lucide-react'
 import Cropper, { Area } from 'react-easy-crop'
@@ -478,7 +479,7 @@ export default function StoryEditor({ file, preview, onSave, onCancel, venueBran
       }, file.type, 0.95)
     } catch (error) {
       console.error('Error saving story:', error)
-      alert('Failed to process story. Please try again.')
+      showToast('Failed to process story. Please try again.')
     }
   }
 

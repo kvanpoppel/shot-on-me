@@ -121,14 +121,12 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   // Load already-saved Google venues from backend on mount
   useEffect(() => {
     if (!token) return
-    console.log('[SavedVenues] Loading saved placeIds from backend...')
     axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         const ids = (res.data.venues || []).map((v: any) => v.placeId)
-        console.log('[SavedVenues] Loaded', ids.length, 'saved venues')
         setSavedPlaceIds(new Set(ids))
       })
-      .catch((err) => console.error('[SavedVenues] Failed to load saved placeIds:', err?.response?.status, err?.message))
+      .catch(() => {})
   }, [token, API_URL])
 
   // Fetch AI recommendations
@@ -173,10 +171,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       coverPhoto: venue.coverPhoto || venue.image || '',
     }
 
-    console.log('[SavedVenues] Saving venue:', venue.name, '| placeId:', venue.placeId)
-    console.log('[SavedVenues] POST to:', `${API_URL}/saved-venues`)
-    console.log('[SavedVenues] Token present:', !!token)
-
     // Optimistic update
     setSavedPlaceIds(prev => new Set([...prev, venue.placeId]))
     setJustSavedPlaceId(venue.placeId)
@@ -184,10 +178,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
     try {
       const res = await axios.post(`${API_URL}/saved-venues`, payload, { headers: { Authorization: `Bearer ${token}` } })
-      console.log('[SavedVenues] Save SUCCESS:', res.data)
       onVenueSaved?.()
     } catch (err: any) {
-      console.error('[SavedVenues] Save FAILED:', err?.response?.status, err?.response?.data, err?.message)
       setSavedPlaceIds(prev => { const next = new Set(prev); next.delete(venue.placeId); return next })
     }
   }
@@ -198,7 +190,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       await axios.delete(`${API_URL}/saved-venues/${placeId}`, { headers: { Authorization: `Bearer ${token}` } })
       onSavedVenuesChange?.()
     } catch (err) {
-      console.error('[SavedVenues] Unsave failed:', err)
     }
   }
 
@@ -211,7 +202,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       })
       setTrendingVenues(response.data.venues || [])
     } catch (error) {
-      console.error('Failed to fetch trending venues:', error)
       setTrendingVenues([])
     }
   }, [token, API_URL])
@@ -234,7 +224,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       )
       setFriends(uniqueFriends)
     } catch (error) {
-      console.error('Failed to fetch friends:', error)
       setFriends([])
     }
   }, [token, API_URL])
@@ -279,7 +268,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       
       setTemperature(estimatedTemp)
     } catch (error) {
-      console.error('Error fetching weather:', error)
       // Fallback temperature
       const month = new Date().getMonth()
       const isSummer = month >= 5 && month <= 8
@@ -332,7 +320,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
     // If denied, inform user but don't block - fetch weather for default location
     if (permissionStatus === 'denied') {
-      console.warn('Location permission denied. Please enable it in Settings → Device Permissions.')
       fetchWeatherData(39.7684, -86.1581) // Default to Indianapolis
       return
     }
@@ -373,7 +360,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
   const fetchVenues = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token || !API_URL) {
-      console.warn('Cannot fetch venues: missing token or API_URL', { token: !!token, API_URL })
       return
     }
     try {
@@ -386,9 +372,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       
       const limit = 20
       const skip = (pageNum - 1) * limit
-      
-      console.log('🔍 Fetching venues from:', `${API_URL}/venues`, { skip, limit, pageNum })
-      console.log('🔍 User info:', { userId: (user as any)?.id || (user as any)?._id, userType: (user as any)?.userType })
       
       const params: any = { skip, limit }
       const loc = userLocationRef.current
@@ -403,16 +386,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         timeout: 10000
       })
       
-      console.log('📦 API Response:', {
-        status: response.status,
-        hasVenues: !!response.data.venues,
-        venuesCount: response.data.venues?.length || 0,
-        hasMore: response.data.hasMore,
-        total: response.data.total
-      })
-      
       const fetchedVenues = response.data.venues || []
-      console.log('📋 Fetched venues count:', fetchedVenues.length)
       
       // Normalize venue names for comparison
       const normalizeName = (name: string) => {
@@ -422,20 +396,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           .trim()
       }
       
-      // Keep all venues - only filter out "Kate's Venue" (not "Kate's Pub" or "Paige's Pub")
-      const uniqueVenues = fetchedVenues.filter((venue: any) => {
-        const normalizedName = normalizeName(venue.name)
-        // Only filter out "Kate's Venue" specifically (keep "Kate's Pub" and "Paige's Pub")
-        const isKatesVenue = normalizedName === "kates venue" || normalizedName === "kate venue"
-        // Always keep Kate's Pub and Paige's Pub (test venues)
-        const isKatesPub = normalizedName === "kates pub" || normalizedName === "kate pub"
-        const isPaigesPub = normalizedName === "paiges pub" || normalizedName === "paige pub"
-        // Keep if it's NOT Kate's Venue, OR if it IS Kate's Pub or Paige's Pub
-        return !isKatesVenue || isKatesPub || isPaigesPub
-      })
-      
       // Normalize rating objects to numbers and transform location format
-      const normalizedVenues = uniqueVenues.map((venue: any) => {
+      const normalizedVenues = fetchedVenues.map((venue: any) => {
         const normalized = { ...venue }
         
         // Normalize rating
@@ -455,14 +417,11 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             }
           } else if (!normalized.location.latitude || !normalized.location.longitude) {
             // If location doesn't have latitude/longitude, try to extract from coordinates
-            console.warn(`Venue ${venue.name} has invalid location format:`, normalized.location)
           }
         }
         
         return normalized
       })
-      
-      console.log('✅ Normalized venues count:', normalizedVenues.length)
       
       if (reset || pageNum === 1) {
         setVenues(normalizedVenues)
@@ -478,13 +437,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       setVenuesHasMore(response.data.hasMore !== false && normalizedVenues.length === limit)
       setError(null)
     } catch (error: any) {
-      console.error('❌ Failed to fetch venues:', error)
-      console.error('❌ Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      })
       if (reset || pageNum === 1) {
         setError('Failed to load venues. Please try again.')
         setVenues([])
@@ -1050,7 +1002,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       const favoriteIds = new Set<string>((response.data.venues || []).map((v: any) => v._id?.toString() || v.toString()))
       setFavoriteVenueIds(favoriteIds)
     } catch (error) {
-      console.error('Failed to fetch favorite venues:', error)
       setFavoriteVenueIds(new Set())
     }
   }, [token, API_URL])
@@ -1078,7 +1029,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         return newSet
       })
     } catch (error) {
-      console.error('Failed to toggle favorite:', error)
     }
   }, [token, API_URL])
 
@@ -1275,7 +1225,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         getCurrentLocation()
       ])
     } catch (error) {
-      console.error('Error refreshing map data:', error)
     } finally {
       setTimeout(() => {
         setRefreshing(false)

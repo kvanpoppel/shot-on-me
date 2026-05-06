@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -119,7 +120,7 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
       await axios.post(`${API_URL}/users/friends/${userId}`, {}, { headers: { Authorization: `Bearer ${token}` } })
       setIsFriend(true)
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add friend')
+      showToast(error.response?.data?.error || 'Failed to add friend')
     } finally {
       setAddingFriend(false)
     }
@@ -133,7 +134,7 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
       await axios.delete(`${API_URL}/users/friends/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
       setIsFriend(false)
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to remove friend')
+      showToast(error.response?.data?.error || 'Failed to remove friend')
     } finally {
       setRemovingFriend(false)
     }

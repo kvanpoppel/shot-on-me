@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
@@ -313,7 +314,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
       setSearchFriends('')
     } catch (error: any) {
       console.error('Failed to start conversation:', error)
-      alert(error.response?.data?.message || 'Failed to start conversation')
+      showToast(error.response?.data?.message || 'Failed to start conversation')
     }
   }
 
@@ -380,7 +381,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
       fetchGroups()
     } catch (error: any) {
       console.error('Failed to send message:', error)
-      alert(error.response?.data?.message || 'Failed to send message')
+      showToast(error.response?.data?.message || 'Failed to send message')
     } finally {
       setSending(false)
     }
@@ -401,7 +402,7 @@ export default function MessagesTab({ onViewProfile, setActiveTab, activeTab: pr
       }
     } catch (error) {
       console.error('Failed to delete message:', error)
-      alert('Failed to delete message')
+      showToast('Failed to delete message')
     }
   }
 

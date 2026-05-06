@@ -92,7 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Validate URL doesn't have double /api
       if (loginUrl.includes('/api/api')) {
-        console.error('❌ ERROR: Double /api detected in URL:', loginUrl)
         throw new Error('Invalid API URL configuration. Please check NEXT_PUBLIC_API_URL in .env.local')
       }
       
@@ -134,14 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Don't call fetchUser - we already have the user data from login response
     } catch (error: any) {
       let errorMessage = 'Login failed'
-      
-      console.error('Login error details:', {
-        code: error.code,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      })
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         errorMessage = 'Connection timeout. Please try again.'
@@ -196,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             headers: { Authorization: `Bearer ${authToken}` }
           })
         } catch (refError: any) {
-          console.warn('Failed to apply referral:', refError.message)
+          // Referral application failed silently
         }
       }
       
@@ -206,11 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userData && userData.userType === 'user') {
         // Card creation happens automatically in backend during registration
         // No need to do anything here - just let the Wallet tab load it
-        console.log('✅ User registered - virtual card will be created automatically if Issuing is enabled')
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Registration failed'
-      console.error('Registration error:', errorMessage, error)
       throw new Error(errorMessage)
     }
   }
@@ -257,7 +246,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userData.wallet = { balance: 0, pendingBalance: 0 }
           }
           setUser(userData)
-          console.log('✅ User data refreshed from server. Balance:', userData.wallet?.balance)
         }
         return
       }
@@ -288,8 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.profilePicture) {
         setUser(prev => prev ? { ...prev, ...data } : null)
       } else {
-        console.error('Error updating user:', error)
-        // Don't throw - just log the error to avoid breaking the UI
+        // Don't throw - just swallow the error to avoid breaking the UI
         // The balance will update via webhook/Socket.io eventually
       }
     }

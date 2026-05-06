@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
@@ -211,7 +212,7 @@ export default function SendShotTab() {
         if (response.data.pendingPayment) {
           // Recipient isn't on the app yet — show a different success message
           setError('') // clear any previous error
-          alert(response.data.message || `Payment sent! ${recipientPhone} will receive an SMS to claim it when they join Shot On Me.`)
+          showToast(response.data.message || `Payment sent! ${recipientPhone} will receive an SMS to claim it when they join Shot On Me.`)
         }
       }
     } catch (err: any) {
@@ -246,7 +247,7 @@ export default function SendShotTab() {
         if (updateUser) {
           await updateUser({})
         }
-        alert('Payment redeemed successfully!')
+        showToast('Payment redeemed successfully!')
       }
     } catch (error: any) {
       console.error('Failed to redeem code:', error)
@@ -521,7 +522,7 @@ export default function SendShotTab() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(qrCodeData)
-                  alert('Code copied to clipboard!')
+                  showToast('Code copied to clipboard!')
                 }}
                 className="w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
               >

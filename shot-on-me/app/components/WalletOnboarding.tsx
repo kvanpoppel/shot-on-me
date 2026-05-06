@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
@@ -47,7 +48,6 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
         setStep('card')
       }
     } catch (error) {
-      console.error('Failed to check card status:', error)
       setStep('card')
     } finally {
       setCheckingCard(false)
@@ -78,7 +78,6 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
       
       // Listen for wallet updates
       const handleWalletUpdate = (data: any) => {
-        console.log('Wallet updated via Socket:', data)
         if (updateUser) {
           updateUser({})
         }
@@ -115,8 +114,7 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
       // Move to next step
       setStep('funds')
     } catch (error: any) {
-      console.error('Failed to create card:', error)
-      alert(error.response?.data?.message || 'Failed to create card. Please try again.')
+      showToast(error.response?.data?.message || 'Failed to create card. Please try again.')
     } finally {
       setCreatingCard(false)
     }
@@ -294,14 +292,10 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
                   Skip for Now
                 </button>
                 <button
-                  onClick={() => {
-                    // Open wallet tab or add funds modal
-                    // For now, just move to permissions
-                    handleSkipFunds()
-                  }}
+                  onClick={handleSkipFunds}
                   className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold hover:bg-primary-600 transition-all flex items-center justify-center gap-2"
                 >
-                  Add Funds
+                  Continue
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

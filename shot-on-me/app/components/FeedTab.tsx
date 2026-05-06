@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
@@ -262,7 +263,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         fetchTrendingVenues(),
         fetchFriendSuggestions()
       ]).catch(error => {
-        console.error('Error fetching feed data:', error)
+        /* silent */
       })
     }
   }, [token, feedFilter, aiEnabled])
@@ -467,7 +468,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       
       setHasMore(newPosts.length === 10) // If we got 10 posts, there might be more
     } catch (error: any) {
-      console.error('Failed to fetch feed:', error)
       if (pageNum === 1) {
         setPosts([])
       }
@@ -486,7 +486,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       })
       setNearbyFriends(response.data.friends || [])
     } catch (error) {
-      console.error('Failed to fetch nearby friends:', error)
       setNearbyFriends([])
     }
   }
@@ -504,7 +503,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         .slice(0, 10) // Show more venues
       setTrendingVenues(venues)
     } catch (error) {
-      console.error('Failed to fetch trending venues:', error)
       setTrendingVenues([])
     }
   }
@@ -518,7 +516,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       })
       setFriendSuggestions(response.data.suggestions || [])
     } catch (error) {
-      console.error('Failed to fetch friend suggestions:', error)
       setFriendSuggestions([])
     }
   }
@@ -539,7 +536,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         addedFriendIds: Array.isArray(signals.addedFriendIds) ? signals.addedFriendIds : []
       })
     } catch (error) {
-      console.error('Failed to fetch AI signals:', error)
+      /* silent */
     }
   }
 
@@ -552,7 +549,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       )
     } catch (error) {
-      console.error('Failed to persist AI signals:', error)
+      /* silent */
     }
   }
 
@@ -578,13 +575,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
   const handleAddFriend = async (friendId: string) => {
     if (!token) {
-      alert('Please log in to add friends')
+      showToast('Please log in to add friends')
       return
     }
 
     if (!friendId) {
-      console.error('Invalid friendId:', friendId)
-      alert('Invalid user ID. Please try again.')
+      showToast('Invalid user ID. Please try again.')
       return
     }
 
@@ -595,8 +591,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     const addedUser = friendSuggestions.find(s => (s._id || s.id) === friendId)
     
     if (!addedUser) {
-      console.error('User not found in suggestions:', friendId, friendSuggestions)
-      alert('User not found. Please refresh and try again.')
+      showToast('User not found. Please refresh and try again.')
       return
     }
 
@@ -622,28 +617,20 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       // Success - refresh suggestions
       await fetchFriendSuggestions()
     } catch (error: any) {
-      console.error('❌ Error adding friend:', error)
-      console.error('Error response:', error.response?.data)
-      console.error('Error status:', error.response?.status)
-      console.error('Error config:', error.config)
-      
       // Revert optimistic update on error
       setFriendSuggestions(previousSuggestions)
-      
+
       let errorMessage = 'Failed to add friend'
-      
+
       if (error.response) {
         // Server responded with error
         errorMessage = error.response.data?.message || error.response.data?.error || errorMessage
-        console.error('Server error:', errorMessage)
       } else if (error.request) {
         // Request made but no response
         errorMessage = 'No response from server. Please check your internet connection.'
-        console.error('No response received:', error.request)
       } else {
         // Error in request setup
         errorMessage = error.message || 'Failed to add friend'
-        console.error('Request setup error:', error.message)
       }
       
       // Don't show alert for "already a friend" - just refresh suggestions
@@ -653,7 +640,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       }
       
       // Show user-friendly error message
-      alert(errorMessage)
+      showToast(errorMessage)
     }
   }
 
@@ -677,7 +664,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       }
       setSelectedVenue(null)
     } catch (error) {
-      console.error('Failed to check in:', error)
+      /* silent */
     }
   }
 
@@ -726,7 +713,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       )
       // Server syncs via socket — optimistic update already applied
     } catch (error) {
-      console.error('Failed to like post:', error)
       // Revert optimistic update on error
       setPosts(previousPosts)
     }
@@ -734,7 +720,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
   const handleReaction = async (postId: string, emoji: string) => {
     if (!token) {
-      alert('Please log in to react to posts')
+      showToast('Please log in to react to posts')
       return
     }
 
@@ -814,14 +800,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         }))
       }
     } catch (error: any) {
-      console.error('Failed to react to post:', error)
-
       // Revert optimistic update on error
       setPosts(previousPosts)
 
       const errorMessage = error.response?.data?.message || error.message || 'Failed to react. Please try again.'
       if (error.response?.status !== 401) { // Don't alert on auth errors
-        alert(errorMessage)
+        showToast(errorMessage)
       }
     }
   }
@@ -940,14 +924,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         }))
       }
     } catch (error: any) {
-      console.error('Failed to comment:', error)
       // Revert optimistic update on error
       setPosts(previousPosts)
       setCommentText(commentContent)
       setReplyingTo(previousReplyingTo)
       
       const errorMessage = error.response?.data?.message || 'Failed to post comment. Please try again.'
-      alert(errorMessage)
+      showToast(errorMessage)
     }
   }
 
@@ -1029,9 +1012,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       
       setShowingReactionPicker(null)
     } catch (error: any) {
-      console.error('Failed to react to comment:', error)
       const errorMessage = error.response?.data?.message || 'Failed to react. Please try again.'
-      alert(errorMessage)
+      showToast(errorMessage)
     }
   }
 
@@ -1132,7 +1114,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newPostContent.trim() && !selectedVenue && selectedMedia.length === 0) {
-      alert('Please add some content, media, or select a venue to post')
+      showToast('Please add some content, media, or select a venue to post')
       return
     }
     setPosting(true)
@@ -1189,9 +1171,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       // Scroll to top to see new post
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error: any) {
-      console.error('Failed to create post:', error)
       const errorMessage = error.response?.data?.message || 'Failed to create post. Please try again.'
-      alert(errorMessage)
+      showToast(errorMessage)
     } finally {
       setPosting(false)
       setUploadProgress(0)
@@ -1200,7 +1181,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
   const handleDeletePost = async (postId: string) => {
     if (!token) {
-      alert('Please log in to delete posts')
+      showToast('Please log in to delete posts')
       return
     }
 
@@ -1224,16 +1205,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
     } catch (error: any) {
-      console.error('Failed to delete post:', error)
       // Revert optimistic update
       setPosts(previousPosts)
-      alert(error.response?.data?.message || 'Failed to delete post. Please try again.')
+      showToast(error.response?.data?.message || 'Failed to delete post. Please try again.')
     }
   }
 
   const handleReportPost = async (postId: string) => {
     if (!token) {
-      alert('Please log in to report posts')
+      showToast('Please log in to report posts')
       return
     }
 
@@ -1256,8 +1236,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 4000)
     } catch (error: any) {
-      console.error('Failed to report post:', error)
-      alert(error.response?.data?.message || 'Failed to submit report. Please try again.')
+      showToast(error.response?.data?.message || 'Failed to submit report. Please try again.')
     }
   }
 
@@ -1279,15 +1258,14 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
     } catch (error: any) {
-      console.error('Failed to edit post:', error)
       setPosts(previousPosts)
-      alert(error.response?.data?.message || 'Failed to update post.')
+      showToast(error.response?.data?.message || 'Failed to update post.')
     }
   }
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
     if (!token) {
-      alert('Please log in to delete comments')
+      showToast('Please log in to delete comments')
       return
     }
 
@@ -1319,16 +1297,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
     } catch (error: any) {
-      console.error('Failed to delete comment:', error)
       // Revert optimistic update
       setPosts(previousPosts)
-      alert(error.response?.data?.message || 'Failed to delete comment. Please try again.')
+      showToast(error.response?.data?.message || 'Failed to delete comment. Please try again.')
     }
   }
 
   const handleReportComment = async (postId: string, commentId: string) => {
     if (!token) {
-      alert('Please log in to report comments')
+      showToast('Please log in to report comments')
       return
     }
 
@@ -1351,8 +1328,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 4000)
     } catch (error: any) {
-      console.error('Failed to report comment:', error)
-      alert(error.response?.data?.message || 'Failed to submit report. Please try again.')
+      showToast(error.response?.data?.message || 'Failed to submit report. Please try again.')
     }
   }
 
@@ -1360,8 +1336,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
     try {
       const post = posts.find(p => p._id === postId)
       if (!post) {
-        console.error('Post not found:', postId)
-        alert('Unable to share: Post not found')
+        showToast('Unable to share: Post not found')
         return
       }
       
@@ -1384,7 +1359,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             return
           }
           // Other error - fall through to clipboard
-          console.warn('Web Share API error:', shareError)
+          /* silent */
         }
       }
       
@@ -1419,7 +1394,6 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               toast.remove()
             }, 3000)
           } catch (err) {
-            console.error('Failed to copy:', err)
             // Last resort: show the URL in a prompt
             prompt('Copy this link to share:', shareUrl)
           } finally {
@@ -1427,27 +1401,25 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           }
         }
       } catch (clipboardError: any) {
-        console.error('Clipboard error:', clipboardError)
         // Last resort: show the URL in a prompt
         prompt('Copy this link to share:', shareUrl)
       }
     } catch (error: any) {
-      console.error('Share error:', error)
-      alert('Unable to share. Please try again or copy the link manually.')
+      showToast('Unable to share. Please try again or copy the link manually.')
     }
   }
 
   const handleInviteFriend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!invitePhone.trim()) {
-      alert('Please enter a phone number')
+      showToast('Please enter a phone number')
       return
     }
 
     // Validate phone number format
     const cleanNumber = invitePhone.replace(/\D/g, '')
     if (cleanNumber.length < 10) {
-      alert('Please enter a valid phone number (at least 10 digits)')
+      showToast('Please enter a valid phone number (at least 10 digits)')
       return
     }
 
@@ -1489,11 +1461,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         setInvitePhone('')
         setShowFriendInvite(false)
       } else {
-        alert(result.error || 'Failed to send invitation. Please try again.')
+        showToast(result.error || 'Failed to send invitation. Please try again.')
       }
     } catch (error: any) {
-      console.error('Failed to invite friend:', error)
-      alert('Failed to send invitation. Please try again or copy the link manually.')
+      showToast('Failed to send invitation. Please try again or copy the link manually.')
     } finally {
       setInviting(false)
     }
@@ -1745,8 +1716,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     if (friendId) {
                       handleAddFriend(friendId)
                     } else {
-                      console.error('No friend ID found for suggestion:', suggestion)
-                      alert('Unable to add friend - missing user ID')
+                      showToast('Unable to add friend - missing user ID')
                     }
                   }}
                   className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full flex items-center justify-center"
@@ -1848,7 +1818,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                   onClick={() => {
                     const inviteLink = `${window.location.origin}?ref=${user?.id}`
                     navigator.clipboard.writeText(inviteLink)
-                    alert('Invite link copied! Share it anywhere!')
+                    showToast('Invite link copied! Share it anywhere!')
                   }}
                   className="flex-1 bg-primary-500/20 border border-primary-500 text-primary-500 py-3 rounded-lg font-semibold hover:bg-primary-500/30"
                 >
@@ -1959,7 +1929,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       const file = e.target.files[0]
                       if (file) {
                         if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                          alert('Image size must be less than 10MB')
+                          showToast('Image size must be less than 10MB')
                           return
                         }
                         setSelectedMedia([...selectedMedia, file])
@@ -1990,7 +1960,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     const file = e.target.files[0]
                     if (file) {
                       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                        alert('Image size must be less than 10MB')
+                        showToast('Image size must be less than 10MB')
                         return
                       }
                       setSelectedMedia([...selectedMedia, file])
@@ -2015,7 +1985,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       const file = e.target.files[0]
                       if (file) {
                         if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                          alert('Image size must be less than 10MB')
+                          showToast('Image size must be less than 10MB')
                           return
                         }
                         setSelectedMedia([...selectedMedia, file])
@@ -2039,7 +2009,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       const file = e.target.files[0]
                       if (file) {
                         if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                          alert('Image size must be less than 10MB')
+                          showToast('Image size must be less than 10MB')
                           return
                         }
                         setSelectedMedia([...selectedMedia, file])
@@ -2077,14 +2047,14 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     
                     // Validate file type
                     if (!file.type.startsWith('video/')) {
-                      alert('Please select a valid video file')
+                      showToast('Please select a valid video file')
                       return
                     }
                     
                     // Check file size (50MB limit)
                     const maxSize = 50 * 1024 * 1024
                     if (file.size > maxSize) {
-                      alert(`Video size must be less than 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+                      showToast(`Video size must be less than 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`)
                       return
                     }
                     
@@ -2100,14 +2070,13 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                       }
                     }
                     reader.onerror = () => {
-                      alert('Failed to load video preview')
+                      showToast('Failed to load video preview')
                     }
                     reader.readAsDataURL(file)
                   }
                   input.click()
                 } catch (error: any) {
-                  console.error('Error selecting video:', error)
-                  alert('Failed to select video. Please try again.')
+                  showToast('Failed to select video. Please try again.')
                 }
               }}
               className="flex-1 bg-primary-500/20 border border-primary-500 text-primary-500 py-2 rounded-lg font-semibold hover:bg-primary-500/30 flex items-center justify-center"
@@ -3118,7 +3087,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     const storyId = selectedStoryGroup.stories[currentStoryIndex]._id
                     axios.post(`${API_URL}/stories/${storyId}/reaction`, { emoji: '❤️' }, {
                       headers: { Authorization: `Bearer ${token}` }
-                    }).catch(console.error)
+                    }).catch(() => { /* silent */ })
                   }}
                   className="p-2 rounded-full bg-black/50 text-white hover:bg-red-500 transition-colors"
                 >
@@ -3216,7 +3185,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 onUploadProgress: (progressEvent) => {
                   if (progressEvent.total) {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                    console.log(`Upload progress: ${percentCompleted}%`)
+                    /* upload progress tracking */
                   }
                 }
               })
@@ -3229,12 +3198,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
               // Refresh stories carousel
               window.dispatchEvent(new CustomEvent('story-created'))
             } catch (error: any) {
-              console.error('Story creation error:', error)
               const errorMessage = error.response?.data?.message || 
                                   error.response?.data?.error || 
                                   error.message || 
                                   'Failed to create story'
-              alert(`Failed to create story: ${errorMessage}`)
+              showToast(`Failed to create story: ${errorMessage}`)
             } finally {
               setCreatingStory(false)
             }

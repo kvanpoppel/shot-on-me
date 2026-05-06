@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -210,7 +211,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
         searchUsers(searchQuery)
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add friend')
+      showToast(error.response?.data?.error || 'Failed to add friend')
     }
   }
 
@@ -231,7 +232,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
     }
     
     if (!user?.id && !(user as any)?._id) {
-      alert('Please wait for your account to load, then try again.')
+      showToast('Please wait for your account to load, then try again.')
       return
     }
     

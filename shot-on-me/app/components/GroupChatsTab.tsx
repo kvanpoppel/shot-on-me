@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
@@ -178,7 +179,7 @@ export default function GroupChatsTab({ onViewProfile }: GroupChatsTabProps) {
       fetchGroups()
     } catch (error: any) {
       console.error('Error sending message:', error)
-      alert(error.response?.data?.message || 'Failed to send message')
+      showToast(error.response?.data?.message || 'Failed to send message')
     } finally {
       setSending(false)
     }
@@ -206,7 +207,7 @@ export default function GroupChatsTab({ onViewProfile }: GroupChatsTabProps) {
       setSelectedGroup(response.data.group)
     } catch (error: any) {
       console.error('Error creating group:', error)
-      alert(error.response?.data?.message || 'Failed to create group')
+      showToast(error.response?.data?.message || 'Failed to create group')
     }
   }
 
@@ -227,7 +228,7 @@ export default function GroupChatsTab({ onViewProfile }: GroupChatsTabProps) {
       setSelectedGroup(response.data.group)
     } catch (error: any) {
       console.error('Error joining group:', error)
-      alert(error.response?.data?.message || 'Failed to join group')
+      showToast(error.response?.data?.message || 'Failed to join group')
     }
   }
 

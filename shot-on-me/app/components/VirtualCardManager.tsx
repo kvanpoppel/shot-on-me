@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -89,7 +90,7 @@ export default function VirtualCardManager() {
 
   const handleCreateCard = async () => {
     if (!token) {
-      alert('Please log in to create a card')
+      showToast('Please log in to create a card')
       return
     }
     
@@ -165,7 +166,7 @@ export default function VirtualCardManager() {
       await fetchCardStatus()
       setShowDeleteWarning(false)
       setDeleteWarningsShown(0)
-      alert('Card removed successfully. You can re-add it anytime from this screen.')
+      showToast('Card removed successfully. You can re-add it anytime from this screen.')
     } catch (error: any) {
       console.error('Failed to delete card:', error)
       setError('Failed to remove card. Please try again.')

@@ -1,10 +1,11 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { X, Camera, CreditCard, Settings, User, Shield, Trash2, Check, Plus, Lock, ChevronRight } from 'lucide-react'
+import { X, Camera, CreditCard, Settings, User, Shield, Trash2, Check, Plus, Lock, ChevronRight, LogOut } from 'lucide-react'
 import SecureCardElement from './CardElement'
 import PermissionsManager from './PermissionsManager'
 import BackButton from './BackButton'
@@ -42,7 +43,7 @@ function SocialShareToggle() {
 }
 
 export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
-  const { user, token, updateUser } = useAuth()
+  const { user, token, updateUser, logout } = useAuth()
   const API_URL = useApiUrl()
   const { setModalOpen } = useModal()
   const [showEditProfile, setShowEditProfile] = useState(false)
@@ -130,7 +131,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       })
       setPaymentMethods(response.data.paymentMethods || [])
     } catch (error) {
-      console.error('Failed to fetch payment methods:', error)
+      /* silent */
     } finally {
       setLoadingPaymentMethods(false)
     }
@@ -147,8 +148,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       })
       await fetchPaymentMethods()
     } catch (error) {
-      console.error('Failed to delete card:', error)
-      alert('Failed to delete card. Please try again.')
+      showToast('Failed to delete card. Please try again.')
     }
   }
 
@@ -162,8 +162,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       )
       await fetchPaymentMethods()
     } catch (error) {
-      console.error('Failed to set default card:', error)
-      alert('Failed to set default card. Please try again.')
+      showToast('Failed to set default card. Please try again.')
     }
   }
 
@@ -218,7 +217,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       } catch (error: any) {
         // Silently handle 503 (Stripe not configured) - this is expected behavior
         if (error.response?.status !== 503) {
-          console.error('Error checking Stripe availability:', error)
+          /* silent */
         }
         setStripeAvailable(false)
         stripeCheckedRef.current = true
@@ -262,18 +261,16 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
           const currentMethods = methodsResponse.data.paymentMethods || []
           
           if (currentMethods.length >= 4) {
-            alert('You can only have up to 4 payment methods. Please delete a card first.')
+            showToast('You can only have up to 4 payment methods. Please delete a card first.')
             setShowCreditCard(false)
             setupIntentCreatedRef.current = false
             return
           }
         } catch (error) {
-          // If fetch fails, continue anyway (non-critical check)
-          console.log('Could not check payment methods count:', error)
+          /* silent */
         }
         
         try {
-          console.log('🔄 Creating Setup Intent...')
           // Create a fresh Setup Intent for each new card
           const response = await axios.post(
             `${API_URL}/payment-methods/setup-intent`,
@@ -281,32 +278,19 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             { headers: { Authorization: `Bearer ${token}` } }
           )
           
-          console.log('✅ Setup Intent response received:', {
-            hasClientSecret: !!response.data.clientSecret,
-            setupIntentId: response.data.setupIntentId
-          })
-          
           if (!response.data.clientSecret) {
             throw new Error('No client secret returned from backend')
           }
           
           // CRITICAL: Verify client secret format
           if (!response.data.clientSecret.startsWith('seti_')) {
-            console.error('❌ Invalid client secret format:', response.data.clientSecret.substring(0, 20))
             throw new Error('Invalid client secret format from backend')
           }
           
-          console.log('✅ Setting setupIntentSecret...')
           setSetupIntentSecret(response.data.clientSecret)
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error'
           const errorDetails = error.response?.data?.details || error.response?.data?.error || ''
-          
-          console.error('❌ Failed to initialize payment:', error)
-          console.error('   Status:', error.response?.status)
-          console.error('   Message:', errorMessage)
-          console.error('   Details:', errorDetails)
-          console.error('   Full Response:', error.response?.data)
           
           // Show user-friendly error message
           const userMessage = errorMessage.includes('No such customer') 
@@ -315,7 +299,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             ? 'Payment processing is temporarily unavailable. Please try again later.'
             : errorMessage
             
-          alert(`Failed to initialize payment form: ${userMessage}`)
+          showToast(`Failed to initialize payment form: ${userMessage}`)
           // Don't close modal on error - let user see the error and try again
           // Keep modal open so user can retry
           setSetupIntentSecret(null)
@@ -337,7 +321,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       if (file) {
         // Validate file size (10MB limit)
         if (file.size > 10 * 1024 * 1024) {
-          alert('File size must be less than 10MB')
+          showToast('File size must be less than 10MB')
           return
         }
 
@@ -366,17 +350,15 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                 await updateUser({ profilePicture: response.data.profilePicture })
               }
               
-              alert('Profile picture updated successfully!')
+              showToast('Profile picture updated successfully!')
             } catch (error: any) {
-              console.error('Profile picture upload error:', error)
               const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update profile picture'
-              alert(errorMessage)
+              showToast(errorMessage)
             }
           }
           reader.readAsDataURL(file)
         } catch (error: any) {
-          console.error('File read error:', error)
-          alert(error.message || 'Failed to read file')
+          showToast(error.message || 'Failed to read file')
         }
       }
     }
@@ -395,10 +377,10 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       await updateUser({ firstName, lastName, phoneNumber: phoneNumber.trim() || undefined } as any)
-      alert('Profile updated successfully!')
+      showToast('Profile updated successfully!')
       setShowEditProfile(false)
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to update profile')
+      showToast(error.response?.data?.error || 'Failed to update profile')
     } finally {
       setSaving(false)
     }
@@ -430,18 +412,14 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   }
 
   const handleAddCreditCardSecure = async (paymentMethodId: string) => {
-    console.log('✅ handleAddCreditCardSecure called with paymentMethodId:', paymentMethodId)
-    
     if (!token) {
-      alert('Please log in to add a payment method')
+      showToast('Please log in to add a payment method')
       return
     }
     
     setSaving(true)
 
     try {
-      console.log('🔄 Processing payment method addition...')
-      
       // Setup Intent already attached the payment method to the customer
       // We just need to set it as default if user has no default
       try {
@@ -453,25 +431,20 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         // If user has no default payment method, set this one as default
         if (!user.defaultPaymentMethodId) {
           try {
-            console.log('🔄 Setting as default payment method...')
             await axios.post(
               `${API_URL}/payment-methods/${paymentMethodId}/set-default`,
               {},
               { headers: { Authorization: `Bearer ${token}` } }
             )
-            console.log('✅ Set as default payment method')
           } catch (setDefaultError: any) {
-            // Non-critical - payment method is already saved
-            console.log('Could not set default payment method (non-critical):', setDefaultError?.response?.data || setDefaultError?.message)
+            /* silent */
           }
         }
       } catch (userError: any) {
-        // Non-critical - payment method is already saved
-        console.log('Could not fetch user (non-critical):', userError?.response?.data || userError?.message)
+        /* silent */
       }
 
       // Refresh payment methods list FIRST to get updated count
-      console.log('🔄 Refreshing payment methods list...')
       await fetchPaymentMethods()
       
       // Get updated count for success message
@@ -479,35 +452,31 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         headers: { Authorization: `Bearer ${token}` }
       }).then(r => r.data.paymentMethods || []).catch(() => paymentMethods)
       
-      console.log('✅ Payment method added successfully. Total cards:', updatedMethods.length)
-      
       // Close modal and reset state
       setShowCreditCard(false)
       setSetupIntentSecret(null)
       setSaving(false)
       setupIntentCreatedRef.current = false // Reset so new card can be added
       
-      alert(`Credit card added successfully! You now have ${updatedMethods.length} card(s).`)
+      showToast(`Credit card added successfully! You now have ${updatedMethods.length} card(s).`)
       
       // Refresh user data
       if (updateUser) {
         try {
           await updateUser({})
         } catch (updateError) {
-          console.log('Could not refresh user data:', updateError)
+          /* silent */
         }
       }
     } catch (error: any) {
-      console.error('❌ Error in handleAddCreditCardSecure:', error)
       const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to add credit card'
-      alert(errorMsg)
+      showToast(errorMsg)
       setSaving(false)
     }
   }
 
   const handleAddCreditCardError = (error: string) => {
-    console.error('❌ handleAddCreditCardError:', error)
-    alert(error)
+    showToast(error)
     setSaving(false)
     // Don't close modal on error - let user try again
     // setShowCreditCard(false)
@@ -799,7 +768,6 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                         }
                       }
                     } catch (error) {
-                      console.error('Failed to update location visibility:', error)
                       setLocationVisible(!newVisibility) // Revert on error
                     }
                   }}
@@ -842,7 +810,6 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                         } as any)
                       }
                     } catch (error) {
-                      console.error('Failed to update AI personalization setting:', error)
                       setAiPersonalizationEnabled(!newValue) // Revert on error
                     }
                   }}
@@ -947,10 +914,8 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    console.log('🔄 Add New Card button clicked. Current cards:', paymentMethods.length)
                     setShowPaymentMethods(false)
                     setShowCreditCard(true)
-                    console.log('✅ Credit card modal should open now')
                   }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-500 text-black rounded-lg font-medium hover:bg-primary-400 transition-all"
                 >
@@ -1059,6 +1024,17 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* Log Out */}
+              <div className="pt-4 border-t border-primary-500/10">
+                <button
+                  onClick={() => { onClose(); logout() }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-500/30 text-red-400 font-semibold text-sm hover:bg-red-500/10 transition-all active:scale-[0.98]"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Log Out
+                </button>
               </div>
 
             </div>

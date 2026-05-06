@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
@@ -100,7 +101,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       const defaultPM = response.data.paymentMethods?.find((pm: any) => pm.isDefault)
       setDefaultPaymentMethod(defaultPM || null)
     } catch (error) {
-      console.error('Failed to fetch payment methods:', error)
+      /* silent */
     }
   }
 
@@ -112,7 +113,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       })
       setRecentRecipients(response.data.recipients || [])
     } catch (error) {
-      console.error('Failed to fetch recent recipients:', error)
+      /* silent */
     }
   }
 
@@ -124,7 +125,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       })
       setFavoriteVenues(response.data.venues || [])
     } catch (error) {
-      console.error('Failed to fetch favorite venues:', error)
+      /* silent */
     }
   }
 
@@ -145,7 +146,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setPreviousPoints(newPoints)
       setPoints(newPoints)
     } catch (error) {
-      console.error('Failed to fetch points:', error)
+      /* silent */
     }
   }
 
@@ -160,7 +161,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       })
       setSearchResults(response.data.users || [])
     } catch (error) {
-      console.error('Failed to search users:', error)
       setSearchResults([])
     }
   }
@@ -275,7 +275,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       setPaymentsHasMore(response.data.hasMore !== false && newPayments.length === limit)
       setError(null)
     } catch (error: any) {
-      console.error('Failed to fetch payments:', error)
       if (reset || pageNum === 1) {
         setError('Failed to load transaction history')
         setPayments([])
@@ -309,7 +308,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           localStorage.removeItem('selectedVenue')
           localStorage.removeItem('profileAction')
         } catch (error) {
-          console.error('Failed to parse stored venue:', error)
+          /* silent */
         }
       }
     }
@@ -371,7 +370,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   useEffect(() => {
     const handleWalletUpdate = (event: CustomEvent) => {
       const data = event.detail
-      console.log('Wallet updated:', data)
       if (updateUser) {
         updateUser({})
       }
@@ -662,7 +660,6 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         setAddingFunds(false)
       }
     } catch (error: any) {
-      console.error('Error adding funds:', error)
       setError(error.response?.data?.message || 'Failed to add funds. Please try again.')
       setAddingFunds(false)
     }
@@ -1012,17 +1009,17 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
                           setSearchQuery(phoneNumber)
                           searchUsers(phoneNumber)
                         } else {
-                          alert('Selected contact does not have a phone number')
+                          showToast('Selected contact does not have a phone number')
                         }
                       }
                     } else {
-                      alert('Contacts access is not available on this device. Please search manually or use the Find Friends feature.')
+                      showToast('Contacts access is not available on this device. Please search manually or use the Find Friends feature.')
                     }
                   } catch (error: any) {
                     if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                      alert('Contacts permission denied. Please enable contacts access in Settings → App Permissions.')
+                      showToast('Contacts permission denied. Please enable contacts access in Settings → App Permissions.')
                     } else {
-                      alert('Unable to access contacts. Please search manually.')
+                      showToast('Unable to access contacts. Please search manually.')
                     }
                   }
                 }}
@@ -1493,9 +1490,8 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
           if (updateUser) {
             try {
               await updateUser({})
-              console.log('✅ User data refreshed after adding funds')
             } catch (err) {
-              console.error('❌ Error refreshing user:', err)
+              /* silent */
             }
           }
           

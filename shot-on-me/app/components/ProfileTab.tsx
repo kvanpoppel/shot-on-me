@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -90,7 +91,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !token) return
-    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10MB'); return }
+    if (file.size > 10 * 1024 * 1024) { showToast('Image must be under 10MB'); return }
     setUploadingPhoto(true)
     try {
       const formData = new FormData()

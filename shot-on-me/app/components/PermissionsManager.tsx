@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { MapPin, Camera, Users, Bell, X } from 'lucide-react'
 
@@ -188,7 +189,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
 
   const requestLocation = async () => {
     if (!('geolocation' in navigator)) {
-      alert('Geolocation is not available in this browser')
+      showToast('Geolocation is not available in this browser')
       return false
     }
     
@@ -322,7 +323,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         }
       }
       else {
-        alert('Contacts API is not directly available on this device. You can use the "Import from Contacts" button in Find Friends or manually search for friends.')
+        showToast('Contacts API is not directly available on this device. You can use the "Import from Contacts" button in Find Friends or manually search for friends.')
         setPermissions(prev => ({ ...prev, contacts: 'unavailable' }))
         return false
       }
@@ -364,7 +365,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
     
     // If already granted, we can't toggle off (user would need to change in browser settings)
     if (currentStatus === 'granted') {
-      alert(`To disable ${type} permission, please go to your browser settings.`)
+      showToast(`To disable ${type} permission, please go to your browser settings.`)
       return
     }
     
@@ -379,9 +380,9 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
         // Contacts denied - show helpful message
         const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
         if (isIOS) {
-          alert('Contacts access is not supported in Safari on iOS. Use "Find Friends" to search manually.')
+          showToast('Contacts access is not supported in Safari on iOS. Use "Find Friends" to search manually.')
         } else {
-          alert(`Permission was previously denied. Please enable ${type} in your browser settings.`)
+          showToast(`Permission was previously denied. Please enable ${type} in your browser settings.`)
         }
         return
       }
@@ -392,7 +393,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
       // For mobile devices, still try to request
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       if (!isMobile && type !== 'location' && type !== 'notifications') {
-        alert(`${type} permission is not available on this device or browser.`)
+        showToast(`${type} permission is not available on this device or browser.`)
         return
       }
       // Continue to request anyway
@@ -551,7 +552,7 @@ export default function PermissionsManager({ onComplete, showOnMount = true }: P
                             // For camera and contacts, show instructions
                             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
                             const browserName = isIOS ? 'Safari' : 'your browser'
-                            alert(`To enable ${perm.title.toLowerCase()}, please:\n\n1. Open ${browserName} Settings\n2. Find "${perm.title}" permissions\n3. Allow access for shotonme.com\n\n${isIOS ? 'On iOS: Settings → Safari → Website Settings → shotonme.com' : ''}`)
+                            showToast(`To enable ${perm.title.toLowerCase()}, please:\n\n1. Open ${browserName} Settings\n2. Find "${perm.title}" permissions\n3. Allow access for shotonme.com\n\n${isIOS ? 'On iOS: Settings → Safari → Website Settings → shotonme.com' : ''}`)
                           }
                         }}
                         className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors cursor-pointer"

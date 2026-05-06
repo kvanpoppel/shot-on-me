@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -222,7 +223,7 @@ export default function StoriesTab({ onViewProfile }: StoriesTabProps) {
       fetchStories()
     } catch (error: any) {
       console.error('Error creating story:', error)
-      alert(error.response?.data?.message || 'Failed to create story')
+      showToast(error.response?.data?.message || 'Failed to create story')
     } finally {
       setCreating(false)
     }

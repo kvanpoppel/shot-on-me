@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -269,7 +270,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
       setShowCheckInSuccess(true)
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to check in'
-      alert(errorMessage)
+      showToast(errorMessage)
     } finally {
       setCheckingIn(false)
     }
@@ -526,7 +527,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
                   if ((error as any).name !== 'AbortError') {
                     try {
                       await navigator.clipboard.writeText(window.location.href)
-                      alert('Link copied to clipboard!')
+                      showToast('Link copied to clipboard!')
                     } catch (clipboardError) {
                       console.error('Failed to copy:', clipboardError)
                     }
@@ -536,7 +537,7 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
                 // Fallback for browsers without share API
                 try {
                   await navigator.clipboard.writeText(window.location.href)
-                  alert('Link copied to clipboard!')
+                  showToast('Link copied to clipboard!')
                 } catch (clipboardError) {
                   console.error('Failed to copy:', clipboardError)
                 }

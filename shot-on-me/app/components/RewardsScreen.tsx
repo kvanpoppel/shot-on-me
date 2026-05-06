@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -89,9 +90,9 @@ export default function RewardsScreen() {
       )
       await fetchRewards()
       await fetchMyRewards()
-      alert('Reward redeemed successfully!')
+      showToast('Reward redeemed successfully!')
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to redeem reward')
+      showToast(error.response?.data?.message || 'Failed to redeem reward')
     } finally {
       setRedeeming(null)
     }
@@ -143,9 +144,9 @@ export default function RewardsScreen() {
                     )
                     await fetchRewards()
                     await fetchMyRewards()
-                    alert(`Success! $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
+                    showToast(`Success! $${response.data.redemption.cashAmount.toFixed(2)} added to your wallet!`)
                   } catch (error: any) {
-                    alert(error.response?.data?.message || 'Failed to redeem cash reward')
+                    showToast(error.response?.data?.message || 'Failed to redeem cash reward')
                   } finally {
                     setRedeeming(null)
                   }

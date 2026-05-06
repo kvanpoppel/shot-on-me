@@ -1,5 +1,6 @@
 'use client'
 
+import { showToast } from '../utils/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
@@ -272,7 +273,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
       }
     } catch (error: any) {
       console.error('Failed to start conversation:', error)
-      alert(error.response?.data?.message || 'Failed to start conversation')
+      showToast(error.response?.data?.message || 'Failed to start conversation')
     }
   }
 
@@ -312,7 +313,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
 
     const recipientId = getRecipientId()
     if (!selectedGroup && !recipientId) {
-      alert('Error: Cannot determine recipient. Please try again.')
+      showToast('Error: Cannot determine recipient. Please try again.')
       return
     }
 
@@ -409,7 +410,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
       })
       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to send message'
       console.error('Error message to display:', errorMessage)
-      alert(`Failed to send message: ${errorMessage}`)
+      showToast(`Failed to send message: ${errorMessage}`)
       // Don't clear media on error so user can retry
     } finally {
       setSending(false)
@@ -447,7 +448,7 @@ export default function MessagesModal({ isOpen, onClose, onViewProfile }: Messag
       }
     } catch (error) {
       console.error('Failed to delete message:', error)
-      alert('Failed to delete message')
+      showToast('Failed to delete message')
     }
   }
 
