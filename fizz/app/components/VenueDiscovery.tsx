@@ -9,7 +9,7 @@ import axios from 'axios'
 import { MapPin, Search, Star, List, Map, Check, ExternalLink, Loader } from 'lucide-react'
 import {
   Venue, VenueCategory,
-  FIZZ_CATEGORIES, FIZZ_CITIES,
+  FIZZ_CATEGORIES,
   FIZZ_PLACES_TYPES, FIZZ_PLACES_KEYWORDS,
   CATEGORY_ICONS, CATEGORY_COLORS, EXCLUDED_CATEGORIES,
 } from '../types'
@@ -68,15 +68,8 @@ function isFizzVenue(venue: Venue): boolean {
   )
 }
 
-const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
-  'Indianapolis': { lat: 39.7684, lng: -86.1581 },
-  'Chicago':      { lat: 41.8781, lng: -87.6298 },
-  'Louisville':   { lat: 38.2527, lng: -85.7585 },
-  'Nashville':    { lat: 36.1627, lng: -86.7816 },
-  'Detroit':      { lat: 42.3314, lng: -83.0458 },
-  'Columbus':     { lat: 39.9612, lng: -82.9988 },
-  'Salt Lake City': { lat: 40.7608, lng: -111.8910 },
-}
+// Default fallback center (Indianapolis) — used only if geolocation fails
+const DEFAULT_CENTER = { lat: 39.7684, lng: -86.1581 }
 
 export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onSavedVenuesChange, initialCategory, onCategoryConsumed }: VenueDiscoveryProps) {
   const { token } = useAuth()
@@ -85,7 +78,6 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   const [view, setView] = useState<'list' | 'map'>('list')
   const [search, setSearch] = useState('')
-  const [selectedCity, setSelectedCity] = useState('Near Me')
   const [selectedCategory, setSelectedCategory] = useState<VenueCategory | null>(null)
 
   // DB venues (Shot On Me platform venues)
@@ -101,28 +93,22 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
   // Map state
   const mapRef = useRef<google.maps.Map | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [mapCenter, setMapCenter] = useState(CITY_CENTERS['Indianapolis'])
+  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER)
   const [selectedPin, setSelectedPin] = useState<PlaceResult | null>(null)
 
-  // Detect user location on mount
+  // Watch user location — results follow the user as they move
   useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-          setUserLocation(loc)
-          if (selectedCity === 'Near Me') {
-            setMapCenter(loc)
-          }
-        },
-        () => {
-          // If denied, fall back to first city
-          setSelectedCity(FIZZ_CITIES[0])
-          setMapCenter(CITY_CENTERS[FIZZ_CITIES[0]])
-        },
-        { enableHighAccuracy: false, timeout: 5000 }
-      )
-    }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLocation(loc)
+        setMapCenter(loc)
+      },
+      () => { /* keep default center */ },
+      { enableHighAccuracy: true, maximumAge: 30000 }
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
   useEffect(() => {
@@ -134,14 +120,10 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     setLoading(true)
     try {
       const params: any = { limit: 50, platform: 'fizz' }
-      if (selectedCity === 'Near Me') {
-        if (userLocation) {
-          params.lat = userLocation.lat
-          params.lng = userLocation.lng
-          params.radius = 15 // miles
-        }
-      } else {
-        params.city = selectedCity
+      if (userLocation) {
+        params.lat = userLocation.lat
+        params.lng = userLocation.lng
+        params.radius = 25 // miles
       }
       const res = await axios.get(`${API_URL}/venues`, {
         params,
@@ -152,7 +134,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     } catch { /* ignore */ } finally {
       setLoading(false)
     }
-  }, [API_URL, token, selectedCity, userLocation])
+  }, [API_URL, token, userLocation])
 
   useEffect(() => { fetchDbVenues() }, [fetchDbVenues])
 
@@ -162,22 +144,11 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
       const cat = initialCategory as VenueCategory
       if (FIZZ_CATEGORIES.includes(cat)) {
         setSelectedCategory(cat)
-        const center = selectedCity === 'Near Me' ? (userLocation || mapCenter) : (CITY_CENTERS[selectedCity] || mapCenter)
-        searchPlaces(cat, center)
+        searchPlaces(cat, userLocation || mapCenter)
       }
       onCategoryConsumed?.()
     }
   }, [initialCategory, isLoaded])
-
-  // Update map center when city changes
-  useEffect(() => {
-    if (selectedCity === 'Near Me') {
-      if (userLocation) setMapCenter(userLocation)
-    } else {
-      const center = CITY_CENTERS[selectedCity]
-      if (center) setMapCenter(center)
-    }
-  }, [selectedCity, userLocation])
 
   // Google Places search using the new Place class (searchNearby)
   const searchPlaces = useCallback(async (category: VenueCategory, center: { lat: number; lng: number }) => {
@@ -252,8 +223,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
       return
     }
     setSelectedCategory(cat)
-    const center = selectedCity === 'Near Me' ? (userLocation || mapCenter) : (CITY_CENTERS[selectedCity] || mapCenter)
-    searchPlaces(cat, center)
+    searchPlaces(cat, userLocation || mapCenter)
   }
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
@@ -346,24 +316,6 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
           </div>
         </div>
 
-        {/* City tabs */}
-        <div className="px-4 mb-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {['Near Me', ...FIZZ_CITIES].map(city => (
-              <button
-                key={city}
-                onClick={() => setSelectedCity(city)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                style={selectedCity === city
-                  ? { background: '#C8F135', color: '#1A1A2E' }
-                  : { background: '#252540', color: 'rgba(255,255,255,0.5)' }}
-              >
-                {city}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Category tabs — tap to search Google Places */}
         <div className="px-4 mb-4">
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -391,7 +343,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
           </div>
           {selectedCategory && (
             <p className="text-[10px] mt-1.5 ml-1" style={{ color: 'rgba(200,241,53,0.5)' }}>
-              {placesLoading ? `Searching Google for ${catIcon} ${selectedCategory}...` : `Showing Google results for ${catIcon} ${selectedCategory} in ${selectedCity}`}
+              {placesLoading ? `Searching for ${catIcon} ${selectedCategory} near you...` : `${catIcon} ${selectedCategory} near you`}
             </p>
           )}
         </div>
@@ -508,9 +460,19 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
                             ? <img src={venue.coverPhoto} alt={venue.name} className="w-full h-full object-cover" />
                             : <div className="w-full h-full flex items-center justify-center text-4xl">🏠</div>
                           }
-                          <div className="absolute top-2 right-2 p-1.5 rounded-full" style={{ background: 'rgba(0,0,0,0.6)' }}>
+                          <button
+                            className="absolute top-2 right-2 p-1.5 rounded-full transition-all"
+                            style={{ background: 'rgba(0,0,0,0.6)' }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSavedIds(prev => { const n = new Set(prev); n.delete(venue.placeId); return n })
+                              axios.delete(`${API_URL}/saved-venues/${venue.placeId}`, { headers: { Authorization: `Bearer ${token}` } })
+                                .then(() => onSavedVenuesChange?.())
+                                .catch(() => {})
+                            }}
+                          >
                             <Star className="w-4 h-4 fill-current" style={{ color: '#C8F135' }} />
-                          </div>
+                          </button>
                         </div>
                         <div className="p-3">
                           <p className="font-bold text-white text-sm">{venue.name}</p>
@@ -600,7 +562,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
                   <div className="py-16 text-center">
                     <p className="text-4xl mb-3">{catIcon}</p>
                     <p className="text-white/40 font-medium">No {selectedCategory} found nearby</p>
-                    <p className="text-white/25 text-sm mt-1">Try a different city</p>
+                    <p className="text-white/25 text-sm mt-1">Try a different category</p>
                   </div>
                 )}
               </div>
@@ -611,7 +573,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
               <>
                 <div className="px-4 mb-3">
                   <p className="text-xs text-white/30 font-medium">
-                    {loading ? 'Finding venues...' : `${(displayList as Venue[]).length} venue${(displayList as Venue[]).length !== 1 ? 's' : ''} in ${selectedCity}`}
+                    {loading ? 'Finding venues...' : `${(displayList as Venue[]).length} venue${(displayList as Venue[]).length !== 1 ? 's' : ''} near you`}
                   </p>
                 </div>
                 <div className="px-4 flex flex-col gap-4 pb-6">

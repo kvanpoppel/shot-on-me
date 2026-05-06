@@ -113,15 +113,6 @@ export const FIZZ_PLACES_KEYWORDS: Record<VenueCategory, string> = {
   'Ice Cream':       'ice cream shop',
 }
 
-export const FIZZ_CITIES = [
-  'Indianapolis',
-  'Chicago',
-  'Louisville',
-  'Nashville',
-  'Detroit',
-  'Columbus',
-  'Salt Lake City',
-]
 
 export const OCCASION_TAGS = [
   { label: 'Coffee Date', emoji: '☕' },

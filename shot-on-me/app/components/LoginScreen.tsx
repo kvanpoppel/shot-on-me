@@ -30,7 +30,6 @@ const FEATURE_ICONS = [
   <Sparkles className="w-5 h-5 text-primary-500" />,
 ]
 
-const CITIES = ['All', 'Indianapolis', 'Chicago', 'Louisville', 'Nashville', 'Detroit', 'Columbus']
 
 const CATEGORY_LABEL: Record<string, string> = {
   bar: 'Bar', restaurant: 'Restaurant', club: 'Nightclub', cafe: 'Coffee Shop', other: 'Lounge',
@@ -92,15 +91,13 @@ export default function LoginScreen() {
 
   // Venue state
   const [publicVenues, setPublicVenues] = useState<any[]>([])
-  const [venueCity, setVenueCity] = useState('All')
   const [venuePortalLoginUrl, setVenuePortalLoginUrl] = useState('')
   const [mounted, setMounted] = useState(false)
-  const [carouselPaused, setCarouselPaused] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     setVenuePortalLoginUrl(getVenuePortalLoginUrl())
-    fetchPublicVenues('All')
+    fetchPublicVenues()
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const ref = params.get('ref')
@@ -108,10 +105,9 @@ export default function LoginScreen() {
     }
   }, [])
 
-  const fetchPublicVenues = async (city: string) => {
+  const fetchPublicVenues = async () => {
     try {
-      const q = city && city !== 'All' ? `?city=${encodeURIComponent(city)}` : ''
-      const res = await axios.get(`${getApiUrl()}/venues/public${q}`)
+      const res = await axios.get(`${getApiUrl()}/venues/public`)
       setPublicVenues(res.data.venues || [])
     } catch { setPublicVenues([]) }
   }
@@ -256,47 +252,12 @@ export default function LoginScreen() {
           </div>
 
           {/* Auto-scrolling city carousel */}
-          <div
-            className="relative overflow-hidden mb-4 py-0.5"
-            style={{
-              maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
-            }}
-            onMouseEnter={() => setCarouselPaused(true)}
-            onMouseLeave={() => setCarouselPaused(false)}
-          >
-            <div
-              className="flex gap-2 w-max"
-              style={{
-                animationName: 'city-scroll',
-                animationDuration: '22s',
-                animationTimingFunction: 'linear',
-                animationIterationCount: 'infinite',
-                animationPlayState: carouselPaused ? 'paused' : 'running',
-              }}
-            >
-              {[...CITIES, ...CITIES].map((city, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => { setVenueCity(city); fetchPublicVenues(city); setCarouselPaused(true) }}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 ${
-                    venueCity === city
-                      ? 'bg-primary-500 text-black border-primary-500 shadow-lg shadow-primary-500/20'
-                      : 'bg-black/60 text-white/48 border-white/10 hover:border-primary-500/35 hover:text-white/75'
-                  }`}
-                >
-                  {city}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Horizontal venue card strip */}
           {publicVenues.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.02] py-9 text-center">
               <Building2 className="w-8 h-8 text-white/12 mx-auto mb-3" />
               <p className="text-white/48 text-sm font-medium">
-                Coming Soon to {venueCity === 'All' ? 'your area' : venueCity}
+                Venues coming soon to your area
               </p>
               <p className="text-white/22 text-xs mt-1">We're expanding fast — check back soon.</p>
             </div>

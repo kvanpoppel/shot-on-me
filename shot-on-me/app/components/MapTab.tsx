@@ -82,6 +82,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
   const [trendingVenues, setTrendingVenues] = useState<any[]>([])
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const locationWatchRef = useRef<number | null>(null)
   const [googlePlace, setGooglePlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +91,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [showFriends, setShowFriends] = useState(true)
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null)
   const [showSendSheet, setShowSendSheet] = useState(false)
-  const [currentCity, setCurrentCity] = useState<string>('Indianapolis')
+  const [currentCity, setCurrentCity] = useState<string>('')
   const [temperature, setTemperature] = useState<number | null>(null)
   const [weatherLoading, setWeatherLoading] = useState(false)
   const [showLegend, setShowLegend] = useState(true)
@@ -288,6 +289,28 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     }
   }, [])
 
+  const reverseGeocodeCity = useCallback((lat: number, lng: number) => {
+    if (!mapsLoaded || typeof google === 'undefined' || !google.maps) return
+    try {
+      const geocoder = new google.maps.Geocoder()
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === 'OK' && results?.[0]) {
+          const city = results[0].address_components?.find(c => c.types.includes('locality'))?.long_name
+          if (city) setCurrentCity(city)
+        }
+      })
+    } catch { /* ignore */ }
+  }, [mapsLoaded])
+
+  // Clean up location watcher on unmount
+  useEffect(() => {
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current)
+      }
+    }
+  }, [])
+
   const getCurrentLocation = useCallback(async () => {
     if (!('geolocation' in navigator)) {
       // Geolocation not available - use default location
@@ -314,41 +337,29 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     }
 
     try {
+      // Get initial position quickly, then watch for updates
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const { latitude, longitude } = position.coords
           setUserLocation({ lat: latitude, lng: longitude })
-          
-          // Reverse geocode to get city name (gracefully handle if API not enabled)
-          if (mapsLoaded && typeof google !== 'undefined' && google.maps) {
-            try {
-              const geocoder = new google.maps.Geocoder()
-              geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-                if (status === 'OK' && results && results[0]) {
-                  const city = results[0].address_components?.find(c => c.types.includes('locality'))?.long_name
-                  if (city) setCurrentCity(city)
-                }
-                // Silently ignore geocoding errors (API not enabled, quota exceeded, etc.)
-              })
-            } catch (error) {
-              // Geocoding API not available - continue without city name
-            }
-          }
-          
-          // Fetch weather data for current location
+          reverseGeocodeCity(latitude, longitude)
           fetchWeatherData(latitude, longitude)
         },
-        (error) => {
-          // Handle errors silently - timeouts and permission denials are expected
-          // Fetch weather for default location on error
-          fetchWeatherData(39.7684, -86.1581)
-        },
-        {
-          enableHighAccuracy: false, // Use less accurate but faster location
-          timeout: 15000, // Increased to 15 seconds
-          maximumAge: 300000 // Accept cached location up to 5 minutes old
-        }
+        () => { fetchWeatherData(39.7684, -86.1581) },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
       )
+
+      // Watch for location changes so the map follows the user
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setUserLocation({ lat: latitude, lng: longitude })
+          reverseGeocodeCity(latitude, longitude)
+        },
+        () => { /* ignore watch errors */ },
+        { enableHighAccuracy: true, maximumAge: 30000 }
+      )
+      locationWatchRef.current = watchId
     } catch (error) {
       // Geolocation failed - use default location silently
       fetchWeatherData(39.7684, -86.1581)

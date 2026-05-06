@@ -7,18 +7,13 @@ import { Coffee, CheckCircle, ArrowLeft, MapPin, Phone, Mail, Building2, X } fro
 import Link from 'next/link'
 
 const VENUE_TYPES = [
+  { value: 'Dirty Soda Shop', icon: '🫧', description: 'Dirty sodas, specialty drinks' },
   { value: 'Coffee Shop', icon: '☕', description: 'Espresso, drip coffee, specialty drinks' },
-  { value: 'Juice Bar', icon: '🥤', description: 'Fresh-pressed juices, wellness shots' },
-  { value: 'Soda Shop', icon: '🫧', description: 'Craft sodas, specialty drinks' },
   { value: 'Tea House', icon: '🍵', description: 'Tea, matcha, boba' },
   { value: 'Smoothie Bar', icon: '🥝', description: 'Smoothies, protein shakes, acai bowls' },
-  { value: 'Bakery', icon: '🥐', description: 'Baked goods, pastries, desserts' },
-  { value: 'Cafe', icon: '🫶', description: 'Multi-concept cafe' },
-]
-
-const CITIES = [
-  'Indianapolis', 'Chicago', 'Louisville', 'Nashville',
-  'Detroit', 'Columbus', 'Salt Lake City', 'Other',
+  { value: 'Bakery', icon: '🧁', description: 'Baked goods, pastries, desserts' },
+  { value: 'Cafe', icon: '🥐', description: 'Multi-concept cafe' },
+  { value: 'Ice Cream', icon: '🍦', description: 'Ice cream, gelato, frozen treats' },
 ]
 
 export default function VenueSignupPage() {
@@ -34,6 +29,7 @@ export default function VenueSignupPage() {
     phone: '',
     address: '',
     city: '',
+    state: '',
     description: '',
     instagram: '',
   })
@@ -47,23 +43,12 @@ export default function VenueSignupPage() {
 
     try {
       const API_URL = getApiUrl()
-      // Map city → state abbreviation for the venue-requests endpoint
-      const STATE_MAP: Record<string, string> = {
-        'Indianapolis': 'IN',
-        'Chicago': 'IL',
-        'Louisville': 'KY',
-        'Nashville': 'TN',
-        'Detroit': 'MI',
-        'Columbus': 'OH',
-        'Salt Lake City': 'UT',
-        'Other': 'IN',
-      }
       await axios.post(`${API_URL}/venue-requests`, {
         venueName: form.venueName,
         venueType: form.venueType,
         address: form.address || '(not provided)',
         city: form.city,
-        state: STATE_MAP[form.city] || 'IN',
+        state: form.state || '',
         ownerName: form.ownerName,
         email: form.email,
         phone: form.phone,
@@ -137,7 +122,7 @@ export default function VenueSignupPage() {
               Join Fizz and let customers send each other gifts redeemable at your venue. 100% commission-free.
             </p>
             <div className="grid grid-cols-3 gap-2 mt-4">
-              {['$0 fees', 'Instant payouts', '7 cities'].map(benefit => (
+              {['$0 fees', 'Instant payouts', 'Any city'].map(benefit => (
                 <div key={benefit} className="text-center py-2 px-1 rounded-xl" style={{ background: 'rgba(200,241,53,0.1)' }}>
                   <p className="text-xs font-bold" style={{ color: '#C8F135' }}>{benefit}</p>
                 </div>
@@ -187,18 +172,31 @@ export default function VenueSignupPage() {
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-1.5 block">City *</label>
-            <select
-              value={form.city}
-              onChange={e => update('city', e.target.value)}
-              required
-              className="w-full px-4 py-3.5 rounded-2xl text-sm border border-white/10 focus:border-lime-fizz"
-              style={{ background: '#252540', color: form.city ? 'white' : 'rgba(255,255,255,0.4)' }}
-            >
-              <option value="" disabled>Select your city</option>
-              {CITIES.map(c => <option key={c} value={c} style={{ color: 'white', background: '#252540' }}>{c}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-1.5 block">City *</label>
+              <input
+                type="text"
+                value={form.city}
+                onChange={e => update('city', e.target.value)}
+                placeholder="Salt Lake City"
+                required
+                className="w-full px-4 py-3.5 rounded-2xl text-sm border border-white/10 focus:border-lime-fizz"
+                style={{ background: '#252540' }}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-1.5 block">State *</label>
+              <input
+                type="text"
+                value={form.state}
+                onChange={e => update('state', e.target.value)}
+                placeholder="UT"
+                required
+                className="w-full px-4 py-3.5 rounded-2xl text-sm border border-white/10 focus:border-lime-fizz"
+                style={{ background: '#252540' }}
+              />
+            </div>
           </div>
 
           <div>
