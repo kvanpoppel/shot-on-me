@@ -19,9 +19,10 @@ interface ReactionCounts {
 
 interface FeedTabProps {
   onSendFizz?: () => void
+  onViewProfile?: (userId: string) => void
 }
 
-export default function FeedTab({ onSendFizz }: FeedTabProps) {
+export default function FeedTab({ onSendFizz, onViewProfile }: FeedTabProps) {
   const { user, token } = useAuth()
   const API_URL = useApiUrl()
   const userId = user?.id || (user as any)?._id
@@ -203,7 +204,11 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
       <div className="overflow-hidden" style={{ background: '#1C1C32', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
+          <div
+            className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}
+            onClick={() => { if (authorId && !isOwn && onViewProfile) onViewProfile(authorId) }}
+          >
             {post.author?.profilePicture || post.user?.profilePicture ? (
               <img src={post.author?.profilePicture || post.user?.profilePicture} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -213,7 +218,12 @@ export default function FeedTab({ onSendFizz }: FeedTabProps) {
             )}
           </div>
           <div className="flex-1">
-            <p className="font-bold text-white text-sm">{authorName}</p>
+            <p
+              className="font-bold text-white text-sm cursor-pointer hover:text-white/80 transition-colors"
+              onClick={() => { if (authorId && !isOwn && onViewProfile) onViewProfile(authorId) }}
+            >
+              {authorName}
+            </p>
             <p className="text-xs text-white/30">{timeAgo}</p>
           </div>
           {isGift && (

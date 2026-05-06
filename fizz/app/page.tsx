@@ -197,7 +197,7 @@ function FizzApp() {
           />
         )}
         {activeTab === 'feed' && (
-          <FeedTab onSendFizz={() => setActiveTab('send')} />
+          <FeedTab onSendFizz={() => setActiveTab('send')} onViewProfile={handleViewProfile} />
         )}
         {(activeTab === 'sips' || activeTab === 'discover') && (
           <VenueDiscovery
