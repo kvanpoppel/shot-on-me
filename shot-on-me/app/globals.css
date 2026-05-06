@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
 :root {
   --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
   --background-rgb: 8, 6, 4; /* Warm-black — removes cold harshness */

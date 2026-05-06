@@ -78,60 +78,11 @@ function Home() {
     setIsMounted(true)
   }, [])
 
-  // Scroll to top when returning to home tab
+  // Scroll to top on every tab switch
   useEffect(() => {
-    if (activeTab === 'home' && typeof window !== 'undefined') {
-      // Force scroll to absolute top - use requestAnimationFrame for reliable execution
-      const scrollToTop = () => {
-        // Use all available scroll methods
-        if (typeof window !== 'undefined') {
-          window.scrollTo(0, 0)
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-        }
-        if (typeof document !== 'undefined') {
-          if (document.documentElement) {
-            document.documentElement.scrollTop = 0
-            document.documentElement.scrollLeft = 0
-          }
-          if (document.body) {
-            document.body.scrollTop = 0
-            document.body.scrollLeft = 0
-          }
-          // Also try scrolling the main element
-          const mainElement = document.querySelector('main')
-          if (mainElement) {
-            mainElement.scrollTop = 0
-          }
-          // Force scroll on window - check current position and force scroll if needed
-          if (typeof window !== 'undefined') {
-            if (typeof window.pageYOffset !== 'undefined' && window.pageYOffset > 0) {
-              window.scrollTo(0, 0)
-            }
-            if (typeof window.scrollY !== 'undefined' && window.scrollY > 0) {
-              window.scrollTo(0, 0)
-            }
-          }
-        }
-      }
-      
-      // Scroll immediately using requestAnimationFrame for better reliability
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          scrollToTop()
-          // Also scroll after brief delays
-          setTimeout(scrollToTop, 0)
-          setTimeout(scrollToTop, 10)
-          setTimeout(scrollToTop, 50)
-          setTimeout(scrollToTop, 100)
-          setTimeout(scrollToTop, 200)
-        })
-      } else {
-        // Fallback if requestAnimationFrame not available
-        scrollToTop()
-        setTimeout(scrollToTop, 0)
-        setTimeout(scrollToTop, 50)
-        setTimeout(scrollToTop, 100)
-      }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+      document.documentElement.scrollTop = 0
     }
   }, [activeTab])
 
@@ -315,6 +266,7 @@ function Home() {
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isSearchOpen={isSearchOpen} />
       {viewingProfile && (
+        <div className="animate-fadeIn">
         <FriendProfile
           userId={viewingProfile}
           onClose={() => setViewingProfile(null)}
@@ -324,11 +276,12 @@ function Home() {
             setActiveTab('wallet')
           }}
         />
+        </div>
       )}
 
       {/* Venue detail modal — opens from Home tab venue cards */}
       {viewingVenueId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="h-full overflow-y-auto">
             <div className="sticky top-0 z-10 flex justify-end p-3">
               <button
