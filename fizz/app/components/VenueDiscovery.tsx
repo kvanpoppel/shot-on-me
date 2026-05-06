@@ -85,7 +85,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   const [view, setView] = useState<'list' | 'map'>('list')
   const [search, setSearch] = useState('')
-  const [selectedCity, setSelectedCity] = useState(FIZZ_CITIES[0])
+  const [selectedCity, setSelectedCity] = useState('Near Me')
   const [selectedCategory, setSelectedCategory] = useState<VenueCategory | null>(null)
 
   // DB venues (Shot On Me platform venues)
@@ -100,8 +100,30 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   // Map state
   const mapRef = useRef<google.maps.Map | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState(CITY_CENTERS['Indianapolis'])
   const [selectedPin, setSelectedPin] = useState<PlaceResult | null>(null)
+
+  // Detect user location on mount
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setUserLocation(loc)
+          if (selectedCity === 'Near Me') {
+            setMapCenter(loc)
+          }
+        },
+        () => {
+          // If denied, fall back to first city
+          setSelectedCity(FIZZ_CITIES[0])
+          setMapCenter(CITY_CENTERS[FIZZ_CITIES[0]])
+        },
+        { enableHighAccuracy: false, timeout: 5000 }
+      )
+    }
+  }, [])
 
   useEffect(() => {
     setSavedIds(new Set(savedGoogleVenues.map(v => v.placeId)))
@@ -111,8 +133,18 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
   const fetchDbVenues = useCallback(async () => {
     setLoading(true)
     try {
+      const params: any = { limit: 50, platform: 'fizz' }
+      if (selectedCity === 'Near Me') {
+        if (userLocation) {
+          params.lat = userLocation.lat
+          params.lng = userLocation.lng
+          params.radius = 15 // miles
+        }
+      } else {
+        params.city = selectedCity
+      }
       const res = await axios.get(`${API_URL}/venues`, {
-        params: { city: selectedCity, limit: 50, platform: 'fizz' },
+        params,
         headers: { Authorization: `Bearer ${token}` },
       })
       const all = res.data.venues || res.data || []
@@ -120,7 +152,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
     } catch { /* ignore */ } finally {
       setLoading(false)
     }
-  }, [API_URL, token, selectedCity])
+  }, [API_URL, token, selectedCity, userLocation])
 
   useEffect(() => { fetchDbVenues() }, [fetchDbVenues])
 
@@ -130,7 +162,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
       const cat = initialCategory as VenueCategory
       if (FIZZ_CATEGORIES.includes(cat)) {
         setSelectedCategory(cat)
-        const center = CITY_CENTERS[selectedCity] || mapCenter
+        const center = selectedCity === 'Near Me' ? (userLocation || mapCenter) : (CITY_CENTERS[selectedCity] || mapCenter)
         searchPlaces(cat, center)
       }
       onCategoryConsumed?.()
@@ -139,9 +171,13 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
 
   // Update map center when city changes
   useEffect(() => {
-    const center = CITY_CENTERS[selectedCity]
-    if (center) setMapCenter(center)
-  }, [selectedCity])
+    if (selectedCity === 'Near Me') {
+      if (userLocation) setMapCenter(userLocation)
+    } else {
+      const center = CITY_CENTERS[selectedCity]
+      if (center) setMapCenter(center)
+    }
+  }, [selectedCity, userLocation])
 
   // Google Places search using the new Place class (searchNearby)
   const searchPlaces = useCallback(async (category: VenueCategory, center: { lat: number; lng: number }) => {
@@ -216,7 +252,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
       return
     }
     setSelectedCategory(cat)
-    const center = CITY_CENTERS[selectedCity] || mapCenter
+    const center = selectedCity === 'Near Me' ? (userLocation || mapCenter) : (CITY_CENTERS[selectedCity] || mapCenter)
     searchPlaces(cat, center)
   }
 
@@ -313,7 +349,7 @@ export default function VenueDiscovery({ onSendFizz, savedGoogleVenues = [], onS
         {/* City tabs */}
         <div className="px-4 mb-3">
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {FIZZ_CITIES.map(city => (
+            {['Near Me', ...FIZZ_CITIES].map(city => (
               <button
                 key={city}
                 onClick={() => setSelectedCity(city)}
