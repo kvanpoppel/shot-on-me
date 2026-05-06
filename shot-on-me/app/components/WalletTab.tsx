@@ -1413,6 +1413,44 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         )}
       </div>
 
+      {/* Earn More — Engagement Incentives */}
+      <div className="px-4 mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-primary-500" />
+          <h2 className="font-bold text-primary-500 text-sm">Earn More Points</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { emoji: '🍺', label: 'Send a Shot', pts: '+2 pts', desc: 'Buy a friend a drink', action: () => setShowSendForm(true) },
+            { emoji: '📍', label: 'Check In', pts: '+1 pt', desc: 'At any venue', action: () => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'map' })) },
+            { emoji: '👥', label: 'Refer a Friend', pts: '+5 pts', desc: 'Share your link', action: () => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'profile' })) },
+          ].map(({ emoji, label, pts, desc, action }) => (
+            <button
+              key={label}
+              onClick={action}
+              className="bg-black/40 border border-primary-500/15 rounded-xl p-3 text-center hover:border-primary-500/30 hover:bg-primary-500/5 transition-all active:scale-[0.97]"
+            >
+              <p className="text-2xl mb-1.5">{emoji}</p>
+              <p className="text-xs font-bold text-white mb-0.5">{label}</p>
+              <p className="text-[10px] font-semibold text-primary-500">{pts}</p>
+              <p className="text-[9px] text-primary-400/40 mt-0.5">{desc}</p>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 bg-gradient-to-r from-primary-500/10 to-transparent border border-primary-500/15 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-primary-400">Daily Earning Limit</p>
+              <p className="text-[10px] text-primary-400/50 mt-0.5">Resets at midnight — max 15 pts/day</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-primary-500">{Math.min(points % 15, 15)}/15</p>
+              <p className="text-[10px] text-primary-400/40">today</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Secondary Actions — always visible */}
       <div className="px-4 mb-6 space-y-2">
         <button

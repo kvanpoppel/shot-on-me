@@ -1943,196 +1943,129 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                   }}
                   className={`${cardBgGradient} border-2 ${isGoogleOnly ? 'border-blue-500/40' : cardBorderColor} rounded-2xl overflow-hidden backdrop-blur-sm cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary-500/20 transition-all relative group`}
                 >
-                  {/* Badges Row - Top */}
-                  <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between gap-2">
-                    {/* Left Side - Trending/Featured/Multiple Promos */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {isTrending && (
-                        <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-lg">
-                          <Flame className="w-2.5 h-2.5" />
-                          Trending
-                        </div>
-                      )}
-                      {venueBadge && (
-                        <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-lg ${venueBadge.className}`}>
-                          <Award className="w-2.5 h-2.5" />
-                          {venueBadge.label}
-                        </div>
-                      )}
-                      {activePromos.length > 1 && (
-                        <div className="bg-primary-500/90 px-2 py-0.5 rounded-full text-[10px] font-bold text-black shadow-lg">
-                          +{activePromos.length - 1} more
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Right Side - Favorite Star (SOM) or Save button (Google) */}
-                    {isGoogleOnly ? (
-                      <button
-                        onClick={(e) => handleSaveGoogleVenue(venue, e)}
-                        className={`px-2 py-1 rounded-full text-[10px] font-bold shadow-lg transition-all flex items-center gap-1 ${
-                          alreadySaved
-                            ? 'bg-primary-500/30 text-primary-400 cursor-default'
-                            : justSaved
-                              ? 'bg-primary-500 text-black'
-                              : 'bg-black/70 backdrop-blur-sm text-primary-400 hover:bg-primary-500 hover:text-black'
-                        }`}
-                        disabled={alreadySaved}
-                        title={alreadySaved ? 'Already saved' : 'Save to My Venues'}
-                      >
-                        {justSaved ? '✓ Saved!' : alreadySaved ? '✓ Saved' : '+ Save'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => toggleFavorite(venue._id?.toString() || '', e)}
-                        className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg"
-                      >
-                        <Star
-                          className={`w-4 h-4 transition-all ${
-                            isFavorite
-                              ? 'fill-primary-500 text-primary-500'
-                              : 'text-primary-400/60 hover:text-primary-500'
-                          }`}
-                        />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Friends at Venue Indicator - Top Right Below Badges */}
-                  {friendsAtVenue > 0 && (
-                    <div className="absolute top-12 right-2 z-10 bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-lg animate-pulse">
-                      <Activity className="w-3 h-3" />
-                      {friendsAtVenue} friend{friendsAtVenue > 1 ? 's' : ''} here
-                    </div>
-                  )}
-                  
-                  {/* Multiple Promotions Indicator - Bottom Right on Image */}
-                  {activePromos.length > 1 && (
-                    <div className="absolute bottom-2 right-2 z-10 bg-primary-500/90 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] font-bold text-black shadow-lg flex items-center gap-1">
-                      <Tag className="w-2.5 h-2.5" />
-                      {activePromos.length} deals
-                    </div>
-                  )}
-
-                  {/* Business Icon/Logo Area - Reduced height */}
-                  <div className="relative h-24 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden group/image">
+                  {/* Image Area */}
+                  <div className="relative h-32 bg-gradient-to-br from-primary-500/10 to-black/40 overflow-hidden">
                     {venue.coverPhoto || venue.image || venue.logo ? (
                       <img
                         src={venue.coverPhoto || venue.image || venue.logo}
                         alt={venue.name}
-                        className="w-full h-full object-cover group-hover/image:scale-110 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-16 h-16 bg-primary-500/20 rounded-xl flex items-center justify-center border-2 border-primary-500/30 group-hover/image:scale-110 transition-transform duration-300">
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-500/15 to-primary-500/5">
+                        <div className="w-14 h-14 bg-primary-500/20 rounded-2xl flex items-center justify-center border border-primary-500/30">
                           <span className="text-2xl font-bold text-primary-500">
                             {venue.name?.[0]?.toUpperCase() || 'V'}
                           </span>
                         </div>
                       </div>
                     )}
-                    {/* Gradient Overlay for better text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    {/* Google venue badge */}
-                    {isGoogleOnly && (
-                      <div className="absolute top-2 left-2 bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold text-white flex items-center gap-1 shadow-lg">
-                        <ExternalLink className="w-2.5 h-2.5" />
-                        Google
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                    {/* Top badges */}
+                    <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {isTrending && (
+                          <div className="bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-lg">
+                            <Flame className="w-2.5 h-2.5" /> Hot
+                          </div>
+                        )}
+                        {statusBadge && (
+                          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg backdrop-blur-sm ${
+                            statusColor === 'red' ? 'bg-red-500/90 text-white' :
+                            statusColor === 'primary' ? 'bg-primary-500/90 text-black' :
+                            'bg-emerald-500/90 text-black'
+                          }`}>
+                            {statusBadge}
+                          </div>
+                        )}
+                        {isGoogleOnly && (
+                          <div className="bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold text-white flex items-center gap-1">
+                            <ExternalLink className="w-2.5 h-2.5" /> Google
+                          </div>
+                        )}
                       </div>
-                    )}
-                    
-                    {/* Open/Closed Status Badge - Bottom Left */}
-                    {venueOpenStatus !== null && (
-                      <div className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg backdrop-blur-sm flex items-center gap-1 ${
-                        venueOpenStatus 
-                          ? 'bg-green-500/90 text-white' 
-                          : 'bg-gray-700/90 text-gray-300'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${venueOpenStatus ? 'bg-green-300 animate-pulse' : 'bg-gray-400'}`}></div>
-                        {venueOpenStatus ? 'Open Now' : 'Closed'}
+                      {/* Favorite / Save */}
+                      {isGoogleOnly ? (
+                        <button
+                          onClick={(e) => handleSaveGoogleVenue(venue, e)}
+                          className={`px-2 py-1 rounded-full text-[10px] font-bold shadow-lg transition-all flex items-center gap-1 ${
+                            alreadySaved ? 'bg-primary-500/30 text-primary-400' : justSaved ? 'bg-primary-500 text-black' : 'bg-black/60 backdrop-blur-sm text-primary-400 hover:bg-primary-500 hover:text-black'
+                          }`}
+                          disabled={alreadySaved}
+                        >
+                          {justSaved ? '✓ Saved' : alreadySaved ? '✓ Saved' : '+ Save'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => toggleFavorite(venue._id?.toString() || '', e)}
+                          className="p-1.5 bg-black/60 backdrop-blur-sm rounded-full hover:bg-black/80 transition-all shadow-lg"
+                        >
+                          <Star className={`w-4 h-4 transition-all ${isFavorite ? 'fill-primary-500 text-primary-500' : 'text-white/50 hover:text-primary-500'}`} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Bottom-left: venue name overlay on image */}
+                    <div className="absolute bottom-2 left-2 right-2 z-10">
+                      <h3 className="font-bold text-white text-sm leading-tight line-clamp-1 drop-shadow-lg">{venue.name || 'Unknown Venue'}</h3>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {(venue.address?.city || venue.address?.state) && (
+                          <span className="text-[10px] text-white/60">{[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}</span>
+                        )}
+                        {distance !== null && (
+                          <span className="text-[10px] text-white/50">· {distance < 0.1 ? `${Math.round(distance * 5280)}ft` : `${distance.toFixed(1)}mi`}</span>
+                        )}
                       </div>
-                    )}
-                    
-                    {/* Status Badge Overlay - Bottom Right (or left if no open status) */}
-                    {statusBadge && (
-                      <div className={`absolute ${venueOpenStatus !== null ? 'bottom-2 right-2' : 'bottom-2 left-2'} px-2 py-1 rounded-lg text-xs font-bold shadow-lg backdrop-blur-sm ${
-                        statusColor === 'red' ? 'bg-red-500/90 text-white' :
-                        statusColor === 'primary' ? 'bg-primary-500/90 text-black' :
-                        'bg-emerald-500/90 text-black'
-                      }`}>
-                        {statusBadge}
+                    </div>
+
+                    {/* Friends indicator */}
+                    {friendsAtVenue > 0 && (
+                      <div className="absolute top-10 right-2 z-10 bg-green-500/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-lg">
+                        <Activity className="w-3 h-3" />
+                        {friendsAtVenue} here
                       </div>
                     )}
                   </div>
 
-                  {/* Venue Info - Compact */}
+                  {/* Venue Info */}
                   <div className="p-2.5">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <div className="text-primary-500/70 flex-shrink-0">
-                            {getCategoryIcon(venue.category)}
-                          </div>
-                          <h3 className="font-bold text-primary-500 text-sm line-clamp-1">{venue.name || 'Unknown Venue'}</h3>
-                        </div>
-                        {/* Address/City */}
-                        {(venue.address?.city || venue.address?.state) && (
-                          <p className="text-[10px] text-primary-400/60 mb-1.5 line-clamp-1">
-                            {[venue.address?.city, venue.address?.state].filter(Boolean).join(', ')}
-                          </p>
-                        )}
-                      </div>
-                      {/* Rating */}
+                    {/* Rating + Open status row */}
+                    <div className="flex items-center gap-2 mb-1.5">
                       {venueRating && (
-                        <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 px-1.5 py-0.5 rounded-full">
+                        <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 fill-primary-500 text-primary-500" />
-                          <span className="text-[10px] font-bold text-primary-500">{venueRating.rating}</span>
+                          <span className="text-[11px] font-bold text-primary-500">{venueRating.rating}</span>
                         </div>
                       )}
-                    </div>
-                    
-                    {/* Distance & Social Info Row - Compact */}
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      {distance !== null && (
-                        <p className="text-[10px] text-primary-400/70 font-medium">
-                          {distance < 0.1 ? `${Math.round(distance * 5280)}ft` : `${distance.toFixed(1)}mi`}
-                        </p>
-                      )}
-                      {friendsAtVenue > 0 && (
-                        <div className="flex items-center gap-1 text-[9px] text-green-400 font-medium">
-                          <Users className="w-2.5 h-2.5" />
-                          <span>{friendsAtVenue}</span>
+                      {venueOpenStatus !== null && (
+                        <div className="flex items-center gap-1">
+                          <div className={`w-1.5 h-1.5 rounded-full ${venueOpenStatus ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`} />
+                          <span className={`text-[10px] font-semibold ${venueOpenStatus ? 'text-green-400' : 'text-gray-500'}`}>
+                            {venueOpenStatus ? 'Open' : 'Closed'}
+                          </span>
                         </div>
+                      )}
+                      {activePromos.length > 1 && (
+                        <span className="text-[10px] font-bold text-primary-500 bg-primary-500/15 px-1.5 py-0.5 rounded-full">{activePromos.length} deals</span>
                       )}
                     </div>
 
-                    {/* Active Promotion - Compact */}
+                    {/* Active Promotion */}
                     {activePromos.length > 0 ? (
-                      <div className="mt-1 pt-1.5 border-t border-primary-500/10">
-                        <p className="text-[10px] text-primary-400/90 line-clamp-1 font-semibold mb-1">
-                          {activePromos[0].title}
-                        </p>
-                        {/* Compact Date & Time Display */}
+                      <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg px-2.5 py-2">
+                        <p className="text-[11px] text-white font-semibold line-clamp-1">{activePromos[0].title}</p>
                         {formatPromotionDate(activePromos[0]) && (
-                          <div className="bg-primary-500/15 border border-primary-500/30 rounded-lg p-1.5 mb-1">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-primary-500 flex-shrink-0" />
-                              <p className="text-[9px] font-bold text-primary-500 leading-tight break-words">
-                                {formatPromotionDate(activePromos[0])}
-                              </p>
-                            </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="w-3 h-3 text-primary-500 flex-shrink-0" />
+                            <p className="text-[10px] text-primary-500 font-medium leading-tight">{formatPromotionDate(activePromos[0])}</p>
                           </div>
                         )}
                       </div>
                     ) : (
-                      /* No Current Specials - Subtle/Incognito */
-                      <div className="mt-1 pt-1 border-t border-primary-500/5">
-                        <p className="text-[8px] text-primary-400/30 text-center">
-                          No current specials
-                        </p>
-                      </div>
+                      <p className="text-[10px] text-primary-400/25 text-center py-1">Tap to explore</p>
                     )}
-
                   </div>
                 </div>
               )
