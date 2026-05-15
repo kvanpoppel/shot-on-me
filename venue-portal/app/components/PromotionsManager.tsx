@@ -5,7 +5,7 @@ import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useVenue } from '../contexts/VenueContext'
 import { useSocket } from '../contexts/SocketContext'
-import { Plus, Edit, BarChart3, BookmarkPlus, Square, Crown } from 'lucide-react'
+import { Plus, Edit, BarChart3, BookmarkPlus, Square, Crown, RotateCcw } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { useToast } from './ToastContainer'
 import PromotionTemplates, { PromotionTemplate as TemplateType } from './promotions/PromotionTemplates'
@@ -20,6 +20,7 @@ interface Promotion {
   _id: string
   title: string
   description?: string
+  offer?: string
   type: string
   startTime: string
   endTime: string
@@ -308,6 +309,34 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
     setModal('wizard')
   }
 
+  const handleRunAgain = (promo: Promotion) => {
+    const now = new Date()
+    const start = new Date(now); start.setMinutes(0, 0, 0); start.setHours(start.getHours() + 1)
+    const end = new Date(start); end.setHours(end.getHours() + 3)
+    setEditingPromo(null)
+    setSelectedTemplate(null)
+    setQuickActionData({
+      title: promo.title,
+      description: promo.description || '',
+      offer: promo.offer || '',
+      type: promo.type,
+      startTime: formatLocalDateTime(start),
+      endTime: formatLocalDateTime(end),
+      isFlashDeal: promo.isFlashDeal || false,
+      pointsReward: promo.pointsReward || 0,
+      targeting: {
+        followersOnly: promo.targeting?.followersOnly || false,
+        locationBased: promo.targeting?.locationBased || false,
+        radiusMiles: promo.targeting?.radiusMiles || 5,
+        userSegments: promo.targeting?.userSegments || ['all'],
+        minCheckIns: promo.targeting?.minCheckIns || 0,
+        timeBased: promo.targeting?.timeBased || false,
+        timeWindow: promo.targeting?.timeWindow || { start: '', end: '' },
+      },
+    })
+    setModal('wizard')
+  }
+
   const handleQuickAction = (action: string) => {
     const data = getQuickActionData(action)
     setQuickActionData(data)
@@ -500,18 +529,28 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
 
                   {/* Action row */}
                   <div className="flex items-center gap-1 border-t border-primary-500/10 pt-2">
-                    <button onClick={() => handleEdit(promo)}
-                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                      <Edit className="w-3 h-3" /> Edit
-                    </button>
+                    {status !== 'ended' && (
+                      <button onClick={() => handleEdit(promo)}
+                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                        <Edit className="w-3 h-3" /> Edit
+                      </button>
+                    )}
                     <button onClick={() => { setAnalyticsPromoId({ id: promo._id, title: promo.title }); setModal('analytics') }}
                       className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
                       <BarChart3 className="w-3 h-3" /> Stats
                     </button>
-                    <button onClick={() => handleDelete(promo._id)}
-                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                      <Square className="w-3 h-3" /> End Deal
-                    </button>
+                    {status !== 'ended' && (
+                      <button onClick={() => handleDelete(promo._id)}
+                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                        <Square className="w-3 h-3" /> End Deal
+                      </button>
+                    )}
+                    {status === 'ended' && (
+                      <button onClick={() => handleRunAgain(promo)}
+                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                        <RotateCcw className="w-3 h-3" /> Run Again
+                      </button>
+                    )}
                     <button onClick={() => { setSavingToLibraryId(promo._id); setModal('save-to-library') }}
                       className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
                       <BookmarkPlus className="w-3 h-3" /> Save
@@ -539,6 +578,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           initialData={quickActionData || (editingPromo ? {
             title: editingPromo.title,
             description: editingPromo.description || '',
+            offer: editingPromo.offer || '',
             type: editingPromo.type,
             startTime: new Date(editingPromo.startTime).toISOString().slice(0, 16),
             endTime: new Date(editingPromo.endTime).toISOString().slice(0, 16),

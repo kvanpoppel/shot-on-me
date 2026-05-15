@@ -62,13 +62,14 @@ export default function Dashboard() {
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
   const [loadingData, setLoadingData] = useState(true)
-  const [launchingDeal, setLaunchingDeal] = useState<string | null>(null)
+
   const [approvingAI, setApprovingAI] = useState<number | null>(null)
   const [dismissedAI, setDismissedAI] = useState<Set<number>>(new Set())
   const [endingId, setEndingId] = useState<string | null>(null)
   const [confirmEndId, setConfirmEndId] = useState<string | null>(null)
   const [showWizard, setShowWizard] = useState(false)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
+  const [quickLaunchData, setQuickLaunchData] = useState<Record<string, any> | null>(null)
   const [dealsOpen, setDealsOpen] = useState(true)
   const [notifyOpen, setNotifyOpen] = useState(false)
   const [notifyTitle, setNotifyTitle] = useState('')
@@ -121,24 +122,17 @@ export default function Dashboard() {
     return () => { socket.off('promotion-updated', r); socket.off('new-promotion', r); socket.off('promotion-deleted', r); socket.off('revig-received', onRevig); socket.off('venue-checkin', onIn); socket.off('venue-paid', onPay) }
   }, [socket, venueId])
 
-  const quickLaunch = async (type: string) => {
-    if (!venueId || !token || launchingDeal) return
-    setLaunchingDeal(type)
-    const now = new Date()
+  const quickLaunch = (type: string) => {
+    if (!venueId || !token) return
     const presets: Record<string, any> = {
-      'happy-hour': { title: 'Happy Hour', description: 'Discounted drinks!', type: 'happy-hour', startTime: now.toISOString(), endTime: new Date(now.getTime() + 3 * 3600000).toISOString() },
-      'flash-deal': { title: 'Flash Deal', description: 'Limited time only!', type: 'flash-deal', isFlashDeal: true, startTime: now.toISOString(), endTime: new Date(now.getTime() + 3600000).toISOString(), flashDealEndsAt: new Date(now.getTime() + 3600000).toISOString() },
-      'vip': { title: 'VIP Exclusive', description: 'VIP only tonight!', type: 'exclusive', startTime: now.toISOString(), endTime: new Date(now.getTime() + 4 * 3600000).toISOString() },
+      'happy-hour': { title: 'Happy Hour', offer: '$5 wells and drafts', description: 'Discounted drinks!', type: 'happy-hour' },
+      'flash-deal': { title: 'Flash Deal', offer: '$3 shots for the next hour', description: 'Limited time only!', type: 'flash-deal', isFlashDeal: true },
+      'vip': { title: 'VIP Night', offer: 'Bottle service 25% off', description: 'VIP only tonight!', type: 'exclusive' },
     }
-    const data = { ...(presets[type] || presets['happy-hour']), targeting: { followersOnly: false, locationBased: false, radiusMiles: 5, userSegments: ['all'], minCheckIns: 0, timeBased: false } }
-    try {
-      await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, data, { headers: { Authorization: `Bearer ${token}` } })
-      showSuccess(`${data.title} is live!`)
-      setNotifyTitle(`${data.title} is LIVE at ${venueName}! 🎉`)
-      setNotifyOpen(true)
-      fetchData()
-    } catch (e: any) { showError(e?.response?.data?.error || 'Failed') }
-    finally { setLaunchingDeal(null) }
+    const data = presets[type] || presets['happy-hour']
+    setQuickLaunchData(data)
+    setEditingPromo(null)
+    setShowWizard(true)
   }
 
   const approveAI = async (idx: number) => {
@@ -179,6 +173,7 @@ export default function Dashboard() {
       }
       setShowWizard(false)
       setEditingPromo(null)
+      setQuickLaunchData(null)
       fetchData()
     } catch (e: any) { showError(e?.response?.data?.error || 'Failed to save deal') }
   }
@@ -250,11 +245,9 @@ export default function Dashboard() {
                   { key: 'flash-deal', emoji: '⚡', label: 'Flash Deal' },
                   { key: 'vip', emoji: '👑', label: 'VIP Night' },
                 ].map(d => (
-                  <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={!!launchingDeal || atLimit}
+                  <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={atLimit}
                     className="rounded-xl border border-primary-500/15 bg-black/40 py-3 text-center hover:border-primary-500/30 transition-all disabled:opacity-30 min-h-[56px]">
-                    {launchingDeal === d.key ? <Loader2 className="w-4 h-4 animate-spin text-primary-500 mx-auto" /> : (
-                      <><p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/50 mt-0.5">{d.label}</p></>
-                    )}
+                    <p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/50 mt-0.5">{d.label}</p>
                   </button>
                 ))}
               </div>
@@ -301,9 +294,9 @@ export default function Dashboard() {
                     { key: 'flash-deal', emoji: '⚡' },
                     { key: 'vip', emoji: '👑' },
                   ].map(d => (
-                    <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={!!launchingDeal}
-                      className="flex-1 rounded-lg border border-primary-500/10 bg-black/30 py-2 text-center text-sm hover:bg-black/50 transition-all disabled:opacity-30">
-                      {launchingDeal === d.key ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-500 mx-auto" /> : d.emoji}
+                    <button key={d.key} onClick={() => quickLaunch(d.key)}
+                      className="flex-1 rounded-lg border border-primary-500/10 bg-black/30 py-2 text-center text-sm hover:bg-black/50 transition-all">
+                      {d.emoji}
                     </button>
                   ))}
                 </div>
@@ -423,9 +416,9 @@ export default function Dashboard() {
             endTime: editingPromo.endTime,
             isFlashDeal: editingPromo.isFlashDeal || false,
             flashDealEndsAt: editingPromo.flashDealEndsAt || '',
-          } : undefined}
+          } : quickLaunchData ? quickLaunchData : undefined}
           onSave={handleWizardSave}
-          onCancel={() => { setShowWizard(false); setEditingPromo(null) }}
+          onCancel={() => { setShowWizard(false); setEditingPromo(null); setQuickLaunchData(null) }}
         />
       )}
     </DashboardLayout>

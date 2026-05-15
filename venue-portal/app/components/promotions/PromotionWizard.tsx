@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Lock, Sparkles, Pencil } from 'lucide-react'
+import { X, Lock, Sparkles, Pencil, Eye } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
 import { useFeatureAvailable } from '../FeatureGate'
 
@@ -132,7 +132,17 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             <div className="flex flex-wrap gap-2">
               {DEAL_TYPES.map(dt => (
                 <button key={dt.value} type="button"
-                  onClick={() => update({ type: dt.value, isFlashDeal: dt.value === 'flash-deal', title: '', offer: '', description: '' })}
+                  onClick={() => {
+                    const typeSuggestions = AI_BY_TYPE[dt.value] || []
+                    const first = typeSuggestions[0]
+                    update({
+                      type: dt.value,
+                      isFlashDeal: dt.value === 'flash-deal',
+                      title: first ? first.title : '',
+                      offer: first ? first.offer : '',
+                      description: first ? first.desc : '',
+                    })
+                  }}
                   className={`px-3.5 py-2 rounded-full border text-sm font-semibold transition-all ${
                     formData.type === dt.value
                       ? 'border-primary-500 bg-primary-500/15 text-primary-400'
@@ -292,7 +302,34 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             </div>
           </div>
 
-          {/* 6. Publish */}
+          {/* 6. Preview */}
+          {formData.type && formData.title.trim() && (
+            <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 flex items-center gap-1"><Eye className="w-3 h-3" /> Preview</p>
+              <div className="flex items-start gap-3">
+                <span className="text-xl flex-shrink-0">{DEAL_TYPES.find(dt => dt.value === formData.type)?.emoji || '🎉'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">{formData.title}</p>
+                  {formData.offer && <p className="text-xs text-primary-500/80 mt-0.5">{formData.offer}</p>}
+                  {formData.description && <p className="text-[11px] text-primary-400/40 mt-1 line-clamp-2">{formData.description}</p>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                    <span className="text-[10px] text-primary-400/50">
+                      {scheduleMode === 'now'
+                        ? `Today · ${durationMins >= 60 ? `${Math.floor(durationMins / 60)}hr` : ''}${durationMins % 60 ? ` ${durationMins % 60}m` : ''} from now`
+                        : formData.startTime && formData.endTime
+                          ? `${new Date(formData.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${new Date(formData.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${new Date(formData.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          : 'Schedule not set'}
+                    </span>
+                    <span className="text-[10px] text-primary-400/40">
+                      {formData.targeting.followersOnly ? '🔒 Followers only' : '🌐 Everyone'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 7. Publish */}
           <div className="pt-2 space-y-2">
             <button onClick={handlePublish} disabled={!canPublish || saving}
               className="w-full py-3.5 bg-primary-500 text-black font-bold text-sm rounded-xl hover:bg-primary-400 transition-all disabled:opacity-30 min-h-[48px]">
