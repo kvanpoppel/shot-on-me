@@ -57,7 +57,7 @@ function ResetPasswordForm() {
             🫧
           </div>
           <span className="text-xl font-black tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+            <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
           </span>
         </div>
 

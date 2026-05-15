@@ -40,7 +40,7 @@ function RevigVenuesApp() {
       {/* Top bar */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 safe-top border-b" style={{ background: '#1A1A2E', borderColor: 'rgba(255,255,255,0.06)' }}>
         <span className="text-lg font-black tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
-          <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+          <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
           <span className="text-white text-sm font-semibold ml-1.5 opacity-50">Venues</span>
         </span>
         <div className="w-2 h-2 rounded-full" style={{ background: '#C8F135' }} title="Connected" />

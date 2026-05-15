@@ -94,7 +94,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
             🫧
           </div>
           <span className="revig-wordmark text-[26px]">
-            <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+            <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
           </span>
         </div>
         <button onClick={onSignIn} className="revig-btn-ghost px-5 py-2.5 text-sm">

@@ -292,7 +292,7 @@ export default function LoginScreen({ initialMode = 'signin', onBack }: LoginScr
             <ArrowLeft className="w-5 h-5 text-white/60" />
           </button>
           <span className="text-xl font-black tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+            <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
           </span>
         </div>
 
@@ -375,7 +375,7 @@ export default function LoginScreen({ initialMode = 'signin', onBack }: LoginScr
         )}
         <div className="flex items-center gap-2">
           <span className="text-xl font-black tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            <span style={{ color: '#C8F135' }}>Fi</span><span style={{ color: '#FF5F57' }}>zz</span>
+            <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
           </span>
         </div>
       </div>
