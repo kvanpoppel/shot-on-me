@@ -188,6 +188,18 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         return res.status(404).json({ message: 'Recipient not found' });
       }
 
+      // Cap pending payments per user (max 5 outstanding)
+      const pendingCount = await PendingPayment.countDocuments({
+        senderId: req.user.userId,
+        status: 'pending'
+      });
+      if (pendingCount >= 5) {
+        return res.status(400).json({
+          message: 'You have too many outstanding payments waiting to be claimed',
+          error: 'You can have at most 5 pending payments at a time. Please wait for some to be claimed before sending more.'
+        });
+      }
+
       // Atomically deduct from sender
       const updatedSender = await User.findOneAndUpdate(
         { _id: req.user.userId, 'wallet.balance': { $gte: amountNum } },
@@ -227,6 +239,37 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         success: true,
         pendingPayment: true,
         message: `$${amountNum.toFixed(2)} is waiting for ${normalizedPhone} to join Shot On Me. They will receive an SMS with a download link.`
+      });
+    }
+
+    // Block sending to yourself
+    if (recipient._id.toString() === req.user.userId.toString()) {
+      return res.status(400).json({
+        message: "You can't send a payment to yourself"
+      });
+    }
+
+    // Block rapid back-and-forth payments (circular payment prevention)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [sentToRecipient, receivedFromRecipient] = await Promise.all([
+      Payment.findOne({
+        senderId: req.user.userId,
+        recipientId: recipient._id,
+        status: { $in: ['succeeded', 'completed'] },
+        createdAt: { $gte: twentyFourHoursAgo }
+      }),
+      Payment.findOne({
+        senderId: recipient._id,
+        recipientId: req.user.userId,
+        status: { $in: ['succeeded', 'completed'] },
+        createdAt: { $gte: twentyFourHoursAgo }
+      })
+    ]);
+
+    if (sentToRecipient && receivedFromRecipient) {
+      return res.status(400).json({
+        message: 'Please cool down before sending again',
+        error: 'You and this person have already exchanged payments in the last 24 hours. Wait a bit before sending again.'
       });
     }
 

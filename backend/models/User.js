@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  lastCheckInPointsDate: {
+    type: Date,
+    default: null
+  },
   rewardCashBalance: {
     type: Number,
     default: 0,

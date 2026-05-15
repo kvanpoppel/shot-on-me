@@ -184,6 +184,11 @@ router.post('/send', auth, async (req, res) => {
     const { recipientId, amount, message, venueId } = req.body
     if (!recipientId || !amount || amount <= 0) return res.status(400).json({ message: 'recipientId and amount required' })
 
+    // Self-send prevention
+    if (recipientId === req.user.userId) {
+      return res.status(400).json({ message: 'You cannot send a Revig to yourself' })
+    }
+
     const sender = await User.findById(req.user.userId).select('revigWallet revigProfile name firstName lastName')
     if (!sender) return res.status(404).json({ message: 'User not found' })
     if ((sender.revigWallet?.balance ?? 0) < amount) return res.status(400).json({ message: 'Insufficient Revig balance' })
@@ -191,8 +196,24 @@ router.post('/send', auth, async (req, res) => {
     const recipient = await User.findById(recipientId).select('revigProfile name firstName lastName')
     if (!recipient) return res.status(404).json({ message: 'Recipient not found' })
 
-    // Debit sender, credit recipient
-    await User.findByIdAndUpdate(req.user.userId, { $inc: { 'revigWallet.balance': -amount } })
+    // Circular payment prevention — block rapid back-and-forth between same two users
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const [aToBRecent, bToARecent] = await Promise.all([
+      Payment.findOne({ senderId: req.user.userId, recipientId, source: 'revig', createdAt: { $gte: oneDayAgo } }),
+      Payment.findOne({ senderId: recipientId, recipientId: req.user.userId, source: 'revig', createdAt: { $gte: oneDayAgo } }),
+    ])
+    if (aToBRecent && bToARecent) {
+      return res.status(400).json({ message: 'You and this person have already exchanged Revigs recently. Please wait 24 hours.' })
+    }
+
+    // Atomic debit — ensures balance can't go negative
+    const debitResult = await User.findOneAndUpdate(
+      { _id: req.user.userId, 'revigWallet.balance': { $gte: amount } },
+      { $inc: { 'revigWallet.balance': -amount } },
+      { new: true }
+    )
+    if (!debitResult) return res.status(400).json({ message: 'Insufficient Revig balance' })
+
     await User.findByIdAndUpdate(recipientId, { $inc: { 'revigWallet.balance': amount } })
 
     // Record venue revenue so it appears in venue portal earnings

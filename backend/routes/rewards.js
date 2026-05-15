@@ -261,9 +261,36 @@ router.post('/redeem-cash', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Check minimum account age (7 days)
+    const accountAgeDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    if (accountAgeDays < 7) {
+      const daysLeft = Math.ceil(7 - accountAgeDays);
+      return res.status(400).json({
+        message: 'Your account is too new to redeem points for cash',
+        error: `Accounts must be at least 7 days old. You can redeem in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`
+      });
+    }
+
+    // Check redemption cooldown (once per 7 days)
+    const lastRedemption = await RewardRedemption.findOne({
+      user: user._id,
+      status: { $in: ['active', 'used'] }
+    }).sort({ createdAt: -1 });
+
+    if (lastRedemption) {
+      const daysSinceLastRedemption = (Date.now() - new Date(lastRedemption.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceLastRedemption < 7) {
+        const daysLeft = Math.ceil(7 - daysSinceLastRedemption);
+        return res.status(400).json({
+          message: 'You can only redeem points once per week',
+          error: `Please wait ${daysLeft} more day${daysLeft === 1 ? '' : 's'} before your next redemption.`
+        });
+      }
+    }
+
     // Check if user has enough points
     if (user.points < pointsToRedeem) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Insufficient points',
         error: `You have ${user.points} points, but need ${pointsToRedeem} points`,
         currentPoints: user.points,

@@ -4,10 +4,10 @@ const Badge = require('../models/Badge');
 const Referral = require('../models/Referral');
 const { checkReferralCompletion } = require('../routes/referrals');
 
-// Daily points cap (max 15 points per user per day, excluding badge rewards)
+// Daily points cap (max 15 points per user per day, including badge rewards)
 const DAILY_POINTS_CAP = 15;
 
-// Get how many points a user has earned today (activity-based, not badge rewards)
+// Get how many points a user has earned today (all sources including badge rewards)
 const getDailyPointsEarned = async (userId) => {
   const DailyVenuePoints = require('../models/DailyVenuePoints');
   const startOfDay = new Date();
@@ -67,8 +67,10 @@ const awardPoints = async (userId, points, reason = '') => {
       console.log(`⚠️ Capped points for user ${userId}: requested ${points}, awarded ${allowable} (daily total: ${user.dailyPointsToday}/${DAILY_POINTS_CAP})`);
     }
 
-    // Check for badge unlocks
-    await checkBadges(userId);
+    // Check for badge unlocks (skip if this was a badge reward to avoid deep recursion)
+    if (!reason.startsWith('badge_reward_')) {
+      await checkBadges(userId);
+    }
 
     return user.points;
   } catch (error) {
@@ -257,10 +259,12 @@ const checkBadges = async (userId) => {
         });
         await userBadge.save();
 
-        // Award points if badge has point reward
+        // Award points if badge has point reward (subject to daily cap)
         if (badge.pointsReward > 0) {
-          user.points = (user.points || 0) + badge.pointsReward;
-          await user.save();
+          await awardPoints(user._id, badge.pointsReward, `badge_reward_${badge._id}`);
+          // Re-fetch user to get updated points
+          const refreshed = await User.findById(user._id).select('points');
+          if (refreshed) user.points = refreshed.points;
         }
 
         newlyUnlocked.push(badge);
@@ -378,8 +382,22 @@ const handleCheckIn = async (userId, venueId) => {
     // Update check-in streak
     await updateCheckInStreak(userId);
 
-    // Award points (10 points per check-in)
-    await awardPoints(userId, 10, 'check_in');
+    // Award check-in points only once per day total (not per venue)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastCheckInPointsDate = user.lastCheckInPointsDate
+      ? new Date(user.lastCheckInPointsDate)
+      : null;
+    const alreadyEarnedCheckInToday = lastCheckInPointsDate &&
+      new Date(lastCheckInPointsDate).setHours(0, 0, 0, 0) === today.getTime();
+
+    if (!alreadyEarnedCheckInToday) {
+      await awardPoints(userId, 10, 'check_in');
+      // Mark that check-in points were earned today
+      await User.findByIdAndUpdate(userId, { lastCheckInPointsDate: today });
+    } else {
+      console.log(`ℹ️ User ${userId} already earned check-in points today, skipping`);
+    }
 
     // Update venues visited
     const venuesVisited = new Set(user.locationHistory?.map(l => l.venueId?.toString()).filter(Boolean) || []);

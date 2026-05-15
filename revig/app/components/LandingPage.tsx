@@ -136,9 +136,6 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
             Get Started Free
             <ArrowRight className="w-4 h-4" />
           </button>
-          <button onClick={onSignIn} className="revig-btn-outline w-full py-[15px] text-[15px]">
-            Sign In
-          </button>
         </div>
 
         {/* App store placeholders */}
