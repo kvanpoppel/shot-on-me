@@ -54,7 +54,7 @@ export default function VenueManager() {
     website: '',
     description: '',
     category: 'other',
-    platform: 'som' as 'som' | 'fizz' | 'both',
+    platform: 'som' as 'som' | 'revig' | 'both',
     subscriptionTier: 'free' as 'free' | 'basic' | 'premium' | 'enterprise',
     isFeatured: false,
     featuredUntil: '',
@@ -175,7 +175,7 @@ export default function VenueManager() {
           website: myVenue.website || '',
           description: myVenue.description || '',
           category: myVenue.category || 'other',
-          platform: (myVenue.platform as 'som' | 'fizz' | 'both') || 'som',
+          platform: (myVenue.platform as 'som' | 'revig' | 'both') || 'som',
           subscriptionTier: myVenue.subscriptionTier || 'free',
           isFeatured: myVenue.isFeatured || false,
           featuredUntil: myVenue.featuredUntil ? new Date(myVenue.featuredUntil).toISOString().slice(0, 16) : '',
@@ -668,7 +668,7 @@ export default function VenueManager() {
               <div className="flex gap-2">
                 {([
                   { value: 'som', label: 'Shot On Me', sub: 'Bars & restaurants' },
-                  { value: 'fizz', label: 'Fizz', sub: 'Coffee, soda & treats' },
+                  { value: 'revig', label: 'Revig', sub: 'Coffee, soda & treats' },
                   { value: 'both', label: 'Both Apps', sub: 'All audiences' },
                 ] as const).map(opt => (
                   <button
@@ -688,7 +688,7 @@ export default function VenueManager() {
               </div>
             ) : (
               <p className="text-primary-400 text-sm capitalize">
-                {formData.platform === 'both' ? 'Both Apps (SOM + Fizz)' : formData.platform === 'fizz' ? 'Fizz only' : 'Shot On Me only'}
+                {formData.platform === 'both' ? 'Both Apps (SOM + Revig)' : formData.platform === 'revig' ? 'Revig only' : 'Shot On Me only'}
               </p>
             )}
           </div>

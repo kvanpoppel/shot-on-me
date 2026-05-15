@@ -18,7 +18,7 @@ interface EarningsData {
   earnings: {
     total: number
     som: number
-    fizz: number
+    revig: number
     available: number
     pending: number
     period: {
@@ -125,7 +125,7 @@ export default function EarningsDashboard() {
   }
 
   const somTotal  = data.earnings.som  ?? data.earnings.total
-  const fizzTotal = data.earnings.fizz ?? 0
+  const revigTotal = data.earnings.revig ?? 0
 
   return (
     <div className="space-y-6">
@@ -145,7 +145,7 @@ export default function EarningsDashboard() {
           <p className="text-2xl font-bold text-primary-500">${data.earnings.total.toFixed(2)}</p>
         </div>
 
-        {/* SOM vs Fizz split */}
+        {/* SOM vs Revig split */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -156,10 +156,10 @@ export default function EarningsDashboard() {
           </div>
           <div className="bg-black/40 border border-violet-500/20 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 border border-violet-500/25">FIZZ</span>
-              <span className="text-[10px] text-primary-400/50">Fizz</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 border border-violet-500/25">REVIG</span>
+              <span className="text-[10px] text-primary-400/50">Revig</span>
             </div>
-            <p className="text-xl font-bold text-violet-400">${fizzTotal.toFixed(2)}</p>
+            <p className="text-xl font-bold text-violet-400">${revigTotal.toFixed(2)}</p>
           </div>
         </div>
 
@@ -252,11 +252,11 @@ export default function EarningsDashboard() {
               >
                 <div className="flex items-center gap-3">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                    payment.source === 'fizz'
+                    payment.source === 'revig'
                       ? 'bg-violet-500/15 text-violet-400 border-violet-500/25'
                       : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25'
                   }`}>
-                    {payment.source === 'fizz' ? 'FIZZ' : 'SOM'}
+                    {payment.source === 'revig' ? 'REVIG' : 'SOM'}
                   </span>
                   <div>
                     <p className="font-medium text-primary-500">${payment.amount.toFixed(2)}</p>

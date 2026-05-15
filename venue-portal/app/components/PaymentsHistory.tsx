@@ -133,11 +133,11 @@ export default function PaymentsHistory() {
                          payment.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Payment'}
                       </p>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                        payment.source === 'fizz'
+                        payment.source === 'revig'
                           ? 'bg-violet-500/15 text-violet-400 border-violet-500/25'
                           : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25'
                       }`}>
-                        {payment.source === 'fizz' ? 'FIZZ' : 'SOM'}
+                        {payment.source === 'revig' ? 'REVIG' : 'SOM'}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 mt-1">

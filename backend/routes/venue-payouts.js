@@ -43,8 +43,8 @@ router.get('/earnings', auth, async (req, res) => {
 
     // Calculate earnings split by source app
     const somEarnings  = payments.filter(p => (p.source || 'som') === 'som').reduce((sum, p) => sum + p.amount, 0);
-    const fizzEarnings = payments.filter(p => p.source === 'fizz').reduce((sum, p) => sum + p.amount, 0);
-    const totalEarnings = somEarnings + fizzEarnings;
+    const revigEarnings = payments.filter(p => p.source === 'revig').reduce((sum, p) => sum + p.amount, 0);
+    const totalEarnings = somEarnings + revigEarnings;
 
     // Get Stripe account balance if connected
     let stripeBalance = { available: 0, pending: 0 };
@@ -95,7 +95,7 @@ router.get('/earnings', auth, async (req, res) => {
       earnings: {
         total: totalEarnings,
         som: somEarnings,
-        fizz: fizzEarnings,
+        revig: revigEarnings,
         available: stripeBalance.available,
         pending: stripeBalance.pending,
         period: {

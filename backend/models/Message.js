@@ -45,7 +45,7 @@ const messageSchema = new mongoose.Schema({
   // Which app this message belongs to
   source: {
     type: String,
-    enum: ['shotonme', 'fizz'],
+    enum: ['shotonme', 'revig'],
     default: 'shotonme',
     index: true,
   },

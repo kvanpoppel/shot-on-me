@@ -41,7 +41,7 @@ const venueSchema = new mongoose.Schema({
     enum: [
       // SOM (nightlife)
       'restaurant', 'bar', 'cafe', 'club', 'other',
-      // Fizz (non-alcohol / family-friendly)
+      // Revig (non-alcohol / family-friendly)
       'coffee shop', 'juice bar', 'dirty soda shop', 'soda shop',
       'tea house', 'smoothie bar', 'bakery', 'ice cream', 'creamery',
     ],
@@ -50,7 +50,7 @@ const venueSchema = new mongoose.Schema({
   /** Which consumer app(s) this venue appears in */
   platform: {
     type: String,
-    enum: ['som', 'fizz', 'both'],
+    enum: ['som', 'revig', 'both'],
     default: 'som'
   },
   isActive: {

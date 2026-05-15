@@ -375,10 +375,10 @@ const feedRouter = require('./routes/feed');
 feedRouter.setIO(io);
 app.use('/api/feed', feedRouter);
 
-// Fizz — separate social graph, wallet, feed, messages
-const fizzRouter = require('./routes/fizz')
-fizzRouter.setIO(io)
-app.use('/api/fizz', fizzRouter);
+// Revig — separate social graph, wallet, feed, messages
+const revigRouter = require('./routes/revig')
+revigRouter.setIO(io)
+app.use('/api/revig', revigRouter);
 
 app.use('/api/feed-ai', require('./routes/feedAI'));
 app.use('/api/stories', mediaUploadLimiter, require('./routes/stories'));

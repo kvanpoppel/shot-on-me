@@ -11,27 +11,27 @@ Three apps, one backend, deployed on Vercel (frontends) + Render (backend).
 |-----|--------|-----|
 | Backend API | `backend/` | Render — Express + MongoDB + Socket.io |
 | Shot On Me | `shot-on-me/` | shotonme.com — customer mobile PWA |
-| Fizz | `fizz/` | fizz.shotonme.com — non-alcohol gifting PWA |
+| Revig | `revig/` | revig.shotonme.com — non-alcohol gifting PWA |
 | Venue Portal | `venue-portal/` | venues.shotonme.com — venue owner dashboard |
 
 ---
 
-## Fizz App — ~95% Complete
+## Revig App — ~95% Complete
 
 ### What's Built (all wired to live backend)
 - **Auth:** Register, sign in, forgot password, remember me, Face ID/biometric, reset-password page
 - **Home tab:** Wallet balance, quick-send, friend activity feed
-- **Sips tab (Venue Discovery):** Browse non-alcohol venues, check-in with GPS, send Fizz to venue
+- **Sips tab (Venue Discovery):** Browse non-alcohol venues, check-in with GPS, send Revig to venue
 - **Feed tab:** Posts with photo upload, likes, comments (CommentsSheet), share post, report post, delete/edit own posts, infinite scroll + pagination, StoriesRow at top
 - **Stories:** 24h expiry, grouped by author, auto-advance viewer, create/delete
-- **Send Fizz:** P2P gifting with prefill from venue or friend profile
+- **Send Revig:** P2P gifting with prefill from venue or friend profile
 - **Wallet tab:** Balance, add funds (AddFundsModal), transaction history
 - **Messages tab (DMs):** Real-time via Socket.io, photo uploads in DMs, typing indicators, unread count
 - **Profile tab:** Edit profile + photo upload, stats, friends list, rewards, referrals, crews, settings
 - **Friend system:** Send/accept/decline requests, friend suggestions (friends-of-friends + active fallback), block/report users, FriendProfile overlay
 - **Search:** SearchModal — search users and venues
 - **Find Friends:** FindFriends component
-- **Notifications:** Real-time (socket) + persisted list (/fizz/notifications), per-type settings (messages, fizzReceived, friendRequests, feedActivity), read-all
+- **Notifications:** Real-time (socket) + persisted list (/revig/notifications), per-type settings (messages, revigReceived, friendRequests, feedActivity), read-all
 - **Push notifications:** PWA web-push with VAPID, service worker at /sw.js — wired but needs Kate's VAPID keys in Render
 - **Rewards / Gamification:** RewardsScreen component
 - **Referrals:** ReferralScreen component
@@ -44,7 +44,7 @@ Three apps, one backend, deployed on Vercel (frontends) + Render (backend).
 
 ### What's NOT Done / Kate's Action Items
 - [ ] Generate VAPID keys: `npx web-push generate-vapid-keys` → add to Render env
-- [ ] Create Sentry account → add NEXT_PUBLIC_SENTRY_DSN to Vercel (fizz project)
+- [ ] Create Sentry account → add NEXT_PUBLIC_SENTRY_DSN to Vercel (revig project)
 - [ ] TonightTab and CookieConsent components exist but TonightTab is disabled (hidden from nav)
 
 ---
@@ -68,7 +68,7 @@ Three apps, one backend, deployed on Vercel (frontends) + Render (backend).
 
 ## Backend — ~95% Complete
 
-All `/api/fizz/*` and `/api/*` endpoints built:
+All `/api/revig/*` and `/api/*` endpoints built:
 - Auth, profiles, wallet, send, friends, user search
 - Feed CRUD + likes/comments/share/report
 - Messages + unread count + typing indicators
@@ -94,12 +94,12 @@ All `/api/fizz/*` and `/api/*` endpoints built:
 
 ### Push Notifications
 - [ ] `npx web-push generate-vapid-keys`
-- [ ] Add to Render: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL=admin@fizz.app
+- [ ] Add to Render: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL=admin@revig.app
 
 ### Error Tracking
-- [ ] Create Sentry account + 4 projects (backend, shot-on-me, fizz, venue-portal)
+- [ ] Create Sentry account + 4 projects (backend, shot-on-me, revig, venue-portal)
 - [ ] Add SENTRY_DSN to Render (backend + venue-portal backend)
-- [ ] Add NEXT_PUBLIC_SENTRY_DSN to Vercel (shot-on-me + fizz)
+- [ ] Add NEXT_PUBLIC_SENTRY_DSN to Vercel (shot-on-me + revig)
 
 ### Business Setup
 - [ ] Form LLC (state SOS or Stripe Atlas)

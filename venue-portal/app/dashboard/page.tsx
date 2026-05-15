@@ -113,12 +113,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!socket || !venueId) return
     const r = () => fetchData()
-    const onFizz = (d: any) => { if (d.venueId === venueId) { showSuccess(`$${d.amount} Fizz received!`); fetchData() } }
+    const onRevig = (d: any) => { if (d.venueId === venueId) { showSuccess(`$${d.amount} Revig received!`); fetchData() } }
     const onIn = (d: any) => { if (d.venueId === venueId) { showInfo('New check-in!'); fetchData() } }
     const onPay = (d: any) => { if (d.venueId === venueId) { showSuccess('Payment received!'); fetchData() } }
     socket.on('promotion-updated', r); socket.on('new-promotion', r); socket.on('promotion-deleted', r)
-    socket.on('fizz-received', onFizz); socket.on('venue-checkin', onIn); socket.on('venue-paid', onPay)
-    return () => { socket.off('promotion-updated', r); socket.off('new-promotion', r); socket.off('promotion-deleted', r); socket.off('fizz-received', onFizz); socket.off('venue-checkin', onIn); socket.off('venue-paid', onPay) }
+    socket.on('revig-received', onRevig); socket.on('venue-checkin', onIn); socket.on('venue-paid', onPay)
+    return () => { socket.off('promotion-updated', r); socket.off('new-promotion', r); socket.off('promotion-deleted', r); socket.off('revig-received', onRevig); socket.off('venue-checkin', onIn); socket.off('venue-paid', onPay) }
   }, [socket, venueId])
 
   const quickLaunch = async (type: string) => {

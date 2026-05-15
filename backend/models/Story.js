@@ -61,7 +61,7 @@ const storySchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['shotonme', 'fizz'],
+    enum: ['shotonme', 'revig'],
     default: 'shotonme',
     index: true,
   },

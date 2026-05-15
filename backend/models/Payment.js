@@ -44,10 +44,10 @@ const paymentSchema = new mongoose.Schema({
   },
   refunded: { type: Boolean, default: false },
   refundedAt: { type: Date },
-  /** Which consumer app originated this payment: 'som' (Shot On Me) or 'fizz' */
+  /** Which consumer app originated this payment: 'som' (Shot On Me) or 'revig' */
   source: {
     type: String,
-    enum: ['som', 'fizz'],
+    enum: ['som', 'revig'],
     default: 'som'
   },
   metadata: {

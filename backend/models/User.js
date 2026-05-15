@@ -310,8 +310,8 @@ const userSchema = new mongoose.Schema({
       default: 'v1'
     }
   },
-  // ─── Fizz-specific fields (separate from Shot On Me) ───────────────────────
-  fizzProfile: {
+  // ─── Revig-specific fields (separate from Shot On Me) ───────────────────────
+  revigProfile: {
     firstName:      { type: String, default: '' },
     lastName:       { type: String, default: '' },
     username:       { type: String, default: '' },
@@ -320,18 +320,18 @@ const userSchema = new mongoose.Schema({
     notifPrefs: {
       allEnabled:     { type: Boolean, default: true },
       messages:       { type: Boolean, default: true },
-      fizzReceived:   { type: Boolean, default: true },
+      revigReceived:   { type: Boolean, default: true },
       friendRequests: { type: Boolean, default: true },
       feedActivity:   { type: Boolean, default: true },
     },
   },
-  fizzWallet: {
+  revigWallet: {
     balance:        { type: Number, default: 0, min: 0 },
     pendingBalance: { type: Number, default: 0, min: 0 },
   },
-  fizzFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  fizzBlocked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  fizzPushSubscriptions: [{
+  revigFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  revigBlocked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  revigPushSubscriptions: [{
     endpoint:   { type: String, required: true },
     keys: {
       p256dh: { type: String, required: true },

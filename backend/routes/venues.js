@@ -67,9 +67,9 @@ router.get('/public', async (req, res) => {
     if (city && city !== 'All') {
       filter['address.city'] = { $regex: new RegExp(`^${city}$`, 'i') };
     }
-    // Filter by platform ('som', 'fizz', or 'both' matches either)
-    if (platform === 'fizz') {
-      filter.platform = { $in: ['fizz', 'both'] };
+    // Filter by platform ('som', 'revig', or 'both' matches either)
+    if (platform === 'revig') {
+      filter.platform = { $in: ['revig', 'both'] };
     } else if (platform === 'som') {
       filter.platform = { $in: ['som', 'both', null] }; // null = legacy, treated as SOM
     }
@@ -137,8 +137,8 @@ router.get('/', auth, async (req, res) => {
       // For regular users, return active venues filtered by platform
       const platformParam = req.query.platform;
       let platformFilter = {};
-      if (platformParam === 'fizz') {
-        platformFilter = { platform: { $in: ['fizz', 'both'] } };
+      if (platformParam === 'revig') {
+        platformFilter = { platform: { $in: ['revig', 'both'] } };
       } else if (platformParam === 'som') {
         platformFilter = { $or: [{ platform: { $in: ['som', 'both'] } }, { platform: { $exists: false } }] };
       }
@@ -388,7 +388,7 @@ router.put('/:venueId', auth, async (req, res) => {
     if (amenities) venue.amenities = { ...(venue.amenities || {}), ...amenities };
     // Category and platform
     if (category !== undefined) venue.category = category;
-    if (platform !== undefined && ['som', 'fizz', 'both'].includes(platform)) venue.platform = platform;
+    if (platform !== undefined && ['som', 'revig', 'both'].includes(platform)) venue.platform = platform;
     // Subscription and featured status
     if (subscriptionTier !== undefined) venue.subscriptionTier = subscriptionTier;
     if (isFeatured !== undefined) venue.isFeatured = isFeatured;

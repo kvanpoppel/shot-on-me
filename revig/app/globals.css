@@ -1,0 +1,246 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700&family=Poppins:ital,wght@0,700;0,800;0,900;1,800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ───────────────────────────────────────────────── */
+:root {
+  --bg:          #0F0F1E;
+  --bg-card:     #1C1C32;
+  --bg-card2:    #23233A;
+  --lime:        #C8F135;
+  --lime-dark:   #A8CF10;
+  --coral:       #FF5F57;
+  --cyan:        #00D4FF;
+  --white:       #FFFFFF;
+  --text-dim:    rgba(255,255,255,0.55);
+  --text-muted:  rgba(255,255,255,0.30);
+  --border:      rgba(255,255,255,0.07);
+  --border-lime: rgba(200,241,53,0.25);
+}
+
+/* ─── Reset ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: #fff;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  font-size: 16px;
+}
+
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Keyframes ───────────────────────────────────────────────────── */
+@keyframes bubble-rise {
+  0%   { transform: translateY(0) scale(1);    opacity: 0.85; }
+  60%  { opacity: 0.5; }
+  100% { transform: translateY(-140px) scale(0.15); opacity: 0; }
+}
+@keyframes revig-pop {
+  0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
+  55%  { transform: scale(1.18) rotate(4deg);  opacity: 1; }
+  100% { transform: scale(1)   rotate(0deg);   opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(200,241,53,0.5); }
+  50%       { box-shadow: 0 0 20px 8px rgba(200,241,53,0);   }
+}
+
+/* ─── Utility classes ─────────────────────────────────────────────── */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  animation: bubble-rise ease-in infinite;
+  pointer-events: none;
+}
+
+.animate-revig-pop  { animation: revig-pop  0.45s cubic-bezier(.34,1.56,.64,1) forwards; }
+.animate-float     { animation: float     3s ease-in-out infinite; }
+.animate-slide-up  { animation: slide-up  0.4s ease-out forwards; }
+.animate-spin-slow { animation: spin-slow 8s linear infinite; }
+
+/* ─── Gradient text ───────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(90deg, #C8F135 0%, #00D4FF 55%, #FF5F57 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-lime {
+  background: linear-gradient(90deg, #C8F135, #A8FF45);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Wordmark ────────────────────────────────────────────────────── */
+.revig-wordmark {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.03em;
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────── */
+.revig-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.revig-card-glow {
+  background: linear-gradient(135deg, #1C1C32, #23233A);
+  border: 1px solid var(--border-lime);
+  border-radius: 20px;
+  box-shadow: 0 0 40px rgba(200,241,53,0.06);
+}
+.revig-card-coral {
+  background: linear-gradient(135deg, #1C1C32, #231C1C);
+  border: 1px solid rgba(255,95,87,0.18);
+  border-radius: 20px;
+}
+.revig-card-cyan {
+  background: linear-gradient(135deg, #1C1C32, #1C2323);
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 20px;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────── */
+.revig-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lime);
+  color: #0F0F1E;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s, background 0.18s;
+  letter-spacing: -0.01em;
+}
+.revig-btn-primary:hover {
+  background: #D8FF55;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(200,241,53,0.35);
+}
+.revig-btn-primary:active { transform: translateY(0); box-shadow: none; }
+
+.revig-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--lime);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border: 2px solid rgba(200,241,53,0.5);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.revig-btn-outline:hover {
+  border-color: var(--lime);
+  background: rgba(200,241,53,0.08);
+}
+
+.revig-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.revig-btn-ghost:hover { background: rgba(255,255,255,0.10); }
+
+/* ─── Badges ──────────────────────────────────────────────────────── */
+.revig-badge {
+  background: linear-gradient(90deg, #C8F135, #00D4FF);
+  color: #0F0F1E;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.01em;
+  animation: gradient-pan 3s ease infinite;
+  background-size: 200% 200%;
+}
+.dirty-soda-badge {
+  background: linear-gradient(90deg, #FF5F57, #FF9A57);
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Inputs ──────────────────────────────────────────────────────── */
+input, textarea, select {
+  color: white;
+  caret-color: var(--lime);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+input:focus, textarea:focus, select:focus { outline: none; }
+
+/* ─── Safe areas ──────────────────────────────────────────────────── */
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
+.safe-top    { padding-top: max(env(safe-area-inset-top, 0px), 0px); }
+
+/* ─── Mobile viewport fix ─────────────────────────────────────────── */
+/* Ensure app shell fills the true visible viewport on mobile browsers */
+html { height: -webkit-fill-available; }
+body { min-height: -webkit-fill-available; }
+
+/* ─── Shimmer skeleton ────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #1C1C32 25%, #23233A 50%, #1C1C32 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 12px;
+}
