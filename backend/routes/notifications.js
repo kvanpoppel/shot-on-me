@@ -10,7 +10,7 @@ router.get('/', auth, async (req, res) => {
     const { limit = 50, unreadOnly = false } = req.query;
     const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
 
-    const query = { recipient: req.user.userId };
+    const query = { recipient: req.user.userId, source: { $ne: 'revig' } };
     if (unreadOnly === 'true') {
       query.read = false;
     }
@@ -46,7 +46,8 @@ router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Notification.countDocuments({
       recipient: req.user.userId,
-      read: false
+      read: false,
+      source: { $ne: 'revig' }
     });
     res.json({ unreadCount: count });
   } catch (error) {
@@ -83,7 +84,7 @@ router.put('/:notificationId/read', auth, async (req, res) => {
 router.put('/read-all', auth, async (req, res) => {
   try {
     await Notification.updateMany(
-      { recipient: req.user.userId, read: false },
+      { recipient: req.user.userId, read: false, source: { $ne: 'revig' } },
       { read: true, readAt: new Date() }
     );
 

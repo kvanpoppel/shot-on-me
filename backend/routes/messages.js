@@ -36,14 +36,15 @@ router.get('/conversations', auth, async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Get all unique conversations
+    // Get all unique conversations — exclude Revig messages
     const conversations = await Message.aggregate([
       {
         $match: {
           $or: [
             { sender: new mongoose.Types.ObjectId(userId) },
             { recipient: new mongoose.Types.ObjectId(userId) }
-          ]
+          ],
+          source: { $ne: 'revig' }
         }
       },
       {
@@ -136,16 +137,16 @@ router.get('/conversations/:conversationId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Conversation not found' });
     }
     
-    // Get all messages in conversation
-    const messages = await Message.find({ conversationId })
+    // Get all messages in conversation — exclude Revig messages
+    const messages = await Message.find({ conversationId, source: { $ne: 'revig' } })
       .populate('sender', 'name firstName lastName profilePicture')
       .populate('recipient', 'name firstName lastName profilePicture')
       .sort({ createdAt: 1 })
       .limit(100);
-    
-    // Mark messages as read
+
+    // Mark messages as read — exclude Revig messages
     await Message.updateMany(
-      { conversationId, recipient: userId, read: false },
+      { conversationId, recipient: userId, read: false, source: { $ne: 'revig' } },
       { read: true, readAt: new Date() }
     );
     
@@ -162,7 +163,8 @@ router.get('/unread-count', auth, async (req, res) => {
     const userId = req.user.userId;
     const count = await Message.countDocuments({
       recipient: userId,
-      read: false
+      read: false,
+      source: { $ne: 'revig' }
     });
     
     res.json({ unreadCount: count });
@@ -179,10 +181,10 @@ router.put('/read/:conversationId', auth, async (req, res) => {
     const userId = req.user.userId;
     
     await Message.updateMany(
-      { conversationId, recipient: userId, read: false },
+      { conversationId, recipient: userId, read: false, source: { $ne: 'revig' } },
       { read: true, readAt: new Date() }
     );
-    
+
     res.json({ message: 'Messages marked as read' });
   } catch (error) {
     console.error('Error marking messages as read:', error);

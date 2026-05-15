@@ -312,7 +312,8 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       amount: finalAmount,
       type: 'shot_sent',
       // redemptionCode: null - Money transfers use tap-and-pay, not redemption codes
-      status: 'succeeded'
+      status: 'succeeded',
+      source: 'som'
     });
     await payment.save();
 
@@ -514,6 +515,7 @@ router.post('/send-round', auth, paymentLimiter, async (req, res) => {
           type: 'drink',
           status: 'completed',
           description: message || `Round from ${senderName} ${drinkEmoji}`,
+          source: 'som',
         });
 
         const recipientName = recipient.firstName || recipient.name?.split(' ')[0] || 'Friend';
@@ -1233,7 +1235,8 @@ router.post('/create-intent', auth, async (req, res) => {
         amount: amountNum,
         type: 'wallet_topup',
         stripePaymentIntentId: paymentIntent.id,
-        status: paymentIntent.status === 'succeeded' ? 'succeeded' : 'pending'
+        status: paymentIntent.status === 'succeeded' ? 'succeeded' : 'pending',
+        source: 'som'
       };
       // Explicitly omit redemptionCode to avoid index conflicts
       payment = new Payment(paymentData);
@@ -1396,7 +1399,8 @@ router.post('/transfer', auth, async (req, res) => {
       amount: amount,
       type: 'transfer',
       stripeTransferId: transfer.id,
-      status: transfer.status === 'paid' ? 'succeeded' : 'processing'
+      status: transfer.status === 'paid' ? 'succeeded' : 'processing',
+      source: 'som'
     });
     await payment.save();
 
@@ -1743,6 +1747,7 @@ async function webhookHandler(req, res) {
           amount: amountInDollars,
           type: 'tap_and_pay',
           status: 'processing',
+          source: 'som',
           stripeAuthorizationId: authorization.id,
           ...(venue && { venueId: venue._id }),
           metadata: new Map([

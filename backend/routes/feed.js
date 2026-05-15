@@ -46,12 +46,12 @@ router.get('/', auth, async (req, res) => {
     const FeedPost = require('../models/FeedPost');
     const currentUser = await User.findById(req.user.userId).select('friends followedVenues');
 
-    // Build query
-    let query = {};
+    // Build query — exclude Revig posts so only SOM data shows
+    let query = { source: { $ne: 'revig' } };
 
     // If userId is provided, filter to only that user's posts (for profile pages)
     if (userId) {
-      query = { author: userId };
+      query.author = userId;
     } else {
       // Default: show posts from friends OR user's own posts OR followed venue posts
       const friendIds = currentUser?.friends || [];
@@ -61,10 +61,9 @@ router.get('/', auth, async (req, res) => {
         const orConditions = [{ author: req.user.userId }];
         if (friendIds.length > 0) orConditions.push({ author: { $in: friendIds } });
         if (followedVenueIds.length > 0) orConditions.push({ venueAuthor: { $in: followedVenueIds } });
-        query = { $or: orConditions };
-      } else {
-        query = {}; // Show all posts if no friends/follows (new users)
+        query.$or = orConditions;
       }
+      // If no friends/follows (new users), query already has source filter only — shows all SOM posts
     }
 
     // Get total count for pagination
@@ -1059,6 +1058,7 @@ router.get('/activity-strip', auth, async (req, res) => {
     const posts = await FeedPost.find({
       postType: { $in: ['drink_sent', 'checkin'] },
       createdAt: { $gte: since },
+      source: { $ne: 'revig' },
     })
       .populate('author', 'firstName name')
       .populate('venueAuthor', 'name')
