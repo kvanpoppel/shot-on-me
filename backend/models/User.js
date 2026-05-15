@@ -333,6 +333,30 @@ const userSchema = new mongoose.Schema({
     balance:        { type: Number, default: 0, min: 0 },
     pendingBalance: { type: Number, default: 0, min: 0 },
   },
+  revigPoints: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigTotalPointsEarned: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigTotalPointsRedeemed: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigDailyPointsToday: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigDailyPointsDate: {
+    type: Date,
+    default: null
+  },
   revigFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   revigBlocked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   revigPushSubscriptions: [{

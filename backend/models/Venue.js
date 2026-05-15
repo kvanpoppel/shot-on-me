@@ -72,6 +72,7 @@ const venueSchema = new mongoose.Schema({
   promotions: [{
     title: String,
     description: String,
+    offer: String,
     discount: Number,
     validUntil: Date,
     isActive: { type: Boolean, default: true },

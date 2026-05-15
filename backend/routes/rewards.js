@@ -237,20 +237,22 @@ router.post('/use', auth, async (req, res) => {
 });
 
 // Redeem 100 points for $5 cash reward
+// Accepts optional `source` in body: 'revig' redeems from revigPoints into revigWallet
 router.post('/redeem-cash', auth, async (req, res) => {
   try {
-    const { pointsToRedeem = 100 } = req.body;
+    const { pointsToRedeem = 100, source = 'som' } = req.body;
+    const isRevig = source === 'revig';
     const cashValue = 5; // $5 per 100 points
 
     if (pointsToRedeem < 100) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Minimum 100 points required for cash redemption',
         error: 'You need at least 100 points to redeem $5 cash'
       });
     }
 
     if (pointsToRedeem % 100 !== 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Points must be in multiples of 100',
         error: 'You can only redeem in increments of 100 points ($5 each)'
       });
@@ -288,12 +290,18 @@ router.post('/redeem-cash', auth, async (req, res) => {
       }
     }
 
+    // Pick the correct points and wallet fields based on source
+    const pointsField         = isRevig ? 'revigPoints'            : 'points';
+    const totalRedeemedField  = isRevig ? 'revigTotalPointsRedeemed' : 'totalPointsRedeemed';
+    const walletBalanceField  = isRevig ? 'revigWallet.balance'    : 'wallet.balance';
+
     // Check if user has enough points
-    if (user.points < pointsToRedeem) {
+    const currentPoints = user[pointsField] || 0;
+    if (currentPoints < pointsToRedeem) {
       return res.status(400).json({
         message: 'Insufficient points',
-        error: `You have ${user.points} points, but need ${pointsToRedeem} points`,
-        currentPoints: user.points,
+        error: `You have ${currentPoints} points, but need ${pointsToRedeem} points`,
+        currentPoints,
         requiredPoints: pointsToRedeem
       });
     }
@@ -302,18 +310,20 @@ router.post('/redeem-cash', auth, async (req, res) => {
     const cashAmount = (pointsToRedeem / 100) * cashValue;
 
     // Atomically deduct points and credit wallet — $gte guard prevents negative points
-    const rewardUpdated = await User.findOneAndUpdate(
-      { _id: user._id, points: { $gte: pointsToRedeem } },
-      {
-        $inc: {
-          points: -pointsToRedeem,
-          totalPointsRedeemed: pointsToRedeem,
-          'wallet.balance': cashAmount,
-          rewardCashBalance: cashAmount
-        }
-      },
-      { new: true }
-    );
+    const atomicFilter = { _id: user._id, [pointsField]: { $gte: pointsToRedeem } };
+    const atomicUpdate = {
+      $inc: {
+        [pointsField]: -pointsToRedeem,
+        [totalRedeemedField]: pointsToRedeem,
+        [walletBalanceField]: cashAmount,
+      }
+    };
+    // For SOM, also track rewardCashBalance
+    if (!isRevig) {
+      atomicUpdate.$inc.rewardCashBalance = cashAmount;
+    }
+
+    const rewardUpdated = await User.findOneAndUpdate(atomicFilter, atomicUpdate, { new: true });
     if (!rewardUpdated) {
       return res.status(400).json({ message: 'Insufficient points' });
     }
@@ -321,9 +331,9 @@ router.post('/redeem-cash', auth, async (req, res) => {
     // Create reward redemption record
     const Reward = require('../models/Reward');
     const RewardRedemption = require('../models/RewardRedemption');
-    
+
     // Find or create the default cash reward
-    let cashReward = await Reward.findOne({ 
+    let cashReward = await Reward.findOne({
       type: 'cash_credit',
       pointsCost: 100,
       venue: null // Platform-wide
@@ -355,17 +365,29 @@ router.post('/redeem-cash', auth, async (req, res) => {
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
+      const newWalletBalance = isRevig
+        ? rewardUpdated.revigWallet?.balance ?? 0
+        : rewardUpdated.wallet?.balance ?? 0;
+      const newPoints = rewardUpdated[pointsField] || 0;
+
       io.to(`user-${user._id.toString()}`).emit('wallet-updated', {
         userId: user._id.toString(),
-        balance: user.wallet.balance
+        balance: newWalletBalance,
+        source,
       });
       io.to(`user-${user._id.toString()}`).emit('points-updated', {
         userId: user._id.toString(),
-        points: user.points,
-        totalPointsEarned: user.totalPointsEarned,
-        totalPointsRedeemed: user.totalPointsRedeemed
+        points: newPoints,
+        totalPointsEarned: isRevig ? rewardUpdated.revigTotalPointsEarned : rewardUpdated.totalPointsEarned,
+        totalPointsRedeemed: rewardUpdated[totalRedeemedField],
+        source,
       });
     }
+
+    const newPoints = rewardUpdated[pointsField] || 0;
+    const newWalletBalance = isRevig
+      ? rewardUpdated.revigWallet?.balance ?? 0
+      : rewardUpdated.wallet?.balance ?? 0;
 
     res.json({
       message: `Successfully redeemed ${pointsToRedeem} points for $${cashAmount.toFixed(2)} cash`,
@@ -373,8 +395,9 @@ router.post('/redeem-cash', auth, async (req, res) => {
         id: redemption._id,
         pointsRedeemed: pointsToRedeem,
         cashAmount: cashAmount,
-        newPointsBalance: user.points,
-        newWalletBalance: user.wallet.balance
+        newPointsBalance: newPoints,
+        newWalletBalance: newWalletBalance,
+        source,
       }
     });
   } catch (error) {

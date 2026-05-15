@@ -16,6 +16,7 @@ const Notification = require('../models/Notification')
 const Payment = require('../models/Payment')
 const webpush = require('web-push')
 const auth = require('../middleware/auth')
+const { handlePaymentSent, handlePaymentReceived, handleCheckIn } = require('../utils/gamification')
 
 // Configure web-push with VAPID keys (generate once: npx web-push generate-vapid-keys)
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -118,12 +119,15 @@ function sanitizeUser(u) {
 // GET /api/revig/profile — own Revig profile + wallet
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('revigProfile revigWallet revigFriends name firstName lastName username profilePicture email')
+    const user = await User.findById(req.user.userId).select('revigProfile revigWallet revigFriends revigPoints revigTotalPointsEarned revigTotalPointsRedeemed name firstName lastName username profilePicture email')
     if (!user) return res.status(404).json({ message: 'User not found' })
     res.json({
       profile: sanitizeUser(user),
       wallet:  { balance: user.revigWallet?.balance ?? 0, pendingBalance: user.revigWallet?.pendingBalance ?? 0 },
       friendsCount: user.revigFriends?.length ?? 0,
+      points: user.revigPoints || 0,
+      totalPointsEarned: user.revigTotalPointsEarned || 0,
+      totalPointsRedeemed: user.revigTotalPointsRedeemed || 0,
     })
   } catch (e) {
     res.status(500).json({ message: e.message })
@@ -252,6 +256,10 @@ router.post('/send', auth, async (req, res) => {
       drinkInfo: { recipientId, recipientName, amount, emoji: '🫧', message: message || '' },
     })
     await post.save()
+
+    // Award Revig points (async, don't block response)
+    handlePaymentSent(req.user.userId, amount, 'revig').catch(err => console.error('Revig gamification error:', err))
+    handlePaymentReceived(recipientId, amount, 'revig').catch(err => console.error('Revig gamification error:', err))
 
     res.status(201).json({ message: 'Revig sent!', post })
   } catch (e) {
@@ -995,8 +1003,8 @@ router.post('/checkins', auth, async (req, res) => {
     })
     await post.save()
 
-    // Bump totalCheckIns
-    await User.findByIdAndUpdate(req.user.userId, { $inc: { totalCheckIns: 1 } })
+    // Award Revig check-in points (handles totalCheckIns bump, streak, and daily cap)
+    handleCheckIn(req.user.userId, venueId || null, 'revig').catch(err => console.error('Revig check-in gamification error:', err))
 
     res.status(201).json({ message: 'Checked in!', post })
   } catch (e) {

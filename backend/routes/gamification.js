@@ -76,26 +76,35 @@ router.get('/badges', auth, async (req, res) => {
 });
 
 // Get user's points and stats
+// Accepts ?source=revig query param to return Revig-specific points
 router.get('/stats', auth, async (req, res) => {
   try {
+    const { source } = req.query;
+    const isRevig = source === 'revig';
+
     const user = await User.findById(req.user.userId)
-      .select('points totalSent totalReceived totalCheckIns checkInStreak loginStreak stats friends');
+      .select('points totalPointsEarned totalPointsRedeemed revigPoints revigTotalPointsEarned revigTotalPointsRedeemed revigDailyPointsToday revigDailyPointsDate dailyPointsToday dailyPointsDate totalSent totalReceived totalCheckIns checkInStreak loginStreak stats friends revigFriends');
 
     const userBadges = await UserBadge.countDocuments({ user: req.user.userId });
 
-    res.json({
-      points: user.points || 0,
+    const response = {
+      points: isRevig ? (user.revigPoints || 0) : (user.points || 0),
+      totalPointsEarned: isRevig ? (user.revigTotalPointsEarned || 0) : (user.totalPointsEarned || 0),
+      totalPointsRedeemed: isRevig ? (user.revigTotalPointsRedeemed || 0) : (user.totalPointsRedeemed || 0),
       totalSent: user.totalSent || 0,
       totalReceived: user.totalReceived || 0,
       totalCheckIns: user.totalCheckIns || 0,
       checkInStreak: user.checkInStreak || { current: 0, longest: 0 },
       loginStreak: user.loginStreak || { current: 0, longest: 0 },
       badgesUnlocked: userBadges,
-      friendsCount: user.friends?.length || 0,
+      friendsCount: isRevig ? (user.revigFriends?.length || 0) : (user.friends?.length || 0),
       postsCount: user.stats?.postsCount || 0,
       venuesVisited: user.stats?.venuesVisited || 0,
-      referralsCount: user.stats?.referralsCount || 0
-    });
+      referralsCount: user.stats?.referralsCount || 0,
+      source: isRevig ? 'revig' : 'som',
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ message: 'Server error'});

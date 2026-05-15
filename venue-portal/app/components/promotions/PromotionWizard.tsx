@@ -190,7 +190,14 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
 
           {/* 4. Schedule */}
           <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
+              {!canRecur && (
+                <span className="flex items-center gap-1 text-[9px] text-primary-400/40">
+                  <Lock className="w-2.5 h-2.5" /> Recurring deals available on Growth plan
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {(['now', 'later'] as const).map(m => (
                 <button key={m} type="button" onClick={() => setScheduleMode(m)}
@@ -266,7 +273,26 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             )}
           </div>
 
-          {/* 5. Publish */}
+          {/* 5. Who sees this? */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">Who sees this?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => update({ targeting: { ...formData.targeting, followersOnly: false } })}
+                className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                  !formData.targeting.followersOnly ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
+                }`}>
+                Everyone nearby
+              </button>
+              <button type="button" onClick={() => update({ targeting: { ...formData.targeting, followersOnly: true } })}
+                className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                  formData.targeting.followersOnly ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
+                }`}>
+                My followers only
+              </button>
+            </div>
+          </div>
+
+          {/* 6. Publish */}
           <div className="pt-2 space-y-2">
             <button onClick={handlePublish} disabled={!canPublish || saving}
               className="w-full py-3.5 bg-primary-500 text-black font-bold text-sm rounded-xl hover:bg-primary-400 transition-all disabled:opacity-30 min-h-[48px]">

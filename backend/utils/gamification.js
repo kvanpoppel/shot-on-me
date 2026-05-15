@@ -8,71 +8,87 @@ const { checkReferralCompletion } = require('../routes/referrals');
 const DAILY_POINTS_CAP = 15;
 
 // Get how many points a user has earned today (all sources including badge rewards)
-const getDailyPointsEarned = async (userId) => {
+// source: 'revig' uses revigDailyPointsToday, anything else uses dailyPointsToday
+const getDailyPointsEarned = async (userId, source = 'som') => {
   const DailyVenuePoints = require('../models/DailyVenuePoints');
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  // Sum all DailyVenuePoints for today across all venues
-  const result = await DailyVenuePoints.aggregate([
-    { $match: { user: new (require('mongoose').Types.ObjectId)(userId), date: { $gte: startOfDay } } },
-    { $group: { _id: null, total: { $sum: '$totalPoints' } } }
-  ]);
+  // Sum all DailyVenuePoints for today across all venues (SOM only — Revig doesn't use venue-based points)
+  let venuePoints = 0;
+  if (source !== 'revig') {
+    const result = await DailyVenuePoints.aggregate([
+      { $match: { user: new (require('mongoose').Types.ObjectId)(userId), date: { $gte: startOfDay } } },
+      { $group: { _id: null, total: { $sum: '$totalPoints' } } }
+    ]);
+    venuePoints = result.length > 0 ? result[0].total : 0;
+  }
 
-  // Also check user's dailyPointsToday field as a fallback tracker
-  const venuePoints = result.length > 0 ? result[0].total : 0;
-  const user = await User.findById(userId).select('dailyPointsToday dailyPointsDate');
-  const userDailyDate = user?.dailyPointsDate ? new Date(user.dailyPointsDate) : null;
+  // Also check user's daily field as a fallback tracker
+  const dailyField = source === 'revig' ? 'revigDailyPointsToday' : 'dailyPointsToday';
+  const dateField = source === 'revig' ? 'revigDailyPointsDate' : 'dailyPointsDate';
+  const user = await User.findById(userId).select(`${dailyField} ${dateField}`);
+  const userDailyDate = user?.[dateField] ? new Date(user[dateField]) : null;
   const isToday = userDailyDate && userDailyDate.setHours(0,0,0,0) === startOfDay.getTime();
-  const trackedPoints = isToday ? (user?.dailyPointsToday || 0) : 0;
+  const trackedPoints = isToday ? (user?.[dailyField] || 0) : 0;
 
   return Math.max(venuePoints, trackedPoints);
 };
 
 // Award points to user (with daily cap of 15)
-const awardPoints = async (userId, points, reason = '') => {
+// source: 'revig' awards to revigPoints fields, anything else awards to SOM points fields
+const awardPoints = async (userId, points, reason = '', source = 'som') => {
   try {
     const user = await User.findById(userId);
     if (!user) return;
 
-    // Check daily cap
+    const isRevig = source === 'revig';
+    const pointsField       = isRevig ? 'revigPoints'          : 'points';
+    const dailyField        = isRevig ? 'revigDailyPointsToday' : 'dailyPointsToday';
+    const dateField         = isRevig ? 'revigDailyPointsDate'  : 'dailyPointsDate';
+
+    // Check daily cap (independent per app)
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const userDailyDate = user.dailyPointsDate ? new Date(user.dailyPointsDate) : null;
+    const userDailyDate = user[dateField] ? new Date(user[dateField]) : null;
     const isToday = userDailyDate && new Date(userDailyDate).setHours(0,0,0,0) === startOfDay.getTime();
-    const earnedToday = isToday ? (user.dailyPointsToday || 0) : 0;
+    const earnedToday = isToday ? (user[dailyField] || 0) : 0;
 
     if (earnedToday >= DAILY_POINTS_CAP) {
-      console.log(`⚠️ User ${userId} already at daily cap (${earnedToday}/${DAILY_POINTS_CAP}), no points awarded for: ${reason}`);
-      return user.points;
+      console.log(`⚠️ User ${userId} already at daily cap (${earnedToday}/${DAILY_POINTS_CAP}) for ${source}, no points awarded for: ${reason}`);
+      return user[pointsField];
     }
 
     // Cap the points to not exceed daily limit
     const allowable = Math.min(points, DAILY_POINTS_CAP - earnedToday);
-    if (allowable <= 0) return user.points;
+    if (allowable <= 0) return user[pointsField];
 
-    user.points = (user.points || 0) + allowable;
+    user[pointsField] = (user[pointsField] || 0) + allowable;
+
+    // Track lifetime total earned
+    const totalEarnedField = isRevig ? 'revigTotalPointsEarned' : 'totalPointsEarned';
+    user[totalEarnedField] = (user[totalEarnedField] || 0) + allowable;
 
     // Track daily earned points
     if (!isToday) {
-      user.dailyPointsToday = allowable;
-      user.dailyPointsDate = startOfDay;
+      user[dailyField] = allowable;
+      user[dateField] = startOfDay;
     } else {
-      user.dailyPointsToday = earnedToday + allowable;
+      user[dailyField] = earnedToday + allowable;
     }
 
     await user.save();
 
     if (allowable < points) {
-      console.log(`⚠️ Capped points for user ${userId}: requested ${points}, awarded ${allowable} (daily total: ${user.dailyPointsToday}/${DAILY_POINTS_CAP})`);
+      console.log(`⚠️ Capped points for user ${userId} (${source}): requested ${points}, awarded ${allowable} (daily total: ${user[dailyField]}/${DAILY_POINTS_CAP})`);
     }
 
     // Check for badge unlocks (skip if this was a badge reward to avoid deep recursion)
     if (!reason.startsWith('badge_reward_')) {
-      await checkBadges(userId);
+      await checkBadges(userId, source);
     }
 
-    return user.points;
+    return user[pointsField];
   } catch (error) {
     console.error('Error awarding points:', error);
   }
@@ -204,7 +220,8 @@ const updateCheckInStreak = async (userId) => {
 };
 
 // Check and award badges
-const checkBadges = async (userId) => {
+// source: passed through so badge point rewards go to the correct pool
+const checkBadges = async (userId, source = 'som') => {
   try {
     const user = await User.findById(userId);
     if (!user) return [];
@@ -260,11 +277,13 @@ const checkBadges = async (userId) => {
         await userBadge.save();
 
         // Award points if badge has point reward (subject to daily cap)
+        // Points go to whichever app triggered the badge check
         if (badge.pointsReward > 0) {
-          await awardPoints(user._id, badge.pointsReward, `badge_reward_${badge._id}`);
+          await awardPoints(user._id, badge.pointsReward, `badge_reward_${badge._id}`, source);
           // Re-fetch user to get updated points
-          const refreshed = await User.findById(user._id).select('points');
-          if (refreshed) user.points = refreshed.points;
+          const pointsField = source === 'revig' ? 'revigPoints' : 'points';
+          const refreshed = await User.findById(user._id).select(pointsField);
+          if (refreshed) user[pointsField] = refreshed[pointsField];
         }
 
         newlyUnlocked.push(badge);
@@ -279,7 +298,7 @@ const checkBadges = async (userId) => {
 };
 
 // Handle payment sent - award points and update stats
-const handlePaymentSent = async (senderId, amount) => {
+const handlePaymentSent = async (senderId, amount, source = 'som') => {
   try {
     const user = await User.findById(senderId);
     if (!user) return;
@@ -289,10 +308,10 @@ const handlePaymentSent = async (senderId, amount) => {
     await user.save();
 
     // Award points (1 point per dollar sent)
-    await awardPoints(senderId, Math.floor(amount), 'payment_sent');
+    await awardPoints(senderId, Math.floor(amount), 'payment_sent', source);
 
     // Check badges
-    await checkBadges(senderId);
+    await checkBadges(senderId, source);
   } catch (error) {
     console.error('Error handling payment sent:', error);
   }
@@ -342,7 +361,7 @@ const awardReferralRevenueShare = async (payerId, amountDollars) => {
 };
 
 // Handle payment received - award points and update stats
-const handlePaymentReceived = async (recipientId, amount) => {
+const handlePaymentReceived = async (recipientId, amount, source = 'som') => {
   try {
     const user = await User.findById(recipientId);
     if (!user) return;
@@ -352,7 +371,7 @@ const handlePaymentReceived = async (recipientId, amount) => {
     await user.save();
 
     // Award points (0.5 points per dollar received)
-    await awardPoints(recipientId, Math.floor(amount * 0.5), 'payment_received');
+    await awardPoints(recipientId, Math.floor(amount * 0.5), 'payment_received', source);
 
     // Check for referral completion
     await checkReferralCompletion(recipientId, 'first_payment');
@@ -363,14 +382,14 @@ const handlePaymentReceived = async (recipientId, amount) => {
     );
 
     // Check badges
-    await checkBadges(recipientId);
+    await checkBadges(recipientId, source);
   } catch (error) {
     console.error('Error handling payment received:', error);
   }
 };
 
 // Handle check-in - award points and update stats
-const handleCheckIn = async (userId, venueId) => {
+const handleCheckIn = async (userId, venueId, source = 'som') => {
   try {
     const user = await User.findById(userId);
     if (!user) return;
@@ -392,7 +411,7 @@ const handleCheckIn = async (userId, venueId) => {
       new Date(lastCheckInPointsDate).setHours(0, 0, 0, 0) === today.getTime();
 
     if (!alreadyEarnedCheckInToday) {
-      await awardPoints(userId, 10, 'check_in');
+      await awardPoints(userId, 10, 'check_in', source);
       // Mark that check-in points were earned today
       await User.findByIdAndUpdate(userId, { lastCheckInPointsDate: today });
     } else {
@@ -406,7 +425,7 @@ const handleCheckIn = async (userId, venueId) => {
     }
 
     // Check badges
-    await checkBadges(userId);
+    await checkBadges(userId, source);
 
     // Trigger referral completion for first check-in (async, don't block)
     if ((user.totalCheckIns || 0) === 1) {

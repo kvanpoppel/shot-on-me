@@ -41,6 +41,7 @@ interface Promotion {
 interface PromotionFormData {
   title: string
   description: string
+  offer: string
   type: string
   startTime: string
   endTime: string
@@ -255,6 +256,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       const payload = {
         title: formData.title,
         description: formData.description,
+        offer: formData.offer,
         type: formData.type,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
@@ -277,9 +279,10 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           { headers: { Authorization: `Bearer ${token}` } })
         showSuccess(res.data?.notificationsSent ? 'Deal activated — notifications sent!' : 'Deal updated.')
       } else {
-        await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, payload,
+        const res = await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, payload,
           { headers: { Authorization: `Bearer ${token}` } })
-        showSuccess('Deal created — notifications sent!')
+        const fc = res.data?.venue?.followerCount || 0
+        showSuccess(fc > 0 ? `Deal published! ✓ ${fc} followers notified` : 'Deal published! ✓ Followers will be notified as they follow you.')
       }
       closeAll()
       fetchPromotions()

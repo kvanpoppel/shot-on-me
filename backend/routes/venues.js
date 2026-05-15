@@ -463,14 +463,15 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to create promotions for this venue' });
     }
 
-    const { 
-      title, 
-      description, 
-      type, 
-      startTime, 
-      endTime, 
-      discount, 
-      validUntil, 
+    const {
+      title,
+      description,
+      offer,
+      type,
+      startTime,
+      endTime,
+      discount,
+      validUntil,
       schedule,
       isFlashDeal,
       flashDealEndsAt,
@@ -485,6 +486,7 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
     const basePromotion = {
       title,
       description,
+      offer,
       type: type || 'other',
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
