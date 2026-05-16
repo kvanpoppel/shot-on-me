@@ -50,6 +50,8 @@ const corsOptions = {
       'https://shotonme.com',
       'https://venue.shotonme.com',
       'https://owner.shotonme.com',
+      'https://revig.shotonme.com',
+      'https://revig-venues.shotonme.com',
       ...(process.env.VERCEL_ALLOWED_ORIGINS
         ? process.env.VERCEL_ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
         : []
