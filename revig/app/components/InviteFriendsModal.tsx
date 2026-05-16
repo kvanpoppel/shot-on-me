@@ -92,8 +92,8 @@ export default function InviteFriendsModal({ isOpen, onClose }: InviteFriendsMod
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
-      <div className="rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ background: '#1C1C32', border: '1px solid rgba(200,241,53,0.15)' }}>
+    <div className="fixed inset-0 z-[100] glass-modal flex items-center justify-center p-4">
+      <div className="glass rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold" style={{ color: '#C8F135' }}>Invite Friends</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors">

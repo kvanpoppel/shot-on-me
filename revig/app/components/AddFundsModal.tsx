@@ -201,10 +201,10 @@ export default function AddFundsModal({ isOpen, onClose, onSuccess }: AddFundsMo
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 glass-modal" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl px-5 pt-5 pb-10 safe-bottom animate-slide-up" style={{ background: '#1A1A2E', maxHeight: '92vh', overflowY: 'auto' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 glass rounded-t-3xl px-5 pt-5 pb-10 safe-bottom animate-slide-up" style={{ maxHeight: '92vh', overflowY: 'auto' }}>
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ background: 'rgba(255,255,255,0.15)' }} />
 

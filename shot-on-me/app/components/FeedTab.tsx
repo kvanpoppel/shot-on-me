@@ -2320,7 +2320,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
                 {/* Drink Receipt Card */}
                 {post.postType === 'drink_sent' && post.drinkInfo ? (
-                  <div className="mb-3 rounded-xl overflow-hidden border border-primary-500/20 bg-gradient-to-br from-primary-500/5 to-black/40">
+                  <div className="mb-3 rounded-xl overflow-hidden glass">
                     <div className="flex items-center justify-between px-4 py-2 border-b border-primary-500/10 bg-primary-500/5">
                       <span className="text-primary-400/70 text-[10px] font-bold uppercase tracking-widest">Drink Sent</span>
                       <span className="text-primary-400/50 text-[10px]">Shot On Me</span>

@@ -795,7 +795,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
 
       {/* Balance Card - Hero Section */}
       <div className="px-4 pt-6 pb-4">
-        <div className="relative bg-gradient-to-br from-primary-500/25 via-primary-500/15 to-primary-500/5 border-2 border-primary-500/40 rounded-2xl p-5 shadow-2xl shadow-primary-500/10 overflow-hidden">
+        <div className="relative glass-glow rounded-2xl p-5 overflow-hidden">
           {/* Decorative background elements */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>

@@ -93,8 +93,7 @@ export default function WalletTab() {
       {/* Balance hero */}
       <div className="px-4 pt-5 pb-4">
         <div
-          className="rounded-3xl p-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #1C1C32, #23233A)', border: '1px solid rgba(200,241,53,0.12)' }}
+          className="glass-glow rounded-3xl p-6 relative overflow-hidden"
         >
           {/* Glow */}
           <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-15 blur-3xl pointer-events-none" style={{ background: '#C8F135', transform: 'translate(30%, -30%)' }} />

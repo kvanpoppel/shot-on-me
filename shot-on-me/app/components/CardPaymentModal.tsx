@@ -381,8 +381,8 @@ export default function CardPaymentModal({
   } : undefined
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-black border-2 border-primary-500 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+      <div className="glass rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" style={{ borderColor: 'rgba(184,148,90,0.25)' }}>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-semibold text-primary-500">Pay with Card</h2>

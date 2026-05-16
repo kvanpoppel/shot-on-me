@@ -81,8 +81,8 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <div className="bg-black border-2 border-primary-500 rounded-lg p-6 max-w-md w-full">
+    <div className="fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+      <div className="glass rounded-lg p-6 max-w-md w-full" style={{ borderColor: 'rgba(184,148,90,0.25)' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-primary-500">Reset Password</h2>
           <button

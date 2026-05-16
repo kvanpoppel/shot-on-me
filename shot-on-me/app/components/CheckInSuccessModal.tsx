@@ -101,11 +101,12 @@ export default function CheckInSuccessModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <div 
-        className={`bg-gradient-to-br from-black via-black to-primary-500/10 border-2 border-primary-500 rounded-2xl p-8 max-w-md w-full transform transition-all duration-500 ${
+    <div className="fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+      <div
+        className={`glass rounded-2xl p-8 max-w-md w-full transform transition-all duration-500 ${
           showAnimation ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
+        style={{ borderColor: 'rgba(184,148,90,0.25)' }}
       >
         {/* Close button */}
         <button

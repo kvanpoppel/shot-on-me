@@ -230,7 +230,7 @@ export default function QuickSendDrinkSheet({
 
         {/* Sheet panel */}
         <div
-          className="relative w-full max-w-lg mx-auto bg-gradient-to-b from-gray-950 to-black border border-primary-500/20 border-b-0 rounded-t-2xl shadow-2xl"
+          className="relative w-full max-w-lg mx-auto glass border-b-0 rounded-t-2xl"
           style={{ marginBottom: '60px' }}
           onClick={(e) => e.stopPropagation()}
         >
