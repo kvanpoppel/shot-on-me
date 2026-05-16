@@ -34,7 +34,7 @@ const FEATURES = [
   {
     icon: '🫧',
     title: 'Send a Revig',
-    body: 'Gift a dirty soda, coffee, or juice to anyone in seconds. No cash. No awkward Venmo. Just a good vibe delivered instantly.',
+    body: 'Gift a dirty soda, boba tea, or coffee to anyone in seconds. No cash. No awkward Venmo. Just a good vibe delivered instantly.',
     accent: '#C8F135',
     bg: 'rgba(200,241,53,0.07)',
     border: 'rgba(200,241,53,0.15)',
@@ -42,7 +42,7 @@ const FEATURES = [
   {
     icon: '📍',
     title: 'Discover Your Spot',
-    body: 'Find the best dirty soda shops, coffee bars, and juice spots near you — with live deals and "Reviging Now" alerts.',
+    body: 'Find the best dirty soda shops, boba spots, and coffee bars near you — with live deals and "Reviging Now" alerts.',
     accent: '#00D4FF',
     bg: 'rgba(0,212,255,0.07)',
     border: 'rgba(0,212,255,0.15)',
@@ -60,7 +60,8 @@ const FEATURES = [
 /* ── Social proof quotes ──────────────────────────────── */
 const REVIEWS = [
   { text: 'I sent my bestie a dirty soda Revig before her big presentation. She cried (in the best way).', name: 'Mia T.', city: 'Salt Lake City' },
-  { text: 'My whole crew uses Revig to meet up at the best soda shops in Indy. It just works.', name: 'Joel R.', city: 'Indianapolis' },
+  { text: 'My roommate Reviged me a boba tea during finals week. I literally screamed. This app gets it.', name: 'Priya K.', city: 'Chicago' },
+  { text: 'My whole crew uses Revig to meet up at the best soda and boba spots in Indy. It just works.', name: 'Joel R.', city: 'Indianapolis' },
   { text: 'My whole family uses Revig now. Even my mom figured it out in like 30 seconds.', name: 'Kai R.', city: 'Nashville' },
 ]
 
@@ -110,7 +111,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
         {/* Pill badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-7 border" style={{ background: 'rgba(200,241,53,0.08)', borderColor: 'rgba(200,241,53,0.25)', color: '#C8F135' }}>
           <Zap className="w-3.5 h-3.5" />
-          Now live in 7 cities · Dirty soda drops weekly
+          Now live in 7 cities · Dirty soda & boba drops weekly
         </div>
 
         {/* Headline */}
@@ -121,13 +122,13 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
         </h1>
 
         <p className="text-[17px] leading-relaxed mb-3 max-w-sm mx-auto" style={{ color: 'rgba(255,255,255,0.60)' }}>
-          Gift a <strong className="text-white font-semibold">dirty soda</strong>, coffee, or juice to anyone you love.
+          Gift a <strong className="text-white font-semibold">dirty soda</strong>, <strong className="text-white font-semibold">boba tea</strong>, or coffee to anyone you love.
           Discover the best sip spots in your city.
         </p>
 
         {/* Dirty soda callout */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl mb-8 text-sm font-semibold" style={{ background: 'rgba(255,95,87,0.12)', color: '#FF9A57', border: '1px solid rgba(255,95,87,0.20)' }}>
-          🧋 The dirty soda trend is here — and Revig is how you share it
+          🥤 The dirty soda trend is here — and Revig is how you share it
         </div>
 
         {/* CTAs */}
@@ -166,7 +167,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
                   <span style={{ color: '#FF9A57' }}>is a vibe.</span>
                 </h2>
               </div>
-              <div className="text-6xl animate-float">🧋</div>
+              <div className="text-6xl animate-float">🥤</div>
             </div>
 
             <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.55)' }}>
@@ -276,8 +277,8 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
             {[
               { emoji: '⛪', label: 'Faith communities' },
               { emoji: '👨‍👩‍👧', label: 'Families' },
-              { emoji: '🏃', label: 'Health-conscious' },
-              { emoji: '🧋', label: 'Dirty soda lovers' },
+              { emoji: '🥤', label: 'Dirty soda lovers' },
+              { emoji: '🧋', label: 'Boba tea fans' },
               { emoji: '🎓', label: 'Students' },
               { emoji: '💼', label: 'Anyone, really' },
             ].map(i => (
@@ -296,7 +297,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
       <section className="relative z-10 px-5 pb-16 text-center safe-bottom">
         <div className="rounded-3xl p-7 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#1C2318,#18231C)' }}>
           <div className="absolute inset-0 rounded-3xl" style={{ background: 'linear-gradient(135deg,rgba(200,241,53,0.08),rgba(0,212,255,0.05))', pointerEvents: 'none' }} />
-          <div className="absolute top-3 right-6 text-5xl animate-float opacity-60">🫧</div>
+          <div className="absolute top-3 right-6 text-5xl animate-float opacity-60">🧋</div>
           <div className="relative z-10">
             <h2 className="revig-wordmark text-4xl text-white mb-2">
               Ready to <span style={{ color: '#C8F135' }}>Revig?</span>

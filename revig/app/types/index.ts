@@ -120,6 +120,7 @@ export const REVIG_PLACES_KEYWORDS: Record<VenueCategory, string> = {
 
 export const OCCASION_TAGS = [
   { label: 'Coffee Date', emoji: '☕' },
+  { label: 'Boba Run', emoji: '🧋' },
   { label: 'Birthday', emoji: '🎂' },
   { label: 'Just Because', emoji: '💚' },
   { label: 'Congrats', emoji: '🎉' },
