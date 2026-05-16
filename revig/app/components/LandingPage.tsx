@@ -21,10 +21,10 @@ const BUBBLES = [
 
 /* ── Venue categories ─────────────────────────────────── */
 const CATEGORIES = [
-  { icon: '🧋', label: 'Dirty Soda',    sub: 'The viral trend',         hot: true  },
+  { icon: '🥤', label: 'Dirty Soda',    sub: 'The viral trend',         hot: true  },
   { icon: '☕', label: 'Coffee Shops',  sub: 'Espresso & specialty',     hot: false },
-  { icon: '🥤', label: 'Juice Bars',   sub: 'Fresh & cold-pressed',     hot: false },
-  { icon: '🍵', label: 'Tea Houses',   sub: 'Matcha, boba & chai',      hot: false },
+  { icon: '🧋', label: 'Boba Tea',     sub: 'Bubble tea & taro',        hot: true  },
+  { icon: '🍵', label: 'Tea Houses',   sub: 'Matcha & chai',            hot: false },
   { icon: '🥝', label: 'Smoothie Bars',sub: 'Bowls & blends',           hot: false },
   { icon: '🥐', label: 'Bakeries',     sub: 'Pastries & treats',        hot: false },
 ]

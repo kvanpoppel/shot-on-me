@@ -72,6 +72,7 @@ export type VenueCategory =
   | 'Dirty Soda Shop'
   | 'Tea House'
   | 'Smoothie Bar'
+  | 'Boba Tea'
   | 'Bakery'
   | 'Cafe'
   | 'Ice Cream'
@@ -79,6 +80,7 @@ export type VenueCategory =
 export const REVIG_CATEGORIES: VenueCategory[] = [
   'Dirty Soda Shop',
   'Coffee Shop',
+  'Boba Tea',
   'Tea House',
   'Smoothie Bar',
   'Bakery',
@@ -95,6 +97,7 @@ export const EXCLUDED_CATEGORIES = ['Bar', 'Nightclub', 'Lounge', 'Brewery', 'Wi
 export const REVIG_PLACES_TYPES: Record<VenueCategory, string> = {
   'Dirty Soda Shop': 'cafe',
   'Coffee Shop':     'cafe',
+  'Boba Tea':        'cafe',
   'Tea House':       'tea_house',
   'Smoothie Bar':    'juice_bar',
   'Bakery':          'bakery',
@@ -106,7 +109,8 @@ export const REVIG_PLACES_TYPES: Record<VenueCategory, string> = {
 export const REVIG_PLACES_KEYWORDS: Record<VenueCategory, string> = {
   'Dirty Soda Shop': 'dirty soda shop',
   'Coffee Shop':     'coffee shop',
-  'Tea House':       'tea house boba',
+  'Boba Tea':        'boba tea bubble tea',
+  'Tea House':       'tea house matcha chai',
   'Smoothie Bar':    'smoothie bar',
   'Bakery':          'bakery pastries',
   'Cafe':            'cafe',
@@ -125,8 +129,9 @@ export const OCCASION_TAGS = [
 ]
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  'Dirty Soda Shop': '🫧',
+  'Dirty Soda Shop': '🥤',
   'Coffee Shop':     '☕',
+  'Boba Tea':        '🧋',
   'Tea House':       '🍵',
   'Smoothie Bar':    '🥝',
   'Bakery':          '🧁',
@@ -137,6 +142,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 export const CATEGORY_COLORS: Record<string, string> = {
   'Dirty Soda Shop': 'bg-orange-900/40 text-orange-300',
   'Coffee Shop':     'bg-amber-900/40 text-amber-300',
+  'Boba Tea':        'bg-fuchsia-900/40 text-fuchsia-300',
   'Tea House':       'bg-emerald-900/40 text-emerald-300',
   'Smoothie Bar':    'bg-lime-900/40 text-lime-300',
   'Bakery':          'bg-orange-900/40 text-orange-300',
