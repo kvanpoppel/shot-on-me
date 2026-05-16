@@ -74,15 +74,15 @@ export default function QuickActions({
           <button
             key={a.id}
             onClick={a.action}
-            className="group relative rounded-2xl p-4 transition-all hover:scale-[1.02] active:scale-[0.98] text-left"
-            style={{ background: a.gradient, border: `1px solid ${a.border}`, boxShadow: `0 4px 20px ${a.glow}` }}
+            className="group relative rounded-2xl p-5 transition-all hover:scale-[1.03] active:scale-[0.97] text-left"
+            style={{ background: a.gradient, border: `1px solid ${a.border}`, boxShadow: `0 6px 24px ${a.glow}` }}
           >
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="text-xl">{a.emoji}</span>
-              <a.Icon className="w-4 h-4" style={{ color: a.iconColor }} />
-            </div>
-            <p className="text-sm font-bold text-white mb-0.5">{a.label}</p>
-            <p className="text-[11px] text-white/40">{a.description}</p>
+            <span className="text-3xl block mb-3">{a.emoji}</span>
+            <p className="text-[13px] font-bold text-white mb-0.5">{a.label}</p>
+            <p className="text-[11px] text-white/45 flex items-center gap-1.5">
+              <a.Icon className="w-3.5 h-3.5" style={{ color: a.iconColor }} />
+              {a.description}
+            </p>
           </button>
         ))}
       </div>

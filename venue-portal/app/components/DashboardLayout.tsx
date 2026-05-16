@@ -100,10 +100,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="min-h-screen flex overflow-x-hidden" style={{ background: 'linear-gradient(160deg, #0D0B08 0%, #12100C 40%, #0D0B08 100%)' }}>
+    <div className="min-h-screen flex overflow-x-hidden relative" style={{ background: '#0C0A07' }}>
+      {/* Ambient glow orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, #D4A84B, transparent 70%)' }} />
+        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] rounded-full opacity-[0.02]" style={{ background: 'radial-gradient(circle, #D4A84B, transparent 70%)' }} />
+        <div className="absolute -bottom-40 right-1/4 w-[350px] h-[350px] rounded-full opacity-[0.02]" style={{ background: 'radial-gradient(circle, #E5C17A, transparent 70%)' }} />
+      </div>
 
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col" style={{ background: 'rgba(14,12,10,0.85)', backdropFilter: 'blur(24px) saturate(1.3)', WebkitBackdropFilter: 'blur(24px) saturate(1.3)', borderRight: '1px solid rgba(212,168,75,0.08)' }}>
+      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col relative z-10" style={{ background: 'linear-gradient(180deg, rgba(18,16,12,0.95), rgba(14,12,10,0.90))', backdropFilter: 'blur(24px) saturate(1.4)', WebkitBackdropFilter: 'blur(24px) saturate(1.4)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex flex-col h-full px-4 py-5 gap-6">
           {/* Brand */}
           <div className="px-2 pt-1">
@@ -144,7 +150,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 relative z-10">
 
         {/* Top bar */}
         <header
@@ -206,7 +212,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 min-h-[60px] transition-all relative ${
-                active(href) ? 'text-primary-500' : 'text-white/40 hover:text-white/65'
+                active(href) ? 'text-primary-500' : 'text-white/55 hover:text-white/80'
               }`}
             >
               {active(href) && (
