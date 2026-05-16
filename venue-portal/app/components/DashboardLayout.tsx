@@ -51,10 +51,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           key={href}
           href={href}
           onClick={close}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] relative ${
             active(href)
-              ? 'bg-primary-500 text-black'
-              : 'text-primary-300/80 hover:bg-primary-500/10 hover:text-white'
+              ? 'bg-primary-500/15 text-primary-500 border border-primary-500/25 shadow-[0_0_12px_rgba(212,168,75,0.15)]'
+              : 'text-white/60 hover:bg-white/5 hover:text-white'
           }`}
         >
           <Icon className="w-4 h-4 flex-shrink-0" />
@@ -91,10 +91,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="min-h-screen bg-black flex overflow-x-hidden">
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: 'linear-gradient(180deg, #0A0908 0%, #0F0D0A 50%, #0A0908 100%)' }}>
 
       {/* ── Desktop Sidebar (lg: 1024px+ only — tablets get full-width content) ── */}
-      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-white/5 bg-black">
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col glass border-r-0" style={{ borderRadius: 0, borderRight: '1px solid rgba(212,168,75,0.08)' }}>
         <div className="flex flex-col h-full p-4 gap-6">
           <div className="px-1 pt-2">
             <h1 className="text-lg logo-script text-primary-500 tracking-tight leading-none">Shot On Me</h1>
@@ -110,8 +110,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* ── Mobile/Tablet Drawer (shown below lg: 1024px) ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-64 bg-black border-r border-white/5 flex flex-col p-4 gap-6 h-full shadow-2xl">
+          <div className="absolute inset-0 glass-modal" onClick={() => setMobileOpen(false)} />
+          <div className="relative w-64 glass flex flex-col p-4 gap-6 h-full" style={{ borderRadius: 0, borderLeft: 'none', borderTop: 'none', borderBottom: 'none' }}>
             <div className="flex items-center justify-between min-h-[44px]">
               <h1 className="text-lg logo-script text-primary-500">Shot On Me</h1>
               <button
@@ -133,7 +133,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
 
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/95 backdrop-blur-md min-h-[56px]">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 glass min-h-[56px]" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid rgba(212,168,75,0.10)', boxShadow: '0 1px 20px rgba(212,168,75,0.04)' }}>
           <div className="flex items-center gap-3">
             {/* Hamburger — visible below lg: */}
             <button
@@ -160,7 +160,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </button>
 
             {accountOpen && (
-              <div className="absolute top-[58px] right-4 w-48 rounded-xl border border-white/10 bg-black shadow-2xl p-2 z-50">
+              <div className="absolute top-[58px] right-4 w-48 rounded-xl glass shadow-2xl p-2 z-50">
                 <p className="px-3 py-1.5 text-[10px] text-white/30 truncate">{user?.email}</p>
                 <div className="border-t border-white/5 my-1" />
                 <button
@@ -176,20 +176,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6" style={{ background: 'rgba(255,255,255,0.01)' }}>
           {children}
         </main>
 
         {/* ── Bottom nav (tablet/mobile — shown below lg:) ── */}
-        <nav className="lg:hidden sticky bottom-0 z-30 flex items-center border-t border-white/8 bg-black/95 backdrop-blur-md">
+        <nav className="lg:hidden sticky bottom-0 z-30 flex items-center glass" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderBottom: 'none', borderTop: '1px solid rgba(212,168,75,0.10)' }}>
           {nav.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] transition-colors ${
-                active(href) ? 'text-primary-500' : 'text-white/50 hover:text-white/80'
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] transition-all relative ${
+                active(href) ? 'text-primary-500' : 'text-white/50 hover:text-white/70'
               }`}
             >
+              {active(href) && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #D4A84B, transparent)', boxShadow: '0 0 8px rgba(212,168,75,0.5)' }} />
+              )}
               <Icon className="w-5 h-5" />
               <span className="text-[9px] font-semibold">{label}</span>
             </Link>
