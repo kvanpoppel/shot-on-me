@@ -1,15 +1,6 @@
 'use client'
 
-import { Clock, Zap, Calendar, Gift } from 'lucide-react'
-
-interface QuickAction {
-  id: string
-  label: string
-  description: string
-  icon: React.ReactNode
-  action: () => void
-  color: string
-}
+import { Clock, Zap, Calendar, Crown } from 'lucide-react'
 
 interface QuickActionsProps {
   onStartHappyHour: () => void
@@ -24,62 +15,77 @@ export default function QuickActions({
   onWeekendSpecial,
   onVipExclusive
 }: QuickActionsProps) {
-  const actions: QuickAction[] = [
+  const actions = [
     {
       id: 'happy-hour',
-      label: 'Start Happy Hour',
-      description: 'Activate now (4-7 PM)',
-      icon: <Clock className="w-5 h-5" />,
+      label: 'Happy Hour',
+      emoji: '🍻',
+      description: 'Activate now',
       action: onStartHappyHour,
-      color: 'bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-500'
+      gradient: 'linear-gradient(135deg, rgba(59,130,246,0.20), rgba(59,130,246,0.06))',
+      border: 'rgba(59,130,246,0.30)',
+      glow: 'rgba(59,130,246,0.15)',
+      iconColor: '#60A5FA',
+      Icon: Clock,
     },
     {
       id: 'flash-deal',
       label: 'Flash Deal',
-      description: '1-hour limited offer',
-      icon: <Zap className="w-5 h-5" />,
+      emoji: '⚡',
+      description: '1-hour offer',
       action: onFlashDeal,
-      color: 'bg-yellow-500/20 border-yellow-500/30 hover:bg-yellow-500/30 text-yellow-500'
+      gradient: 'linear-gradient(135deg, rgba(234,179,8,0.20), rgba(234,179,8,0.06))',
+      border: 'rgba(234,179,8,0.30)',
+      glow: 'rgba(234,179,8,0.15)',
+      iconColor: '#FBBF24',
+      Icon: Zap,
     },
     {
       id: 'weekend',
       label: 'Weekend Special',
-      description: 'All weekend long',
-      icon: <Calendar className="w-5 h-5" />,
+      emoji: '🎉',
+      description: 'All weekend',
       action: onWeekendSpecial,
-      color: 'bg-green-500/20 border-green-500/30 hover:bg-green-500/30 text-green-500'
+      gradient: 'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(34,197,94,0.06))',
+      border: 'rgba(34,197,94,0.30)',
+      glow: 'rgba(34,197,94,0.15)',
+      iconColor: '#4ADE80',
+      Icon: Calendar,
     },
     {
       id: 'vip',
-      label: 'VIP Exclusive',
-      description: 'For VIP customers',
-      icon: <Gift className="w-5 h-5" />,
+      label: 'VIP Night',
+      emoji: '👑',
+      description: 'Exclusive access',
       action: onVipExclusive,
-      color: 'bg-purple-500/20 border-purple-500/30 hover:bg-purple-500/30 text-purple-500'
-    }
+      gradient: 'linear-gradient(135deg, rgba(168,85,247,0.20), rgba(168,85,247,0.06))',
+      border: 'rgba(168,85,247,0.30)',
+      glow: 'rgba(168,85,247,0.15)',
+      iconColor: '#C084FC',
+      Icon: Crown,
+    },
   ]
 
   return (
-    <div className="bg-black/40 border border-primary-500/15 rounded-lg p-4 backdrop-blur-sm">
-      <h3 className="text-sm font-semibold text-primary-500 mb-3">Quick Actions</h3>
-      <div className="grid grid-cols-2 gap-2">
-        {actions.map((action) => (
+    <div className="glass-elevated rounded-2xl p-5">
+      <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">Quick Launch</h3>
+      <div className="grid grid-cols-2 gap-3">
+        {actions.map((a) => (
           <button
-            key={action.id}
-            onClick={action.action}
-            className={`p-3 rounded-lg border transition-all ${action.color} flex flex-col items-center gap-2`}
+            key={a.id}
+            onClick={a.action}
+            className="group relative rounded-2xl p-4 transition-all hover:scale-[1.02] active:scale-[0.98] text-left"
+            style={{ background: a.gradient, border: `1px solid ${a.border}`, boxShadow: `0 4px 20px ${a.glow}` }}
           >
-            {action.icon}
-            <div className="text-center">
-              <div className="text-xs font-medium">{action.label}</div>
-              <div className="text-xs opacity-70">{action.description}</div>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="text-xl">{a.emoji}</span>
+              <a.Icon className="w-4 h-4" style={{ color: a.iconColor }} />
             </div>
+            <p className="text-sm font-bold text-white mb-0.5">{a.label}</p>
+            <p className="text-[11px] text-white/40">{a.description}</p>
           </button>
         ))}
       </div>
     </div>
   )
 }
-
-
-

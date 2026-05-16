@@ -949,9 +949,9 @@ export default function VenueManager() {
       </div>
 
       {/* ─── Menu & Specials Tabs ─── */}
-      <div className="border border-primary-500/20 rounded-xl overflow-hidden">
+      <div className="glass-elevated rounded-2xl overflow-hidden">
         {/* Tab Bar */}
-        <div className="flex overflow-x-auto scrollbar-hide bg-black/60 border-b border-primary-500/15">
+        <div className="flex overflow-x-auto scrollbar-hide border-b border-white/5 px-2 pt-2">
           {([
             { id: 'info',      label: 'Info',         icon: MapPin },
             { id: 'wine',      label: 'Wine',         icon: Wine },
@@ -964,13 +964,16 @@ export default function VenueManager() {
             <button
               key={tab.id}
               onClick={() => setActiveSection(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold whitespace-nowrap rounded-xl mb-2 transition-all relative ${
                 activeSection === tab.id
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-primary-400/60 hover:text-primary-400'
+                  ? 'text-white bg-white/[0.08]'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03]'
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              {activeSection === tab.id && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #D4A84B, transparent)', boxShadow: '0 0 6px rgba(212,168,75,0.5)' }} />
+              )}
+              <tab.icon className={`w-4 h-4 ${activeSection === tab.id ? 'text-primary-500' : ''}`} />
               {tab.label}
             </button>
           ))}
