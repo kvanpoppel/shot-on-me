@@ -21,7 +21,7 @@ function RevigVenuesApp() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F0F1E' }}>
         <div className="text-center">
           <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-            🫧
+            🧋
           </div>
           <div className="flex gap-1 justify-center">
             {[0,1,2].map(i => (

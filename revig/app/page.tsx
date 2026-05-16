@@ -83,7 +83,7 @@ function RevigApp() {
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E' }}>
       <div className="text-center">
         <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-          🫧
+          🧋
         </div>
         <div className="flex gap-1 justify-center">
           {[0, 1, 2].map(i => (

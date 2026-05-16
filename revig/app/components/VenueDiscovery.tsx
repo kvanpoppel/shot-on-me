@@ -278,7 +278,7 @@ export default function VenueDiscovery({ onSendRevig, savedGoogleVenues = [], on
     }
   }
 
-  const catIcon = selectedCategory ? CATEGORY_ICONS[selectedCategory] || '🫧' : ''
+  const catIcon = selectedCategory ? CATEGORY_ICONS[selectedCategory] || '🧋' : ''
 
   return (
     <div style={{ background: '#1A1A2E', minHeight: '100%' }}>

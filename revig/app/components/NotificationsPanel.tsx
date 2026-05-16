@@ -94,7 +94,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
 
   const NotifIcon = ({ type }: { type: string }) => {
     if (type === 'revig_received' || type === 'shot' || type === 'gift' || type === 'revig') {
-      return <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(200,241,53,0.15)' }}>🫧</div>
+      return <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'rgba(200,241,53,0.15)' }}>🧋</div>
     }
     if (type === 'message') {
       return <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,212,255,0.15)' }}><MessageCircle className="w-5 h-5" style={{ color: '#00D4FF' }} /></div>
@@ -145,7 +145,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
             </div>
           ) : notifications.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="text-4xl mb-3">🫧</p>
+              <p className="text-4xl mb-3">🧋</p>
               <p className="font-semibold text-white/50">No notifications yet</p>
               <p className="text-sm text-white/30 mt-1">When someone sends you a Revig, you&apos;ll see it here</p>
             </div>

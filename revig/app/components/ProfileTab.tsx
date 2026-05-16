@@ -174,7 +174,7 @@ export default function ProfileTab({
                   <div className="w-24 h-24 rounded-3xl overflow-hidden border-2" style={{ borderColor: 'rgba(200,241,53,0.4)' }}>
                     {editPic
                       ? <img src={editPic} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-3xl font-black" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>{editFirst[0] || '🫧'}</div>
+                      : <div className="w-full h-full flex items-center justify-center text-3xl font-black" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>{editFirst[0] || '🧋'}</div>
                     }
                   </div>
                   <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#C8F135' }}>
@@ -220,7 +220,7 @@ export default function ProfileTab({
             <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden border-2" style={{ borderColor: 'rgba(200,241,53,0.3)' }}>
               {displayPic
                 ? <img src={displayPic} alt="" className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-2xl font-black" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>{displayFirst ? displayFirst[0] : '🫧'}</div>
+                : <div className="w-full h-full flex items-center justify-center text-2xl font-black" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)', color: '#1A1A2E' }}>{displayFirst ? displayFirst[0] : '🧋'}</div>
               }
             </div>
             <div className="flex-1 min-w-0">
@@ -334,7 +334,7 @@ export default function ProfileTab({
               </div>
             ) : history.length === 0 ? (
               <div className="revig-card py-12 text-center">
-                <p className="text-3xl mb-3">🫧</p>
+                <p className="text-3xl mb-3">🧋</p>
                 <p className="text-white/40 font-medium">No Revig history yet</p>
                 <p className="text-white/25 text-sm mt-1">Send your first Revig!</p>
               </div>

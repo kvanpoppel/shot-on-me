@@ -14,7 +14,7 @@ interface CrewsTabProps {
   onClose: () => void
 }
 
-const EMOJIS = ['🫧', '⚡', '🏆', '🧋', '🦋', '🌊', '🚀', '☕', '🌸', '💚']
+const EMOJIS = ['🧋', '⚡', '🏆', '🧋', '🦋', '🌊', '🚀', '☕', '🌸', '💚']
 
 export default function CrewsTab({ onClose }: CrewsTabProps) {
   const { user, token } = useAuth()
@@ -28,7 +28,7 @@ export default function CrewsTab({ onClose }: CrewsTabProps) {
   const [lbType, setLbType] = useState<'weekly' | 'alltime'>('weekly')
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newEmoji, setNewEmoji] = useState('🫧')
+  const [newEmoji, setNewEmoji] = useState('🧋')
   const [newCity, setNewCity] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,7 +68,7 @@ export default function CrewsTab({ onClose }: CrewsTabProps) {
       )
       setShowCreate(false)
       setNewName('')
-      setNewEmoji('🫧')
+      setNewEmoji('🧋')
       setNewCity('')
       fetchAll()
     } catch (err: any) {

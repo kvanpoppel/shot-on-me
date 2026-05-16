@@ -120,7 +120,7 @@ export default function DashboardHome() {
           </div>
         ) : recent.length === 0 ? (
           <div className="fv-card py-10 text-center">
-            <p className="text-2xl mb-2">🫧</p>
+            <p className="text-2xl mb-2">🧋</p>
             <p className="text-white/40 text-sm">No redemptions yet</p>
             <p className="text-white/25 text-xs mt-1">Gifts redeemed at your venue will appear here</p>
           </div>

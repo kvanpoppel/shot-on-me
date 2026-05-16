@@ -121,7 +121,7 @@ export default function SendRevig({ prefillVenueId, prefillRecipient, onClose }:
 
         <div className={`mb-6 ${revigPopped ? 'revig-pop' : ''}`}>
           <div className="w-24 h-24 rounded-3xl mx-auto flex items-center justify-center text-5xl shadow-2xl" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-            🫧
+            🧋
           </div>
         </div>
 
@@ -413,7 +413,7 @@ export default function SendRevig({ prefillVenueId, prefillRecipient, onClose }:
               <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 blur-2xl" style={{ background: '#C8F135' }} />
               <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full opacity-15 blur-2xl" style={{ background: '#FF5F57' }} />
 
-              <div className="text-5xl mb-3 animate-float">🫧</div>
+              <div className="text-5xl mb-3 animate-float">🧋</div>
 
               <p className="text-sm text-white/50 mb-1">You&apos;re sending</p>
               <p className="text-4xl font-black text-white mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>

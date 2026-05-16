@@ -290,7 +290,7 @@ export default function MessagesTab({ onClose }: { onClose?: () => void }) {
             </div>
           ) : messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-              <p className="text-3xl mb-2">🫧</p>
+              <p className="text-3xl mb-2">🧋</p>
               <p className="text-white/40 text-sm">Say something nice!</p>
             </div>
           ) : (

@@ -288,7 +288,7 @@ export default function FeedTab({ onSendRevig, onViewProfile }: FeedTabProps) {
         {isGift && post.amount && (
           <div className="mx-4 mb-3 p-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(200,241,53,0.08), rgba(0,212,255,0.08))' }}>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🫧</span>
+              <span className="text-2xl">🧋</span>
               <div>
                 <p className="text-sm font-bold text-white">Sent ${post.amount?.toFixed(2)}</p>
                 {post.venue?.name && (
@@ -462,7 +462,7 @@ export default function FeedTab({ onSendRevig, onViewProfile }: FeedTabProps) {
         className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold mb-5"
         style={{ background: '#252540', color: 'rgba(255,255,255,0.5)' }}
       >
-        <span className="text-lg">🫧</span>
+        <span className="text-lg">🧋</span>
         Share a Revig moment with friends...
       </button>
 

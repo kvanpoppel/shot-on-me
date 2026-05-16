@@ -227,7 +227,7 @@ export default function WalletTab() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="revig-card py-12 text-center">
-            <p className="text-3xl mb-2">🫧</p>
+            <p className="text-3xl mb-2">🧋</p>
             <p className="text-white/40 text-sm">No transactions yet</p>
           </div>
         ) : (

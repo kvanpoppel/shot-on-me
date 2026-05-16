@@ -246,14 +246,14 @@ router.post('/send', auth, async (req, res) => {
 
     const rp = recipient.revigProfile || {}
     const recipientName = `${rp.firstName || recipient.firstName || ''} ${rp.lastName || recipient.lastName || ''}`.trim()
-    const finalMessage = message || `Sent a Revig to ${recipientName}! 🫧`
+    const finalMessage = message || `Sent a Revig to ${recipientName}! 🧋`
 
     const post = new FeedPost({
       author: req.user.userId,
       content: finalMessage,
       postType: 'drink_sent',
       source: 'revig',
-      drinkInfo: { recipientId, recipientName, amount, emoji: '🫧', message: message || '' },
+      drinkInfo: { recipientId, recipientName, amount, emoji: '🧋', message: message || '' },
     })
     await post.save()
 

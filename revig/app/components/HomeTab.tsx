@@ -217,7 +217,7 @@ export default function HomeTab({ onSendRevig, onDiscover, onFindFriends }: Home
           </div>
         ) : (
           <div className="mx-4 py-6 text-center revig-card">
-            <p className="text-3xl mb-2">🫧</p>
+            <p className="text-3xl mb-2">🧋</p>
             <p className="text-white/40 text-sm">No venues yet in {detectedCity}</p>
             <p className="text-white/25 text-xs mt-1">Check back soon — new spots are added daily</p>
           </div>

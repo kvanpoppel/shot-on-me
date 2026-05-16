@@ -385,7 +385,7 @@ export default function LoginScreen({ initialMode = 'signin', onBack }: LoginScr
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl animate-float" style={{ background: 'linear-gradient(135deg, #C8F135, #00D4FF)' }}>
-            🫧
+            🧋
           </div>
           <h1 className="text-2xl font-black text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
             {mode === 'signin' ? 'Welcome back!' : 'Join Revig'}

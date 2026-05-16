@@ -160,7 +160,7 @@ function TonightContent({ data, loading, isEmpty, onSendRevig, onClose }: {
         </div>
       ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center py-20 text-center px-5">
-          <p className="text-5xl mb-4">🫧</p>
+          <p className="text-5xl mb-4">🧋</p>
           <p className="font-bold text-white/40 text-lg">Quiet out there</p>
           <p className="text-sm text-white/25 mt-1">Check back soon — good vibes are coming</p>
         </div>

@@ -115,7 +115,7 @@ export default function VenueSignupPage() {
           <div className="absolute top-0 right-0 w-32 h-32 opacity-15 blur-2xl rounded-full" style={{ background: '#C8F135' }} />
           <div className="absolute bottom-0 left-0 w-24 h-24 opacity-10 blur-2xl rounded-full" style={{ background: '#FF5F57' }} />
           <div className="relative z-10">
-            <p className="text-3xl mb-3">🫧</p>
+            <p className="text-3xl mb-3">🧋</p>
             <h2 className="text-xl font-black text-white mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
               Reach more customers
             </h2>

@@ -34,7 +34,7 @@ const CATEGORIES = [
 /* ── Feature cards ────────────────────────────────────── */
 const FEATURES = [
   {
-    icon: '🫧',
+    icon: '🧋',
     title: 'Send a Revig',
     body: 'Gift a dirty soda, boba tea, or coffee to anyone in seconds. No cash. No awkward Venmo. Just a good vibe delivered instantly.',
     accent: '#C8F135',
@@ -94,7 +94,7 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
       <nav className="relative z-20 flex items-center justify-between px-6 py-5 safe-top">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl font-black shadow-lg" style={{ background: 'linear-gradient(135deg,#C8F135,#00D4FF)' }}>
-            🫧
+            🧋
           </div>
           <span className="revig-wordmark text-[26px]">
             <span style={{ color: '#C8F135' }}>Re</span><span style={{ color: '#FF5F57' }}>vig</span>
