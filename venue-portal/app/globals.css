@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 184, 148, 90; /* Soft, pale gold - B8945A */
+  --foreground-rgb: 230, 215, 185; /* Warm cream — readable on dark */
   --background-rgb: 8, 6, 4; /* Warm-black */
-  --primary-gold: #B8945A;
-  --primary-gold-light: #C9A875;
-  --primary-gold-dark: #9A7A4A;
+  --primary-gold: #D4A84B;
+  --primary-gold-light: #E5C17A;
+  --primary-gold-dark: #B8945A;
 }
 
 body {
@@ -60,7 +60,7 @@ button.text-primary-500 {
 }
 
 .text-primary-300 {
-  color: #f0d7a0 !important;
+  color: #F5E3BA !important;
 }
 
 .border-primary-500 {
@@ -75,10 +75,10 @@ button.text-primary-500 {
 
 /* Ensure all primary-500 variations are consistent */
 * {
-  --color-primary-500: #D2A34F;
+  --color-primary-500: #D4A84B;
   --color-primary-400: #E5C17A;
-  --color-primary-300: #F0D7A0;
-  --color-primary-600: #A7782D;
+  --color-primary-300: #F5E3BA;
+  --color-primary-600: #B8945A;
 }
 
 /* Professional typography - consistent font usage */
@@ -115,9 +115,9 @@ input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.8) inset !important;
-  -webkit-text-fill-color: #B8945A !important;
-  caret-color: #B8945A !important;
-  border-color: rgba(184, 148, 90, 0.5) !important;
+  -webkit-text-fill-color: #E5C17A !important;
+  caret-color: #D4A84B !important;
+  border-color: rgba(212, 168, 75, 0.5) !important;
   transition: background-color 9999s ease-in-out 0s;
 }
 
@@ -196,7 +196,7 @@ html, body {
 
 /* Focus visible improvements for accessibility */
 *:focus-visible {
-  outline: 2px solid #B8945A;
+  outline: 2px solid #D4A84B;
   outline-offset: 2px;
 }
 
@@ -218,13 +218,13 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(184, 148, 90, 0.3);
+  background: rgba(212, 168, 75, 0.3);
   border-radius: 4px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(184, 148, 90, 0.5);
+  background: rgba(212, 168, 75, 0.5);
 }
 
 /* React DatePicker Custom Styling - Dark Theme */
@@ -235,39 +235,39 @@ html, body {
 .react-datepicker {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #000 !important;
-  border: 1px solid rgba(184, 148, 90, 0.3) !important;
+  border: 1px solid rgba(212, 168, 75, 0.3) !important;
   border-radius: 0.5rem !important;
-  color: #B8945A !important;
+  color: #D4A84B !important;
 }
 
 .react-datepicker__header {
-  background-color: rgba(184, 148, 90, 0.1) !important;
-  border-bottom: 1px solid rgba(184, 148, 90, 0.3) !important;
+  background-color: rgba(212, 168, 75, 0.1) !important;
+  border-bottom: 1px solid rgba(212, 168, 75, 0.3) !important;
   padding-top: 0.75rem !important;
 }
 
 .react-datepicker__current-month {
-  color: #B8945A !important;
+  color: #D4A84B !important;
   font-weight: 600 !important;
 }
 
 .react-datepicker__day-name {
-  color: #C9A875 !important;
+  color: #E5C17A !important;
   font-weight: 500 !important;
 }
 
 .react-datepicker__day {
-  color: #C9A875 !important;
+  color: #E5C17A !important;
 }
 
 .react-datepicker__day:hover {
-  background-color: rgba(184, 148, 90, 0.2) !important;
-  color: #B8945A !important;
+  background-color: rgba(212, 168, 75, 0.2) !important;
+  color: #D4A84B !important;
 }
 
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
-  background-color: #B8945A !important;
+  background-color: #D4A84B !important;
   color: #000 !important;
   font-weight: 600 !important;
 }
@@ -278,12 +278,12 @@ html, body {
 }
 
 .react-datepicker__day--disabled {
-  color: rgba(184, 148, 90, 0.3) !important;
+  color: rgba(212, 168, 75, 0.3) !important;
   cursor: not-allowed !important;
 }
 
 .react-datepicker__time-container {
-  border-left: 1px solid rgba(184, 148, 90, 0.3) !important;
+  border-left: 1px solid rgba(212, 168, 75, 0.3) !important;
 }
 
 .react-datepicker__time-container .react-datepicker__time {
@@ -295,45 +295,45 @@ html, body {
 }
 
 .react-datepicker__time-list-item {
-  color: #C9A875 !important;
+  color: #E5C17A !important;
 }
 
 .react-datepicker__time-list-item:hover {
-  background-color: rgba(184, 148, 90, 0.2) !important;
-  color: #B8945A !important;
+  background-color: rgba(212, 168, 75, 0.2) !important;
+  color: #D4A84B !important;
 }
 
 .react-datepicker__time-list-item--selected {
-  background-color: #B8945A !important;
+  background-color: #D4A84B !important;
   color: #000 !important;
   font-weight: 600 !important;
 }
 
 .react-datepicker__navigation {
-  border-color: #B8945A !important;
+  border-color: #D4A84B !important;
 }
 
 .react-datepicker__navigation:hover * {
-  border-color: #C9A875 !important;
+  border-color: #E5C17A !important;
 }
 
 .react-datepicker__input-container input {
   background-color: rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid rgba(184, 148, 90, 0.2) !important;
+  border: 1px solid rgba(212, 168, 75, 0.2) !important;
   border-radius: 0.5rem !important;
-  color: #B8945A !important;
+  color: #D4A84B !important;
   padding: 0.5rem 1rem !important;
   width: 100% !important;
 }
 
 .react-datepicker__input-container input:focus {
   outline: none !important;
-  border-color: rgba(184, 148, 90, 0.5) !important;
-  box-shadow: 0 0 0 2px rgba(184, 148, 90, 0.2) !important;
+  border-color: rgba(212, 168, 75, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(212, 168, 75, 0.2) !important;
 }
 
 .react-datepicker__input-container input::placeholder {
-  color: rgba(184, 148, 90, 0.5) !important;
+  color: rgba(212, 168, 75, 0.5) !important;
 }
 
 /* ── Glass surface ────────────────────────────────────────────────────
@@ -345,10 +345,10 @@ html, body {
   background: rgba(12, 10, 8, 0.55);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(184, 148, 90, 0.12);
+  border: 1px solid rgba(212, 168, 75, 0.14);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.35),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
 
 .glass-modal {
@@ -361,11 +361,11 @@ html, body {
   background: rgba(12, 10, 8, 0.45);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(184, 148, 90, 0.18);
+  border: 1px solid rgba(212, 168, 75, 0.20);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.35),
-    0 0 60px rgba(184, 148, 90, 0.04),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+    0 0 60px rgba(212, 168, 75, 0.05),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
 }
 
 /* Slow pulse animation for active promotions */
