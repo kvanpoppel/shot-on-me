@@ -45,19 +45,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     href === '/dashboard' ? pathname === '/dashboard' : pathname?.startsWith(href)
 
   const NavLinks = ({ close }: { close?: () => void }) => (
-    <nav className="space-y-0.5">
+    <nav className="space-y-1">
       {nav.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
           onClick={close}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] relative ${
+          className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all min-h-[48px] relative overflow-hidden ${
             active(href)
-              ? 'bg-primary-500/15 text-primary-500 border border-primary-500/25 shadow-[0_0_12px_rgba(212,168,75,0.15)]'
-              : 'text-white/60 hover:bg-white/5 hover:text-white'
+              ? 'text-white'
+              : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
           }`}
+          style={active(href) ? {
+            background: 'linear-gradient(135deg, rgba(212,168,75,0.18), rgba(212,168,75,0.08))',
+            border: '1px solid rgba(212,168,75,0.25)',
+            boxShadow: '0 0 20px rgba(212,168,75,0.10), inset 0 1px 0 rgba(255,255,255,0.06)',
+          } : undefined}
         >
-          <Icon className="w-4 h-4 flex-shrink-0" />
+          {active(href) && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#D4A84B', boxShadow: '0 0 8px #D4A84B' }} />
+          )}
+          <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${active(href) ? 'text-primary-500' : ''}`} />
           {label}
         </Link>
       ))}
@@ -68,7 +76,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <Link
       href="/dashboard/settings"
       onClick={close}
-      className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-3 transition hover:border-emerald-500/40 min-h-[44px]"
+      className="flex items-center gap-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-3 transition hover:border-emerald-500/40 min-h-[44px]"
     >
       <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
       <div>
@@ -80,43 +88,49 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <Link
       href="/dashboard/settings"
       onClick={close}
-      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-3 py-3 text-black font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-primary-500/20 min-h-[44px]"
+      className="flex items-center gap-2 rounded-2xl px-3 py-3 text-black font-bold text-sm hover:opacity-90 transition-all min-h-[44px]"
+      style={{ background: 'linear-gradient(135deg, #D4A84B, #E5C17A)', boxShadow: '0 4px 20px rgba(212,168,75,0.25)' }}
     >
       <Crown className="w-4 h-4 flex-shrink-0" />
       <div>
         <p className="text-xs font-bold leading-none">Upgrade — $79/mo</p>
-        <p className="text-[10px] opacity-70 mt-0.5 font-normal">Unlock AI + automation</p>
+        <p className="text-[10px] opacity-60 mt-0.5 font-normal">Unlock AI + automation</p>
       </div>
     </Link>
   )
 
   return (
-    <div className="min-h-screen flex overflow-x-hidden" style={{ background: 'linear-gradient(180deg, #0A0908 0%, #0F0D0A 50%, #0A0908 100%)' }}>
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: 'linear-gradient(160deg, #0D0B08 0%, #12100C 40%, #0D0B08 100%)' }}>
 
-      {/* ── Desktop Sidebar (lg: 1024px+ only — tablets get full-width content) ── */}
-      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col glass border-r-0" style={{ borderRadius: 0, borderRight: '1px solid rgba(212,168,75,0.08)' }}>
-        <div className="flex flex-col h-full p-4 gap-6">
-          <div className="px-1 pt-2">
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col" style={{ background: 'rgba(14,12,10,0.85)', backdropFilter: 'blur(24px) saturate(1.3)', WebkitBackdropFilter: 'blur(24px) saturate(1.3)', borderRight: '1px solid rgba(212,168,75,0.08)' }}>
+        <div className="flex flex-col h-full px-4 py-5 gap-6">
+          {/* Brand */}
+          <div className="px-2 pt-1">
             <h1 className="text-lg logo-script text-primary-500 tracking-tight leading-none">Shot On Me</h1>
-            <p className="text-[10px] text-primary-500/40 mt-0.5 font-medium tracking-wide uppercase">Venue Portal</p>
+            <p className="text-[10px] text-white/30 mt-1 font-medium tracking-widest uppercase">Venue Portal</p>
           </div>
+
+          {/* Nav */}
           <div className="flex-1">
             <NavLinks />
           </div>
+
+          {/* Plan */}
           <PlanBadge />
         </div>
       </aside>
 
-      {/* ── Mobile/Tablet Drawer (shown below lg: 1024px) ── */}
+      {/* ── Mobile Drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div className="absolute inset-0 glass-modal" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-64 glass flex flex-col p-4 gap-6 h-full" style={{ borderRadius: 0, borderLeft: 'none', borderTop: 'none', borderBottom: 'none' }}>
-            <div className="flex items-center justify-between min-h-[44px]">
+          <div className="relative w-72 flex flex-col px-4 py-5 gap-6 h-full shadow-2xl" style={{ background: 'rgba(14,12,10,0.92)', backdropFilter: 'blur(32px) saturate(1.3)', WebkitBackdropFilter: 'blur(32px) saturate(1.3)', borderRight: '1px solid rgba(212,168,75,0.08)' }}>
+            <div className="flex items-center justify-between min-h-[44px] px-2">
               <h1 className="text-lg logo-script text-primary-500">Shot On Me</h1>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="text-primary-400/60 hover:text-primary-400 p-2 -mr-2 rounded-lg"
+                className="text-white/40 hover:text-white/70 p-2 -mr-2 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -133,39 +147,41 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
 
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 glass min-h-[56px]" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid rgba(212,168,75,0.10)', boxShadow: '0 1px 20px rgba(212,168,75,0.04)' }}>
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 min-h-[60px]"
+          style={{ background: 'rgba(14,12,10,0.80)', backdropFilter: 'blur(24px) saturate(1.3)', WebkitBackdropFilter: 'blur(24px) saturate(1.3)', borderBottom: '1px solid rgba(212,168,75,0.08)', boxShadow: '0 1px 24px rgba(0,0,0,0.3), 0 1px 0 rgba(212,168,75,0.04)' }}
+        >
           <div className="flex items-center gap-3">
-            {/* Hamburger — visible below lg: */}
             <button
               onClick={() => setMobileOpen(true)}
-              className="lg:hidden text-primary-400 p-2 -ml-2 rounded-xl hover:bg-primary-500/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="lg:hidden text-white/60 p-2 -ml-2 rounded-xl hover:bg-white/5 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Open menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span className="text-sm font-semibold text-white truncate max-w-[200px]">{venueName}</span>
+            <span className="text-sm font-bold text-white truncate max-w-[200px]">{venueName}</span>
           </div>
 
           <div className="flex items-center gap-2" ref={accountRef}>
             <button
               onClick={() => setAccountOpen(o => !o)}
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 hover:border-white/20 transition-colors min-h-[44px]"
+              className="flex items-center gap-2.5 rounded-2xl border border-white/8 bg-white/[0.04] px-3.5 py-2.5 hover:border-white/15 hover:bg-white/[0.06] transition-all min-h-[44px]"
             >
-              <div className="w-7 h-7 rounded-full bg-primary-500/20 border border-primary-500/30 flex items-center justify-center">
-                <span className="text-primary-400 text-xs font-bold">{initial}</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(212,168,75,0.25), rgba(212,168,75,0.10))', border: '1px solid rgba(212,168,75,0.30)' }}>
+                <span className="text-primary-500 text-xs font-bold">{initial}</span>
               </div>
-              <span className="hidden sm:block text-xs text-white/60 max-w-[100px] truncate">
+              <span className="hidden sm:block text-xs text-white/60 max-w-[100px] truncate font-medium">
                 {user?.email?.split('@')[0]}
               </span>
             </button>
 
             {accountOpen && (
-              <div className="absolute top-[58px] right-4 w-48 rounded-xl glass shadow-2xl p-2 z-50">
-                <p className="px-3 py-1.5 text-[10px] text-white/30 truncate">{user?.email}</p>
+              <div className="absolute top-[62px] right-4 w-52 rounded-2xl p-2.5 z-50 shadow-2xl" style={{ background: 'rgba(14,12,10,0.92)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid rgba(212,168,75,0.12)' }}>
+                <p className="px-3 py-2 text-[11px] text-white/40 truncate font-medium">{user?.email}</p>
                 <div className="border-t border-white/5 my-1" />
                 <button
                   onClick={() => { setAccountOpen(false); logout(); router.push('/') }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors min-h-[44px]"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs text-red-400 hover:bg-red-500/10 transition-colors min-h-[44px] font-medium"
                 >
                   <LogOut className="w-4 h-4" />
                   Log Out
@@ -176,25 +192,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6" style={{ background: 'rgba(255,255,255,0.01)' }}>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
           {children}
         </main>
 
-        {/* ── Bottom nav (tablet/mobile — shown below lg:) ── */}
-        <nav className="lg:hidden sticky bottom-0 z-30 flex items-center glass" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderBottom: 'none', borderTop: '1px solid rgba(212,168,75,0.10)' }}>
+        {/* ── Bottom nav ── */}
+        <nav
+          className="lg:hidden sticky bottom-0 z-30 flex items-center"
+          style={{ background: 'rgba(14,12,10,0.88)', backdropFilter: 'blur(24px) saturate(1.3)', WebkitBackdropFilter: 'blur(24px) saturate(1.3)', borderTop: '1px solid rgba(212,168,75,0.08)' }}
+        >
           {nav.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] transition-all relative ${
-                active(href) ? 'text-primary-500' : 'text-white/50 hover:text-white/70'
+              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 min-h-[60px] transition-all relative ${
+                active(href) ? 'text-primary-500' : 'text-white/40 hover:text-white/65'
               }`}
             >
               {active(href) && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #D4A84B, transparent)', boxShadow: '0 0 8px rgba(212,168,75,0.5)' }} />
+                <>
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #D4A84B, transparent)', boxShadow: '0 0 12px rgba(212,168,75,0.6), 0 0 4px rgba(212,168,75,0.3)' }} />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-6 rounded-full opacity-20 blur-xl" style={{ background: '#D4A84B' }} />
+                </>
               )}
-              <Icon className="w-5 h-5" />
-              <span className="text-[9px] font-semibold">{label}</span>
+              <Icon className={`w-[22px] h-[22px] transition-transform ${active(href) ? 'scale-110' : ''}`} />
+              <span className={`text-[10px] font-semibold ${active(href) ? 'text-primary-500' : ''}`}>{label}</span>
             </Link>
           ))}
         </nav>
