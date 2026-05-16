@@ -132,7 +132,7 @@ export default function EarningsDashboard() {
       {/* Earnings Summary */}
       <div className="space-y-3">
         {/* Combined total */}
-        <div className="bg-black/40 border border-primary-500/20 rounded-xl p-4 flex items-center justify-between">
+        <div className="glass-glow rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary-500/10 flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-4 h-4 text-primary-500" />
@@ -147,14 +147,14 @@ export default function EarningsDashboard() {
 
         {/* SOM vs Revig split */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-4">
+          <div className="glass rounded-xl p-4" style={{ borderColor: 'rgba(34,211,238,0.15)' }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">SOM</span>
               <span className="text-[10px] text-primary-400/50">Shot On Me</span>
             </div>
             <p className="text-xl font-bold text-cyan-400">${somTotal.toFixed(2)}</p>
           </div>
-          <div className="bg-black/40 border border-violet-500/20 rounded-xl p-4">
+          <div className="glass rounded-xl p-4" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 border border-violet-500/25">REVIG</span>
               <span className="text-[10px] text-primary-400/50">Revig</span>

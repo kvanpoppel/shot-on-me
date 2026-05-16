@@ -45,7 +45,7 @@ export default function DashboardPageShell({
 }: DashboardPageShellProps) {
   return (
     <div className="space-y-4 md:space-y-5 w-full max-w-full">
-      <section className="rounded-2xl border border-primary-500/35 bg-gradient-to-br from-[#25182f]/85 via-black to-[#112b2b]/75 p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      <section className="glass-glow rounded-2xl p-5 md:p-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg border border-primary-500/35 bg-gradient-to-br from-primary-500/20 to-[#6b2c91]/20">
@@ -71,7 +71,7 @@ export default function DashboardPageShell({
                     ? 'border-amber-500/30 bg-gradient-to-br from-amber-500/14 to-black/50'
                     : tone.card
               return (
-              <div key={metric.label} className={`rounded-lg border px-3 py-2 ${accentClass}`}>
+              <div key={metric.label} className={`glass rounded-lg px-3 py-2 ${accentClass}`}>
                 <p className="text-[11px] uppercase tracking-wide text-primary-300/70">{metric.label}</p>
                 <p className={`mt-1 text-lg font-semibold ${tone.value}`}>
                   {metric.value}

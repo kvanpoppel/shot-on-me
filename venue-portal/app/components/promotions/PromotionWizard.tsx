@@ -115,8 +115,8 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-black border border-primary-500/20 rounded-2xl w-full max-w-lg my-6">
+    <div className="fixed inset-0 glass-modal z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="glass rounded-2xl w-full max-w-lg my-6 animate-scale-in">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/15">

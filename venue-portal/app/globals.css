@@ -336,6 +336,38 @@ html, body {
   color: rgba(184, 148, 90, 0.5) !important;
 }
 
+/* ── Glass surface ────────────────────────────────────────────────────
+   Frosted glass effect — use sparingly for premium moments.
+   .glass        — standard frosted panel (cards, sheets)
+   .glass-modal  — heavier blur for overlays behind modals/sheets
+   ─────────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(12, 10, 8, 0.55);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(184, 148, 90, 0.12);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-modal {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(40px) saturate(1.2);
+  -webkit-backdrop-filter: blur(40px) saturate(1.2);
+}
+
+.glass-glow {
+  background: rgba(12, 10, 8, 0.45);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(184, 148, 90, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 60px rgba(184, 148, 90, 0.04),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+}
+
 /* Slow pulse animation for active promotions */
 @keyframes pulse-slow {
   0%, 100% {

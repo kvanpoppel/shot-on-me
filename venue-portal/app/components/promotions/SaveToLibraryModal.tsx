@@ -127,8 +127,8 @@ export default function SaveToLibraryModal({ promotion, onClose, onSaved }: Save
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-black border-2 border-primary-500/30 rounded-lg shadow-2xl max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center glass-modal p-4">
+      <div className="glass rounded-lg max-w-md w-full animate-scale-in">
         <div className="p-6 border-b border-primary-500/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Save className="w-5 h-5 text-primary-500" />

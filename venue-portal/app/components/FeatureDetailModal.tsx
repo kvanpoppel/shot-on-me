@@ -52,16 +52,16 @@ export default function FeatureDetailModal({ isOpen, onClose, feature }: Feature
   const Icon = feature.icon
 
   return (
-    <div 
-      className="fixed inset-0 z-50 bg-black animate-fade-in"
+    <div
+      className="fixed inset-0 z-50 glass-modal animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="feature-modal-title"
     >
-      <div 
+      <div
         ref={modalRef}
-        className="w-full h-full flex flex-col animate-fade-in"
+        className="w-full h-full flex flex-col animate-fade-in glass"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

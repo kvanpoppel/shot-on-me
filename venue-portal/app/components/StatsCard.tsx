@@ -28,10 +28,10 @@ export default function StatsCard({ title, value, change, icon, onClick, href }:
   return (
     <div 
       onClick={isClickable ? handleClick : undefined}
-      className={`bg-black/40 border border-primary-500/15 rounded-lg p-3 transition-all backdrop-blur-sm ${
-        isClickable 
-          ? 'hover:border-primary-500/40 hover:bg-black/60 cursor-pointer group' 
-          : 'hover:border-primary-500/25 hover:bg-black/50'
+      className={`glass rounded-lg p-3 transition-all ${
+        isClickable
+          ? 'hover:border-primary-500/40 hover:brightness-110 cursor-pointer group'
+          : 'hover:border-primary-500/25 hover:brightness-105'
       }`}
     >
       <div className="flex items-center justify-between">
