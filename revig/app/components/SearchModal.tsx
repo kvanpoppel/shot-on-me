@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
 import axios from 'axios'
 import { Search, X, MapPin, Users } from 'lucide-react'
-import { REVIG_CATEGORIES, EXCLUDED_CATEGORIES } from '../types'
+import { REVIG_CATEGORIES, EXCLUDED_CATEGORIES, CATEGORY_ICONS } from '../types'
 
 interface SearchModalProps {
   isOpen: boolean
@@ -157,9 +157,9 @@ export default function SearchModal({ isOpen, onClose, onViewProfile, onSendRevi
                     style={{ background: '#1C1C32' }}
                   >
                     <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xl" style={{ background: '#252540' }}>
-                      {v.category?.toLowerCase().includes('coffee') ? '☕' :
-                       v.category?.toLowerCase().includes('soda') ? '🧋' :
-                       v.category?.toLowerCase().includes('juice') ? '🥤' : '🏪'}
+                      {(Object.keys(CATEGORY_ICONS).find(k => v.category?.toLowerCase().includes(k.toLowerCase()))
+                        ? CATEGORY_ICONS[Object.keys(CATEGORY_ICONS).find(k => v.category?.toLowerCase().includes(k.toLowerCase()))!]
+                        : '🏪')}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white text-sm truncate">{v.name}</p>

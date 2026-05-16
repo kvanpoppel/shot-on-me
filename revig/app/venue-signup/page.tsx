@@ -7,9 +7,10 @@ import { Coffee, CheckCircle, ArrowLeft, MapPin, Phone, Mail, Building2, X } fro
 import Link from 'next/link'
 
 const VENUE_TYPES = [
-  { value: 'Dirty Soda Shop', icon: '🫧', description: 'Dirty sodas, specialty drinks' },
+  { value: 'Dirty Soda Shop', icon: '🥤', description: 'Dirty sodas, specialty drinks' },
   { value: 'Coffee Shop', icon: '☕', description: 'Espresso, drip coffee, specialty drinks' },
-  { value: 'Tea House', icon: '🍵', description: 'Tea, matcha, boba' },
+  { value: 'Boba Tea', icon: '🧋', description: 'Bubble tea, taro, fruit teas' },
+  { value: 'Tea House', icon: '🍵', description: 'Matcha, chai, loose leaf tea' },
   { value: 'Smoothie Bar', icon: '🥝', description: 'Smoothies, protein shakes, acai bowls' },
   { value: 'Bakery', icon: '🧁', description: 'Baked goods, pastries, desserts' },
   { value: 'Cafe', icon: '🥐', description: 'Multi-concept cafe' },

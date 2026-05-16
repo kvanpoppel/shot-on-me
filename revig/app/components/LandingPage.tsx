@@ -26,7 +26,9 @@ const CATEGORIES = [
   { icon: '🧋', label: 'Boba Tea',     sub: 'Bubble tea & taro',        hot: true  },
   { icon: '🍵', label: 'Tea Houses',   sub: 'Matcha & chai',            hot: false },
   { icon: '🥝', label: 'Smoothie Bars',sub: 'Bowls & blends',           hot: false },
-  { icon: '🥐', label: 'Bakeries',     sub: 'Pastries & treats',        hot: false },
+  { icon: '🧁', label: 'Bakeries',     sub: 'Pastries & treats',        hot: false },
+  { icon: '🥐', label: 'Cafes',        sub: 'Coffee & bites',           hot: false },
+  { icon: '🍦', label: 'Ice Cream',    sub: 'Gelato & frozen treats',   hot: false },
 ]
 
 /* ── Feature cards ────────────────────────────────────── */

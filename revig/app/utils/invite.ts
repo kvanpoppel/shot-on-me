@@ -17,7 +17,7 @@ export async function getInviteLink(userId: string, venueId?: string): Promise<s
 
 export function getInviteMessage(userName?: string): string {
   const name = userName ? `${userName} ` : ''
-  return `${name}invited you to join Revig! Gift dirty sodas, coffees & treats to anyone. Discover the best non-alcohol spots near you. Join free now!`
+  return `${name}invited you to join Revig! Gift dirty sodas, boba teas & coffees to anyone. Discover the best sip spots near you. Join free now!`
 }
 
 export async function shareInvite(inviteLink: string, message?: string): Promise<InviteResult> {
