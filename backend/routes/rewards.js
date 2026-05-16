@@ -274,15 +274,10 @@ router.post('/redeem-cash', auth, async (req, res) => {
     }
 
     // Check redemption cooldown (once per 7 days)
-    const lastRedemption = await RewardRedemption.findOne({
-      user: user._id,
-      status: { $in: ['active', 'used'] }
-    }).sort({ createdAt: -1 });
-
-    if (lastRedemption) {
-      const daysSinceLastRedemption = (Date.now() - new Date(lastRedemption.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceLastRedemption < 7) {
-        const daysLeft = Math.ceil(7 - daysSinceLastRedemption);
+    if (user.lastCashRedemption) {
+      const daysSinceLast = (Date.now() - new Date(user.lastCashRedemption).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceLast < 7) {
+        const daysLeft = Math.ceil(7 - daysSinceLast);
         return res.status(400).json({
           message: 'You can only redeem points once per week',
           error: `Please wait ${daysLeft} more day${daysLeft === 1 ? '' : 's'} before your next redemption.`
@@ -291,12 +286,13 @@ router.post('/redeem-cash', auth, async (req, res) => {
     }
 
     // Pick the correct points and wallet fields based on source
-    const pointsField         = isRevig ? 'revigPoints'            : 'points';
-    const totalRedeemedField  = isRevig ? 'revigTotalPointsRedeemed' : 'totalPointsRedeemed';
-    const walletBalanceField  = isRevig ? 'revigWallet.balance'    : 'wallet.balance';
+    const pointsField = isRevig ? 'revigPoints' : 'points';
+    const totalRedeemedField = isRevig ? 'revigTotalPointsRedeemed' : 'totalPointsRedeemed';
+    const walletBalanceField = isRevig ? 'revigWallet.balance' : 'wallet.balance';
+    const cashBalanceField = isRevig ? 'revigRewardCashBalance' : 'rewardCashBalance';
+    const currentPoints = user[pointsField] || 0;
 
     // Check if user has enough points
-    const currentPoints = user[pointsField] || 0;
     if (currentPoints < pointsToRedeem) {
       return res.status(400).json({
         message: 'Insufficient points',
@@ -310,20 +306,19 @@ router.post('/redeem-cash', auth, async (req, res) => {
     const cashAmount = (pointsToRedeem / 100) * cashValue;
 
     // Atomically deduct points and credit wallet — $gte guard prevents negative points
-    const atomicFilter = { _id: user._id, [pointsField]: { $gte: pointsToRedeem } };
-    const atomicUpdate = {
-      $inc: {
-        [pointsField]: -pointsToRedeem,
-        [totalRedeemedField]: pointsToRedeem,
-        [walletBalanceField]: cashAmount,
-      }
-    };
-    // For SOM, also track rewardCashBalance
-    if (!isRevig) {
-      atomicUpdate.$inc.rewardCashBalance = cashAmount;
-    }
-
-    const rewardUpdated = await User.findOneAndUpdate(atomicFilter, atomicUpdate, { new: true });
+    const rewardUpdated = await User.findOneAndUpdate(
+      { _id: user._id, [pointsField]: { $gte: pointsToRedeem } },
+      {
+        $inc: {
+          [pointsField]: -pointsToRedeem,
+          [totalRedeemedField]: pointsToRedeem,
+          [walletBalanceField]: cashAmount,
+          [cashBalanceField]: cashAmount
+        },
+        $set: { lastCashRedemption: new Date() }
+      },
+      { new: true }
+    );
     if (!rewardUpdated) {
       return res.status(400).json({ message: 'Insufficient points' });
     }
@@ -384,13 +379,9 @@ router.post('/redeem-cash', auth, async (req, res) => {
       });
     }
 
-    const newPoints = rewardUpdated[pointsField] || 0;
-    const newWalletBalance = isRevig
-      ? rewardUpdated.revigWallet?.balance ?? 0
-      : rewardUpdated.wallet?.balance ?? 0;
-
     res.json({
       message: `Successfully redeemed ${pointsToRedeem} points for $${cashAmount.toFixed(2)} cash`,
+      source,
       redemption: {
         id: redemption._id,
         pointsRedeemed: pointsToRedeem,

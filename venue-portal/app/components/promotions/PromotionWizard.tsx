@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Lock, Sparkles, Pencil, Eye } from 'lucide-react'
+import { X, Lock, Sparkles, Pencil, Eye, Crown } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
 import { useFeatureAvailable } from '../FeatureGate'
 
@@ -198,7 +198,25 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             </div>
           </div>
 
-          {/* 4. Schedule */}
+          {/* 4. Who sees this? */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">Who sees this?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([false, true] as const).map(val => (
+                <button key={String(val)} type="button"
+                  onClick={() => update({ targeting: { ...formData.targeting, followersOnly: val } })}
+                  className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                    formData.targeting.followersOnly === val
+                      ? 'border-primary-500 bg-primary-500/10 text-white'
+                      : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
+                  }`}>
+                  {val ? '🔒 Followers Only' : '🌍 Everyone'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 5. Schedule */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
@@ -247,7 +265,13 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
               </div>
             )}
 
-            {/* Recurring */}
+            {/* Recurring — paywall warning shown upfront */}
+            {!canRecur && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06]">
+                <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <p className="text-[11px] text-amber-300/80">Recurring deals require the <span className="font-bold text-amber-300">Growth plan</span>. Upgrade to automate weekly specials.</p>
+              </div>
+            )}
             <button type="button" onClick={() => canRecur && update({ isRecurring: !formData.isRecurring })}
               className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl border transition-all ${
                 !canRecur ? 'border-primary-500/10 bg-black/30 cursor-not-allowed' :

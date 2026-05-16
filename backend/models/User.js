@@ -108,6 +108,10 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  lastCashRedemption: {
+    type: Date,
+    default: null
+  },
   checkInStreak: {
     current: {
       type: Number,
@@ -315,6 +319,35 @@ const userSchema = new mongoose.Schema({
     }
   },
   // ─── Revig-specific fields (separate from Shot On Me) ───────────────────────
+  revigPoints: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigTotalPointsEarned: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigTotalPointsRedeemed: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigDailyPointsToday: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  revigDailyPointsDate: {
+    type: Date,
+    default: null
+  },
+  revigRewardCashBalance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   revigProfile: {
     firstName:      { type: String, default: '' },
     lastName:       { type: String, default: '' },

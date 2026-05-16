@@ -40,11 +40,11 @@ router.get('/conversations', auth, async (req, res) => {
     const conversations = await Message.aggregate([
       {
         $match: {
+          source: { $ne: 'revig' },
           $or: [
             { sender: new mongoose.Types.ObjectId(userId) },
             { recipient: new mongoose.Types.ObjectId(userId) }
-          ],
-          source: { $ne: 'revig' }
+          ]
         }
       },
       {

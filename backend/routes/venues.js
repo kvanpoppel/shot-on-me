@@ -486,7 +486,7 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
     const basePromotion = {
       title,
       description,
-      offer,
+      offer: offer || '',
       type: type || 'other',
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
@@ -581,10 +581,12 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
 
     await venue.save();
 
+    const followerCount = venue.followers?.length || 0;
     res.status(201).json({
       message: 'Promotion created successfully',
       promotion: basePromotion,
-      venue
+      venue,
+      followersNotified: followerCount
     });
   } catch (error) {
     console.error('Error creating promotion:', error);
@@ -612,6 +614,7 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
     const {
       title,
       description,
+      offer,
       type,
       startTime,
       endTime,
@@ -624,6 +627,7 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
     const wasActive = promotion.isActive;
     if (title !== undefined) promotion.title = title;
     if (description !== undefined) promotion.description = description;
+    if (offer !== undefined) promotion.offer = offer;
     if (type !== undefined) promotion.type = type;
     if (startTime !== undefined) promotion.startTime = new Date(startTime);
     if (endTime !== undefined) promotion.endTime = new Date(endTime);
@@ -658,11 +662,13 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       ? 'Promotion activated and push notifications sent to users!'
       : 'Promotion updated successfully';
 
+    const followerCount = justActivated ? (venue.followers?.length || 0) : 0;
     res.json({
       message: responseMessage,
       promotion,
       venue,
-      notificationsSent: justActivated
+      notificationsSent: justActivated,
+      followersNotified: followerCount
     });
   } catch (error) {
     console.error('Error updating promotion:', error);

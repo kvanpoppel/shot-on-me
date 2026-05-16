@@ -257,7 +257,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       const payload = {
         title: formData.title,
         description: formData.description,
-        offer: formData.offer,
+        offer: formData.offer || '',
         type: formData.type,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
@@ -278,12 +278,13 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
       if (editingPromo) {
         const res = await axios.put(`${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`, payload,
           { headers: { Authorization: `Bearer ${token}` } })
-        showSuccess(res.data?.notificationsSent ? 'Deal activated — notifications sent!' : 'Deal updated.')
+        const count = res.data?.followersNotified
+        showSuccess(count ? `Deal activated — ${count} follower${count === 1 ? '' : 's'} notified!` : 'Deal updated.')
       } else {
         const res = await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, payload,
           { headers: { Authorization: `Bearer ${token}` } })
-        const fc = res.data?.venue?.followerCount || 0
-        showSuccess(fc > 0 ? `Deal published! ✓ ${fc} followers notified` : 'Deal published! ✓ Followers will be notified as they follow you.')
+        const count = res.data?.followersNotified || 0
+        showSuccess(count > 0 ? `Deal published! ${count} follower${count === 1 ? '' : 's'} notified` : 'Deal published!')
       }
       closeAll()
       fetchPromotions()

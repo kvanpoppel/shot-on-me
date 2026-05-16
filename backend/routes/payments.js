@@ -124,9 +124,38 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
     await User.findByIdAndUpdate(req.user.userId, { $unset: { paymentOtp: 1 } });
     // --- end 2FA ---
 
+    // --- Anti-abuse: max 5 pending payments per user ---
+    const pendingCount = await PendingPayment.countDocuments({
+      senderId: req.user.userId,
+      status: 'pending'
+    });
+    if (pendingCount >= 5) {
+      return res.status(400).json({
+        message: 'Too many pending payments',
+        error: 'You have 5 pending payments waiting to be claimed. Please wait for some to be accepted before sending more.'
+      });
+    }
+
+    // --- Anti-abuse: circular payment detection (24hr cooldown between same pair) ---
+    if (recipientId) {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const reversePayment = await Payment.findOne({
+        senderId: recipientId,
+        recipientId: req.user.userId,
+        status: 'succeeded',
+        createdAt: { $gte: oneDayAgo }
+      });
+      if (reversePayment) {
+        return res.status(400).json({
+          message: 'Circular payment detected',
+          error: 'This person sent you a payment within the last 24 hours. Please wait before sending back to prevent abuse.'
+        });
+      }
+    }
+
     // Basic validation
     if (!recipientPhone && !recipientId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Recipient is required',
         error: 'Please provide either recipientPhone or recipientId'
       });
@@ -311,9 +340,9 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
       recipientId: recipient._id,
       amount: finalAmount,
       type: 'shot_sent',
+      source: 'som',
       // redemptionCode: null - Money transfers use tap-and-pay, not redemption codes
-      status: 'succeeded',
-      source: 'som'
+      status: 'succeeded'
     });
     await payment.save();
 
@@ -342,6 +371,7 @@ router.post('/send', auth, paymentLimiter, async (req, res) => {
         author: req.user.userId,
         postType: 'drink_sent',
         content: postContent,
+        source: 'shotonme',
         drinkInfo: {
           recipientId: recipient._id,
           recipientName: `${recipient.firstName || ''} ${recipient.lastName || ''}`.trim(),
