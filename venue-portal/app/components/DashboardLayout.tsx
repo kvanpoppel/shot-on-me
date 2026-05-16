@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
             active(href)
               ? 'bg-primary-500 text-black'
-              : 'text-primary-400/70 hover:bg-primary-500/10 hover:text-primary-400'
+              : 'text-primary-300/80 hover:bg-primary-500/10 hover:text-white'
           }`}
         >
           <Icon className="w-4 h-4 flex-shrink-0" />
@@ -187,7 +187,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] transition-colors ${
-                active(href) ? 'text-primary-500' : 'text-primary-400/40 hover:text-primary-400/70'
+                active(href) ? 'text-primary-500' : 'text-white/50 hover:text-white/80'
               }`}
             >
               <Icon className="w-5 h-5" />
