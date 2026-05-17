@@ -45,25 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Restore session from HttpOnly cookie — no localStorage needed
     axios.get(`${apiUrl}/auth/verify`, { withCredentials: true, timeout: 8000 })
-      .then(async (res) => {
+      .then(res => {
         if (!isMounted) return
         const { token: authToken, user: userData } = res.data
         if (userData && userData._id && !userData.id) userData.id = userData._id.toString()
-        // Allow venue-type users directly; for others, check if they're staff on any venue
-        if (userData.userType !== 'venue') {
-          const venuesRes = await axios.get(`${apiUrl}/venues`, {
-            headers: { Authorization: `Bearer ${authToken}` }, timeout: 8000
-          }).catch(() => null)
-          const venues = venuesRes?.data?.venues || (Array.isArray(venuesRes?.data) ? venuesRes.data : [])
-          const userId = userData.id || userData._id?.toString()
-          const hasStaffAccess = venues.some((v: any) =>
-            v.staff?.some((s: any) => (s.user?._id?.toString() || s.user?.toString()) === userId)
-          )
-          if (!hasStaffAccess) {
-            setLoading(false)
-            return
-          }
-        }
         setToken(authToken)
         setUser(userData)
       })
@@ -109,21 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Normalize user data - ensure id field exists
       if (userData && userData._id && !userData.id) {
         userData.id = userData._id.toString()
-      }
-
-      // Allow venue-type users directly; for others, check if they're staff on any venue
-      if (userData.userType !== 'venue') {
-        const venuesRes = await axios.get(`${apiUrl}/venues`, {
-          headers: { Authorization: `Bearer ${authToken}` }, timeout: 8000
-        }).catch(() => null)
-        const venues = venuesRes?.data?.venues || (Array.isArray(venuesRes?.data) ? venuesRes.data : [])
-        const userId = userData.id || userData._id?.toString()
-        const hasStaffAccess = venues.some((v: any) =>
-          v.staff?.some((s: any) => (s.user?._id?.toString() || s.user?.toString()) === userId)
-        )
-        if (!hasStaffAccess) {
-          throw new Error('No venue access. Ask a venue owner to add you as staff.')
-        }
       }
 
       // Token is set as HttpOnly cookie by the backend — store in memory only

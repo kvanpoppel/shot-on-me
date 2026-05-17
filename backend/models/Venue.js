@@ -16,11 +16,11 @@ const venueSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  staffCode: { type: String, default: null },
   staff: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     role: { type: String, enum: ['manager', 'staff'], default: 'staff' },
-    addedAt: { type: Date, default: Date.now },
-    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    addedAt: { type: Date, default: Date.now }
   }],
   address: {
     street: String,

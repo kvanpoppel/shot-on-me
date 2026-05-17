@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useVenue } from '../contexts/VenueContext'
 import axios from 'axios'
-import { UserPlus, Trash2, Shield, User, Crown, X } from 'lucide-react'
+import { UserPlus, Trash2, Crown, User, Key, Copy, Check, X } from 'lucide-react'
 import { getApiUrl } from '../utils/api'
 import { useToast } from './ToastContainer'
 
@@ -17,324 +18,210 @@ interface StaffMember {
   }
   role: 'owner' | 'manager' | 'staff'
   addedAt: string
-  addedBy?: {
-    firstName: string
-    lastName: string
-  }
 }
 
 export default function StaffManager() {
-  const { token, user } = useAuth()
+  const { token } = useAuth()
+  const { venueId, isOwner } = useVenue()
   const { showSuccess, showError } = useToast()
   const [staff, setStaff] = useState<StaffMember[]>([])
+  const [staffCode, setStaffCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [venueId, setVenueId] = useState<string | null>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [adding, setAdding] = useState(false)
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'manager' | 'staff'>('staff')
-  const [userRole, setUserRole] = useState<'owner' | 'manager' | 'staff' | null>(null)
+  const [newCode, setNewCode] = useState('')
+  const [editingCode, setEditingCode] = useState(false)
+  const [savingCode, setSavingCode] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchVenueAndStaff()
-  }, [token, user])
+    if (venueId && token) fetchStaff()
+  }, [venueId, token])
 
-  const fetchVenueAndStaff = async () => {
-    if (!token || !user) return
+  const fetchStaff = async () => {
+    if (!venueId || !token) return
     setLoading(true)
     try {
-      // Get user's venues
-      const apiUrl = getApiUrl()
-      const venuesResponse = await axios.get(`${apiUrl}/venues`, {
+      const res = await axios.get(`${getApiUrl()}/venues/${venueId}/staff`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
-      // Handle both response formats: { venues: [...] } or direct array
-      let venues: any[] = []
-      if (Array.isArray(venuesResponse.data)) {
-        venues = venuesResponse.data
-      } else if (venuesResponse.data?.venues) {
-        venues = venuesResponse.data.venues
-      }
-      
-      // Find venue owned by current user or where user is staff
-      // Improved venue matching: handle both populated owner object and owner ID string
-      const myVenue = venues.find((v: any) => {
-        const ownerId = v.owner?._id?.toString() || v.owner?.toString() || v.owner
-        const userId = user.id?.toString()
-        const isOwner = ownerId === userId
-        
-        // Check if user is staff
-        const isStaff = v.staff?.some((s: any) => {
-          const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
-          return staffUserId === userId
-        })
-        
-        return isOwner || isStaff
-      })
-
-      if (myVenue) {
-        setVenueId(myVenue._id?.toString() || myVenue._id)
-        
-        // Determine user's role
-        const ownerId = myVenue.owner?._id?.toString() || myVenue.owner?.toString() || myVenue.owner
-        const userId = user.id?.toString()
-        if (ownerId === userId) {
-          setUserRole('owner')
-        } else {
-          const staffMember = myVenue.staff?.find((s: any) => {
-            const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
-            return staffUserId === userId
-          })
-          setUserRole(staffMember?.role || 'staff')
-        }
-
-        // Fetch staff list
-        const staffResponse = await axios.get(`${getApiUrl()}/venues/${myVenue._id}/staff`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setStaff(staffResponse.data.staff || [])
-      }
+      setStaff(res.data.staff || [])
+      setStaffCode(res.data.staffCode || null)
     } catch {
-      // fetch silently
+      // silent
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAddStaff = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!venueId || !token || !email) return
-
-    setAdding(true)
+  const handleSetCode = async () => {
+    if (!venueId || !token || !newCode.trim()) return
+    setSavingCode(true)
     try {
-      await axios.post(
-        `${getApiUrl()}/venues/${venueId}/staff`,
-        { email, role },
+      const res = await axios.put(
+        `${getApiUrl()}/venues/${venueId}/staff-code`,
+        { code: newCode.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setEmail('')
-      setRole('staff')
-      setShowAddForm(false)
-      fetchVenueAndStaff()
-      showSuccess('Staff member added successfully!')
+      setStaffCode(res.data.code)
+      setEditingCode(false)
+      setNewCode('')
+      showSuccess('Access code set!')
     } catch (error: any) {
-      showError(error.response?.data?.error || 'Failed to add staff member')
+      showError(error.response?.data?.error || 'Failed to set code')
     } finally {
-      setAdding(false)
+      setSavingCode(false)
     }
+  }
+
+  const handleRemoveCode = async () => {
+    if (!venueId || !token) return
+    try {
+      await axios.delete(`${getApiUrl()}/venues/${venueId}/staff-code`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setStaffCode(null)
+      showSuccess('Access code removed')
+    } catch (error: any) {
+      showError(error.response?.data?.error || 'Failed to remove code')
+    }
+  }
+
+  const handleCopyCode = () => {
+    if (!staffCode) return
+    navigator.clipboard.writeText(staffCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const handleRemoveStaff = async (staffId: string) => {
     if (!venueId || !token) return
-
     try {
-      await axios.delete(
-        `${getApiUrl()}/venues/${venueId}/staff/${staffId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      await axios.delete(`${getApiUrl()}/venues/${venueId}/staff/${staffId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       setConfirmRemoveId(null)
-      fetchVenueAndStaff()
-      showSuccess('Staff member removed successfully!')
+      fetchStaff()
+      showSuccess('Staff member removed')
     } catch (error: any) {
-      showError(error.response?.data?.error || 'Failed to remove staff member')
-    }
-  }
-
-  const handleUpdateRole = async (staffId: string, newRole: 'manager' | 'staff') => {
-    if (!venueId || !token) return
-
-    try {
-      await axios.put(
-        `${getApiUrl()}/venues/${venueId}/staff/${staffId}`,
-        { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      fetchVenueAndStaff()
-      showSuccess('Staff role updated successfully!')
-    } catch (error: any) {
-      showError(error.response?.data?.error || 'Failed to update staff role')
-    }
-  }
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return <Crown className="w-4 h-4 text-primary-500" />
-      case 'manager':
-        return <Shield className="w-4 h-4 text-primary-400" />
-      default:
-        return <User className="w-4 h-4 text-primary-400" />
+      showError(error.response?.data?.error || 'Failed to remove staff')
     }
   }
 
   if (loading) {
     return (
-      <div className="bg-black border border-primary-500/30 rounded-lg p-3">
-        <div className="text-center py-4 text-primary-400 text-xs">Loading staff...</div>
-      </div>
+      <div className="text-center py-4 text-primary-400 text-xs">Loading team...</div>
     )
   }
-
-  if (!venueId) {
-    return (
-      <div className="bg-black border border-primary-500/30 rounded-lg p-3">
-        <div className="text-center py-4 text-primary-400 text-xs">
-          <p>No venue found</p>
-        </div>
-      </div>
-    )
-  }
-
-  const isOwner = userRole === 'owner'
 
   return (
-    <div className="bg-black border border-primary-500/30 rounded-lg p-3">
-      <div className="flex justify-between items-center mb-3">
-        <div className="flex items-center space-x-1.5">
-          <UserPlus className="w-4 h-4 text-primary-500" />
-          <h2 className="text-base font-semibold text-primary-500">Team Members</h2>
-        </div>
-        {isOwner && (
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center space-x-1 bg-primary-500 text-black px-2 py-1 rounded hover:bg-primary-600 transition-colors font-semibold text-xs"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Add</span>
-          </button>
-        )}
-      </div>
+    <div className="space-y-4">
 
-      {showAddForm && isOwner && (
-        <form onSubmit={handleAddStaff} className="mb-3 p-2 bg-black border border-primary-500/30 rounded space-y-2">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-bold text-primary-500">Add Staff Member</h3>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddForm(false)
-                setEmail('')
-              }}
-              className="text-primary-400 hover:text-primary-500"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+      {/* Access Code Section — owner only */}
+      {isOwner && (
+        <div className="p-4 rounded-xl border border-primary-500/15 bg-[#1a1510]/60">
+          <div className="flex items-center gap-2 mb-2">
+            <Key className="w-4 h-4 text-primary-500" />
+            <h3 className="text-sm font-bold text-white">Staff Access Code</h3>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-primary-500 mb-0.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-2 py-1.5 bg-black border border-primary-500/30 rounded text-primary-500 placeholder-primary-600 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-xs"
-              placeholder="staff@example.com"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-primary-500 mb-0.5">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'manager' | 'staff')}
-              className="w-full px-2 py-1.5 bg-black border border-primary-500/30 rounded text-primary-500 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-xs"
-            >
-              <option value="staff" className="bg-black text-primary-500">Staff</option>
-              <option value="manager" className="bg-black text-primary-500">Manager</option>
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={adding}
-            className="w-full bg-primary-500 text-black py-1.5 rounded font-semibold hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-          >
-            {adding ? 'Adding...' : 'Add Staff Member'}
-          </button>
-        </form>
+          <p className="text-xs text-primary-400/60 mb-3">
+            Give this code to your staff. They log into the venue portal with their SOM account and enter the code to join.
+          </p>
+
+          {staffCode && !editingCode ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-primary-500/20">
+                <span className="text-sm font-mono font-bold text-primary-500 tracking-wider">{staffCode}</span>
+              </div>
+              <button onClick={handleCopyCode} className="p-2 rounded-lg border border-primary-500/20 hover:bg-primary-500/10 transition-colors">
+                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-primary-400" />}
+              </button>
+              <button onClick={() => { setEditingCode(true); setNewCode(staffCode || '') }} className="px-2 py-1.5 text-xs text-primary-400 hover:text-primary-500 border border-primary-500/20 rounded-lg hover:bg-primary-500/10 transition-colors">
+                Change
+              </button>
+              <button onClick={handleRemoveCode} className="px-2 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newCode}
+                onChange={e => setNewCode(e.target.value)}
+                placeholder="e.g. KATES-STAFF-2026"
+                className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-primary-500/20 text-sm text-white placeholder-primary-400/30 focus:border-primary-500/40 focus:outline-none"
+                maxLength={32}
+              />
+              <button
+                onClick={handleSetCode}
+                disabled={savingCode || newCode.trim().length < 4}
+                className="px-3 py-2 rounded-lg bg-primary-500 text-black text-xs font-bold hover:bg-primary-400 disabled:opacity-30 transition-all"
+              >
+                {savingCode ? '...' : 'Save'}
+              </button>
+              {editingCode && (
+                <button onClick={() => { setEditingCode(false); setNewCode('') }} className="p-2 text-primary-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
-      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+      {/* Staff List */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 px-1">
+          <UserPlus className="w-4 h-4 text-primary-500" />
+          <h3 className="text-sm font-bold text-white">Team ({staff.length})</h3>
+        </div>
+
         {staff.length === 0 ? (
-          <div className="text-center py-4 text-primary-400 text-xs">
-            <p>No staff members yet</p>
-            {isOwner && <p className="mt-1">Add your first team member above</p>}
-          </div>
+          <p className="text-xs text-primary-400/50 px-1">No team members yet. Set an access code above and share it with your staff.</p>
         ) : (
-          staff.map((member) => (
-            <div
-              key={member._id}
-              className="bg-black border border-primary-500/20 rounded p-2 hover:border-primary-500/40 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                  {getRoleIcon(member.role)}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-primary-500 text-xs truncate">
+          <div className="space-y-1.5">
+            {staff.map(member => (
+              <div key={member._id} className="flex items-center justify-between p-3 rounded-xl border border-primary-500/10 bg-[#1a1510]/40">
+                <div className="flex items-center gap-2.5">
+                  {member.role === 'owner' ? (
+                    <Crown className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                  ) : (
+                    <User className="w-4 h-4 text-primary-400/60 flex-shrink-0" />
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold text-white">
                       {member.user.firstName} {member.user.lastName}
                     </p>
-                    <p className="text-primary-400 text-xs truncate">{member.user.email}</p>
-                    <div className="flex items-center space-x-2 mt-0.5">
-                      <span className="capitalize bg-primary-500/20 text-primary-500 px-1.5 py-0.5 rounded text-xs">
-                        {member.role}
-                      </span>
-                      {member.role === 'owner' && (
-                        <span className="text-primary-500/60 text-xs">Owner</span>
-                      )}
-                    </div>
+                    <p className="text-[10px] text-primary-400/50">{member.user.email}</p>
                   </div>
+                  <span className="text-[10px] uppercase font-bold text-primary-400/40 bg-primary-500/10 px-1.5 py-0.5 rounded">
+                    {member.role}
+                  </span>
                 </div>
+
                 {isOwner && member.role !== 'owner' && (
-                  <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                    {member.role === 'staff' ? (
-                      <button
-                        onClick={() => handleUpdateRole(member._id, 'manager')}
-                        className="p-1 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded transition-colors"
-                        title="Promote to Manager"
-                      >
-                        <Shield className="w-3 h-3" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleUpdateRole(member._id, 'staff')}
-                        className="p-1 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded transition-colors"
-                        title="Demote to Staff"
-                      >
-                        <User className="w-3 h-3" />
-                      </button>
-                    )}
+                  <>
                     {confirmRemoveId === member._id ? (
-                      <div className="flex gap-1 items-center">
-                        <button
-                          onClick={() => handleRemoveStaff(member._id)}
-                          className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                        >
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleRemoveStaff(member._id)} className="px-2 py-1 text-[10px] bg-red-500 text-white rounded font-bold">
                           Remove
                         </button>
-                        <button
-                          onClick={() => setConfirmRemoveId(null)}
-                          className="px-1.5 py-0.5 text-xs border border-primary-500/30 text-primary-400 rounded hover:bg-primary-500/10 transition-colors"
-                        >
+                        <button onClick={() => setConfirmRemoveId(null)} className="px-2 py-1 text-[10px] border border-primary-500/20 text-primary-400 rounded">
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setConfirmRemoveId(member._id)}
-                        className="p-1 text-primary-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                        title="Remove staff member"
-                      >
-                        <Trash2 className="w-3 h-3" />
+                      <button onClick={() => setConfirmRemoveId(member._id)} className="p-1.5 text-primary-400/40 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>
   )
 }
-

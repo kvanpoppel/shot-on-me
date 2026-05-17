@@ -52,7 +52,7 @@ const TYPE_EMOJI: Record<string, string> = {
 
 export default function Dashboard() {
   const { user, loading, token } = useAuth()
-  const { venueId, venueName, tier, followerCount } = useVenue()
+  const { venueId, venueName, tier, followerCount, loading: venueLoading, refetch: refetchVenue } = useVenue()
   const { socket } = useSocket()
   const { showError, showSuccess, showInfo } = useToast()
   const router = useRouter()
@@ -77,9 +77,56 @@ export default function Dashboard() {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [, setTick] = useState(0)
+  const [joinCode, setJoinCode] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [joinError, setJoinError] = useState('')
 
   useEffect(() => { const t = setInterval(() => setTick(n => n + 1), 30000); return () => clearInterval(t) }, [])
   useEffect(() => { if (!loading && !user) router.push('/') }, [user, loading, router])
+
+  const handleJoinVenue = async () => {
+    if (!joinCode.trim() || !token) return
+    setJoining(true)
+    setJoinError('')
+    try {
+      await axios.post(`${getApiUrl()}/venues/join`, { code: joinCode.trim() }, { headers: { Authorization: `Bearer ${token}` } })
+      refetchVenue()
+    } catch (err: any) {
+      setJoinError(err.response?.data?.error || 'Invalid code')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  // No venue access — show join screen
+  if (!venueLoading && !loading && user && !venueId) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="max-w-sm w-full text-center space-y-4">
+            <h2 className="text-lg font-bold text-white">Join a Venue</h2>
+            <p className="text-xs text-primary-400/60">Enter the access code given to you by the venue owner.</p>
+            <input
+              type="text"
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleJoinVenue()}
+              placeholder="Enter access code"
+              className="w-full px-4 py-3 rounded-xl bg-[#1a1510]/60 border border-primary-500/20 text-white text-center text-sm placeholder-primary-400/30 focus:border-primary-500/40 focus:outline-none"
+            />
+            {joinError && <p className="text-xs text-red-400">{joinError}</p>}
+            <button
+              onClick={handleJoinVenue}
+              disabled={joining || !joinCode.trim()}
+              className="w-full py-3 rounded-xl bg-primary-500 text-black font-bold text-sm hover:bg-primary-400 disabled:opacity-30 transition-all"
+            >
+              {joining ? 'Joining...' : 'Join'}
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   const fetchData = useCallback(async () => {
     if (!venueId || !token) return
