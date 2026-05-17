@@ -358,6 +358,9 @@ app.use('/api/users', usersBatchRouter);
 // ─────────────────────────────────────────────────────────────────────────────
 app.use('/api/users', require('./routes/users'));
 
+// Staff routes BEFORE generic /:venueId
+app.use('/api/venues', require('./routes/venue-staff'));
+
 // Featured/analytics venue routes BEFORE generic /:venueId
 const venuesFeaturedRouter = require('./routes/venues-featured');
 app.use('/api/venues', venuesFeaturedRouter);

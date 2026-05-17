@@ -16,6 +16,12 @@ const venueSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  staff: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    role: { type: String, enum: ['manager', 'staff'], default: 'staff' },
+    addedAt: { type: Date, default: Date.now },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
   address: {
     street: String,
     city: String,
@@ -252,5 +258,6 @@ venueSchema.index({ owner: 1 });
 venueSchema.index({ isActive: 1 });
 venueSchema.index({ slug: 1 }, { unique: true, sparse: true });
 venueSchema.index({ stripeAccountId: 1 }, { unique: true, sparse: true }); // Unique Stripe account IDs
+venueSchema.index({ 'staff.user': 1 });
 
 module.exports = mongoose.model('Venue', venueSchema);

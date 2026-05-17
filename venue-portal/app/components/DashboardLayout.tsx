@@ -12,7 +12,7 @@ import {
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
-  const { venueName, tier } = useVenue()
+  const { venueName, tier, isOwner } = useVenue()
   const router = useRouter()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -33,13 +33,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Close drawer on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
-  const nav = [
-    { href: '/dashboard',            label: 'Home',     icon: LayoutDashboard },
-    { href: '/dashboard/promotions', label: 'Deals',    icon: Sparkles },
-    { href: '/dashboard/guests',     label: 'Guests',   icon: Users },
-    { href: '/dashboard/money',      label: 'Money',    icon: DollarSign },
-    { href: '/dashboard/settings',   label: 'Settings', icon: Settings },
+  const allNav = [
+    { href: '/dashboard',            label: 'Home',     icon: LayoutDashboard, ownerOnly: false },
+    { href: '/dashboard/promotions', label: 'Deals',    icon: Sparkles,        ownerOnly: false },
+    { href: '/dashboard/guests',     label: 'Guests',   icon: Users,           ownerOnly: false },
+    { href: '/dashboard/money',      label: 'Money',    icon: DollarSign,      ownerOnly: true },
+    { href: '/dashboard/settings',   label: 'Settings', icon: Settings,        ownerOnly: false },
   ]
+  const nav = allNav.filter(n => !n.ownerOnly || isOwner)
 
   const active = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname?.startsWith(href)

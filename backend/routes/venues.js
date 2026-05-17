@@ -100,39 +100,36 @@ router.get('/', auth, async (req, res) => {
     console.log(`[Venues API] User ID: ${req.user.userId}, User Type: ${req.user.userType}, Skip: ${skipNum}, Limit: ${limitNum}`);
 
     if (req.user.userType === 'venue') {
-      // For venue owners, return their own venues PLUS all active test venues (for testing)
-      // This allows venue owners to see test venues during development
-      const ownVenuesQuery = Venue.find({ owner: req.user.userId });
-      const testVenueNames = ["Kate's Pub", "Paige's Pub"];
-      const testVenuesQuery = Venue.find({ 
-        isActive: true, 
-        name: { $in: testVenueNames } 
+      // For venue owners/staff, return venues they own OR are staff of, plus test venues
+      const ownVenuesQuery = Venue.find({
+        $or: [
+          { owner: req.user.userId },
+          { 'staff.user': req.user.userId }
+        ]
       });
-      
-      // Get total count for pagination
-      const [ownVenuesCount, testVenuesCount] = await Promise.all([
-        Venue.countDocuments({ owner: req.user.userId }),
-        Venue.countDocuments({ isActive: true, name: { $in: testVenueNames } })
-      ]);
-      
+      const testVenueNames = ["Kate's Pub", "Paige's Pub"];
+      const testVenuesQuery = Venue.find({
+        isActive: true,
+        name: { $in: testVenueNames }
+      });
+
       // Since we're combining queries, we need to fetch all and then paginate
-      // For now, we'll fetch all and paginate in memory (can be optimized later)
       const [ownVenues, testVenues] = await Promise.all([
         ownVenuesQuery.populate('owner', 'email firstName lastName').lean(),
         testVenuesQuery.lean()
       ]);
-      
+
       // Combine and deduplicate by _id
       const venueMap = new Map();
       [...ownVenues, ...testVenues].forEach(venue => {
         venueMap.set(venue._id.toString(), venue);
       });
       const allVenues = Array.from(venueMap.values());
-      
+
       totalCount = allVenues.length;
       venues = allVenues.slice(skipNum, skipNum + limitNum);
-      
-      console.log(`[Venues API] Venue owner query returned ${venues.length} venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
+
+      console.log(`[Venues API] Venue owner/staff query returned ${venues.length} venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
     } else {
       // For regular users, return active venues filtered by platform
       const platformParam = req.query.platform;

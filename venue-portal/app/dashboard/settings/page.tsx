@@ -3,12 +3,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
+import { useVenue } from '../../contexts/VenueContext'
 import DashboardLayout from '../../components/DashboardLayout'
 import VenueManager from '../../components/VenueManager'
 import SubscriptionPlansManager from '../../components/SubscriptionPlansManager'
 import StaffManager from '../../components/StaffManager'
 import CollapsibleSection from '../../components/CollapsibleSection'
-import FeatureGate from '../../components/FeatureGate'
 import axios from 'axios'
 import { getApiUrl } from '../../utils/api'
 import { useToast } from '../../components/ToastContainer'
@@ -19,6 +19,7 @@ import {
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
+  const { isOwner } = useVenue()
   const { showError } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -160,59 +161,63 @@ function SettingsPageContent() {
 
         <div className="space-y-3">
 
-          {/* Subscription */}
-          <CollapsibleSection
-            title="Subscription Plan"
-            subtitle="Upgrade or manage your current plan"
-            defaultOpen={true}
-            icon={<Crown className="w-4 h-4" />}
-          >
-            <div className="pt-2">
-              <SubscriptionPlansManager />
-            </div>
-          </CollapsibleSection>
+          {/* Subscription — owner only */}
+          {isOwner && (
+            <CollapsibleSection
+              title="Subscription Plan"
+              subtitle="Upgrade or manage your current plan"
+              defaultOpen={true}
+              icon={<Crown className="w-4 h-4" />}
+            >
+              <div className="pt-2">
+                <SubscriptionPlansManager />
+              </div>
+            </CollapsibleSection>
+          )}
 
-          {/* Payment / Stripe */}
-          <CollapsibleSection
-            title="Bank Account"
-            subtitle="Connect your bank to receive payouts via Stripe"
-            defaultOpen={false}
-            icon={<CreditCard className="w-4 h-4" />}
-          >
-            <div className="space-y-3 pt-2">
-              {connectStatus?.connected ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                    <span className="text-emerald-400">✅</span>
-                    <p className="text-sm text-emerald-400 font-medium">Bank account connected</p>
-                  </div>
-                  <button
-                    onClick={checkStripeStatus}
-                    disabled={loadingStatus}
-                    className="w-full border border-primary-500/30 text-primary-500 px-4 py-2.5 rounded-lg hover:bg-primary-500/10 disabled:opacity-50 text-sm transition-colors"
-                  >
-                    {loadingStatus ? 'Checking...' : 'Refresh Status'}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {connectStatus?.error && (
-                    <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/5">
-                      <p className="text-red-400 text-xs">⚠️ {connectStatus.error}</p>
+          {/* Payment / Stripe — owner only */}
+          {isOwner && (
+            <CollapsibleSection
+              title="Bank Account"
+              subtitle="Connect your bank to receive payouts via Stripe"
+              defaultOpen={false}
+              icon={<CreditCard className="w-4 h-4" />}
+            >
+              <div className="space-y-3 pt-2">
+                {connectStatus?.connected ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                      <span className="text-emerald-400">✅</span>
+                      <p className="text-sm text-emerald-400 font-medium">Bank account connected</p>
                     </div>
-                  )}
-                  <button
-                    onClick={handleConnectBank}
-                    disabled={connecting || loadingStatus}
-                    className="w-full bg-primary-500 text-black px-4 py-3 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 text-sm transition-all shadow-lg"
-                  >
-                    {connecting ? 'Connecting...' : 'Connect Bank Account'}
-                  </button>
-                  <p className="text-xs text-primary-400/50 text-center">Secure connection powered by Stripe</p>
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
+                    <button
+                      onClick={checkStripeStatus}
+                      disabled={loadingStatus}
+                      className="w-full border border-primary-500/30 text-primary-500 px-4 py-2.5 rounded-lg hover:bg-primary-500/10 disabled:opacity-50 text-sm transition-colors"
+                    >
+                      {loadingStatus ? 'Checking...' : 'Refresh Status'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {connectStatus?.error && (
+                      <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/5">
+                        <p className="text-red-400 text-xs">⚠️ {connectStatus.error}</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleConnectBank}
+                      disabled={connecting || loadingStatus}
+                      className="w-full bg-primary-500 text-black px-4 py-3 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 text-sm transition-all shadow-lg"
+                    >
+                      {connecting ? 'Connecting...' : 'Connect Bank Account'}
+                    </button>
+                    <p className="text-xs text-primary-400/50 text-center">Secure connection powered by Stripe</p>
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          )}
 
           {/* Venue Info */}
           <CollapsibleSection
@@ -226,8 +231,8 @@ function SettingsPageContent() {
             </div>
           </CollapsibleSection>
 
-          {/* Staff */}
-          <FeatureGate requires="premium" message="Team access is a Performance feature">
+          {/* Staff — owner only */}
+          {isOwner && (
             <CollapsibleSection
               title="Staff & Team"
               subtitle="Manage team member access to the portal"
@@ -238,7 +243,7 @@ function SettingsPageContent() {
                 <StaffManager />
               </div>
             </CollapsibleSection>
-          </FeatureGate>
+          )}
 
           {/* QR Code */}
           <CollapsibleSection
