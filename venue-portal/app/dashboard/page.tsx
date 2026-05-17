@@ -415,30 +415,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Sales Tracker — only shows after 4pm, collapsed otherwise */}
-        {new Date().getHours() >= 16 && (
-          <div className="rounded-xl border border-primary-500/10 bg-[#1a1510]/30 p-3">
-            <form className="flex items-center gap-2" onSubmit={async (e) => {
-              e.preventDefault()
-              const input = (e.target as HTMLFormElement).elements.namedItem('sales') as HTMLInputElement
-              const val = parseFloat(input.value)
-              if (!val || val <= 0 || !token) return
-              try {
-                await axios.post(`${getApiUrl()}/daily-sales`, { totalSales: val }, { headers: { Authorization: `Bearer ${token}` } })
-                input.value = ''
-                showSuccess('Sales logged!')
-              } catch { showError('Failed to log') }
-            }}>
-              <p className="text-[10px] text-primary-400/30 whitespace-nowrap">Close out?</p>
-              <div className="flex-1 flex items-center bg-black/30 border border-primary-500/10 rounded-lg px-2">
-                <span className="text-xs text-primary-400/30">$</span>
-                <input name="sales" type="number" step="0.01" min="0" placeholder="Total"
-                  className="flex-1 bg-transparent py-2 px-1 text-sm text-white placeholder-primary-400/15 focus:outline-none w-20" />
-              </div>
-              <button type="submit" className="px-3 py-2 rounded-lg bg-primary-500/80 text-black text-[10px] font-bold hover:bg-primary-500 transition-all">Log</button>
-            </form>
-          </div>
-        )}
 
         {/* Notify */}
         <div className="rounded-xl border border-primary-500/15 bg-black/40 overflow-hidden">
