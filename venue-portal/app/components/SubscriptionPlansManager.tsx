@@ -23,10 +23,11 @@ const PLANS: Plan[] = [
     tier: 'free',
     name: 'Starter',
     price: '$0',
-    priceSub: 'Free forever',
+    priceSub: '12-week trial',
     features: [
       { label: '2 active deals', included: true },
       { label: 'Bank payouts', included: true },
+      { label: 'Staff access', included: true },
       { label: 'QR code + venue profile', included: true },
       { label: '1 follower push per week', included: true },
       { label: 'AI deal suggestions', included: false },
@@ -40,6 +41,7 @@ const PLANS: Plan[] = [
     priceSub: '/mo',
     features: [
       { label: 'Unlimited deals', included: true },
+      { label: 'Staff access', included: true },
       { label: 'AI-powered deal suggestions', included: true },
       { label: 'Full analytics + ROI tracking', included: true },
       { label: 'Unlimited push notifications', included: true },
@@ -54,7 +56,6 @@ const PLANS: Plan[] = [
     priceSub: '/mo',
     features: [
       { label: 'Everything in Pro', included: true },
-      { label: 'Staff access', included: true },
       { label: 'Featured venue placement', included: true },
       { label: 'Advanced automation', included: true },
       { label: 'Priority support', included: true },
@@ -102,11 +103,13 @@ export default function SubscriptionPlansManager() {
             </span>
           </p>
         </div>
-        {isPaidTier && expiryDate && (
+        {expiryDate && (
           <p className="text-xs text-primary-400/70 mt-1">
             {isExpired
-              ? `Expired on ${formatDate(subscriptionExpiresAt!)}`
-              : `Renews / expires on ${formatDate(subscriptionExpiresAt!)}`}
+              ? `Trial ended ${formatDate(subscriptionExpiresAt!)} — upgrade to keep your deals live`
+              : normalizedTier === 'free'
+                ? `Free trial ends ${formatDate(subscriptionExpiresAt!)} (${Math.max(0, Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000))} days left)`
+                : `Renews ${formatDate(subscriptionExpiresAt!)}`}
           </p>
         )}
       </div>

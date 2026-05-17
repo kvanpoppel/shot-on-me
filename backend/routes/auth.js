@@ -490,8 +490,11 @@ router.post('/register-venue', authLimiter, async (req, res) => {
     // Create venue for this user
     const Venue = require('../models/Venue');
     const venueSlug = await buildUniqueVenueSlug(Venue, venueName);
-    const allowedTiers = ['free', 'basic', 'premium', 'enterprise'];
+    const allowedTiers = ['free', 'basic', 'premium'];
     const normalizedTier = allowedTiers.includes(subscriptionTier) ? subscriptionTier : 'free';
+    // Free tier gets 12-week trial
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 84); // 12 weeks
     const newVenue = new Venue({
       name: venueName,
       slug: venueSlug,
@@ -509,6 +512,7 @@ router.post('/register-venue', authLimiter, async (req, res) => {
       },
       phone: venuePhone || phoneNumber,
       subscriptionTier: normalizedTier,
+      subscriptionExpiresAt: normalizedTier === 'free' ? trialEnd : null,
       isActive: true
     });
 
