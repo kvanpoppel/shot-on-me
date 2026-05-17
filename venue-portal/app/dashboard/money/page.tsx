@@ -143,43 +143,31 @@ function MoneyPageContent() {
           </div>
         )}
 
-        {/* Revenue Impact — SOM ROI */}
+        {/* Revenue Overview */}
         {salesSummary && salesSummary.daysLogged > 0 && (
           <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-4">
-            <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-3">30-Day Revenue Impact</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
+            <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-3">Last 30 Days</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <p className="text-lg font-bold text-white">${salesSummary.totalLogged.toLocaleString()}</p>
-                <p className="text-[10px] text-primary-400/40">Total Sales</p>
+                <p className="text-[10px] text-primary-400/40">Your Total Sales</p>
               </div>
-              <div className="text-center">
+              <div>
                 <p className="text-lg font-bold text-emerald-400">${salesSummary.somRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-primary-400/40">From SOM</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-primary-500">{salesSummary.somPercent}%</p>
-                <p className="text-[10px] text-primary-400/40">SOM Share</p>
+                <p className="text-[10px] text-primary-400/40">SOM Transactions</p>
               </div>
             </div>
-            {salesSummary.somRevenue > 0 && (
-              <div className="mt-3 pt-3 border-t border-primary-500/10 text-center">
-                <p className="text-xs text-primary-400/60">
-                  SOM brought in <span className="font-bold text-emerald-400">${salesSummary.somRevenue}</span> of your revenue —{' '}
-                  {tier === 'free'
-                    ? <span className="text-primary-500">upgrade to Pro for unlimited deals and grow this number</span>
-                    : <span className="text-emerald-400">{Math.round(salesSummary.somRevenue / 29)}x return on your $29/mo</span>
-                  }
-                </p>
-              </div>
-            )}
+            <p className="text-[10px] text-primary-400/30 mt-3 pt-3 border-t border-primary-500/10">
+              {salesSummary.daysLogged} days logged · SOM transactions = payments redeemed at your venue through the app
+            </p>
           </div>
         )}
 
         {/* No sales logged yet — prompt */}
         {(!salesSummary || salesSummary.daysLogged === 0) && (
           <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-4 text-center">
-            <p className="text-sm font-medium text-white/60 mb-1">Track your ROI</p>
-            <p className="text-xs text-primary-400/40">Log your daily sales on the home screen and see exactly how much revenue SOM is driving.</p>
+            <p className="text-sm font-medium text-white/60 mb-1">Track your sales</p>
+            <p className="text-xs text-primary-400/40">Log daily totals from the home screen. See your numbers alongside SOM activity.</p>
           </div>
         )}
 

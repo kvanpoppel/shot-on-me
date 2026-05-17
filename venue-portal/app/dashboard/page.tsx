@@ -452,8 +452,8 @@ export default function Dashboard() {
             </form>
           </div>
           <div className="px-4 py-2.5 border-t border-primary-500/10 bg-black/20 flex items-center justify-between">
-            <p className="text-[10px] text-primary-400/30">Takes 10 seconds. Helps you see exactly what SOM drives.</p>
-            <p className="text-[10px] text-primary-500/60 font-medium">SOM drove ${stats.totalRevenue} this month</p>
+            <p className="text-[10px] text-primary-400/30">10 seconds. Track your numbers over time.</p>
+            <p className="text-[10px] text-primary-500/60 font-medium">${stats.totalRevenue} processed via SOM</p>
           </div>
         </div>
 
