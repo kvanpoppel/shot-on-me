@@ -37,6 +37,11 @@ interface Promotion {
     timeBased?: boolean
     timeWindow?: { start: string; end: string }
   }
+  analytics?: {
+    views?: number
+    clicks?: number
+    redemptions?: number
+  }
 }
 
 interface PromotionFormData {
@@ -196,7 +201,6 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [showEnded, setShowEnded] = useState(false)
 
   const [modal, setModal] = useState<ModalState>(null)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
@@ -548,35 +552,32 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
                 })}
               </div>
 
-              {/* Past deals — collapsed by default */}
-              {ended.length > 0 && (
-                <div className="pt-2">
-                  <button onClick={() => setShowEnded(!showEnded)}
-                    className="text-xs text-primary-400/40 hover:text-primary-400/70 transition-colors">
-                    {showEnded ? 'Hide' : 'Show'} past deals ({ended.length})
-                  </button>
-                  {showEnded && (
-                    <div className="space-y-2 mt-2 opacity-60">
-                      {ended.slice(0, 10).map((promo) => {
+              {/* Top Performers — best past deals by engagement, always visible */}
+              {ended.length > 0 && (() => {
+                const ranked = [...ended].sort((a, b) => {
+                  const scoreA = (a.analytics?.views || 0) + (a.analytics?.clicks || 0) * 3 + (a.analytics?.redemptions || 0) * 10
+                  const scoreB = (b.analytics?.views || 0) + (b.analytics?.clicks || 0) * 3 + (b.analytics?.redemptions || 0) * 10
+                  return scoreB - scoreA
+                }).slice(0, 5)
+
+                return (
+                  <div className="pt-3 border-t border-primary-500/10">
+                    <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-2">Run again</p>
+                    <div className="flex flex-wrap gap-2">
+                      {ranked.map((promo) => {
                         const emoji = TYPE_EMOJI[promo.type] || '🎯'
                         return (
-                          <div key={promo._id} className="glass-elevated rounded-xl p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm">{emoji}</span>
-                                <h3 className="text-xs font-medium text-white/60 truncate">{promo.title}</h3>
-                              </div>
-                              <button onClick={() => handleRunAgain(promo)}
-                                className="flex items-center gap-1 text-[10px] text-primary-400/50 hover:text-primary-500 px-2 py-0.5 rounded transition-colors">
-                                <RotateCcw className="w-3 h-3" /> Rerun
-                              </button>
-                            </div>
-                          </div>
+                          <button key={promo._id} onClick={() => handleRunAgain(promo)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary-500/15 bg-[#1a1510]/40 hover:border-primary-500/30 hover:bg-[#1a1510]/70 transition-all text-xs text-white/60 hover:text-white/90">
+                            <span className="text-sm">{emoji}</span>
+                            <span className="truncate max-w-[120px]">{promo.title}</span>
+                          </button>
                         )
                       })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )
+              })()}
               )}
             </>
           )
