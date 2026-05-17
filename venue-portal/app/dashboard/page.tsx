@@ -237,7 +237,7 @@ export default function Dashboard() {
             <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-black/40 animate-pulse" />)}</div>
           ) : live.length === 0 ? (
             /* Empty state — Quick Launch IS the content */
-            <div className="rounded-xl border border-primary-500/15 bg-black/40 p-5">
+            <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/60 p-5">
               <p className="text-sm text-primary-400/70 text-center mb-4">No deals running — go live in one tap</p>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -246,8 +246,8 @@ export default function Dashboard() {
                   { key: 'vip', emoji: '👑', label: 'VIP Night' },
                 ].map(d => (
                   <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={atLimit}
-                    className="rounded-xl border border-primary-500/15 bg-black/40 py-3 text-center hover:border-primary-500/30 transition-all disabled:opacity-30 min-h-[56px]">
-                    <p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/50 mt-0.5">{d.label}</p>
+                    className="rounded-xl border border-primary-500/15 bg-[#1a1510]/60 py-3 text-center hover:border-primary-500/30 hover:bg-[#1a1510]/80 transition-all disabled:opacity-30 min-h-[56px]">
+                    <p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/60 mt-0.5">{d.label}</p>
                   </button>
                 ))}
               </div>
