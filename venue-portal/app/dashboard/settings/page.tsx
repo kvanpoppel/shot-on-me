@@ -149,24 +149,23 @@ function SettingsPageContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-5 pb-8">
+      <div className="space-y-4 pb-8">
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Settings className="w-5 h-5 text-primary-500" /> Settings
+          <h1 className="text-lg font-bold text-white flex items-center gap-2">
+            <Settings className="w-4 h-4 text-primary-500" /> Settings
           </h1>
-          <p className="text-xs text-primary-400/50 mt-0.5">Subscription, venue info, bank account, QR code, and notification preferences.</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
 
           {/* Subscription — owner only */}
           {isOwner && (
             <CollapsibleSection
               title="Subscription Plan"
               subtitle="Upgrade or manage your current plan"
-              defaultOpen={true}
+              defaultOpen={false}
               icon={<Crown className="w-4 h-4" />}
             >
               <div className="pt-2">
