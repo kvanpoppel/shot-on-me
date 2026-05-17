@@ -144,30 +144,42 @@ function MoneyPageContent() {
         )}
 
         {/* Revenue Overview */}
-        {salesSummary && salesSummary.daysLogged > 0 && (
-          <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-4">
-            <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-3">Last 30 Days</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-lg font-bold text-white">${salesSummary.totalLogged.toLocaleString()}</p>
-                <p className="text-[10px] text-primary-400/40">Your Total Sales</p>
+        {salesSummary && salesSummary.daysLogged > 0 ? (
+          <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-5">
+            <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-4">Your Numbers · Last 30 Days</p>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="rounded-xl bg-black/30 border border-primary-500/10 p-3">
+                <p className="text-2xl font-bold text-white">${salesSummary.totalLogged.toLocaleString()}</p>
+                <p className="text-[10px] text-primary-400/50 mt-0.5">Total venue sales (logged)</p>
               </div>
-              <div>
-                <p className="text-lg font-bold text-emerald-400">${salesSummary.somRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-primary-400/40">SOM Transactions</p>
+              <div className="rounded-xl bg-black/30 border border-emerald-500/10 p-3">
+                <p className="text-2xl font-bold text-emerald-400">${salesSummary.somRevenue.toLocaleString()}</p>
+                <p className="text-[10px] text-primary-400/50 mt-0.5">Processed via Shot On Me</p>
               </div>
             </div>
-            <p className="text-[10px] text-primary-400/30 mt-3 pt-3 border-t border-primary-500/10">
-              {salesSummary.daysLogged} days logged · SOM transactions = payments redeemed at your venue through the app
-            </p>
+            <div className="flex items-center gap-3 text-[10px] text-primary-400/30">
+              <span>{salesSummary.daysLogged} days logged</span>
+              <span>·</span>
+              <span>SOM figure = drinks purchased & redeemed at your venue through the app</span>
+            </div>
           </div>
-        )}
-
-        {/* No sales logged yet — prompt */}
-        {(!salesSummary || salesSummary.daysLogged === 0) && (
-          <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-4 text-center">
-            <p className="text-sm font-medium text-white/60 mb-1">Track your sales</p>
-            <p className="text-xs text-primary-400/40">Log daily totals from the home screen. See your numbers alongside SOM activity.</p>
+        ) : (
+          <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <span className="text-lg">📊</span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">See your full picture</p>
+                <p className="text-xs text-primary-400/40">Log daily sales from the home screen — your numbers appear here</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-3 rounded-lg bg-black/30 border border-primary-500/10">
+              <div className="flex-1">
+                <p className="text-[10px] text-primary-400/50">How it works</p>
+                <p className="text-xs text-white/60 mt-1">End of shift → tap "Log Sales" on home → enter your register total. That's it.</p>
+              </div>
+            </div>
           </div>
         )}
 

@@ -425,7 +425,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">Sales Tracker</p>
-                  <p className="text-[10px] text-primary-400/40">Log daily totals — see your ROI</p>
+                  <p className="text-[10px] text-primary-400/40">Log your register total at close</p>
                 </div>
               </div>
               <button onClick={() => router.push('/dashboard/money')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
@@ -452,8 +452,8 @@ export default function Dashboard() {
             </form>
           </div>
           <div className="px-4 py-2.5 border-t border-primary-500/10 bg-black/20 flex items-center justify-between">
-            <p className="text-[10px] text-primary-400/30">10 seconds. Track your numbers over time.</p>
-            <p className="text-[10px] text-primary-500/60 font-medium">${stats.totalRevenue} processed via SOM</p>
+            <p className="text-[10px] text-primary-400/30">10 seconds at close. See your full picture over time.</p>
+            <p className="text-[10px] text-primary-400/40">${stats.totalRevenue} redeemed via app this month</p>
           </div>
         </div>
 
