@@ -377,15 +377,9 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
 
   const handleNewPromotion = () => {
     const activeCount = promotions.filter(p => p.isActive).length
-    if (!isPerformancePlus) {
-      if (!isGrowthPlus && activeCount >= 2) {
-        showError('Free plan allows 2 active deals. Upgrade to Growth for more.')
-        return
-      }
-      if (isGrowthPlus && activeCount >= 4) {
-        showError('Growth plan allows 4 active deals. Upgrade to Performance for unlimited.')
-        return
-      }
+    if (!isGrowthPlus && activeCount >= 2) {
+      showError('Free plan allows 2 active deals. Upgrade to Pro ($29/mo) for unlimited.')
+      return
     }
     setSelectedTemplate(null)
     setEditingPromo(null)

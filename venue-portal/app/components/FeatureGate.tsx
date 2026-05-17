@@ -8,10 +8,10 @@ import { useVenue } from '../contexts/VenueContext'
 const TIER_RANK: Record<string, number> = {
   free: 0,
   basic: 1,
-  growth: 2,
-  premium: 3,
-  performance: 4,
-  enterprise: 5,
+  growth: 1,
+  premium: 2,
+  performance: 2,
+  business: 2,
 }
 
 function meetsRequirement(currentTier: string, requiredTier: string): boolean {
@@ -19,19 +19,19 @@ function meetsRequirement(currentTier: string, requiredTier: string): boolean {
 }
 
 const TIER_LABEL: Record<string, string> = {
-  basic:       'Growth',
-  growth:      'Growth',
-  premium:     'Performance',
-  performance: 'Performance',
-  enterprise:  'Enterprise',
+  basic:       'Pro',
+  growth:      'Pro',
+  premium:     'Business',
+  performance: 'Business',
+  business:    'Business',
 }
 
 const TIER_PRICE: Record<string, string> = {
-  basic:       '$79/mo',
-  growth:      '$79/mo',
-  premium:     '$199/mo',
-  performance: '$199/mo',
-  enterprise:  'Contact us',
+  basic:       '$29/mo',
+  growth:      '$29/mo',
+  premium:     '$99/mo',
+  performance: '$99/mo',
+  business:    '$99/mo',
 }
 
 interface FeatureGateProps {

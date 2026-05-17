@@ -372,6 +372,8 @@ const venuesRouter = require('./routes/venues');
 venuesRouter.setIO(io);
 app.use('/api/venues', venuesRouter);
 
+app.use('/api/daily-sales', require('./routes/daily-sales'));
+
 const messagesRouter = require('./routes/messages');
 messagesRouter.setIO(io);
 app.use('/api/messages', messagesRouter);

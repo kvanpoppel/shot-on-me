@@ -240,9 +240,8 @@ export default function Dashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const live = promotions.filter(isLive)
   const upcoming = promotions.filter(isUpcoming).slice(0, 3)
-  const isPerf = tier === 'premium' || tier === 'performance' || tier === 'enterprise'
-  const isGrowth = tier === 'basic' || tier === 'growth'
-  const atLimit = isPerf ? false : isGrowth ? live.length >= 4 : live.length >= 2
+  const isPaid = tier !== 'free'
+  const atLimit = isPaid ? false : live.length >= 2
   const visibleAI = aiSuggestions.filter((_, i) => !dismissedAI.has(i))
 
   return (
@@ -413,6 +412,34 @@ export default function Dashboard() {
             <button onClick={() => router.push('/dashboard/money')} className="text-[10px] text-primary-400/40 hover:text-primary-400 mt-1 flex items-center gap-0.5">
               See details <ChevronRight className="w-3 h-3" />
             </button>
+          </div>
+        </div>
+
+        {/* Log Sales — one input */}
+        <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider">End of shift</p>
+              <p className="text-xs text-white/60 mt-0.5">Log total sales</p>
+            </div>
+            <form className="flex items-center gap-2" onSubmit={async (e) => {
+              e.preventDefault()
+              const input = (e.target as HTMLFormElement).elements.namedItem('sales') as HTMLInputElement
+              const val = parseFloat(input.value)
+              if (!val || val <= 0 || !token) return
+              try {
+                await axios.post(`${getApiUrl()}/daily-sales`, { totalSales: val }, { headers: { Authorization: `Bearer ${token}` } })
+                input.value = ''
+                showSuccess('Sales logged!')
+              } catch { showError('Failed to log') }
+            }}>
+              <div className="flex items-center bg-black/40 border border-primary-500/15 rounded-lg px-2">
+                <span className="text-xs text-primary-400/40">$</span>
+                <input name="sales" type="number" step="0.01" min="0" placeholder="0"
+                  className="w-20 bg-transparent py-1.5 px-1 text-sm text-white placeholder-primary-400/20 focus:outline-none" />
+              </div>
+              <button type="submit" className="px-3 py-1.5 rounded-lg bg-primary-500 text-black text-[10px] font-bold hover:bg-primary-400 transition-all">Log</button>
+            </form>
           </div>
         </div>
 

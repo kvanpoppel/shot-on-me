@@ -3,7 +3,7 @@
 import { useVenue } from '../contexts/VenueContext'
 import { Check, Crown, Lock, Mail } from 'lucide-react'
 
-type SubscriptionTier = 'free' | 'basic' | 'premium' | 'enterprise'
+type SubscriptionTier = 'free' | 'basic' | 'premium'
 
 interface PlanFeature {
   label: string
@@ -25,59 +25,44 @@ const PLANS: Plan[] = [
     price: '$0',
     priceSub: 'Free forever',
     features: [
-      { label: 'Up to 2 active deals', included: true },
-      { label: 'Basic venue profile', included: true },
-      { label: 'Manual promotion creation', included: true },
-      { label: 'AI-powered deal suggestions', included: false },
-      { label: 'Analytics & insights', included: false },
-      { label: 'Bank payouts', included: false },
+      { label: '2 active deals', included: true },
+      { label: 'Bank payouts', included: true },
+      { label: 'QR code + venue profile', included: true },
+      { label: '1 follower push per week', included: true },
+      { label: 'AI deal suggestions', included: false },
+      { label: 'Full analytics', included: false },
     ],
   },
   {
     tier: 'basic',
-    name: 'Growth',
-    price: '$79',
+    name: 'Pro',
+    price: '$29',
     priceSub: '/mo',
     features: [
-      { label: 'Up to 4 active deals', included: true },
-      { label: '4 quick launches, then upgrade', included: true },
+      { label: 'Unlimited deals', included: true },
       { label: 'AI-powered deal suggestions', included: true },
-      { label: 'AI Insights & analytics', included: true },
-      { label: 'Guest location data', included: true },
-      { label: 'Revenue forecasting (ROI Calculator)', included: true },
-      { label: 'Bank payouts', included: true },
+      { label: 'Full analytics + ROI tracking', included: true },
+      { label: 'Unlimited push notifications', included: true },
       { label: 'Recurring deals', included: true },
+      { label: 'Guest location data', included: true },
     ],
   },
   {
     tier: 'premium',
-    name: 'Performance',
-    price: '$199',
+    name: 'Business',
+    price: '$99',
     priceSub: '/mo',
     features: [
-      { label: 'Unlimited deals', included: true },
-      { label: 'Everything in Growth', included: true },
-      { label: 'Team / staff access', included: true },
-      { label: 'Priority support', included: true },
+      { label: 'Everything in Pro', included: true },
+      { label: 'Staff access', included: true },
       { label: 'Featured venue placement', included: true },
       { label: 'Advanced automation', included: true },
-    ],
-  },
-  {
-    tier: 'enterprise',
-    name: 'Enterprise',
-    price: 'Custom',
-    priceSub: 'Tailored pricing',
-    features: [
-      { label: 'Everything in Performance', included: true },
-      { label: 'Multi-venue management', included: true },
-      { label: 'Dedicated account manager', included: true },
-      { label: 'Custom integrations', included: true },
+      { label: 'Priority support', included: true },
     ],
   },
 ]
 
-const TIER_ORDER: SubscriptionTier[] = ['free', 'basic', 'premium', 'enterprise']
+const TIER_ORDER: SubscriptionTier[] = ['free', 'basic', 'premium']
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -131,7 +116,8 @@ export default function SubscriptionPlansManager() {
         {PLANS.map((plan) => {
           const isCurrent = normalizedTier === plan.tier
           const planIdx = TIER_ORDER.indexOf(plan.tier)
-          const isEnterprise = plan.tier === 'enterprise'
+          const isUpgrade = planIdx > currentIdx
+          const isDowngrade = planIdx < currentIdx
 
           // CTA logic
           let ctaLabel: string
@@ -141,16 +127,11 @@ export default function SubscriptionPlansManager() {
           if (isCurrent) {
             ctaLabel = 'Current Plan'
             ctaDisabled = true
-          } else if (isEnterprise) {
-            ctaLabel = 'Contact Sales'
-            ctaHref = mailtoLink('Enterprise')
-          } else if (isLocked) {
-            // Paid tier is still active — locked until expiry
-            ctaLabel = `Change plan after ${formatDate(subscriptionExpiresAt!)}`
+          } else if (isLocked && isDowngrade) {
+            ctaLabel = `Downgrade after ${formatDate(subscriptionExpiresAt!)}`
             ctaDisabled = true
           } else {
-            // Free tier, or paid but expired — can request upgrade
-            ctaLabel = planIdx > currentIdx ? 'Contact Us to Upgrade' : 'Contact Us'
+            ctaLabel = isUpgrade ? 'Upgrade' : 'Switch Plan'
             ctaHref = mailtoLink(plan.name)
           }
 

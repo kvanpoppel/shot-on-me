@@ -94,8 +94,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     >
       <Crown className="w-4 h-4 flex-shrink-0" />
       <div>
-        <p className="text-xs font-bold leading-none">Upgrade — $79/mo</p>
-        <p className="text-[10px] opacity-60 mt-0.5 font-normal">Unlock AI + automation</p>
+        <p className="text-xs font-bold leading-none">Upgrade — $29/mo</p>
+        <p className="text-[10px] opacity-60 mt-0.5 font-normal">Unlimited deals + AI</p>
       </div>
     </Link>
   )
