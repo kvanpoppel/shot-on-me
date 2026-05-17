@@ -497,21 +497,84 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
           const active = promotions.filter(p => getStatus(p) !== 'ended')
           const ended = promotions.filter(p => getStatus(p) === 'ended')
 
-          if (promotions.length === 0) return (
-            <div className="glass-elevated rounded-2xl p-8 text-center">
-              <p className="text-white/40 text-sm mb-4">No deals yet. Create your first deal to start driving traffic.</p>
-              <button onClick={handleNewPromotion}
-                className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-400 transition-colors">
-                Create Your First Deal
-              </button>
-            </div>
-          )
+          // Smart suggestions based on time/day
+          const getSuggestions = () => {
+            const now = new Date()
+            const hour = now.getHours()
+            const day = now.getDay() // 0=Sun
+            const suggestions: { key: string; emoji: string; title: string; why: string }[] = []
+
+            if (hour >= 14 && hour < 18) {
+              suggestions.push({ key: 'happy-hour', emoji: '🍻', title: 'Happy Hour', why: 'Peak pre-dinner window' })
+            }
+            if (hour >= 18 && hour < 22) {
+              suggestions.push({ key: 'flash-deal', emoji: '⚡', title: 'Flash Deal', why: "People are out — grab them now" })
+              suggestions.push({ key: 'vip', emoji: '👑', title: 'VIP Night', why: 'Drive exclusivity tonight' })
+            }
+            if (hour >= 10 && hour < 14) {
+              suggestions.push({ key: 'flash-deal', emoji: '⚡', title: 'Lunch Flash Deal', why: 'Catch the lunch crowd' })
+            }
+            if (day === 5 || day === 6) {
+              suggestions.push({ key: 'weekend', emoji: '🎉', title: 'Weekend Special', why: "It's the weekend — go big" })
+            }
+            if (day >= 1 && day <= 3 && hour >= 16) {
+              suggestions.push({ key: 'happy-hour', emoji: '🍻', title: 'Midweek Happy Hour', why: 'Slow night? Fill seats' })
+            }
+            // Always have at least 2
+            if (suggestions.length < 2) {
+              if (!suggestions.find(s => s.key === 'happy-hour')) suggestions.push({ key: 'happy-hour', emoji: '🍻', title: 'Happy Hour', why: 'Always a crowd-pleaser' })
+              if (!suggestions.find(s => s.key === 'flash-deal')) suggestions.push({ key: 'flash-deal', emoji: '⚡', title: 'Flash Deal', why: '1-hour urgency drives action' })
+            }
+            return suggestions.slice(0, 3)
+          }
+
+          if (active.length === 0) {
+            const suggestions = getSuggestions()
+            return (
+              <>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider">Suggested for right now</p>
+                  {suggestions.map(s => (
+                    <button key={s.key} onClick={() => handleInstantQuickAction(s.key)}
+                      disabled={publishing}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-primary-500/15 bg-[#1a1510]/50 hover:border-primary-500/30 hover:bg-[#1a1510]/80 transition-all text-left disabled:opacity-40">
+                      <span className="text-2xl">{s.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white">{s.title}</p>
+                        <p className="text-[10px] text-primary-400/50">{s.why}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-1 rounded-lg whitespace-nowrap">Go Live</span>
+                    </button>
+                  ))}
+                </div>
+                {/* Top performers below suggestions */}
+                {ended.length > 0 && (() => {
+                  const ranked = [...ended].sort((a, b) => {
+                    const scoreA = (a.analytics?.views || 0) + (a.analytics?.clicks || 0) * 3 + (a.analytics?.redemptions || 0) * 10
+                    const scoreB = (b.analytics?.views || 0) + (b.analytics?.clicks || 0) * 3 + (b.analytics?.redemptions || 0) * 10
+                    return scoreB - scoreA
+                  }).slice(0, 5)
+                  return (
+                    <div className="pt-3 border-t border-primary-500/10">
+                      <p className="text-[10px] font-semibold text-primary-400/40 uppercase tracking-wider mb-2">Run again</p>
+                      <div className="flex flex-wrap gap-2">
+                        {ranked.map((promo) => (
+                          <button key={promo._id} onClick={() => handleRunAgain(promo)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary-500/15 bg-[#1a1510]/40 hover:border-primary-500/30 hover:bg-[#1a1510]/70 transition-all text-xs text-white/60 hover:text-white/90">
+                            <span className="text-sm">{TYPE_EMOJI[promo.type] || '🎯'}</span>
+                            <span className="truncate max-w-[120px]">{promo.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </>
+            )
+          }
 
           return (
             <>
-              {active.length === 0 && (
-                <p className="text-xs text-white/30 text-center py-3">No active deals right now.</p>
-              )}
               <div className={`space-y-2 ${compactView ? 'max-h-[340px] overflow-y-auto pr-1' : ''}`}>
                 {active.map((promo) => {
                   const status = getStatus(promo)
