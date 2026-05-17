@@ -12,7 +12,7 @@ import {
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
-  const { venueName, tier, isOwner } = useVenue()
+  const { venueName, tier, isOwner, loading: venueLoading } = useVenue()
   const router = useRouter()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     { href: '/dashboard/money',      label: 'Money',    icon: DollarSign,      ownerOnly: true },
     { href: '/dashboard/settings',   label: 'Settings', icon: Settings,        ownerOnly: false },
   ]
-  const nav = allNav.filter(n => !n.ownerOnly || isOwner)
+  const nav = allNav.filter(n => !n.ownerOnly || isOwner || venueLoading)
 
   const active = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname?.startsWith(href)
@@ -123,8 +123,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <NavLinks />
           </div>
 
-          {/* Plan */}
-          <PlanBadge />
+          {/* Plan — owner only */}
+          {isOwner && <PlanBadge />}
         </div>
       </aside>
 
@@ -145,7 +145,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="flex-1 overflow-y-auto">
               <NavLinks close={() => setMobileOpen(false)} />
             </div>
-            <PlanBadge close={() => setMobileOpen(false)} />
+            {isOwner && <PlanBadge close={() => setMobileOpen(false)} />}
           </div>
         </div>
       )}

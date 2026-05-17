@@ -98,36 +98,6 @@ export default function Dashboard() {
     }
   }
 
-  // No venue access — show join screen
-  if (!venueLoading && !loading && user && !venueId) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="max-w-sm w-full text-center space-y-4">
-            <h2 className="text-lg font-bold text-white">Join a Venue</h2>
-            <p className="text-xs text-primary-400/60">Enter the access code given to you by the venue owner.</p>
-            <input
-              type="text"
-              value={joinCode}
-              onChange={e => setJoinCode(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleJoinVenue()}
-              placeholder="Enter access code"
-              className="w-full px-4 py-3 rounded-xl bg-[#1a1510]/60 border border-primary-500/20 text-white text-center text-sm placeholder-primary-400/30 focus:border-primary-500/40 focus:outline-none"
-            />
-            {joinError && <p className="text-xs text-red-400">{joinError}</p>}
-            <button
-              onClick={handleJoinVenue}
-              disabled={joining || !joinCode.trim()}
-              className="w-full py-3 rounded-xl bg-primary-500 text-black font-bold text-sm hover:bg-primary-400 disabled:opacity-30 transition-all"
-            >
-              {joining ? 'Joining...' : 'Join'}
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
   const fetchData = useCallback(async () => {
     if (!venueId || !token) return
     setLoadingData(true)
@@ -228,13 +198,43 @@ export default function Dashboard() {
   const sendNotify = async () => {
     if (!token || !venueId || !notifyTitle.trim()) return
     setSending(true)
-    try { await axios.post(`${getApiUrl()}/venues/${venueId}/notify`, { title: notifyTitle.trim(), message: notifyMsg.trim() }, { headers: { Authorization: `Bearer ${token}` } }); setSent(true) }
+    try { await axios.post(`${getApiUrl()}/venues/${venueId}/notify-followers`, { title: notifyTitle.trim(), message: notifyMsg.trim() }, { headers: { Authorization: `Bearer ${token}` } }); setSent(true) }
     catch (e: any) { showError(e?.response?.data?.error || 'Failed') }
     finally { setSending(false) }
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" /></div>
+  if (loading || venueLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" /></div>
   if (!user) return null
+
+  // No venue access — show join screen
+  if (!venueId) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="max-w-sm w-full text-center space-y-4">
+            <h2 className="text-lg font-bold text-white">Join a Venue</h2>
+            <p className="text-xs text-primary-400/60">Enter the access code given to you by the venue owner.</p>
+            <input
+              type="text"
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleJoinVenue()}
+              placeholder="Enter access code"
+              className="w-full px-4 py-3 rounded-xl bg-[#1a1510]/60 border border-primary-500/20 text-white text-center text-sm placeholder-primary-400/30 focus:border-primary-500/40 focus:outline-none"
+            />
+            {joinError && <p className="text-xs text-red-400">{joinError}</p>}
+            <button
+              onClick={handleJoinVenue}
+              disabled={joining || !joinCode.trim()}
+              className="w-full py-3 rounded-xl bg-primary-500 text-black font-bold text-sm hover:bg-primary-400 disabled:opacity-30 transition-all"
+            >
+              {joining ? 'Joining...' : 'Join'}
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'

@@ -245,13 +245,17 @@ router.get('/:venueId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
+    // Check if user is owner or staff of this venue
+    const isVenueStaff = venue.owner.toString() === req.user.userId.toString() ||
+      venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+
     // Regular users can only see active venues
-    if (req.user.userType !== 'venue' && !venue.isActive) {
+    if (!isVenueStaff && !venue.isActive) {
       return res.status(403).json({ message: 'Venue not available' });
     }
 
-    // Filter promotions based on targeting for regular users
-    if (req.user.userType !== 'venue') {
+    // Filter promotions based on targeting for regular users (not staff/owner)
+    if (!isVenueStaff) {
       const VenueLoyalty = require('../models/VenueLoyalty');
       // Use parallel queries for better performance
       const [user, venueLoyalty] = await Promise.all([
@@ -451,8 +455,9 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    // Only the venue owner or admin can create promotions
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
+    // Only the venue owner, staff, or admin can create promotions
+    const isStaffMember = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId.toString() && !isStaffMember && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to create promotions for this venue' });
     }
 
@@ -595,7 +600,8 @@ router.put('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
+    const isStaffMember = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId.toString() && !isStaffMember && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update promotions for this venue' });
     }
 
@@ -677,7 +683,8 @@ router.delete('/:venueId/promotions/:promotionId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    if (venue.owner.toString() !== req.user.userId.toString() && req.user.role !== 'admin') {
+    const isStaffMember = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId.toString() && !isStaffMember && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to delete promotions for this venue' });
     }
 
@@ -908,8 +915,9 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    // Only venue owner can see nearby users
-    if (venue.owner.toString() !== req.user.userId.toString().toString() && req.user.role !== 'admin') {
+    // Only venue owner/staff can see nearby users
+    const isStaffMember = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId.toString() && !isStaffMember && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -1017,13 +1025,14 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
     const { limit = 20 } = req.query;
     const safeLimit = Math.min(50, Math.max(1, parseInt(limit) || 20));
 
-    const venue = await Venue.findById(venueId).select('_id name location owner');
+    const venue = await Venue.findById(venueId).select('_id name location owner staff');
     if (!venue) {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
-    // Only the venue owner can see nearby users for their venue
-    if (venue.owner.toString() !== req.user.userId.toString()) {
+    // Only the venue owner/staff can see nearby users for their venue
+    const isStaff = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId.toString() && !isStaff) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -1069,8 +1078,9 @@ router.get('/:venueId/nearby-users', auth, async (req, res) => {
 router.post('/:venueId/notify-followers', auth, async (req, res) => {
   try {
     const { venueId } = req.params;
-    const { message, type = 'venue_update' } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message is required' });
+    const { title, message, type = 'venue_update' } = req.body;
+    const notifyMessage = message || title;
+    if (!notifyMessage) return res.status(400).json({ error: 'Message is required' });
 
     const Venue = require('../models/Venue');
     const Notification = require('../models/Notification');
@@ -1078,7 +1088,8 @@ router.post('/:venueId/notify-followers', auth, async (req, res) => {
 
     const venue = await Venue.findById(venueId);
     if (!venue) return res.status(404).json({ error: 'Venue not found' });
-    if (venue.owner.toString() !== req.user.userId) return res.status(403).json({ error: 'Not authorized' });
+    const isStaffMember = venue.staff?.some(s => s.user.toString() === req.user.userId.toString());
+    if (venue.owner.toString() !== req.user.userId && !isStaffMember) return res.status(403).json({ error: 'Not authorized' });
 
     if (!venue.followers || venue.followers.length === 0) {
       return res.json({ sent: 0, message: 'No followers yet' });
@@ -1098,7 +1109,7 @@ router.post('/:venueId/notify-followers', auth, async (req, res) => {
       const postType = type === 'venue_tonight' ? 'venue_tonight' : type === 'venue_special' ? 'venue_special' : 'venue_update';
       await FeedPost.create({
         venueAuthor: venue._id,
-        content: message,
+        content: notifyMessage,
         postType
       });
     } catch (feedErr) {
@@ -1111,7 +1122,7 @@ router.post('/:venueId/notify-followers', auth, async (req, res) => {
           recipient: follower._id,
           actor: venue.owner,
           type,
-          content: `${venue.name}: ${message}`,
+          content: `${venue.name}: ${notifyMessage}`,
           relatedVenue: venueId
         });
         sent++;

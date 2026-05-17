@@ -53,7 +53,7 @@ export function VenueProvider({ children }: { children: ReactNode }) {
           const staffUserId = s.user?._id?.toString() || s.user?.toString() || s.user
           return staffUserId === userId
         })
-      }) || venues[0]
+      })
 
       if (myVenue) {
         setVenueId(myVenue._id?.toString() || null)

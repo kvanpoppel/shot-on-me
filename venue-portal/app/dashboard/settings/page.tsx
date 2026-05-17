@@ -19,7 +19,7 @@ import {
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
-  const { isOwner } = useVenue()
+  const { isOwner, loading: venueLoading } = useVenue()
   const { showError } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -122,7 +122,7 @@ function SettingsPageContent() {
     }
   }
 
-  if (loading) return (
+  if (loading || venueLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" />
     </div>

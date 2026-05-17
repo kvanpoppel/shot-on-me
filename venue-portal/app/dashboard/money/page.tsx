@@ -19,7 +19,7 @@ type Tab = 'earnings' | 'payments' | 'payouts'
 
 function MoneyPageContent() {
   const { user, loading, token } = useAuth()
-  const { tier } = useVenue()
+  const { tier, isOwner, loading: venueLoading } = useVenue()
   const { showError } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,7 +30,8 @@ function MoneyPageContent() {
 
   useEffect(() => {
     if (!loading && !user) router.push('/')
-  }, [user, loading, router])
+    if (!loading && !venueLoading && user && !isOwner) router.push('/dashboard')
+  }, [user, loading, venueLoading, router, isOwner])
 
   useEffect(() => {
     const tab = searchParams?.get('tab') as Tab | null

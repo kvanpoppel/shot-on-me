@@ -7,8 +7,13 @@ const Payment = require('../models/Payment');
 // GET /api/dashboard/stats - Get dashboard statistics for venue owner
 router.get('/stats', auth, async (req, res) => {
   try {
-    // Find venue owned by user
-    const venue = await Venue.findOne({ owner: req.user.userId });
+    // Find venue owned by user or where user is staff
+    const venue = await Venue.findOne({
+      $or: [
+        { owner: req.user.userId },
+        { 'staff.user': req.user.userId }
+      ]
+    });
     if (!venue) {
       return res.status(404).json({ message: 'Venue not found' });
     }

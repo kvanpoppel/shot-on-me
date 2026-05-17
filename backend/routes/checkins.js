@@ -57,9 +57,12 @@ router.get('/', auth, async (req, res) => {
     const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
 
     if (venueId) {
-      // Venue owner requesting check-ins at their venue
-      const venueOwner = await Venue.findOne({ _id: venueId, owner: req.user.userId }).select('_id');
-      if (!venueOwner) {
+      // Venue owner or staff requesting check-ins at their venue
+      const venueAccess = await Venue.findOne({
+        _id: venueId,
+        $or: [{ owner: req.user.userId }, { 'staff.user': req.user.userId }]
+      }).select('_id');
+      if (!venueAccess) {
         return res.status(403).json({ message: 'Not authorized to view check-ins for this venue' });
       }
 
