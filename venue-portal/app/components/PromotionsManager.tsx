@@ -196,6 +196,7 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [showEnded, setShowEnded] = useState(false)
 
   const [modal, setModal] = useState<ModalState>(null)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
@@ -458,9 +459,9 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-white">Your Deals</h2>
-            {promotions.length > 0 && (
+            {promotions.filter(p => getStatus(p) !== 'ended').length > 0 && (
               <span className="bg-primary-500/15 text-primary-500 text-xs font-medium px-2 py-0.5 rounded-full">
-                {promotions.length}
+                {promotions.filter(p => getStatus(p) !== 'ended').length}
               </span>
             )}
           </div>
@@ -488,80 +489,98 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
         )}
 
         {/* Active Deals */}
-        {promotions.length === 0 ? (
-          <div className="glass-elevated rounded-2xl p-8 text-center">
-            <p className="text-white/40 text-sm mb-4">No deals yet. Create your first deal to start driving traffic.</p>
-            <button onClick={handleNewPromotion}
-              className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-400 transition-colors">
-              Create Your First Deal
-            </button>
-          </div>
-        ) : (
-          <div className={`space-y-2 ${compactView ? 'max-h-[340px] overflow-y-auto pr-1' : ''}`}>
-            {promotions.map((promo) => {
-              const status = getStatus(promo)
-              const emoji = TYPE_EMOJI[promo.type] || '🎯'
+        {(() => {
+          const active = promotions.filter(p => getStatus(p) !== 'ended')
+          const ended = promotions.filter(p => getStatus(p) === 'ended')
 
-              return (
-                <div key={promo._id}
-                  className="glass-elevated rounded-2xl p-4 hover:border-primary-500/20 transition-all">
-                  {/* Top row: emoji + title + status */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-xl flex-shrink-0">{emoji}</span>
-                      <h3 className="text-sm font-bold text-white truncate">{promo.title}</h3>
+          if (promotions.length === 0) return (
+            <div className="glass-elevated rounded-2xl p-8 text-center">
+              <p className="text-white/40 text-sm mb-4">No deals yet. Create your first deal to start driving traffic.</p>
+              <button onClick={handleNewPromotion}
+                className="bg-primary-500 text-black px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary-400 transition-colors">
+                Create Your First Deal
+              </button>
+            </div>
+          )
+
+          return (
+            <>
+              {active.length === 0 && (
+                <p className="text-xs text-white/30 text-center py-3">No active deals right now.</p>
+              )}
+              <div className={`space-y-2 ${compactView ? 'max-h-[340px] overflow-y-auto pr-1' : ''}`}>
+                {active.map((promo) => {
+                  const status = getStatus(promo)
+                  const emoji = TYPE_EMOJI[promo.type] || '🎯'
+                  return (
+                    <div key={promo._id} className="glass-elevated rounded-2xl p-4 hover:border-primary-500/20 transition-all">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-xl flex-shrink-0">{emoji}</span>
+                          <h3 className="text-sm font-bold text-white truncate">{promo.title}</h3>
+                        </div>
+                        {statusPill(status)}
+                      </div>
+                      {promo.description && <p className="text-xs text-white/40 mb-2 line-clamp-1">{promo.description}</p>}
+                      <p className="text-xs text-white/30 mb-2">
+                        {new Date(promo.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {' '}
+                        {new Date(promo.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        {' — '}
+                        {new Date(promo.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                      <div className="flex items-center gap-1 border-t border-primary-500/10 pt-2">
+                        <button onClick={() => handleEdit(promo)}
+                          className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                          <Edit className="w-3 h-3" /> Edit
+                        </button>
+                        <button onClick={() => { setAnalyticsPromoId({ id: promo._id, title: promo.title }); setModal('analytics') }}
+                          className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                          <BarChart3 className="w-3 h-3" /> Stats
+                        </button>
+                        <button onClick={() => handleDelete(promo._id)}
+                          className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
+                          <Square className="w-3 h-3" /> End
+                        </button>
+                      </div>
                     </div>
-                    {statusPill(status)}
-                  </div>
+                  )
+                })}
+              </div>
 
-                  {/* Description */}
-                  {promo.description && (
-                    <p className="text-xs text-white/40 mb-3 line-clamp-1">{promo.description}</p>
+              {/* Past deals — collapsed by default */}
+              {ended.length > 0 && (
+                <div className="pt-2">
+                  <button onClick={() => setShowEnded(!showEnded)}
+                    className="text-xs text-primary-400/40 hover:text-primary-400/70 transition-colors">
+                    {showEnded ? 'Hide' : 'Show'} past deals ({ended.length})
+                  </button>
+                  {showEnded && (
+                    <div className="space-y-2 mt-2 opacity-60">
+                      {ended.slice(0, 10).map((promo) => {
+                        const emoji = TYPE_EMOJI[promo.type] || '🎯'
+                        return (
+                          <div key={promo._id} className="glass-elevated rounded-xl p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm">{emoji}</span>
+                                <h3 className="text-xs font-medium text-white/60 truncate">{promo.title}</h3>
+                              </div>
+                              <button onClick={() => handleRunAgain(promo)}
+                                className="flex items-center gap-1 text-[10px] text-primary-400/50 hover:text-primary-500 px-2 py-0.5 rounded transition-colors">
+                                <RotateCcw className="w-3 h-3" /> Rerun
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
-
-                  {/* Time range */}
-                  <p className="text-xs text-white/30 mb-3">
-                    {new Date(promo.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {' '}
-                    {new Date(promo.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    {' — '}
-                    {new Date(promo.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </p>
-
-                  {/* Action row */}
-                  <div className="flex items-center gap-1 border-t border-primary-500/10 pt-2">
-                    {status !== 'ended' && (
-                      <button onClick={() => handleEdit(promo)}
-                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                        <Edit className="w-3 h-3" /> Edit
-                      </button>
-                    )}
-                    <button onClick={() => { setAnalyticsPromoId({ id: promo._id, title: promo.title }); setModal('analytics') }}
-                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                      <BarChart3 className="w-3 h-3" /> Stats
-                    </button>
-                    {status !== 'ended' && (
-                      <button onClick={() => handleDelete(promo._id)}
-                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                        <Square className="w-3 h-3" /> End Deal
-                      </button>
-                    )}
-                    {status === 'ended' && (
-                      <button onClick={() => handleRunAgain(promo)}
-                        className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                        <RotateCcw className="w-3 h-3" /> Run Again
-                      </button>
-                    )}
-                    <button onClick={() => { setSavingToLibraryId(promo._id); setModal('save-to-library') }}
-                      className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 px-2 py-1 rounded transition-colors">
-                      <BookmarkPlus className="w-3 h-3" /> Save
-                    </button>
-                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+            </>
+          )
+        })()}
       </div>
 
       {/* --- Modals --- */}
