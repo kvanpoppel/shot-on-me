@@ -99,29 +99,25 @@ router.get('/', auth, async (req, res) => {
 
     console.log(`[Venues API] User ID: ${req.user.userId}, User Type: ${req.user.userType}, Skip: ${skipNum}, Limit: ${limitNum}`);
 
-    if (req.user.userType === 'venue') {
+    // Check if user owns or is staff on any venue (regardless of userType)
+    const staffVenues = await Venue.find({
+      $or: [
+        { owner: req.user.userId },
+        { 'staff.user': req.user.userId }
+      ]
+    }).populate('owner', 'email firstName lastName').lean();
+
+    if (req.user.userType === 'venue' || staffVenues.length > 0) {
       // For venue owners/staff, return venues they own OR are staff of, plus test venues
-      const ownVenuesQuery = Venue.find({
-        $or: [
-          { owner: req.user.userId },
-          { 'staff.user': req.user.userId }
-        ]
-      });
       const testVenueNames = ["Kate's Pub", "Paige's Pub"];
-      const testVenuesQuery = Venue.find({
+      const testVenues = await Venue.find({
         isActive: true,
         name: { $in: testVenueNames }
-      });
-
-      // Since we're combining queries, we need to fetch all and then paginate
-      const [ownVenues, testVenues] = await Promise.all([
-        ownVenuesQuery.populate('owner', 'email firstName lastName').lean(),
-        testVenuesQuery.lean()
-      ]);
+      }).lean();
 
       // Combine and deduplicate by _id
       const venueMap = new Map();
-      [...ownVenues, ...testVenues].forEach(venue => {
+      [...staffVenues, ...testVenues].forEach(venue => {
         venueMap.set(venue._id.toString(), venue);
       });
       const allVenues = Array.from(venueMap.values());

@@ -66,14 +66,10 @@ router.post('/:venueId/staff', auth, async (req, res) => {
       return res.status(400).json({ error: 'Role must be manager or staff' });
     }
 
-    // Look up user by email
+    // Look up user by email — any account type can be staff
     const targetUser = await User.findOne({ email: email.toLowerCase().trim() });
     if (!targetUser) {
-      return res.status(404).json({ error: 'No account found with that email. They need to create a venue account first.' });
-    }
-
-    if (targetUser.userType !== 'venue') {
-      return res.status(400).json({ error: 'That user does not have a venue account. They need to register as a venue user.' });
+      return res.status(404).json({ error: 'No account found with that email. They need to create a Shot On Me account first.' });
     }
 
     // Check not adding self (owner)
