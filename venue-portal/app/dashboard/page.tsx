@@ -415,23 +415,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Sales Tracker */}
-        <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/50 overflow-hidden">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary-500/10 flex items-center justify-center">
-                  <span className="text-sm">📊</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Sales Tracker</p>
-                  <p className="text-[10px] text-primary-400/40">Log your register total at close</p>
-                </div>
-              </div>
-              <button onClick={() => router.push('/dashboard/money')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
-                Details <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
+        {/* Sales Tracker — only shows after 4pm, collapsed otherwise */}
+        {new Date().getHours() >= 16 && (
+          <div className="rounded-xl border border-primary-500/10 bg-[#1a1510]/30 p-3">
             <form className="flex items-center gap-2" onSubmit={async (e) => {
               e.preventDefault()
               const input = (e.target as HTMLFormElement).elements.namedItem('sales') as HTMLInputElement
@@ -443,19 +429,16 @@ export default function Dashboard() {
                 showSuccess('Sales logged!')
               } catch { showError('Failed to log') }
             }}>
-              <div className="flex-1 flex items-center bg-black/40 border border-primary-500/15 rounded-lg px-3">
-                <span className="text-sm text-primary-400/40">$</span>
-                <input name="sales" type="number" step="0.01" min="0" placeholder="Today's total sales"
-                  className="flex-1 bg-transparent py-2.5 px-1.5 text-sm text-white placeholder-primary-400/20 focus:outline-none" />
+              <p className="text-[10px] text-primary-400/30 whitespace-nowrap">Close out?</p>
+              <div className="flex-1 flex items-center bg-black/30 border border-primary-500/10 rounded-lg px-2">
+                <span className="text-xs text-primary-400/30">$</span>
+                <input name="sales" type="number" step="0.01" min="0" placeholder="Total"
+                  className="flex-1 bg-transparent py-2 px-1 text-sm text-white placeholder-primary-400/15 focus:outline-none w-20" />
               </div>
-              <button type="submit" className="px-4 py-2.5 rounded-lg bg-primary-500 text-black text-xs font-bold hover:bg-primary-400 transition-all whitespace-nowrap">Log Sales</button>
+              <button type="submit" className="px-3 py-2 rounded-lg bg-primary-500/80 text-black text-[10px] font-bold hover:bg-primary-500 transition-all">Log</button>
             </form>
           </div>
-          <div className="px-4 py-2.5 border-t border-primary-500/10 bg-black/20 flex items-center justify-between">
-            <p className="text-[10px] text-primary-400/30">10 seconds at close. See your full picture over time.</p>
-            <p className="text-[10px] text-primary-400/40">${stats.totalRevenue} redeemed via app this month</p>
-          </div>
-        </div>
+        )}
 
         {/* Notify */}
         <div className="rounded-xl border border-primary-500/15 bg-black/40 overflow-hidden">
