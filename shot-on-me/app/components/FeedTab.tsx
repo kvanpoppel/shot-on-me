@@ -147,6 +147,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([])
+  const [friendsRow, setFriendsRow] = useState<any[]>([])
+  const [friendsRowTab, setFriendsRowTab] = useState<'friends' | 'discover'>('friends')
   const [selectedMedia, setSelectedMedia] = useState<File[]>([])
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
   const [selectedStoryGroup, setSelectedStoryGroup] = useState<any>(null)
@@ -261,7 +263,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         fetchAISignals(),
         fetchNearbyFriends(),
         fetchTrendingVenues(),
-        fetchFriendSuggestions()
+        fetchFriendSuggestions(),
+        axios.get(`${API_URL}/users/friends`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => setFriendsRow(res.data.friends || res.data || []))
+          .catch(() => {})
       ]).catch(error => {
         /* silent */
       })
@@ -1667,66 +1672,87 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         </div>
       </div>
 
-      {/* Friend Suggestions - Inline */}
-      {friendSuggestions.length > 0 && (
-        <div className="p-4 bg-gradient-to-r from-primary-500/5 to-transparent border-b border-primary-500/10">
-          <div className="flex items-center space-x-2 mb-3">
-            <Users className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-primary-500">People You May Know</h2>
+      {/* Friends / Discover Row */}
+      {(friendsRow.length > 0 || friendSuggestions.length > 0) && (
+        <div className="px-4 py-3 border-b border-primary-500/10">
+          {/* Tab toggle */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setFriendsRowTab('friends')}
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+                friendsRowTab === 'friends' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
+              }`}
+            >Friends</button>
+            <button
+              onClick={() => setFriendsRowTab('discover')}
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+                friendsRowTab === 'discover' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
+              }`}
+            >Discover</button>
           </div>
-          <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
-            {friendSuggestions.slice(0, 5).map((suggestion) => (
-              <div
-                key={suggestion._id || suggestion.id}
-                className="flex flex-col items-center space-y-2 bg-black/40 border border-primary-500/15 rounded-lg p-3 flex-shrink-0 min-w-[100px] backdrop-blur-sm"
-              >
+
+          {/* Friends row */}
+          {friendsRowTab === 'friends' && friendsRow.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {friendsRow.slice(0, 12).map((friend: any) => (
                 <div
-                  className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden cursor-pointer hover:border-primary-500 transition-all"
-                  onClick={() => {
-                    const profileId = suggestion._id || suggestion.id
-                    if (profileId) trackProfileViewForAI(profileId)
-                    onViewProfile?.(profileId)
-                  }}
+                  key={friend._id || friend.id}
+                  onClick={() => onViewProfile?.(friend._id || friend.id)}
+                  className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer w-14"
                 >
-                  {suggestion.profilePicture ? (
-                    <img src={suggestion.profilePicture} alt={suggestion.firstName} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                      <span className="text-primary-500 font-medium">
-                        {suggestion.firstName?.[0]}{suggestion.lastName?.[0]}
-                      </span>
-                    </div>
-                  )}
+                  <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden">
+                    {friend.profilePicture ? (
+                      <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                        <span className="text-primary-500 font-medium text-xs">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-primary-400/70 font-medium text-center truncate w-full">{friend.firstName}</p>
                 </div>
-                <p
-                  className="text-xs font-semibold text-primary-500 text-center cursor-pointer hover:text-primary-400 transition-all"
-                  onClick={() => {
-                    const profileId = suggestion._id || suggestion.id
-                    if (profileId) trackProfileViewForAI(profileId)
-                    onViewProfile?.(profileId)
-                  }}
+              ))}
+            </div>
+          )}
+          {friendsRowTab === 'friends' && friendsRow.length === 0 && (
+            <p className="text-xs text-primary-400/30 text-center py-2">Add friends to see them here</p>
+          )}
+
+          {/* Discover row */}
+          {friendsRowTab === 'discover' && friendSuggestions.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {friendSuggestions.slice(0, 8).map((suggestion) => (
+                <div
+                  key={suggestion._id || suggestion.id}
+                  className="flex-shrink-0 flex flex-col items-center gap-1 w-14"
                 >
-                  {suggestion.firstName}
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    const friendId = suggestion._id || suggestion.id
-                    if (friendId) {
-                      handleAddFriend(friendId)
-                    } else {
-                      showToast('Unable to add friend - missing user ID')
-                    }
-                  }}
-                  className="bg-primary-500 text-black px-3 py-1 rounded-full text-xs font-medium hover:bg-primary-600 transition-all w-full flex items-center justify-center"
-                >
-                  <UserPlus className="w-3 h-3 inline mr-1" />
-                  Add
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div
+                    className="w-12 h-12 border-2 border-primary-500/20 rounded-full overflow-hidden cursor-pointer"
+                    onClick={() => onViewProfile?.(suggestion._id || suggestion.id)}
+                  >
+                    {suggestion.profilePicture ? (
+                      <img src={suggestion.profilePicture} alt={suggestion.firstName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                        <span className="text-primary-500 font-medium text-xs">{suggestion.firstName?.[0]}{suggestion.lastName?.[0]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-primary-400/70 font-medium text-center truncate w-full">{suggestion.firstName}</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleAddFriend(suggestion._id || suggestion.id)
+                    }}
+                    className="text-[9px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full"
+                  >Add</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {friendsRowTab === 'discover' && friendSuggestions.length === 0 && (
+            <p className="text-xs text-primary-400/30 text-center py-2">No suggestions right now</p>
+          )}
         </div>
       )}
 
