@@ -1700,12 +1700,12 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
           {/* Friends row */}
           {friendsRowTab === 'friends' && friendsRow.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+            <div className="grid grid-cols-6 gap-2 pb-1">
               {friendsRow.slice(0, 6).map((friend: any) => (
                 <div
                   key={friend._id || friend.id}
                   onClick={() => onViewProfile?.(friend._id || friend.id)}
-                  className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer w-14"
+                  className="flex flex-col items-center gap-1 cursor-pointer"
                 >
                   <div className="w-12 h-12 border-2 border-primary-500/30 rounded-full overflow-hidden">
                     {friend.profilePicture ? (
@@ -1729,11 +1729,11 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
           {/* Discover row */}
           {friendsRowTab === 'discover' && friendSuggestions.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+            <div className="grid grid-cols-6 gap-2 pb-1">
               {friendSuggestions.slice(0, 6).map((suggestion) => (
                 <div
                   key={suggestion._id || suggestion.id}
-                  className="flex-shrink-0 flex flex-col items-center gap-1 w-14"
+                  className="flex flex-col items-center gap-1"
                 >
                   <div
                     className="w-12 h-12 border-2 border-primary-500/20 rounded-full overflow-hidden cursor-pointer"
