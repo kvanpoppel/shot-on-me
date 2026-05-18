@@ -612,7 +612,31 @@ router.get('/search/:query?', auth, async (req, res) => {
   }
 });
 
-// Get user by ID (must be last to avoid matching /me, /profile, /search, /suggestions)
+// Get friend profiles
+router.get('/friends', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('friends');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const friends = await User.find({ _id: { $in: user.friends || [] } })
+      .select('firstName lastName name profilePicture')
+      .lean();
+
+    const profiles = friends.map(f => ({
+      _id: f._id,
+      firstName: f.firstName || (f.name || '').split(' ')[0] || '',
+      lastName: f.lastName || (f.name || '').split(' ').slice(1).join(' ') || '',
+      profilePicture: f.profilePicture || null
+    }));
+
+    res.json({ friends: profiles });
+  } catch (err) {
+    console.error('Get friends error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user by ID (must be last to avoid matching /me, /profile, /search, /suggestions, /friends)
 router.get('/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
