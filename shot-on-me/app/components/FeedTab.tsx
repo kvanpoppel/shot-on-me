@@ -14,6 +14,7 @@ import BackButton from './BackButton'
 import { getInviteLink, shareInvite, getInviteMessage } from '../utils/invite'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 import RoundModeSheet from './RoundModeSheet'
+import FindFriends from './FindFriends'
 
 import { useApiUrl } from '../utils/api'
 
@@ -149,6 +150,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([])
   const [friendsRow, setFriendsRow] = useState<any[]>([])
   const [friendsRowTab, setFriendsRowTab] = useState<'friends' | 'discover'>('friends')
+  const [showFindFriends, setShowFindFriends] = useState(false)
   const [selectedMedia, setSelectedMedia] = useState<File[]>([])
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
   const [selectedStoryGroup, setSelectedStoryGroup] = useState<any>(null)
@@ -1675,20 +1677,25 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       {/* Friends / Discover Row */}
       {(friendsRow.length > 0 || friendSuggestions.length > 0) && (
         <div className="px-4 py-3 border-b border-primary-500/10">
-          {/* Tab toggle */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              onClick={() => setFriendsRowTab('friends')}
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
-                friendsRowTab === 'friends' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
-              }`}
-            >Friends</button>
-            <button
-              onClick={() => setFriendsRowTab('discover')}
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
-                friendsRowTab === 'discover' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
-              }`}
-            >Discover</button>
+          {/* Tab toggle + search */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFriendsRowTab('friends')}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+                  friendsRowTab === 'friends' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
+                }`}
+              >Friends</button>
+              <button
+                onClick={() => setFriendsRowTab('discover')}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+                  friendsRowTab === 'discover' ? 'bg-primary-500 text-black' : 'text-primary-400/50 hover:text-primary-400'
+                }`}
+              >Discover</button>
+            </div>
+            <button onClick={() => setShowFindFriends(true)} className="flex items-center gap-1 text-xs text-primary-400/50 hover:text-primary-500 transition-colors">
+              <UserPlus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {/* Friends row */}
@@ -1715,7 +1722,9 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
             </div>
           )}
           {friendsRowTab === 'friends' && friendsRow.length === 0 && (
-            <p className="text-xs text-primary-400/30 text-center py-2">Add friends to see them here</p>
+            <button onClick={() => setShowFindFriends(true)} className="w-full text-center py-3">
+              <p className="text-xs text-primary-400/40">Find friends to get started</p>
+            </button>
           )}
 
           {/* Discover row */}
@@ -1786,6 +1795,9 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       {/* Round Mode Sheet */}
       <RoundModeSheet isOpen={showRoundMode} onClose={() => setShowRoundMode(false)} />
+
+      {/* Find Friends Modal */}
+      <FindFriends isOpen={showFindFriends} onClose={() => { setShowFindFriends(false); axios.get(`${API_URL}/users/friends`, { headers: { Authorization: `Bearer ${token}` } }).then(res => setFriendsRow(res.data.friends || res.data || [])).catch(() => {}) }} onViewProfile={onViewProfile} />
 
       {/* Friend Invite Modal */}
       {showFriendInvite && (
