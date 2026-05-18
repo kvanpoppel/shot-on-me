@@ -16,6 +16,8 @@ import {
   UserMinus,
   Loader2,
   Send,
+  Flame,
+  Trophy,
 } from 'lucide-react'
 import BackButton from './BackButton'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
@@ -50,7 +52,8 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
   const [addingFriend, setAddingFriend] = useState(false)
   const [removingFriend, setRemovingFriend] = useState(false)
   const [showSendDrink, setShowSendDrink] = useState(false)
-  const [stats, setStats] = useState({ postsCount: 0, friendsCount: 0, checkInsCount: 0, venuesVisited: 0, points: 0 })
+  const [activeView, setActiveView] = useState<'activity' | 'friends'>('activity')
+  const [stats, setStats] = useState({ postsCount: 0, friendsCount: 0, checkInsCount: 0, venuesVisited: 0, points: 0, totalSent: 0, checkInStreak: 0 })
 
   useEffect(() => {
     if (token && userId) fetchFriendProfile()
@@ -75,9 +78,10 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
           checkInsCount: friendData.stats?.totalCheckIns || 0,
           venuesVisited: friendData.stats?.venuesVisited || 0,
           points: friendData.points || 0,
+          totalSent: friendData.stats?.totalSent || 0,
+          checkInStreak: friendData.stats?.checkInStreak || 0,
         })
 
-        // Check mutual friends
         if (meRes.status === 'fulfilled') {
           const currentUser = meRes.value.data.user
           setIsFriend(currentUser.friends?.includes(userId) || false)
@@ -101,7 +105,6 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
         const allPosts = feedRes.value.data.posts || []
         const friendPosts = allPosts.filter((p: FeedPost) => (p.author._id || p.author.id) === userId)
         setPosts(friendPosts)
-        // Update posts count from actual data if stats didn't have it
         if (friendPosts.length > 0) {
           setStats(prev => ({ ...prev, postsCount: prev.postsCount || friendPosts.length }))
         }
@@ -178,148 +181,223 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
 
   return (
     <div className="fixed inset-0 bg-black z-[70] overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-black/95 backdrop-blur-sm border-b border-primary-500/10 z-10 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <BackButton onClick={onClose} label="Back" />
-          <h1 className="text-base font-bold text-primary-500">{friend.firstName}'s Profile</h1>
-          <div className="w-9" />
-        </div>
-      </div>
+      <div className="min-h-screen pb-14 max-w-2xl mx-auto">
 
-      {/* Profile Header */}
-      <div className="px-4 pt-5 pb-4">
-        {/* Avatar + name + actions */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
-            {friend.profilePicture ? (
-              <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+        {/* Header */}
+        <div className="sticky top-0 bg-black/95 backdrop-blur-sm border-b border-primary-500/10 z-10 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <BackButton onClick={onClose} label="Back" />
+            <h1 className="text-base font-bold text-primary-500">{friend.firstName}'s Profile</h1>
+            <div className="w-9" />
+          </div>
+        </div>
+
+        {/* Profile Header */}
+        <div className="px-4 pt-6 pb-4">
+          {/* Avatar + name + actions */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden flex-shrink-0">
+              {friend.profilePicture ? (
+                <img src={friend.profilePicture} alt={friend.firstName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                  <span className="text-2xl text-primary-500 font-semibold">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-white">{friend.firstName} {friend.lastName}</h2>
+              {friend.username && <p className="text-sm text-primary-400/60">@{friend.username}</p>}
+              {friend.bio && <p className="text-sm text-primary-400/50 mt-1 leading-snug line-clamp-2">{friend.bio}</p>}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {[
+              { value: stats.postsCount, label: 'Posts' },
+              { value: stats.friendsCount, label: 'Friends' },
+              { value: stats.checkInsCount, label: 'Check-ins' },
+              { value: stats.venuesVisited, label: 'Venues' },
+            ].map(({ value, label }) => (
+              <div key={label} className="text-center py-2.5 rounded-xl bg-primary-500/5 border border-primary-500/10">
+                <p className="text-lg font-bold text-primary-500">{value}</p>
+                <p className="text-[10px] text-primary-400/50 font-medium">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 mb-3">
+            {isFriend ? (
+              <>
+                <button
+                  onClick={() => setShowSendDrink(true)}
+                  className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all active:scale-[0.98]"
+                >
+                  <Send className="w-4 h-4" /> Send a Shot
+                </button>
+                <button
+                  onClick={handleRemoveFriend}
+                  disabled={removingFriend}
+                  className="px-4 py-3 rounded-xl border border-primary-500/20 text-primary-400/60 text-sm font-medium hover:border-red-500/30 hover:text-red-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {removingFriend ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
+                </button>
+              </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                <span className="text-2xl text-primary-500 font-semibold">{friend.firstName?.[0]}{friend.lastName?.[0]}</span>
+              <button
+                onClick={handleAddFriend}
+                disabled={addingFriend}
+                className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50 active:scale-[0.98]"
+              >
+                {addingFriend ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                {addingFriend ? 'Adding...' : 'Add Friend'}
+              </button>
+            )}
+          </div>
+
+          {/* Highlights strip */}
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {stats.checkInStreak > 0 && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+                <Flame className="w-3.5 h-3.5 text-orange-400" />
+                <span className="text-xs font-semibold text-orange-400">{stats.checkInStreak} day streak</span>
+              </div>
+            )}
+            {stats.points > 0 && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-xs font-semibold text-yellow-400">{stats.points} pts</span>
+              </div>
+            )}
+            {stats.totalSent > 0 && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20">
+                <Send className="w-3.5 h-3.5 text-primary-500" />
+                <span className="text-xs font-semibold text-primary-500">{stats.totalSent} sent</span>
+              </div>
+            )}
+            {mutualFriends.length > 0 && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-500/5 border border-primary-500/10">
+                <div className="flex -space-x-1.5">
+                  {mutualFriends.slice(0, 3).map((m) => (
+                    <div key={m._id || m.id} className="w-4 h-4 border border-black rounded-full overflow-hidden">
+                      {m.profilePicture ? (
+                        <img src={m.profilePicture} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-primary-500/20" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs text-primary-400/60">{mutualFriends.length} mutual</span>
               </div>
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-white">{friend.firstName} {friend.lastName}</h2>
-            {friend.username && <p className="text-sm text-primary-400/60">@{friend.username}</p>}
-            {friend.bio && <p className="text-sm text-primary-400/50 mt-1 leading-snug line-clamp-2">{friend.bio}</p>}
-          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {[
-            { value: stats.postsCount, label: 'Posts' },
-            { value: stats.friendsCount, label: 'Friends' },
-            { value: stats.checkInsCount, label: 'Check-ins' },
-            { value: stats.venuesVisited, label: 'Venues' },
-          ].map(({ value, label }) => (
-            <div key={label} className="text-center py-2.5 rounded-xl bg-primary-500/5 border border-primary-500/10">
-              <p className="text-lg font-bold text-primary-500">{value}</p>
-              <p className="text-[10px] text-primary-400/50 font-medium">{label}</p>
-            </div>
+        {/* Tabs */}
+        <div className="flex border-b border-primary-500/10">
+          {([
+            { key: 'activity' as const, icon: Grid3x3, label: 'Activity' },
+            { key: 'friends' as const, icon: Users, label: 'Friends' },
+          ]).map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveView(key)}
+              className={`flex-1 py-3 text-sm font-medium transition-all ${
+                activeView === key
+                  ? 'text-primary-500 border-b-2 border-primary-500'
+                  : 'text-primary-400/50 hover:text-primary-500'
+              }`}
+            >
+              <Icon className="w-4 h-4 inline mr-1.5" />
+              {label}
+            </button>
           ))}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-2 mb-3">
-          {isFriend ? (
+        {/* Content */}
+        <div className="p-4">
+          {activeView === 'activity' && (
             <>
-              <button
-                onClick={() => setShowSendDrink(true)}
-                className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all active:scale-[0.98]"
-              >
-                <Send className="w-4 h-4" /> Send a Shot
-              </button>
-              <button
-                onClick={handleRemoveFriend}
-                disabled={removingFriend}
-                className="px-4 py-3 rounded-xl border border-primary-500/20 text-primary-400/60 text-sm font-medium hover:border-red-500/30 hover:text-red-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {removingFriend ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
-              </button>
+              {posts.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <Grid3x3 className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
+                  <p className="text-white font-semibold mb-1">No activity yet</p>
+                  <p className="text-primary-400/40 text-sm">{friend.firstName} hasn't posted or checked in yet.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {posts.map((post) => {
+                    const isCheckIn = !!post.checkIn
+                    const venueName = post.checkIn?.venue?.name || post.location?.venue?.name
+                    return (
+                      <div key={post._id} className="bg-black/40 border border-primary-500/10 rounded-xl overflow-hidden">
+                        {post.media && post.media.length > 0 ? (
+                          <img src={post.media[0].url || post.media[0].thumbnail} alt="Post" className="w-full h-48 object-cover" />
+                        ) : isCheckIn ? (
+                          <div className="w-full h-20 flex items-center justify-center bg-primary-500/5">
+                            <CheckCircle2 className="w-6 h-6 text-primary-500/30" />
+                          </div>
+                        ) : null}
+                        <div className="p-3">
+                          {venueName && (
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                              <span className="text-xs font-semibold text-primary-500">{venueName}</span>
+                            </div>
+                          )}
+                          {post.content && <p className="text-sm text-primary-400/70 leading-snug line-clamp-3">{post.content}</p>}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-primary-400/40">
+                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.length}</span>
+                            <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.length}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeAgo(post.createdAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </>
-          ) : (
-            <button
-              onClick={handleAddFriend}
-              disabled={addingFriend}
-              className="flex-1 bg-primary-500 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50 active:scale-[0.98]"
-            >
-              {addingFriend ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              {addingFriend ? 'Adding...' : 'Add Friend'}
-            </button>
           )}
-        </div>
 
-        {/* Mutual friends */}
-        {mutualFriends.length > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="flex -space-x-2">
-              {mutualFriends.slice(0, 4).map((m) => (
-                <div key={m._id || m.id} className="w-7 h-7 border-2 border-black rounded-full overflow-hidden">
-                  {m.profilePicture ? (
-                    <img src={m.profilePicture} alt={m.firstName} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
-                      <span className="text-primary-500 font-medium text-[8px]">{m.firstName?.[0]}{m.lastName?.[0]}</span>
+          {activeView === 'friends' && (
+            <>
+              {stats.friendsCount === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
+                  <p className="text-primary-400/40 text-sm">No friends yet</p>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
+                  <p className="text-white font-semibold mb-1">{stats.friendsCount} friends</p>
+                  {mutualFriends.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-xs text-primary-400/40 mb-3">Mutual friends</p>
+                      {mutualFriends.map(m => (
+                        <div key={m._id || m.id} className="flex items-center gap-3 p-2 rounded-xl bg-primary-500/5 border border-primary-500/10">
+                          <div className="w-9 h-9 rounded-full overflow-hidden border border-primary-500/20">
+                            {m.profilePicture ? (
+                              <img src={m.profilePicture} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-primary-500/10">
+                                <span className="text-primary-500 text-xs font-medium">{m.firstName?.[0]}{m.lastName?.[0]}</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-white font-medium">{m.firstName} {m.lastName}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-primary-400/50">{mutualFriends.length} mutual friend{mutualFriends.length !== 1 ? 's' : ''}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Activity header */}
-      <div className="flex items-center border-b border-primary-500/10 px-4 py-3">
-        <Grid3x3 className="w-4 h-4 text-primary-500 mr-2" />
-        <span className="text-sm font-medium text-primary-500">Activity</span>
-      </div>
-
-      {/* Activity feed */}
-      <div className="p-4">
-        {posts.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <Grid3x3 className="w-10 h-10 text-primary-500/20 mx-auto mb-3" />
-            <p className="text-white font-semibold mb-1">No activity yet</p>
-            <p className="text-primary-400/40 text-sm">{friend.firstName} hasn't posted or checked in yet.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {posts.map((post) => {
-              const isCheckIn = !!post.checkIn
-              const venueName = post.checkIn?.venue?.name || post.location?.venue?.name
-              return (
-                <div key={post._id} className="bg-black/40 border border-primary-500/10 rounded-xl overflow-hidden">
-                  {post.media && post.media.length > 0 ? (
-                    <img src={post.media[0].url || post.media[0].thumbnail} alt="Post" className="w-full h-48 object-cover" />
-                  ) : isCheckIn ? (
-                    <div className="w-full h-20 flex items-center justify-center bg-primary-500/5">
-                      <CheckCircle2 className="w-6 h-6 text-primary-500/30" />
-                    </div>
-                  ) : null}
-                  <div className="p-3">
-                    {venueName && (
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-primary-500" />
-                        <span className="text-xs font-semibold text-primary-500">{venueName}</span>
-                      </div>
-                    )}
-                    {post.content && <p className="text-sm text-primary-400/70 leading-snug line-clamp-3">{post.content}</p>}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-primary-400/40">
-                      <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.length}</span>
-                      <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.length}</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeAgo(post.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {friend && showSendDrink && (
