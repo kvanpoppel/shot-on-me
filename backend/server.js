@@ -373,6 +373,7 @@ venuesRouter.setIO(io);
 app.use('/api/venues', venuesRouter);
 
 app.use('/api/daily-sales', require('./routes/daily-sales'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
 
 const messagesRouter = require('./routes/messages');
 messagesRouter.setIO(io);

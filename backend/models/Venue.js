@@ -161,6 +161,8 @@ const venueSchema = new mongoose.Schema({
     default: null
     // Index defined below - don't use sparse: true here to avoid duplicate
   },
+  stripeCustomerId: { type: String, default: null },
+  stripeSubscriptionId: { type: String, default: null },
   followers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
