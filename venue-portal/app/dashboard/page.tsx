@@ -184,14 +184,28 @@ export default function Dashboard() {
 
   const handleWizardSave = async (formData: any) => {
     if (!venueId || !token) return
+    const { imageFile, ...dealData } = formData
     try {
+      let promoId: string | null = null
       if (editingPromo) {
-        await axios.put(`${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`, formData, { headers: { Authorization: `Bearer ${token}` } })
+        await axios.put(`${getApiUrl()}/venues/${venueId}/promotions/${editingPromo._id}`, dealData, { headers: { Authorization: `Bearer ${token}` } })
+        promoId = editingPromo._id
         showSuccess('Deal updated!')
       } else {
-        await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, formData, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await axios.post(`${getApiUrl()}/venues/${venueId}/promotions`, dealData, { headers: { Authorization: `Bearer ${token}` } })
+        promoId = res.data.promotion?._id
         showSuccess('Deal published!')
       }
+
+      // Upload image if provided
+      if (imageFile && promoId) {
+        const fd = new FormData()
+        fd.append('image', imageFile)
+        await axios.post(`${getApiUrl()}/venues/${venueId}/promotions/${promoId}/image`, fd, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        })
+      }
+
       setShowWizard(false)
       setEditingPromo(null)
       setQuickLaunchData(null)

@@ -492,6 +492,42 @@ router.post('/:venueId/cover-photo', auth, venuePhotoUpload.single('photo'), asy
   }
 });
 
+// POST /api/venues/:venueId/promotions/:promotionId/image — upload deal image
+router.post('/:venueId/promotions/:promotionId/image', auth, venuePhotoUpload.single('image'), async (req, res) => {
+  try {
+    const venue = await Venue.findById(req.params.venueId);
+    if (!venue) return res.status(404).json({ message: 'Venue not found' });
+    if (venue.owner.toString() !== req.user.userId.toString() && !venue.staff?.some(s => s.user.toString() === req.user.userId.toString())) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (!req.file) return res.status(400).json({ message: 'No image file provided' });
+
+    const promotion = venue.promotions.id(req.params.promotionId);
+    if (!promotion) return res.status(404).json({ message: 'Promotion not found' });
+
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'shot-on-me/promotions',
+          transformation: [
+            { width: 800, height: 600, crop: 'fill', gravity: 'auto' },
+            { quality: 'auto', fetch_format: 'auto' }
+          ]
+        },
+        (error, res) => { if (error) reject(error); else resolve(res); }
+      ).end(req.file.buffer);
+    });
+
+    promotion.image = result.secure_url;
+    await venue.save();
+    res.json({ imageUrl: result.secure_url });
+  } catch (error) {
+    console.error('Promotion image upload error:', error);
+    res.status(500).json({ message: 'Upload failed' });
+  }
+});
+
 // POST /api/venues/:venueId/promotions
 router.post('/:venueId/promotions', auth, async (req, res) => {
   try {
@@ -624,10 +660,12 @@ router.post('/:venueId/promotions', auth, async (req, res) => {
 
     await venue.save();
 
+    // Return the saved promotion (with _id from MongoDB)
+    const savedPromotion = venue.promotions[venue.promotions.length - 1];
     const followerCount = venue.followers?.length || 0;
     res.status(201).json({
       message: 'Promotion created successfully',
-      promotion: basePromotion,
+      promotion: savedPromotion,
       venue,
       followersNotified: followerCount
     });

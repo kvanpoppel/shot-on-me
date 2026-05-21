@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Lock, Sparkles, Eye, Crown, Repeat } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Lock, Sparkles, Eye, Crown, Repeat, ImagePlus } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
 import { useFeatureAvailable } from '../FeatureGate'
 
@@ -12,6 +12,7 @@ interface PromotionFormData {
   isRecurring: boolean
   recurrencePattern: { type: 'daily' | 'weekly' | 'monthly' | 'custom'; frequency: number; daysOfWeek: number[]; endDate: string; maxOccurrences?: number }
   targeting: { followersOnly: boolean; locationBased: boolean; radiusMiles: number; userSegments: string[]; minCheckIns: number; timeBased: boolean; timeWindow: { start: string; end: string } }
+  imageFile?: File | null
 }
 
 interface PromotionWizardProps {
@@ -91,8 +92,17 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
   const [recurStartTime, setRecurStartTime] = useState('16:00')
   const [recurEndTime, setRecurEndTime] = useState('19:00')
   const canRecur = useFeatureAvailable('growth')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const update = (u: Partial<PromotionFormData>) => setFormData(p => ({ ...p, ...u }))
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    update({ imageFile: file })
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   const suggestions = formData.type ? (AI_BY_TYPE[formData.type] || []) : []
 
@@ -103,7 +113,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
   const isRecurringMode = scheduleMode === 'recurring'
   const recurDaysSelected = formData.recurrencePattern.daysOfWeek.length > 0
 
-  const canPublish = formData.type !== '' && formData.title.trim() !== '' && (
+  const canPublish = formData.type !== '' && formData.title.trim() !== '' && formData.offer.trim() !== '' && (
     scheduleMode === 'now' ||
     (scheduleMode === 'later' && formData.startTime && formData.endTime) ||
     (isRecurringMode && recurDaysSelected)
@@ -225,6 +235,25 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                 placeholder="Fine print, exclusions..." rows={2}
                 className="w-full px-3.5 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white placeholder-primary-400/40 text-sm resize-none focus:border-primary-500/40 focus:outline-none" />
             </div>
+          </div>
+
+          {/* 3b. Deal Image (optional) */}
+          <div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
+            {imagePreview ? (
+              <div className="relative rounded-xl overflow-hidden">
+                <img src={imagePreview} alt="Deal" className="w-full h-32 object-cover" />
+                <button type="button" onClick={() => { update({ imageFile: null }); setImagePreview(null) }}
+                  className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white/60 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-primary-500/15 bg-black/20 text-primary-400/40 hover:border-primary-500/25 hover:text-primary-400/60 transition-all text-xs">
+                <ImagePlus className="w-4 h-4" /> Add Photo <span className="text-primary-400/20">(optional)</span>
+              </button>
+            )}
           </div>
 
           {/* 4. Schedule */}

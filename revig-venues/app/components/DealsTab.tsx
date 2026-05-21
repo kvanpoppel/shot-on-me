@@ -78,9 +78,21 @@ export default function DealsTab() {
 
   const handleSave = async (data: any) => {
     if (!token || !venue?.id) return
-    await axios.post(`${getApiUrl()}/venues/${venue.id}/promotions`, data, {
+    const { imageFile, ...dealData } = data
+    const res = await axios.post(`${getApiUrl()}/venues/${venue.id}/promotions`, dealData, {
       headers: { Authorization: `Bearer ${token}` }
     })
+
+    // Upload image if provided
+    const promoId = res.data.promotion?._id
+    if (imageFile && promoId) {
+      const fd = new FormData()
+      fd.append('image', imageFile)
+      await axios.post(`${getApiUrl()}/venues/${venue.id}/promotions/${promoId}/image`, fd, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      })
+    }
+
     setShowWizard(false)
     fetchData()
   }

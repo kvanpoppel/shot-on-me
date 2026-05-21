@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Sparkles, Eye, Repeat } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Sparkles, Eye, Repeat, ImagePlus } from 'lucide-react'
 
 interface PromotionFormData {
   title: string; description: string; offer: string; type: string
@@ -10,6 +10,7 @@ interface PromotionFormData {
   isRecurring: boolean
   recurrencePattern: { type: 'daily' | 'weekly' | 'monthly' | 'custom'; frequency: number; daysOfWeek: number[]; endDate: string; maxOccurrences?: number }
   targeting: { followersOnly: boolean; locationBased: boolean; radiusMiles: number; userSegments: string[]; minCheckIns: number; timeBased: boolean; timeWindow: { start: string; end: string } }
+  imageFile?: File | null
 }
 
 interface PromotionWizardProps {
@@ -93,8 +94,17 @@ export default function PromotionWizard({ initialData, onSave, onCancel, isEditi
   const [durationMins, setDurationMins] = useState(120)
   const [recurStartTime, setRecurStartTime] = useState('14:00')
   const [recurEndTime, setRecurEndTime] = useState('17:00')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const update = (u: Partial<PromotionFormData>) => setFormData(p => ({ ...p, ...u }))
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    update({ imageFile: file })
+    setImagePreview(URL.createObjectURL(file))
+  }
   const suggestions = formData.type ? (AI_BY_TYPE[formData.type] || []) : []
   const applySuggestion = (s: { title: string; offer: string; desc: string }) => {
     update({ title: s.title, offer: s.offer, description: s.desc })
@@ -103,7 +113,7 @@ export default function PromotionWizard({ initialData, onSave, onCancel, isEditi
   const isRecurringMode = scheduleMode === 'recurring'
   const recurDaysSelected = formData.recurrencePattern.daysOfWeek.length > 0
 
-  const canPublish = formData.type !== '' && formData.title.trim() !== '' && (
+  const canPublish = formData.type !== '' && formData.title.trim() !== '' && formData.offer.trim() !== '' && (
     scheduleMode === 'now' ||
     (scheduleMode === 'later' && formData.startTime && formData.endTime) ||
     (isRecurringMode && recurDaysSelected)
@@ -220,6 +230,26 @@ export default function PromotionWizard({ initialData, onSave, onCancel, isEditi
                 className="w-full px-3.5 py-2.5 border rounded-xl text-white placeholder-white/25 text-sm resize-none focus:outline-none"
                 style={{ background: BG_INPUT, borderColor: ACCENT_BORDER }} />
             </div>
+          </div>
+
+          {/* 3b. Deal Image (optional) */}
+          <div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
+            {imagePreview ? (
+              <div className="relative rounded-xl overflow-hidden">
+                <img src={imagePreview} alt="Deal" className="w-full h-32 object-cover" />
+                <button type="button" onClick={() => { update({ imageFile: null }); setImagePreview(null) }}
+                  className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white/60 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed text-xs transition-all"
+                style={{ borderColor: 'rgba(200,241,53,0.12)', background: 'rgba(0,0,0,0.15)', color: 'rgba(255,255,255,0.3)' }}>
+                <ImagePlus className="w-4 h-4" /> Add Photo <span style={{ color: 'rgba(255,255,255,0.15)' }}>(optional)</span>
+              </button>
+            )}
           </div>
 
           {/* 4. Schedule */}

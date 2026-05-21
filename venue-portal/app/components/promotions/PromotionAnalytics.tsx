@@ -65,9 +65,9 @@ export default function PromotionAnalytics({ venueId, promotionId, promotionTitl
       const apiUrl = getApiUrl()
       console.log('Fetching analytics for:', { venueId, promotionId })
       
-      // Fetch analytics from our new endpoint
+      // Fetch analytics from promotion-analytics endpoint
       const analyticsResponse = await axios.get(
-        `${apiUrl}/venues/${venueId}/promotions/${promotionId}/analytics`,
+        `${apiUrl}/promotion-analytics/${venueId}/${promotionId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
