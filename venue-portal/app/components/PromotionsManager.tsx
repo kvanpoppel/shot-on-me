@@ -635,7 +635,6 @@ const PromotionsManager = forwardRef<PromotionsManagerRef, PromotionsManagerProp
                   </div>
                 )
               })()}
-              )}
             </>
           )
         })()}
