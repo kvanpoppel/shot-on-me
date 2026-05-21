@@ -48,6 +48,9 @@ function isUpcoming(p: Promotion) {
 
 const TYPE_EMOJI: Record<string, string> = {
   'happy-hour': '🍻', 'flash-deal': '⚡', 'special': '🎉', 'exclusive': '👑', 'event': '🎪',
+  'slow-right-now': '🔥', 'slow-day-boost': '📈', 'peak-optimization': '🍻',
+  'replicate-success': '🔁', 'revenue-trend': '⚡', 'retention': '💌',
+  'strong-day-note': '💪', 'seasonal': '🎄', 'weekend-prep': '🎊',
 }
 
 export default function Dashboard() {
@@ -365,22 +368,59 @@ export default function Dashboard() {
           </>)}
         </div>
 
+        {/* ─ VIBES INDICATOR ─ */}
+        {!loadingData && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {live.length > 0 ? (
+                <>
+                  <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                  </span>
+                  <p className="text-[11px] font-semibold text-emerald-400 truncate">
+                    {live.length} deal{live.length > 1 ? 's' : ''} live
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="h-2.5 w-2.5 rounded-full bg-primary-400/20 flex-shrink-0" />
+                  <p className="text-[11px] text-primary-400/30 truncate">No deals running</p>
+                </>
+              )}
+            </div>
+            {stats.yesterdayRevenue > 0 && (
+              <div className="flex items-center gap-1 text-[10px] text-primary-400/30 flex-shrink-0">
+                <Clock className="w-3 h-3" /> Yesterday: ${stats.yesterdayRevenue}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─ SECTION 2: AI SUGGESTION OR UPGRADE HINT ─ */}
         {hasAI && visibleAI.length > 0 ? (
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">AI Recommends</p>
             {visibleAI.map((s, idx) => {
               const realIdx = aiSuggestions.indexOf(s)
+              const isUrgent = s.type === 'slow-right-now'
               return (
-                <div key={realIdx} className="rounded-xl border border-primary-500/15 bg-primary-500/[0.04] p-4 flex items-start gap-3 mb-2">
+                <div key={realIdx} className={`rounded-xl border p-4 flex items-start gap-3 mb-2 ${
+                  isUrgent
+                    ? 'border-rose-500/30 bg-rose-500/[0.06] animate-pulse-slow'
+                    : 'border-primary-500/15 bg-primary-500/[0.04]'
+                }`}>
                   <span className="text-lg mt-0.5">{TYPE_EMOJI[s.type] || '🎯'}</span>
                   <div className="flex-1 min-w-0">
+                    {isUrgent && <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider mb-0.5">Slow right now</p>}
                     <p className="text-sm font-semibold text-white">{s.title}</p>
                     <p className="text-[11px] text-white/35 mt-0.5 line-clamp-2">{s.description}</p>
                   </div>
                   <div className="flex gap-1.5 flex-shrink-0">
                     <button onClick={() => approveAI(realIdx)} disabled={approvingAI === realIdx || atLimit}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-500 text-black text-[11px] font-bold disabled:opacity-40 min-h-[32px]">
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 min-h-[32px] ${
+                        isUrgent ? 'bg-rose-500 text-white' : 'bg-primary-500 text-black'
+                      }`}>
                       {approvingAI === realIdx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
                     </button>
                     <button onClick={() => setDismissedAI(prev => new Set(prev).add(realIdx))} className="p-1.5 rounded-lg text-primary-400/30 hover:text-primary-400/60">

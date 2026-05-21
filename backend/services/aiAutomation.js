@@ -219,7 +219,69 @@ async function generatePromotionSuggestions(venueId) {
       }
     }
 
-    // 6. Seasonal/Event-based suggestions
+    // 6. Real-time slow detection — "it's quiet RIGHT NOW, launch a flash deal"
+    if (hasRevenueData) {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const todayName = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+
+      // Only trigger during business hours (11am - 11pm)
+      if (currentHour >= 11 && currentHour <= 23) {
+        // Count payments TODAY up to this hour
+        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
+        const todayPayments = payments.filter(p => {
+          const t = new Date(p.createdAt)
+          return t >= todayStart && t <= now
+        })
+        const todayRevSoFar = todayPayments.reduce((s, p) => s + (p.amount || 0), 0)
+
+        // Average revenue for this day-of-week up to this hour (from 30-day history)
+        const sameDayPayments = payments.filter(p => {
+          const t = new Date(p.createdAt)
+          return t.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() === todayName && t.getHours() <= currentHour
+        })
+        // Count how many of those same-day occurrences we have (divide by ~4 weeks)
+        const weeksOfData = Math.max(1, Math.ceil(payments.length > 0 ? 4 : 1))
+        const avgRevByNow = sameDayPayments.reduce((s, p) => s + (p.amount || 0), 0) / weeksOfData
+
+        // Check if any deal is already running right now
+        const hasActiveDeal = (venueData?.promotions || []).some(p => {
+          if (!p.isActive) return false
+          const start = p.startTime ? new Date(p.startTime) : null
+          const end = p.endTime ? new Date(p.endTime) : null
+          if (start && end) return now >= start && now <= end
+          return p.isActive
+        })
+
+        // If today's revenue is < 50% of average AND no deal is running → suggest flash deal
+        if (avgRevByNow > 0 && todayRevSoFar < avgRevByNow * 0.5 && !hasActiveDeal) {
+          const gap = Math.round(avgRevByNow - todayRevSoFar)
+          suggestions.unshift({
+            type: 'slow-right-now',
+            priority: 'urgent',
+            title: "It's Quiet — Launch a Flash Deal?",
+            description: `Today's revenue ($${Math.round(todayRevSoFar)}) is tracking ${Math.round((1 - todayRevSoFar / avgRevByNow) * 100)}% below your typical ${capitalize(todayName)}. A 1-2 hour flash deal could bring people in.`,
+            suggestedPromotion: {
+              title: 'Flash Deal — Right Now',
+              description: 'Limited-time deal to drive traffic right now',
+              discount: 25,
+              pricePoint: buildPricePoint(venuePriceInsights, 25),
+              type: 'flash-deal',
+              isFlashDeal: true,
+              startDate: new Date(),
+              endDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+              startTime: `${currentHour}:00`,
+              endTime: `${Math.min(currentHour + 2, 23)}:00`
+            },
+            autoPost: true,
+            autoNotify: true,
+            confidence: 0.93
+          })
+        }
+      }
+    }
+
+    // 7. Seasonal/Event-based suggestions
     const seasonalSuggestion = generateSeasonalSuggestion()
     if (seasonalSuggestion) {
       suggestions.push(seasonalSuggestion)

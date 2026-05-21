@@ -117,6 +117,33 @@ export default function DashboardHome() {
         )}
       </div>
 
+      {/* Vibes indicator */}
+      {!loading && stats && (
+        <div className="flex items-center gap-3 mb-4 px-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {stats.activePromos > 0 ? (
+              <>
+                <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                  <span className="absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#C8F135', animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: '#C8F135' }}></span>
+                </span>
+                <p className="text-[11px] font-semibold" style={{ color: '#C8F135' }}>
+                  {stats.activePromos} deal{stats.activePromos > 1 ? 's' : ''} live
+                </p>
+              </>
+            ) : (
+              <>
+                <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }} />
+                <p className="text-[11px] text-white/25">No deals running</p>
+              </>
+            )}
+          </div>
+          {stats.totalRedemptions > 0 && (
+            <p className="text-[10px] text-white/25 flex-shrink-0">{stats.totalRedemptions} redemptions</p>
+          )}
+        </div>
+      )}
+
       {/* Stats grid */}
       {loading ? (
         <div className="grid grid-cols-2 gap-3 mb-6">
@@ -141,9 +168,15 @@ export default function DashboardHome() {
             {aiSuggestions.map((s, idx) => {
               if (dismissedAI.has(idx)) return null
               return (
-                <div key={idx} className="rounded-xl p-3.5 flex items-start gap-3" style={{ background: 'rgba(200,241,53,0.04)', border: '1px solid rgba(200,241,53,0.12)' }}>
+                <div key={idx} className="rounded-xl p-3.5 flex items-start gap-3" style={{
+                    background: s.type === 'slow-right-now' ? 'rgba(255,95,87,0.06)' : 'rgba(200,241,53,0.04)',
+                    border: s.type === 'slow-right-now' ? '1px solid rgba(255,95,87,0.25)' : '1px solid rgba(200,241,53,0.12)',
+                  }}>
                   <span className="text-lg mt-0.5">{DEAL_EMOJI[s.type] || '🎯'}</span>
                   <div className="flex-1 min-w-0">
+                    {s.type === 'slow-right-now' && (
+                      <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#FF5F57' }}>Slow right now</p>
+                    )}
                     <p className="text-sm font-semibold text-white">{s.title}</p>
                     <p className="text-[11px] text-white/35 mt-0.5 line-clamp-2">{s.description}</p>
                   </div>
@@ -161,7 +194,10 @@ export default function DashboardHome() {
                         }}
                         disabled={approvingAI === idx}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 min-h-[32px]"
-                        style={{ background: '#C8F135', color: '#0F0F1E' }}
+                        style={{
+                          background: s.type === 'slow-right-now' ? '#FF5F57' : '#C8F135',
+                          color: s.type === 'slow-right-now' ? '#fff' : '#0F0F1E'
+                        }}
                       >
                         {approvingAI === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
                       </button>

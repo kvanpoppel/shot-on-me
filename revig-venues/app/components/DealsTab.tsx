@@ -33,7 +33,10 @@ interface AISuggestion {
 }
 
 const DEAL_EMOJI: Record<string, string> = {
-  'happy-hour': '🍻', 'flash-deal': '⚡', 'special': '🎉', 'exclusive': '👑', 'event': '🎪'
+  'happy-hour': '🧋', 'flash-deal': '⚡', 'special': '🎉', 'exclusive': '👑', 'event': '🎪',
+  'slow-right-now': '🔥', 'slow-day-boost': '📈', 'peak-optimization': '🧋',
+  'replicate-success': '🔁', 'revenue-trend': '⚡', 'retention': '💌',
+  'strong-day-note': '💪', 'seasonal': '🎄',
 }
 
 export default function DealsTab() {
