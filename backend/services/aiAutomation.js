@@ -253,10 +253,10 @@ async function generatePromotionSuggestions(venueId) {
           return p.isActive
         })
 
-        // If today's revenue is < 50% of average AND no deal is running → suggest flash deal
+        // If today's revenue is < 50% of average AND no deal is running → suggest or auto-post flash deal
         if (avgRevByNow > 0 && todayRevSoFar < avgRevByNow * 0.5 && !hasActiveDeal) {
           const gap = Math.round(avgRevByNow - todayRevSoFar)
-          suggestions.unshift({
+          const flashSuggestion = {
             type: 'slow-right-now',
             priority: 'urgent',
             title: "It's Quiet — Launch a Flash Deal?",
@@ -276,7 +276,24 @@ async function generatePromotionSuggestions(venueId) {
             autoPost: true,
             autoNotify: true,
             confidence: 0.93
-          })
+          }
+
+          // Auto-post if automation is enabled — publish + notify without manual approval
+          const autoSettings = venue.aiAutomation || {}
+          if (autoSettings.enabled && autoSettings.autoGenerateSpecials !== false) {
+            try {
+              await autoGenerateAndPostPromotion(venueId, flashSuggestion, {
+                autoNotifyFollowers: autoSettings.autoNotifyFollowers !== false,
+              })
+              flashSuggestion.autoPosted = true
+              flashSuggestion.title = 'Flash Deal Auto-Published'
+              flashSuggestion.description = `It was quiet so we launched a 2-hour flash deal and notified your followers.`
+            } catch (autoErr) {
+              console.error('Auto flash deal failed:', autoErr.message)
+            }
+          }
+
+          suggestions.unshift(flashSuggestion)
         }
       }
     }

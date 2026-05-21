@@ -19,7 +19,7 @@ import {
 
 function SettingsPageContent() {
   const { user, loading, token } = useAuth()
-  const { isOwner, loading: venueLoading } = useVenue()
+  const { isOwner, venueSlug, loading: venueLoading } = useVenue()
   const { showError } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -130,8 +130,10 @@ function SettingsPageContent() {
   if (!user) return null
 
   const venueId = (user as any)?.venueId || (user as any)?._id
-  const venueUrl = `https://www.shotonme.com?venue=${venueId}`
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(venueUrl)}&size=300x300&color=B8945A&bgcolor=000000`
+  const venuePublicUrl = venueSlug
+    ? `https://venue-portal.vercel.app/v/${venueSlug}`
+    : `https://www.shotonme.com?venue=${venueId}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(venuePublicUrl)}&size=300x300&color=B8945A&bgcolor=000000`
 
   const handleQRDownload = async () => {
     try {
@@ -261,7 +263,7 @@ function SettingsPageContent() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={qrUrl} alt="Venue QR Code" width={200} height={200} className="rounded-lg" />
                   </div>
-                  <p className="text-[10px] text-primary-400/40 break-all text-center px-4">{venueUrl}</p>
+                  <p className="text-[10px] text-primary-400/40 break-all text-center px-4">{venuePublicUrl}</p>
                   <div className="flex gap-3 w-full">
                     <button
                       onClick={handleQRDownload}

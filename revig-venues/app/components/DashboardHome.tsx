@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiUrl } from '../utils/api'
 import axios from 'axios'
-import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw, Sparkles, ThumbsUp, X, Loader2 } from 'lucide-react'
+import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw, Sparkles, ThumbsUp, X, Loader2, Megaphone, CheckCircle2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Stats {
@@ -80,6 +80,21 @@ export default function DashboardHome() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const balance = venue?.wallet?.balance ?? 0
+  const [tonightSending, setTonightSending] = useState(false)
+  const [tonightSent, setTonightSent] = useState(false)
+
+  const sendTonight = async () => {
+    if (!token || !venue?.id) return
+    setTonightSending(true)
+    try {
+      await axios.post(`${getApiUrl()}/venues/${venue.id}/notify-followers`, {
+        title: `${venue.name} is open tonight!`,
+        message: ''
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      setTonightSent(true)
+      setTimeout(() => setTonightSent(false), 4000)
+    } catch { /* ignore */ } finally { setTonightSending(false) }
+  }
 
   return (
     <div className="flex-1 overflow-y-auto pb-24 px-5" style={{ background: '#0F0F1E' }}>
@@ -116,6 +131,22 @@ export default function DashboardHome() {
           <p className="text-xs text-white/40">${stats.pendingPayouts.toFixed(2)} pending</p>
         )}
       </div>
+
+      {/* One-tap Tonight */}
+      <button
+        onClick={sendTonight}
+        disabled={tonightSending || tonightSent}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all mb-4 min-h-[44px]"
+        style={{
+          background: tonightSent ? 'rgba(74,222,128,0.1)' : 'rgba(200,241,53,0.08)',
+          color: tonightSent ? '#4ade80' : '#C8F135',
+          border: tonightSent ? '1px solid rgba(74,222,128,0.2)' : '1px solid rgba(200,241,53,0.15)',
+        }}
+      >
+        {tonightSending ? <Loader2 className="w-4 h-4 animate-spin" /> :
+          tonightSent ? <><CheckCircle2 className="w-4 h-4" /> Sent to followers!</> :
+          <><Megaphone className="w-4 h-4" /> We&apos;re Open Tonight</>}
+      </button>
 
       {/* Vibes indicator */}
       {!loading && stats && (

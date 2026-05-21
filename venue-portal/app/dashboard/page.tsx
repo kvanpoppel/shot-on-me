@@ -21,6 +21,7 @@ interface Promotion {
   _id: string; title: string; offer?: string; description?: string; type: string
   isActive?: boolean; startTime: string; endTime: string
   isFlashDeal?: boolean; flashDealEndsAt?: string
+  analytics?: { views?: number; clicks?: number; redemptions?: number; revenue?: number }
 }
 
 interface AISuggestion {
@@ -206,6 +207,23 @@ export default function Dashboard() {
     finally { setSending(false) }
   }
 
+  const [tonightSending, setTonightSending] = useState(false)
+  const [tonightSent, setTonightSent] = useState(false)
+
+  const sendTonight = async () => {
+    if (!token || !venueId) return
+    setTonightSending(true)
+    try {
+      const dealList = live.map(p => p.title).join(', ')
+      const title = live.length > 0 ? `We're open tonight — ${dealList}` : `${venueName} is open tonight!`
+      await axios.post(`${getApiUrl()}/venues/${venueId}/notify-followers`, { title, message: '' }, { headers: { Authorization: `Bearer ${token}` } })
+      setTonightSent(true)
+      showSuccess('Sent to all followers!')
+      setTimeout(() => setTonightSent(false), 4000)
+    } catch (e: any) { showError(e?.response?.data?.error || 'Failed') }
+    finally { setTonightSending(false) }
+  }
+
   if (loading || venueLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" /></div>
   if (!user) return null
 
@@ -268,6 +286,21 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* ─ ONE-TAP TONIGHT ─ */}
+        <button
+          onClick={sendTonight}
+          disabled={tonightSending || tonightSent}
+          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all min-h-[44px] ${
+            tonightSent
+              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+              : 'bg-gradient-to-r from-primary-500/20 to-amber-500/20 text-primary-400 border border-primary-500/20 hover:border-primary-500/40'
+          }`}
+        >
+          {tonightSending ? <Loader2 className="w-4 h-4 animate-spin" /> :
+            tonightSent ? <><CheckCircle2 className="w-4 h-4" /> Sent to {followerCount} followers</> :
+            <><Megaphone className="w-4 h-4" /> We&apos;re Open Tonight</>}
+        </button>
+
         {/* ─ SECTION 1: WHAT'S LIVE (collapsible) ─ */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -308,12 +341,17 @@ export default function Dashboard() {
                 const end = p.isFlashDeal && p.flashDealEndsAt ? p.flashDealEndsAt : p.endTime
                 const left = timeLeft(end)
                 const urgent = new Date(end).getTime() - Date.now() < 3600000
+                const rev = p.analytics?.revenue || 0
+                const reds = p.analytics?.redemptions || 0
                 return (
                   <div key={p._id} className="rounded-xl border border-primary-500/15 bg-black/40 px-4 py-3 flex items-center gap-3">
                     <span className="text-base flex-shrink-0">{TYPE_EMOJI[p.type] || '🎉'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{p.title}</p>
                       {p.offer && <p className="text-[11px] text-primary-500/80 truncate">{p.offer}</p>}
+                      {(rev > 0 || reds > 0) && (
+                        <p className="text-[10px] text-emerald-400/60 mt-0.5">${rev} revenue · {reds} redemptions</p>
+                      )}
                     </div>
                     <span className={`text-[11px] font-semibold flex-shrink-0 ${urgent ? 'text-rose-400' : 'text-primary-400/50'}`}>
                       {urgent && <AlertCircle className="w-3 h-3 inline mr-0.5" />}{left}
