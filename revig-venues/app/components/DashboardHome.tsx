@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiUrl } from '../utils/api'
 import axios from 'axios'
-import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw } from 'lucide-react'
+import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw, Sparkles, ThumbsUp, X, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Stats {
@@ -22,12 +22,28 @@ interface Checkin {
   note?: string
 }
 
+interface AISuggestion {
+  type: string
+  title: string
+  description: string
+  suggestedPromotion: any
+  confidence: number
+}
+
+const DEAL_EMOJI: Record<string, string> = {
+  'slow-day-boost': '📈', 'peak-optimization': '🍻', 'replicate-success': '🔁',
+  'revenue-trend': '⚡', 'seasonal': '🎄', 'retention': '💌', 'strong-day-note': '💪'
+}
+
 export default function DashboardHome() {
   const { venue, token } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [recent, setRecent] = useState<Checkin[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
+  const [dismissedAI, setDismissedAI] = useState<Set<number>>(new Set())
+  const [approvingAI, setApprovingAI] = useState<number | null>(null)
 
   const fetchAll = useCallback(async (silent = false) => {
     if (!token || !venue?.id) return
@@ -35,9 +51,10 @@ export default function DashboardHome() {
     else setRefreshing(true)
 
     try {
-      const [statsRes, checkinsRes] = await Promise.allSettled([
+      const [statsRes, checkinsRes, aiRes] = await Promise.allSettled([
         axios.get(`${getApiUrl()}/dashboard/stats`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${getApiUrl()}/checkins?venueId=${venue.id}&limit=5`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${getApiUrl()}/ai-automation/suggestions?venueId=${venue.id}`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       if (statsRes.status === 'fulfilled') {
         const d = statsRes.value.data
@@ -50,6 +67,9 @@ export default function DashboardHome() {
       }
       if (checkinsRes.status === 'fulfilled') {
         setRecent((checkinsRes.value.data.checkins || checkinsRes.value.data || []).slice(0, 5))
+      }
+      if (aiRes.status === 'fulfilled') {
+        setAiSuggestions((aiRes.value.data.suggestions || []).slice(0, 2))
       }
     } catch { /* ignore */ } finally {
       setLoading(false)
@@ -110,6 +130,52 @@ export default function DashboardHome() {
           <StatCard icon={<Clock className="w-4 h-4" />} color="#FF5F57" label="Pending Payout" value={`$${stats.pendingPayouts.toFixed(2)}`} />
         </div>
       ) : null}
+
+      {/* AI Suggestions */}
+      {aiSuggestions.filter((_, i) => !dismissedAI.has(i)).length > 0 && (
+        <div className="mb-5">
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(200,241,53,0.5)' }}>
+            <Sparkles className="w-3 h-3 inline mr-1" />AI Recommends
+          </p>
+          <div className="space-y-2">
+            {aiSuggestions.map((s, idx) => {
+              if (dismissedAI.has(idx)) return null
+              return (
+                <div key={idx} className="rounded-xl p-3.5 flex items-start gap-3" style={{ background: 'rgba(200,241,53,0.04)', border: '1px solid rgba(200,241,53,0.12)' }}>
+                  <span className="text-lg mt-0.5">{DEAL_EMOJI[s.type] || '🎯'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white">{s.title}</p>
+                    <p className="text-[11px] text-white/35 mt-0.5 line-clamp-2">{s.description}</p>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    {s.suggestedPromotion && (
+                      <button
+                        onClick={async () => {
+                          setApprovingAI(idx)
+                          try {
+                            await axios.post(`${getApiUrl()}/ai-automation/suggestions/apply`, {
+                              venueId: venue?.id, suggestionIndex: idx, suggestion: s
+                            }, { headers: { Authorization: `Bearer ${token}` } })
+                            setDismissedAI(prev => new Set(prev).add(idx))
+                          } catch {} finally { setApprovingAI(null) }
+                        }}
+                        disabled={approvingAI === idx}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 min-h-[32px]"
+                        style={{ background: '#C8F135', color: '#0F0F1E' }}
+                      >
+                        {approvingAI === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
+                      </button>
+                    )}
+                    <button onClick={() => setDismissedAI(prev => new Set(prev).add(idx))} className="p-1.5 rounded-lg text-white/20 hover:text-white/40">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent redemptions */}
       <div>

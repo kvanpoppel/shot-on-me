@@ -30,7 +30,7 @@ router.setIO = (socketIO) => {
 };
 
 // GET /api/venues/slug/:slug/public
-// Public lookup used by venue-portal slug pages
+// Public page — returns full venue info, active deals, schedule, amenities
 router.get('/slug/:slug/public', async (req, res) => {
   try {
     const slug = String(req.params.slug || '').toLowerCase().trim();
@@ -39,18 +39,63 @@ router.get('/slug/:slug/public', async (req, res) => {
     }
 
     const venue = await Venue.findOne({ slug, isActive: true })
-      .select('_id name slug isActive')
+      .select('name slug description coverPhoto category address location phone email website branding schedule promotions followerCount rating kidsFriendly dogFriendly hasFood byob trivia liveMusic outdoorSeating happyHour poolTables danceFloor sportsTv karaoke arcade platform wineMenu happyHourMenu specialMenu weekendMenu trendingMenu tonightMenu')
       .lean();
 
     if (!venue) {
       return res.status(404).json({ message: 'Venue not found' });
     }
 
+    // Filter to only active/upcoming promotions
+    const now = new Date();
+    const activeDeals = (venue.promotions || []).filter(p => {
+      if (!p.isActive) return false;
+      if (p.endTime && new Date(p.endTime) < now) return false;
+      return true;
+    }).map(p => ({
+      title: p.title,
+      description: p.description,
+      type: p.type,
+      discount: p.discount,
+      pricePoint: p.pricePoint,
+      startTime: p.startTime,
+      endTime: p.endTime,
+      isFlashDeal: p.isFlashDeal,
+      flashDealEndsAt: p.flashDealEndsAt,
+      schedule: p.schedule,
+      daysOfWeek: p.daysOfWeek
+    }));
+
+    // Build amenities list
+    const amenityFields = ['kidsFriendly','dogFriendly','hasFood','byob','trivia','liveMusic','outdoorSeating','happyHour','poolTables','danceFloor','sportsTv','karaoke','arcade'];
+    const amenities = amenityFields.filter(f => venue[f]);
+
     return res.json({
       venue: {
         id: venue._id,
         name: venue.name,
-        slug: venue.slug
+        slug: venue.slug,
+        description: venue.description,
+        coverPhoto: venue.coverPhoto,
+        category: venue.category,
+        address: venue.address,
+        phone: venue.phone,
+        website: venue.website,
+        branding: venue.branding,
+        schedule: venue.schedule,
+        followerCount: venue.followerCount || 0,
+        rating: venue.rating,
+        platform: venue.platform,
+        amenities,
+        activeDeals,
+        menus: {
+          wine: venue.wineMenu,
+          happyHour: venue.happyHourMenu,
+          special: venue.specialMenu,
+          weekend: venue.weekendMenu,
+          trending: venue.trendingMenu,
+          tonight: venue.tonightMenu
+        }
       }
     });
   } catch (error) {

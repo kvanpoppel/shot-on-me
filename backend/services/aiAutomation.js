@@ -2,6 +2,8 @@ const Venue = require('../models/Venue')
 const User = require('../models/User')
 const Notification = require('../models/Notification')
 const CheckIn = require('../models/CheckIn')
+const Payment = require('../models/Payment')
+const DailySales = require('../models/DailySales')
 const { pushTargetedPromotionNotification } = require('../routes/venue-notifications')
 const { getConfidenceMultiplier } = require('./aiLearningLoop')
 
@@ -22,63 +24,86 @@ async function generatePromotionSuggestions(venueId) {
     // Get historical data
     const last30Days = new Date()
     last30Days.setDate(last30Days.getDate() - 30)
+    const startStr = last30Days.toISOString().split('T')[0]
 
-    const [checkIns, venueData] = await Promise.all([
+    const [checkIns, venueData, payments, dailySales] = await Promise.all([
       CheckIn.find({ venue: venueId, createdAt: { $gte: last30Days } }),
-      Venue.findById(venueId).select('promotions')
+      Venue.findById(venueId).select('promotions'),
+      Payment.find({
+        venueId,
+        status: { $in: ['succeeded', 'redeemed'] },
+        createdAt: { $gte: last30Days }
+      }).lean(),
+      DailySales.find({ venue: venueId, date: { $gte: startStr } }).lean()
     ])
-    
+
     // Filter promotions from last 30 days
     const promotions = (venueData?.promotions || []).filter(p => {
       const promoDate = p.createdAt || p.startTime || new Date(0)
       return promoDate >= last30Days
     })
-    
+
     // Get redemptions (we'll use analytics data)
     const redemptions = promotions.filter(p => p.analytics?.redemptions > 0)
 
-    // Analyze patterns
+    // Analyze patterns — checkins, payments, and logged sales
     const dayOfWeekActivity = analyzeDayOfWeekActivity(checkIns)
     const timeOfDayActivity = analyzeTimeOfDayActivity(checkIns)
     const promotionPerformance = analyzePromotionPerformance(promotions, redemptions)
+    const revenueByDay = analyzeRevenueByDay(payments)
+    const revenueByHour = analyzeRevenueByHour(payments)
+    const salesTrend = analyzeSalesTrend(dailySales)
+    const promotionRevenueLift = analyzePromotionRevenueLift(promotions, payments)
+
     // Generate intelligent suggestions
     const suggestions = []
     const venuePriceInsights = getVenuePriceInsights(venue, promotions)
 
-    // 1. Time-based suggestions
-    const slowDays = findSlowDays(dayOfWeekActivity)
+    // 1. Slow-day boost — prefer revenue data, fall back to checkins
+    const hasRevenueData = payments.length > 0
+    const slowDays = hasRevenueData
+      ? findSlowDaysFromRevenue(revenueByDay)
+      : findSlowDays(dayOfWeekActivity)
     if (slowDays.length > 0) {
+      const dayName = slowDays[0]
+      const avgRev = hasRevenueData ? Math.round(Object.values(revenueByDay).reduce((a, b) => a + b, 0) / 7) : 0
+      const dayRev = hasRevenueData ? Math.round(revenueByDay[dayName] || 0) : 0
+      const desc = hasRevenueData
+        ? `${capitalize(dayName)}s average $${dayRev} in revenue vs $${avgRev} overall. A targeted deal could close that gap.`
+        : `${capitalize(dayName)}s are typically slower. Create a special promotion to drive traffic.`
       suggestions.push({
         type: 'slow-day-boost',
         priority: 'high',
-        title: `Boost ${slowDays[0]} Traffic`,
-        description: `${slowDays[0]}s are typically slower. Create a special promotion to drive traffic.`,
+        title: `Boost ${capitalize(dayName)} Revenue`,
+        description: desc,
         suggestedPromotion: {
-          title: `${slowDays[0]} Special`,
-          description: `Special ${slowDays[0]} deal to bring in more customers`,
+          title: `${capitalize(dayName)} Special`,
+          description: `Special ${capitalize(dayName)} deal to bring in more customers`,
           discount: 20,
           pricePoint: buildPricePoint(venuePriceInsights, 20),
           type: 'special',
-          startDate: getNextDayOfWeek(slowDays[0]),
-          endDate: getNextDayOfWeek(slowDays[0]),
+          startDate: getNextDayOfWeek(dayName),
+          endDate: getNextDayOfWeek(dayName),
           startTime: '17:00',
           endTime: '22:00',
-          daysOfWeek: [slowDays[0].toLowerCase()]
+          daysOfWeek: [dayName.toLowerCase()]
         },
         autoPost: true,
         autoNotify: true,
-        confidence: 0.85
+        confidence: hasRevenueData ? 0.90 : 0.85
       })
     }
 
-    // 2. Peak time optimization
-    const peakHours = findPeakHours(timeOfDayActivity)
+    // 2. Peak-hour optimization — use revenue hours when available
+    const peakHours = hasRevenueData
+      ? findPeakRevenueHours(revenueByHour)
+      : findPeakHours(timeOfDayActivity)
     if (peakHours.length > 0) {
       suggestions.push({
         type: 'peak-optimization',
         priority: 'medium',
         title: 'Optimize Peak Hours',
-        description: `Your busiest hours are ${peakHours[0]}-${peakHours[1]}. Consider a happy hour promotion.`,
+        description: `Your highest-revenue hours are ${peakHours[0]}-${peakHours[1]}. A happy hour leading into this window could extend the rush.`,
         suggestedPromotion: {
           title: 'Happy Hour Special',
           description: 'Enjoy great deals during peak hours',
@@ -91,42 +116,116 @@ async function generatePromotionSuggestions(venueId) {
         },
         autoPost: true,
         autoNotify: true,
-        confidence: 0.80
+        confidence: hasRevenueData ? 0.85 : 0.80
       })
     }
 
-    // 3. Replicate successful promotions
-    const topPromotions = promotionPerformance
-      .filter(p => p.redemptionRate > 0.3)
-      .sort((a, b) => b.redemptionRate - a.redemptionRate)
-      .slice(0, 2)
+    // 3. Replicate deals that actually drove revenue
+    const topDeals = promotionRevenueLift.length > 0
+      ? promotionRevenueLift
+          .filter(p => p.revenueLift > 0)
+          .sort((a, b) => b.revenueLift - a.revenueLift)
+          .slice(0, 2)
+      : []
+    if (topDeals.length > 0) {
+      topDeals.forEach(deal => {
+        suggestions.push({
+          type: 'replicate-success',
+          priority: 'high',
+          title: `Run "${deal.title}" Again`,
+          description: `This deal brought in $${Math.round(deal.revenueDuring)} in transactions — ${deal.revenueLift > 0 ? `${Math.round(deal.revenueLift)}% above` : 'in line with'} your baseline.`,
+          suggestedPromotion: {
+            title: deal.title,
+            description: deal.description || `Successful deal worth repeating`,
+            discount: deal.discount || 20,
+            pricePoint: buildPricePoint(venuePriceInsights, deal.discount || 20),
+            type: deal.type || 'special',
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          },
+          autoPost: true,
+          autoNotify: true,
+          confidence: 0.92
+        })
+      })
+    } else {
+      // Fall back to redemption-rate based replication
+      const topPromotions = promotionPerformance
+        .filter(p => p.redemptionRate > 0.3)
+        .sort((a, b) => b.redemptionRate - a.redemptionRate)
+        .slice(0, 2)
+      topPromotions.forEach(promo => {
+        suggestions.push({
+          type: 'replicate-success',
+          priority: 'high',
+          title: `Replicate "${promo.title}"`,
+          description: `This promotion had ${(promo.redemptionRate * 100).toFixed(0)}% redemption rate. Create a similar one.`,
+          suggestedPromotion: {
+            ...promo,
+            title: `${promo.title} (New)`,
+            pricePoint: buildPricePoint(venuePriceInsights, promo.discount || 20),
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          },
+          autoPost: true,
+          autoNotify: true,
+          confidence: 0.90
+        })
+      })
+    }
 
-    topPromotions.forEach(promo => {
+    // 4. Revenue trend warning — declining logged sales
+    if (salesTrend.direction === 'declining' && salesTrend.weekOverWeekChange < -15) {
       suggestions.push({
-        type: 'replicate-success',
+        type: 'revenue-trend',
         priority: 'high',
-        title: `Replicate "${promo.title}"`,
-        description: `This promotion had ${(promo.redemptionRate * 100).toFixed(0)}% redemption rate. Create a similar one.`,
+        title: 'Revenue Dipping — Time for a Deal',
+        description: `Your logged sales are down ${Math.abs(Math.round(salesTrend.weekOverWeekChange))}% week over week. A flash deal could help turn things around.`,
         suggestedPromotion: {
-          ...promo,
-          title: `${promo.title} (New)`,
-          pricePoint: buildPricePoint(venuePriceInsights, promo.discount || 20),
+          title: 'Flash Deal',
+          description: 'Limited-time deal to drive traffic',
+          discount: 25,
+          pricePoint: buildPricePoint(venuePriceInsights, 25),
+          type: 'flash-deal',
+          isFlashDeal: true,
           startDate: new Date(),
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+          endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          startTime: '17:00',
+          endTime: '22:00'
         },
         autoPost: true,
         autoNotify: true,
-        confidence: 0.90
+        confidence: 0.88
       })
-    })
+    }
 
-    // 4. Seasonal/Event-based suggestions
+    // 5. Strong day — skip promos, save money
+    if (hasRevenueData) {
+      const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+      const todayRev = revenueByDay[todayName] || 0
+      const avgRev = Object.values(revenueByDay).reduce((a, b) => a + b, 0) / 7
+      if (todayRev > avgRev * 1.3 && suggestions.length > 0) {
+        // Don't remove suggestions — just add context note
+        suggestions.push({
+          type: 'strong-day-note',
+          priority: 'low',
+          title: `${capitalize(todayName)}s Are Already Strong`,
+          description: `${capitalize(todayName)}s average $${Math.round(todayRev)} — ${Math.round(((todayRev / avgRev) - 1) * 100)}% above your average. You may not need a deal today.`,
+          suggestedPromotion: null,
+          autoPost: false,
+          autoNotify: false,
+          confidence: 0.70
+        })
+      }
+    }
+
+    // 6. Seasonal/Event-based suggestions
     const seasonalSuggestion = generateSeasonalSuggestion()
     if (seasonalSuggestion) {
       suggestions.push(seasonalSuggestion)
     }
 
-    // 5. Customer retention
+    // 7. Customer retention
     const inactiveDays = daysSinceLastCheckIn(checkIns)
     if (inactiveDays > 3) {
       suggestions.push({
@@ -161,18 +260,28 @@ async function generatePromotionSuggestions(venueId) {
     // Sort by learned confidence descending
     learnedSuggestions.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
 
+    // Best revenue day (from payments) or best checkin day
+    const bestRevenueDay = hasRevenueData
+      ? Object.keys(revenueByDay).reduce((a, b) => revenueByDay[a] > revenueByDay[b] ? a : b)
+      : null
+
     return {
       suggestions: learnedSuggestions,
       insights: {
         averageCheckIns: checkIns.length / 30,
-        bestPerformingDay: Object.keys(dayOfWeekActivity).reduce((a, b) =>
+        bestPerformingDay: bestRevenueDay || Object.keys(dayOfWeekActivity).reduce((a, b) =>
           dayOfWeekActivity[a] > dayOfWeekActivity[b] ? a : b
         ),
         peakHours: peakHours,
         topPromotionType: aiLearning.bestType || promotionPerformance[0]?.type || 'happy-hour',
         learnedBestDay: aiLearning.bestDay || null,
         learnedBestHour: aiLearning.bestHour ?? null,
-        lastTrained: aiLearning.lastTrainedAt || null
+        lastTrained: aiLearning.lastTrainedAt || null,
+        hasRevenueData,
+        totalPayments30d: payments.length,
+        totalRevenue30d: payments.reduce((sum, p) => sum + (p.amount || 0), 0),
+        salesTrend: salesTrend.direction,
+        salesTrendPct: salesTrend.weekOverWeekChange
       }
     }
   } catch (error) {
@@ -532,6 +641,99 @@ function buildPricePoint(priceInsights, discount) {
     specialPrice: Math.max(1, specialPrice),
     currency: priceInsights?.currency || 'USD'
   }
+}
+
+// --- Revenue-based analysis helpers ---
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
+}
+
+function analyzeRevenueByDay(payments) {
+  const rev = { monday: 0, tuesday: 0, wednesday: 0, thursday: 0, friday: 0, saturday: 0, sunday: 0 }
+  payments.forEach(p => {
+    const day = new Date(p.createdAt).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+    if (rev[day] !== undefined) rev[day] += p.amount || 0
+  })
+  return rev
+}
+
+function analyzeRevenueByHour(payments) {
+  const hourly = Array(24).fill(0)
+  payments.forEach(p => {
+    const hour = new Date(p.createdAt).getHours()
+    hourly[hour] += p.amount || 0
+  })
+  return hourly
+}
+
+function findSlowDaysFromRevenue(revenueByDay) {
+  const values = Object.values(revenueByDay)
+  const avg = values.reduce((a, b) => a + b, 0) / 7
+  if (avg === 0) return []
+  return Object.keys(revenueByDay)
+    .filter(day => revenueByDay[day] < avg * 0.7)
+    .sort((a, b) => revenueByDay[a] - revenueByDay[b])
+}
+
+function findPeakRevenueHours(revenueByHour) {
+  let bestStart = 0
+  let bestSum = 0
+  for (let i = 0; i < 24; i++) {
+    const sum = revenueByHour[i] + revenueByHour[(i + 1) % 24]
+    if (sum > bestSum) { bestSum = sum; bestStart = i }
+  }
+  return [`${bestStart}:00`, `${(bestStart + 2) % 24}:00`]
+}
+
+function analyzeSalesTrend(dailySales) {
+  if (dailySales.length < 7) return { direction: 'unknown', weekOverWeekChange: 0 }
+  const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date))
+  const midpoint = Math.floor(sorted.length / 2)
+  const firstHalf = sorted.slice(0, midpoint)
+  const secondHalf = sorted.slice(midpoint)
+  const avgFirst = firstHalf.reduce((s, d) => s + d.totalSales, 0) / (firstHalf.length || 1)
+  const avgSecond = secondHalf.reduce((s, d) => s + d.totalSales, 0) / (secondHalf.length || 1)
+  const change = avgFirst > 0 ? ((avgSecond - avgFirst) / avgFirst) * 100 : 0
+  return {
+    direction: change < -10 ? 'declining' : change > 10 ? 'growing' : 'stable',
+    weekOverWeekChange: change
+  }
+}
+
+function analyzePromotionRevenueLift(promotions, payments) {
+  if (payments.length === 0 || promotions.length === 0) return []
+  // Average daily revenue as baseline
+  const dayMap = {}
+  payments.forEach(p => {
+    const d = new Date(p.createdAt).toISOString().split('T')[0]
+    dayMap[d] = (dayMap[d] || 0) + (p.amount || 0)
+  })
+  const dailyValues = Object.values(dayMap)
+  const baselineDaily = dailyValues.length > 0 ? dailyValues.reduce((a, b) => a + b, 0) / dailyValues.length : 0
+  if (baselineDaily === 0) return []
+
+  return promotions.map(promo => {
+    const start = new Date(promo.startTime || promo.createdAt)
+    const end = promo.endTime ? new Date(promo.endTime) : new Date(start.getTime() + 24 * 60 * 60 * 1000)
+    const duringPayments = payments.filter(p => {
+      const t = new Date(p.createdAt)
+      return t >= start && t <= end
+    })
+    const revenueDuring = duringPayments.reduce((s, p) => s + (p.amount || 0), 0)
+    const daysActive = Math.max(1, (end - start) / (24 * 60 * 60 * 1000))
+    const dailyDuring = revenueDuring / daysActive
+    const lift = baselineDaily > 0 ? ((dailyDuring - baselineDaily) / baselineDaily) * 100 : 0
+    return {
+      _id: promo._id,
+      title: promo.title,
+      description: promo.description,
+      type: promo.type,
+      discount: promo.discount,
+      revenueDuring,
+      revenueLift: lift
+    }
+  })
 }
 
 module.exports = {

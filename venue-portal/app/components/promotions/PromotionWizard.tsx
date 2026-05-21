@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Lock, Sparkles, Pencil, Eye, Crown } from 'lucide-react'
+import { X, Lock, Sparkles, Eye, Crown, Repeat } from 'lucide-react'
 import { PromotionTemplate } from './PromotionTemplates'
 import { useFeatureAvailable } from '../FeatureGate'
 
@@ -30,7 +30,6 @@ const DEAL_TYPES = [
   { value: 'event',      emoji: '🎪', label: 'Event' },
 ]
 
-/* AI suggestions PER deal type — changes when you pick a type */
 const AI_BY_TYPE: Record<string, { title: string; offer: string; desc: string }[]> = {
   'happy-hour': [
     { title: 'Happy Hour', offer: '$5 wells and drafts', desc: 'Classic happy hour pricing to fill seats early.' },
@@ -66,6 +65,7 @@ const DURATIONS = [
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DAY_INDICES = [1, 2, 3, 4, 5, 6, 0]
+const DAY_FULL: Record<number, string> = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' }
 
 function buildDefaults(init?: Partial<PromotionFormData>, tmpl?: PromotionTemplate | null): PromotionFormData {
   const now = new Date()
@@ -86,20 +86,28 @@ function buildDefaults(init?: Partial<PromotionFormData>, tmpl?: PromotionTempla
 export default function PromotionWizard({ initialData, template, onSave, onCancel, isEditing = false }: PromotionWizardProps) {
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<PromotionFormData>(() => buildDefaults(initialData, template))
-  const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now')
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'later' | 'recurring'>('now')
   const [durationMins, setDurationMins] = useState(120)
+  const [recurStartTime, setRecurStartTime] = useState('16:00')
+  const [recurEndTime, setRecurEndTime] = useState('19:00')
   const canRecur = useFeatureAvailable('growth')
 
   const update = (u: Partial<PromotionFormData>) => setFormData(p => ({ ...p, ...u }))
 
-  // AI suggestions change with the selected type
   const suggestions = formData.type ? (AI_BY_TYPE[formData.type] || []) : []
 
   const applySuggestion = (s: { title: string; offer: string; desc: string }) => {
     update({ title: s.title, offer: s.offer, description: s.desc })
   }
 
-  const canPublish = formData.type !== '' && formData.title.trim() !== '' && (scheduleMode === 'now' || (formData.startTime && formData.endTime))
+  const isRecurringMode = scheduleMode === 'recurring'
+  const recurDaysSelected = formData.recurrencePattern.daysOfWeek.length > 0
+
+  const canPublish = formData.type !== '' && formData.title.trim() !== '' && (
+    scheduleMode === 'now' ||
+    (scheduleMode === 'later' && formData.startTime && formData.endTime) ||
+    (isRecurringMode && recurDaysSelected)
+  )
 
   const handlePublish = async () => {
     const fd = { ...formData }
@@ -110,9 +118,30 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
       fd.endTime = end.toISOString().slice(0, 16)
       if (fd.type === 'flash-deal') { fd.isFlashDeal = true; fd.flashDealEndsAt = fd.endTime }
     }
+    if (isRecurringMode) {
+      fd.isRecurring = true
+      fd.recurrencePattern = {
+        ...fd.recurrencePattern,
+        type: 'weekly',
+        frequency: 1,
+      }
+      // Set start/end times based on recurring time pickers
+      const today = new Date()
+      const [sh, sm] = recurStartTime.split(':').map(Number)
+      const [eh, em] = recurEndTime.split(':').map(Number)
+      const startDt = new Date(today); startDt.setHours(sh, sm, 0, 0)
+      const endDt = new Date(today); endDt.setHours(eh, em, 0, 0)
+      fd.startTime = startDt.toISOString().slice(0, 16)
+      fd.endTime = endDt.toISOString().slice(0, 16)
+    }
     setSaving(true)
     try { await onSave(fd) } catch (e) { console.error('Save error:', e) } finally { setSaving(false) }
   }
+
+  const recurDayLabel = formData.recurrencePattern.daysOfWeek
+    .sort((a, b) => a - b)
+    .map(d => DAY_FULL[d])
+    .join(', ')
 
   return (
     <div className="fixed inset-0 glass-modal z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -154,7 +183,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             </div>
           </div>
 
-          {/* 2. AI Suggestions — appear when type is picked */}
+          {/* 2. AI Suggestions */}
           {suggestions.length > 0 && (
             <div className="rounded-xl border border-primary-500/15 bg-primary-500/[0.04] p-3">
               <p className="text-[10px] font-bold text-primary-500/60 flex items-center gap-1 mb-2"><Sparkles className="w-3 h-3" /> AI SUGGESTIONS</p>
@@ -198,7 +227,116 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             </div>
           </div>
 
-          {/* 4. Who sees this? */}
+          {/* 4. Schedule */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['now', 'later', 'recurring'] as const).map(m => {
+                const locked = m === 'recurring' && !canRecur
+                return (
+                  <button key={m} type="button"
+                    onClick={() => {
+                      if (locked) return
+                      setScheduleMode(m)
+                      if (m === 'recurring') update({ isRecurring: true })
+                      else update({ isRecurring: false })
+                    }}
+                    className={`py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                      locked ? 'border-primary-500/10 bg-black/30 text-primary-400/30 cursor-not-allowed' :
+                      scheduleMode === m ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
+                    }`}>
+                    {locked && <Lock className="w-3 h-3" />}
+                    {m === 'now' ? 'Start Now' : m === 'later' ? 'Schedule' : 'Recurring'}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Now → duration picker */}
+            {scheduleMode === 'now' && (
+              <div className="flex flex-wrap gap-2">
+                {DURATIONS.map(d => (
+                  <button key={d.mins} type="button" onClick={() => setDurationMins(d.mins)}
+                    className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
+                      durationMins === d.mins ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
+                    }`}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Later → date/time pickers */}
+            {scheduleMode === 'later' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-primary-400/40 mb-1">Start</label>
+                  <input type="datetime-local" value={formData.startTime} onChange={e => update({ startTime: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-primary-400/40 mb-1">End</label>
+                  <input type="datetime-local" value={formData.endTime} min={formData.startTime} onChange={e => update({ endTime: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                </div>
+              </div>
+            )}
+
+            {/* Recurring → day picker + time range */}
+            {isRecurringMode && canRecur && (
+              <div className="space-y-3">
+                <p className="text-[10px] text-primary-400/40">Pick the days this deal runs every week</p>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {DAY_NAMES.map((name, i) => {
+                    const idx = DAY_INDICES[i]
+                    const on = formData.recurrencePattern.daysOfWeek.includes(idx)
+                    return (
+                      <button key={name} type="button"
+                        onClick={() => {
+                          const days = on ? formData.recurrencePattern.daysOfWeek.filter(d => d !== idx) : [...formData.recurrencePattern.daysOfWeek, idx].sort()
+                          update({ recurrencePattern: { ...formData.recurrencePattern, daysOfWeek: days } })
+                        }}
+                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${on ? 'bg-primary-500 border-primary-500 text-black' : 'bg-black/40 border-primary-500/15 text-primary-400/50'}`}>
+                        {name}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Time range for recurring */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-primary-400/40 mb-1">Start time</label>
+                    <input type="time" value={recurStartTime} onChange={e => setRecurStartTime(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-primary-400/40 mb-1">End time</label>
+                    <input type="time" value={recurEndTime} onChange={e => setRecurEndTime(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                  </div>
+                </div>
+
+                {/* Optional end date */}
+                <div>
+                  <label className="block text-[10px] text-primary-400/40 mb-1">Runs until <span className="text-white/15">(leave blank = indefinitely)</span></label>
+                  <input type="date" value={formData.recurrencePattern.endDate}
+                    onChange={e => update({ recurrencePattern: { ...formData.recurrencePattern, endDate: e.target.value } })}
+                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
+                </div>
+              </div>
+            )}
+
+            {/* Recurring paywall */}
+            {isRecurringMode && !canRecur && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06]">
+                <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <p className="text-[11px] text-amber-300/80">Recurring deals require the <span className="font-bold text-amber-300">Pro plan</span>. Upgrade to automate weekly specials.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Who sees this? */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">Who sees this?</p>
             <div className="grid grid-cols-2 gap-2">
@@ -216,116 +354,6 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
             </div>
           </div>
 
-          {/* 5. Schedule */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40">When?</p>
-              {!canRecur && (
-                <span className="flex items-center gap-1 text-[9px] text-primary-400/40">
-                  <Lock className="w-2.5 h-2.5" /> Recurring deals available on Growth plan
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {(['now', 'later'] as const).map(m => (
-                <button key={m} type="button" onClick={() => setScheduleMode(m)}
-                  className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
-                    scheduleMode === m ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
-                  }`}>
-                  {m === 'now' ? 'Start Now' : 'Schedule'}
-                </button>
-              ))}
-            </div>
-
-            {scheduleMode === 'now' && (
-              <div className="flex flex-wrap gap-2">
-                {DURATIONS.map(d => (
-                  <button key={d.mins} type="button" onClick={() => setDurationMins(d.mins)}
-                    className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
-                      durationMins === d.mins ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
-                    }`}>
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {scheduleMode === 'later' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-primary-400/40 mb-1">Start</label>
-                  <input type="datetime-local" value={formData.startTime} onChange={e => update({ startTime: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-primary-400/40 mb-1">End</label>
-                  <input type="datetime-local" value={formData.endTime} min={formData.startTime} onChange={e => update({ endTime: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-black/50 border border-primary-500/20 rounded-xl text-white text-sm focus:border-primary-500/40 focus:outline-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Recurring — paywall warning shown upfront */}
-            {!canRecur && (
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06]">
-                <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <p className="text-[11px] text-amber-300/80">Recurring deals require the <span className="font-bold text-amber-300">Growth plan</span>. Upgrade to automate weekly specials.</p>
-              </div>
-            )}
-            <button type="button" onClick={() => canRecur && update({ isRecurring: !formData.isRecurring })}
-              className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl border transition-all ${
-                !canRecur ? 'border-primary-500/10 bg-black/30 cursor-not-allowed' :
-                formData.isRecurring ? 'border-primary-500 bg-primary-500/10' : 'border-primary-500/20 bg-black/40 hover:border-primary-500/25'
-              }`}>
-              {!canRecur && <Lock className="w-3.5 h-3.5 text-primary-400/40" />}
-              <span className={`text-sm font-semibold ${canRecur ? 'text-white/60' : 'text-primary-400/40'}`}>Recurring</span>
-              {!canRecur && <span className="text-[9px] text-primary-500/40 ml-auto">Growth plan</span>}
-              {canRecur && (
-                <div className={`ml-auto w-9 h-5 rounded-full transition-colors flex-shrink-0 ${formData.isRecurring ? 'bg-primary-500' : 'bg-white/15'}`}>
-                  <span className={`block w-4 h-4 mt-0.5 ml-0.5 rounded-full bg-white transition-transform ${formData.isRecurring ? 'translate-x-4' : ''}`} />
-                </div>
-              )}
-            </button>
-
-            {formData.isRecurring && canRecur && (
-              <div className="grid grid-cols-7 gap-1.5">
-                {DAY_NAMES.map((name, i) => {
-                  const idx = DAY_INDICES[i]
-                  const on = formData.recurrencePattern.daysOfWeek.includes(idx)
-                  return (
-                    <button key={name} type="button"
-                      onClick={() => {
-                        const days = on ? formData.recurrencePattern.daysOfWeek.filter(d => d !== idx) : [...formData.recurrencePattern.daysOfWeek, idx].sort()
-                        update({ recurrencePattern: { ...formData.recurrencePattern, daysOfWeek: days } })
-                      }}
-                      className={`py-2 rounded-lg text-xs font-bold border transition-all ${on ? 'bg-primary-500 border-primary-500 text-black' : 'bg-black/40 border-primary-500/15 text-primary-400/50'}`}>
-                      {name}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 5. Who sees this? */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">Who sees this?</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => update({ targeting: { ...formData.targeting, followersOnly: false } })}
-                className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
-                  !formData.targeting.followersOnly ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
-                }`}>
-                Everyone nearby
-              </button>
-              <button type="button" onClick={() => update({ targeting: { ...formData.targeting, followersOnly: true } })}
-                className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
-                  formData.targeting.followersOnly ? 'border-primary-500 bg-primary-500/10 text-white' : 'border-primary-500/20 bg-black/40 text-primary-400/50 hover:border-primary-500/25'
-                }`}>
-                My followers only
-              </button>
-            </div>
-          </div>
-
           {/* 6. Preview */}
           {formData.type && formData.title.trim() && (
             <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4 space-y-2">
@@ -338,12 +366,15 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
                   {formData.description && <p className="text-[11px] text-primary-400/40 mt-1 line-clamp-2">{formData.description}</p>}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                     <span className="text-[10px] text-primary-400/50">
-                      {scheduleMode === 'now'
-                        ? `Today · ${durationMins >= 60 ? `${Math.floor(durationMins / 60)}hr` : ''}${durationMins % 60 ? ` ${durationMins % 60}m` : ''} from now`
-                        : formData.startTime && formData.endTime
-                          ? `${new Date(formData.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${new Date(formData.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${new Date(formData.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                          : 'Schedule not set'}
+                      {isRecurringMode && recurDaysSelected
+                        ? `Every ${recurDayLabel} · ${recurStartTime} – ${recurEndTime}`
+                        : scheduleMode === 'now'
+                          ? `Today · ${durationMins >= 60 ? `${Math.floor(durationMins / 60)}hr` : ''}${durationMins % 60 ? ` ${durationMins % 60}m` : ''} from now`
+                          : formData.startTime && formData.endTime
+                            ? `${new Date(formData.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${new Date(formData.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${new Date(formData.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                            : 'Schedule not set'}
                     </span>
+                    {isRecurringMode && <span className="text-[10px] text-primary-500/50 flex items-center gap-0.5"><Repeat className="w-2.5 h-2.5" /> Recurring</span>}
                     <span className="text-[10px] text-primary-400/40">
                       {formData.targeting.followersOnly ? '🔒 Followers only' : '🌐 Everyone'}
                     </span>
@@ -357,7 +388,7 @@ export default function PromotionWizard({ initialData, template, onSave, onCance
           <div className="pt-2 space-y-2">
             <button onClick={handlePublish} disabled={!canPublish || saving}
               className="w-full py-3.5 bg-primary-500 text-black font-bold text-sm rounded-xl hover:bg-primary-400 transition-all disabled:opacity-30 min-h-[48px]">
-              {saving ? 'Publishing...' : isEditing ? 'Save Changes' : 'Publish Deal'}
+              {saving ? 'Publishing...' : isEditing ? 'Save Changes' : isRecurringMode ? 'Set Up Recurring Deal' : 'Publish Deal'}
             </button>
             <button onClick={onCancel} className="w-full py-2 text-primary-400/50 text-sm hover:text-primary-400/60">Cancel</button>
           </div>

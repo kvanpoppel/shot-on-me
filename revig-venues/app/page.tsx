@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import LoginScreen from './components/LoginScreen'
 import BottomNav, { Tab } from './components/BottomNav'
 import DashboardHome from './components/DashboardHome'
+import DealsTab from './components/DealsTab'
 import RedemptionsTab from './components/RedemptionsTab'
 import PayoutsTab from './components/PayoutsTab'
 import SettingsTab from './components/SettingsTab'
@@ -49,6 +50,7 @@ function RevigVenuesApp() {
       {/* Main */}
       <main className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'dashboard'   && <DashboardHome />}
+        {activeTab === 'deals'       && <DealsTab />}
         {activeTab === 'redemptions' && <RedemptionsTab />}
         {activeTab === 'payouts'     && <PayoutsTab />}
         {activeTab === 'settings'    && <SettingsTab />}

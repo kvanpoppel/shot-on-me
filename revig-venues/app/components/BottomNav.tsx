@@ -1,8 +1,8 @@
 'use client'
 
-import { LayoutDashboard, Receipt, Wallet, Settings } from 'lucide-react'
+import { LayoutDashboard, Receipt, Sparkles, Wallet, Settings } from 'lucide-react'
 
-type Tab = 'dashboard' | 'redemptions' | 'payouts' | 'settings'
+type Tab = 'dashboard' | 'deals' | 'redemptions' | 'payouts' | 'settings'
 
 interface BottomNavProps {
   active: Tab
@@ -10,9 +10,10 @@ interface BottomNavProps {
 }
 
 const TABS = [
-  { id: 'dashboard' as Tab,    icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'redemptions' as Tab,  icon: Receipt,         label: 'Redemptions' },
-  { id: 'payouts' as Tab,      icon: Wallet,          label: 'Payouts' },
+  { id: 'dashboard' as Tab,    icon: LayoutDashboard, label: 'Home' },
+  { id: 'deals' as Tab,        icon: Sparkles,        label: 'Deals' },
+  { id: 'redemptions' as Tab,  icon: Receipt,         label: 'Activity' },
+  { id: 'payouts' as Tab,      icon: Wallet,          label: 'Money' },
   { id: 'settings' as Tab,     icon: Settings,        label: 'Settings' },
 ]
 
