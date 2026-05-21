@@ -207,22 +207,17 @@ export default function Dashboard() {
     finally { setSending(false) }
   }
 
-  const [tonightSending, setTonightSending] = useState(false)
-  const [tonightSent, setTonightSent] = useState(false)
+  const [autoLog, setAutoLog] = useState<{ action: string; detail: string; createdAt: string; promotionTitle?: string }[]>([])
 
-  const sendTonight = async () => {
-    if (!token || !venueId) return
-    setTonightSending(true)
+  const fetchAutoLog = useCallback(async () => {
+    if (!venueId || !token) return
     try {
-      const dealList = live.map(p => p.title).join(', ')
-      const title = live.length > 0 ? `We're open tonight — ${dealList}` : `${venueName} is open tonight!`
-      await axios.post(`${getApiUrl()}/venues/${venueId}/notify-followers`, { title, message: '' }, { headers: { Authorization: `Bearer ${token}` } })
-      setTonightSent(true)
-      showSuccess('Sent to all followers!')
-      setTimeout(() => setTonightSent(false), 4000)
-    } catch (e: any) { showError(e?.response?.data?.error || 'Failed') }
-    finally { setTonightSending(false) }
-  }
+      const res = await axios.get(`${getApiUrl()}/automation-log?limit=5`, { headers: { Authorization: `Bearer ${token}` } })
+      setAutoLog(res.data.logs || [])
+    } catch {}
+  }, [venueId, token])
+
+  useEffect(() => { fetchAutoLog() }, [fetchAutoLog])
 
   if (loading || venueLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" /></div>
   if (!user) return null
@@ -269,73 +264,101 @@ export default function Dashboard() {
     <DashboardLayout>
       <div className="pb-24 lg:pb-10 max-w-xl mx-auto space-y-5">
 
-        {/* ─ HEADER ─ */}
-        <div className="flex items-center justify-between pt-1">
-          <div>
-            <p className="text-lg font-bold text-white">{greeting}</p>
-            <p className="text-[11px] text-primary-400/50">{venueName} · {followerCount} followers</p>
+        {/* ═══ 1. THE NUMBER ═══ */}
+        <div className="rounded-2xl border border-primary-500/15 bg-gradient-to-br from-[#1a1510]/80 to-black/60 p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-10 pointer-events-none bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-xs text-primary-400/50 font-semibold uppercase tracking-wider">{venueName}</p>
+            <div className="flex items-center gap-1.5">
+              {live.length > 0 ? (
+                <>
+                  <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span></span>
+                  <span className="text-[10px] font-semibold text-emerald-400">{live.length} live</span>
+                </>
+              ) : (
+                <span className="text-[10px] text-primary-400/30">{followerCount} followers</span>
+              )}
+            </div>
           </div>
-          {atLimit ? (
-            <button onClick={() => router.push('/dashboard/settings')} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary-500 to-amber-400 px-3.5 py-2 text-xs font-bold text-black min-h-[40px]">
-              <Crown className="w-3.5 h-3.5" /> Upgrade
-            </button>
-          ) : (
-            <button onClick={() => { setEditingPromo(null); setShowWizard(true) }} className="flex items-center gap-1.5 rounded-xl bg-primary-500 px-3.5 py-2 text-xs font-bold text-black min-h-[40px]">
-              <Plus className="w-3.5 h-3.5" /> New Deal
-            </button>
-          )}
+          <p className="text-4xl font-extrabold text-white tracking-tight">${stats.totalRevenue}</p>
+          <p className="text-[11px] text-primary-400/40 mt-1">
+            total via Shot On Me
+            {stats.yesterdayRevenue > 0 && <> · <span className="text-primary-400/60">${stats.yesterdayRevenue} yesterday</span></>}
+          </p>
         </div>
 
-        {/* ─ ONE-TAP TONIGHT ─ */}
-        <button
-          onClick={sendTonight}
-          disabled={tonightSending || tonightSent}
-          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all min-h-[44px] ${
-            tonightSent
-              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-              : 'bg-gradient-to-r from-primary-500/20 to-amber-500/20 text-primary-400 border border-primary-500/20 hover:border-primary-500/40'
-          }`}
-        >
-          {tonightSending ? <Loader2 className="w-4 h-4 animate-spin" /> :
-            tonightSent ? <><CheckCircle2 className="w-4 h-4" /> Sent to {followerCount} followers</> :
-            <><Megaphone className="w-4 h-4" /> We&apos;re Open Tonight</>}
-        </button>
-
-        {/* ─ SECTION 1: WHAT'S LIVE (collapsible) ─ */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <button onClick={() => setDealsOpen(o => !o)} className="flex items-center gap-1.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40">Right Now</p>
-              {live.length > 0 && <span className="text-[10px] font-bold text-emerald-400">{live.length} live</span>}
-              <ChevronDown className={`w-3 h-3 text-primary-400/30 transition-transform ${dealsOpen ? '' : '-rotate-90'}`} />
-            </button>
-            <button onClick={() => router.push('/dashboard/promotions')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
-              All deals <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-
-          {dealsOpen && (<>
-          {loadingData ? (
-            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-black/40 animate-pulse" />)}</div>
-          ) : live.length === 0 ? (
-            /* Empty state — Quick Launch IS the content */
-            <div className="rounded-xl border border-primary-500/15 bg-[#1a1510]/60 p-5">
-              <p className="text-sm text-primary-400/70 text-center mb-4">No deals running — go live in one tap</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: 'happy-hour', emoji: '🍻', label: 'Happy Hour' },
-                  { key: 'flash-deal', emoji: '⚡', label: 'Flash Deal' },
-                  { key: 'vip', emoji: '👑', label: 'VIP Night' },
-                ].map(d => (
-                  <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={atLimit}
-                    className="rounded-xl border border-primary-500/15 bg-[#1a1510]/60 py-3 text-center hover:border-primary-500/30 hover:bg-[#1a1510]/80 transition-all disabled:opacity-30 min-h-[56px]">
-                    <p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/60 mt-0.5">{d.label}</p>
-                  </button>
-                ))}
+        {/* ═══ 2. WHAT THE AI DID ═══ */}
+        {(autoLog.length > 0 || (hasAI && visibleAI.length > 0)) && (
+          <div>
+            {/* AI activity log — what already happened */}
+            {autoLog.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/30 mb-2">AI Activity</p>
+                <div className="space-y-1.5">
+                  {autoLog.map((log, i) => {
+                    const d = new Date(log.createdAt)
+                    const timeStr = d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                    const icon = log.action === 'auto_flash_deal' ? '⚡' : log.action === 'auto_deal_posted' ? '🤖' : '📋'
+                    return (
+                      <div key={i} className="rounded-lg border border-primary-500/10 bg-black/30 px-3 py-2 flex items-start gap-2">
+                        <span className="text-xs mt-0.5">{icon}</span>
+                        <p className="flex-1 text-[11px] text-white/60 leading-snug">{log.detail}</p>
+                        <span className="text-[9px] text-primary-400/25 flex-shrink-0">{timeStr}</span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
+            )}
+
+            {/* AI suggestions — what it wants to do next */}
+            {hasAI && visibleAI.length > 0 && visibleAI.map((s, idx) => {
+              const realIdx = aiSuggestions.indexOf(s)
+              const isUrgent = s.type === 'slow-right-now'
+              return (
+                <div key={realIdx} className={`rounded-xl border p-3.5 flex items-start gap-3 mb-2 ${
+                  isUrgent ? 'border-rose-500/30 bg-rose-500/[0.06]' : 'border-primary-500/15 bg-primary-500/[0.04]'
+                }`}>
+                  <span className="text-base mt-0.5">{TYPE_EMOJI[s.type] || '🎯'}</span>
+                  <div className="flex-1 min-w-0">
+                    {isUrgent && <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider mb-0.5">Slow right now</p>}
+                    <p className="text-sm font-semibold text-white">{s.title}</p>
+                    <p className="text-[11px] text-white/35 mt-0.5 line-clamp-2">{s.description}</p>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button onClick={() => approveAI(realIdx)} disabled={approvingAI === realIdx || atLimit}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 min-h-[32px] ${isUrgent ? 'bg-rose-500 text-white' : 'bg-primary-500 text-black'}`}>
+                      {approvingAI === realIdx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
+                    </button>
+                    <button onClick={() => setDismissedAI(prev => new Set(prev).add(realIdx))} className="p-1.5 rounded-lg text-primary-400/30 hover:text-primary-400/60">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+
+            {!hasAI && !loadingData && (
+              <div className="rounded-xl border border-primary-500/10 bg-black/30 p-3.5 flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-primary-500/25 flex-shrink-0" />
+                <p className="text-[11px] text-primary-400/50 flex-1">AI deal suggestions available on Pro plan</p>
+                <button onClick={() => router.push('/dashboard/settings')} className="text-[10px] font-bold text-primary-500/60 hover:text-primary-500 flex-shrink-0">Upgrade</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ 3. LIVE RIGHT NOW ═══ */}
+        {loadingData ? (
+          <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-black/40 animate-pulse" />)}</div>
+        ) : live.length > 0 ? (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/30">Live Now</p>
+              <button onClick={() => router.push('/dashboard/promotions')} className="text-[10px] text-primary-400/40 hover:text-primary-400 flex items-center gap-0.5">
+                All deals <ChevronRight className="w-3 h-3" />
+              </button>
             </div>
-          ) : (
-            /* Live deals */
             <div className="space-y-2">
               {live.map(p => {
                 const end = p.isFlashDeal && p.flashDealEndsAt ? p.flashDealEndsAt : p.endTime
@@ -348,183 +371,39 @@ export default function Dashboard() {
                     <span className="text-base flex-shrink-0">{TYPE_EMOJI[p.type] || '🎉'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{p.title}</p>
-                      {p.offer && <p className="text-[11px] text-primary-500/80 truncate">{p.offer}</p>}
                       {(rev > 0 || reds > 0) && (
                         <p className="text-[10px] text-emerald-400/60 mt-0.5">${rev} revenue · {reds} redemptions</p>
                       )}
                     </div>
                     <span className={`text-[11px] font-semibold flex-shrink-0 ${urgent ? 'text-rose-400' : 'text-primary-400/50'}`}>
-                      {urgent && <AlertCircle className="w-3 h-3 inline mr-0.5" />}{left}
+                      {left}
                     </span>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={() => { setEditingPromo(p); setShowWizard(true) }} className="text-[9px] text-primary-400/40 hover:text-primary-400 px-1.5 py-1 rounded border border-primary-500/15">
-                        <Pencil className="w-3 h-3 inline" />
-                      </button>
-                      {confirmEndId === p._id ? (
-                        <>
-                          <button onClick={() => setConfirmEndId(null)} className="text-[9px] text-primary-400/50 px-1.5 py-1 rounded border border-primary-500/20">No</button>
-                          <button onClick={() => endDeal(p._id)} disabled={endingId === p._id} className="text-[9px] font-bold text-white bg-rose-500 px-1.5 py-1 rounded">{endingId === p._id ? '...' : 'End'}</button>
-                        </>
-                      ) : (
-                        <button onClick={() => endDeal(p._id)} className="text-[9px] text-rose-400/40 hover:text-rose-400 px-1.5 py-1 rounded border border-rose-500/10">End</button>
-                      )}
-                    </div>
+                    <button onClick={() => endDeal(p._id)} className="text-[9px] text-primary-400/30 hover:text-rose-400 px-1.5 py-1 rounded border border-primary-500/10 flex-shrink-0">
+                      {confirmEndId === p._id ? 'Confirm?' : 'End'}
+                    </button>
                   </div>
                 )
               })}
-
-              {/* Quick launch row when deals are running */}
-              {!atLimit && (
-                <div className="flex gap-2 pt-1">
-                  {[
-                    { key: 'happy-hour', emoji: '🍻' },
-                    { key: 'flash-deal', emoji: '⚡' },
-                    { key: 'vip', emoji: '👑' },
-                  ].map(d => (
-                    <button key={d.key} onClick={() => quickLaunch(d.key)}
-                      className="flex-1 rounded-lg border border-primary-500/10 bg-black/30 py-2 text-center text-sm hover:bg-black/50 transition-all">
-                      {d.emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-          )}
-
-          {/* Upcoming */}
-          {upcoming.length > 0 && (
-            <div className="mt-3 px-1">
-              <p className="text-[9px] uppercase tracking-widest text-primary-400/30 mb-1.5">Upcoming</p>
-              {upcoming.map(p => (
-                <div key={p._id} className="flex items-center justify-between py-1">
-                  <span className="text-xs text-primary-400/50 truncate">{TYPE_EMOJI[p.type] || '🎉'} {p.title}</span>
-                  <span className="text-[10px] text-primary-400/30 flex-shrink-0 ml-2">{new Date(p.startTime).toLocaleDateString([], { weekday: 'short' })} {new Date(p.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                </div>
+          </div>
+        ) : (
+          /* No deals running — quick launch */
+          <div className="rounded-xl border border-primary-500/10 bg-black/30 p-5">
+            <p className="text-xs text-primary-400/50 text-center mb-3">No deals running</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'happy-hour', emoji: '🍻', label: 'Happy Hour' },
+                { key: 'flash-deal', emoji: '⚡', label: 'Flash Deal' },
+                { key: 'vip', emoji: '👑', label: 'VIP Night' },
+              ].map(d => (
+                <button key={d.key} onClick={() => quickLaunch(d.key)} disabled={atLimit}
+                  className="rounded-xl border border-primary-500/15 bg-[#1a1510]/40 py-3 text-center hover:border-primary-500/25 transition-all disabled:opacity-30">
+                  <p className="text-lg">{d.emoji}</p><p className="text-[9px] font-bold text-primary-400/50 mt-0.5">{d.label}</p>
+                </button>
               ))}
             </div>
-          )}
-          </>)}
-        </div>
-
-        {/* ─ VIBES INDICATOR ─ */}
-        {!loadingData && (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {live.length > 0 ? (
-                <>
-                  <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
-                  </span>
-                  <p className="text-[11px] font-semibold text-emerald-400 truncate">
-                    {live.length} deal{live.length > 1 ? 's' : ''} live
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary-400/20 flex-shrink-0" />
-                  <p className="text-[11px] text-primary-400/30 truncate">No deals running</p>
-                </>
-              )}
-            </div>
-            {stats.yesterdayRevenue > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-primary-400/30 flex-shrink-0">
-                <Clock className="w-3 h-3" /> Yesterday: ${stats.yesterdayRevenue}
-              </div>
-            )}
           </div>
         )}
-
-        {/* ─ SECTION 2: AI SUGGESTION OR UPGRADE HINT ─ */}
-        {hasAI && visibleAI.length > 0 ? (
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-400/40 mb-2">AI Recommends</p>
-            {visibleAI.map((s, idx) => {
-              const realIdx = aiSuggestions.indexOf(s)
-              const isUrgent = s.type === 'slow-right-now'
-              return (
-                <div key={realIdx} className={`rounded-xl border p-4 flex items-start gap-3 mb-2 ${
-                  isUrgent
-                    ? 'border-rose-500/30 bg-rose-500/[0.06] animate-pulse-slow'
-                    : 'border-primary-500/15 bg-primary-500/[0.04]'
-                }`}>
-                  <span className="text-lg mt-0.5">{TYPE_EMOJI[s.type] || '🎯'}</span>
-                  <div className="flex-1 min-w-0">
-                    {isUrgent && <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider mb-0.5">Slow right now</p>}
-                    <p className="text-sm font-semibold text-white">{s.title}</p>
-                    <p className="text-[11px] text-white/35 mt-0.5 line-clamp-2">{s.description}</p>
-                  </div>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    <button onClick={() => approveAI(realIdx)} disabled={approvingAI === realIdx || atLimit}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 min-h-[32px] ${
-                        isUrgent ? 'bg-rose-500 text-white' : 'bg-primary-500 text-black'
-                      }`}>
-                      {approvingAI === realIdx ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ThumbsUp className="w-3 h-3" /> Go Live</>}
-                    </button>
-                    <button onClick={() => setDismissedAI(prev => new Set(prev).add(realIdx))} className="p-1.5 rounded-lg text-primary-400/30 hover:text-primary-400/60">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : !hasAI && !loadingData ? (
-          <div className="rounded-xl border border-primary-500/10 bg-black/30 p-4 flex items-center gap-3">
-            <Sparkles className="w-4 h-4 text-primary-500/25 flex-shrink-0" />
-            <p className="text-[11px] text-primary-400/50 flex-1">AI deal suggestions available on Growth plan</p>
-            <button onClick={() => router.push('/dashboard/settings')} className="text-[10px] font-bold text-primary-500/60 hover:text-primary-500 flex-shrink-0">Upgrade</button>
-          </div>
-        ) : null}
-
-        {/* ─ SECTION 3: YESTERDAY + NOTIFY ─ */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
-            <p className="text-[10px] text-primary-400/40 mb-1">Yesterday</p>
-            <p className="text-lg font-bold text-white">${stats.yesterdayRevenue}</p>
-            <p className="text-[10px] text-primary-400/30">{stats.yesterdayRedemptions} redeemed</p>
-          </div>
-          <div className="rounded-xl border border-primary-500/15 bg-black/40 p-4">
-            <p className="text-[10px] text-primary-400/40 mb-1">All Time</p>
-            <p className="text-lg font-bold text-white">${stats.totalRevenue}</p>
-            <button onClick={() => router.push('/dashboard/money')} className="text-[10px] text-primary-400/40 hover:text-primary-400 mt-1 flex items-center gap-0.5">
-              See details <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
-
-        {/* Notify */}
-        <div className="rounded-xl border border-primary-500/15 bg-black/40 overflow-hidden">
-          <button onClick={() => { setNotifyOpen(o => !o); if (sent) { setSent(false); setNotifyTitle(''); setNotifyMsg('') } }}
-            className="w-full flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Megaphone className="w-3.5 h-3.5 text-primary-500/60" />
-              <p className="text-xs font-semibold text-white/60">Notify {followerCount} followers</p>
-            </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-primary-400/30 transition-transform ${notifyOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {notifyOpen && (
-            <div className="px-4 pb-4 border-t border-primary-500/10 pt-3">
-              {sent ? (
-                <div className="text-center py-3">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
-                  <p className="text-xs font-bold text-white">Sent!</p>
-                  <button onClick={() => { setSent(false); setNotifyTitle(''); setNotifyMsg('') }} className="text-[10px] text-primary-400/50 mt-1">Send another</button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <input value={notifyTitle} onChange={e => setNotifyTitle(e.target.value)} placeholder="e.g. Happy Hour is LIVE! 🍻" maxLength={60}
-                    className="w-full rounded-lg border border-primary-500/15 bg-black/40 px-3 py-2 text-sm text-white placeholder-primary-400/30 focus:border-primary-500/30 focus:outline-none" />
-                  <button onClick={sendNotify} disabled={sending || !notifyTitle.trim()}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary-500 py-2 text-xs font-bold text-black disabled:opacity-30 min-h-[40px]">
-                    {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Send className="w-3.5 h-3.5" /> Send</>}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
       </div>
 

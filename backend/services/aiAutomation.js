@@ -6,6 +6,7 @@ const Payment = require('../models/Payment')
 const DailySales = require('../models/DailySales')
 const { pushTargetedPromotionNotification } = require('../routes/venue-notifications')
 const { getConfidenceMultiplier } = require('./aiLearningLoop')
+const AutomationLog = require('../models/AutomationLog')
 
 /**
  * AI Automation Service
@@ -288,6 +289,14 @@ async function generatePromotionSuggestions(venueId) {
               flashSuggestion.autoPosted = true
               flashSuggestion.title = 'Flash Deal Auto-Published'
               flashSuggestion.description = `It was quiet so we launched a 2-hour flash deal and notified your followers.`
+
+              // Log the automated action
+              await AutomationLog.create({
+                venue: venueId,
+                action: 'auto_flash_deal',
+                detail: `Slow ${capitalize(todayName)} detected — auto-published a 2-hour flash deal (25% off). Revenue was tracking ${Math.round((1 - todayRevSoFar / avgRevByNow) * 100)}% below average.`,
+                promotionTitle: 'Flash Deal — Right Now',
+              })
             } catch (autoErr) {
               console.error('Auto flash deal failed:', autoErr.message)
             }
@@ -495,6 +504,16 @@ async function processAutoSuggestions(venueId, autoPostThreshold = 0.85) {
             promotion: promotion._id
           })
           postedCount += 1
+
+          // Log automated action
+          try {
+            await AutomationLog.create({
+              venue: venueId,
+              action: 'auto_deal_posted',
+              detail: `AI auto-published "${suggestion.title}" (${Math.round((suggestion.confidence || 0) * 100)}% confidence)`,
+              promotionTitle: suggestion.title,
+            })
+          } catch { /* non-critical */ }
         } catch (error) {
           console.error('Error auto-posting suggestion:', error)
         }

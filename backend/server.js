@@ -375,6 +375,7 @@ app.use('/api/venues', venuesRouter);
 app.use('/api/daily-sales', require('./routes/daily-sales'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/weekly-digest', require('./routes/weekly-digest'));
+app.use('/api/automation-log', require('./routes/automation-log'));
 
 const messagesRouter = require('./routes/messages');
 messagesRouter.setIO(io);
