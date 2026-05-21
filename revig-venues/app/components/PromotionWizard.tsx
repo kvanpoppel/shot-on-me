@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Lock, Sparkles, Eye, Crown, Repeat } from 'lucide-react'
+import { X, Sparkles, Eye, Repeat } from 'lucide-react'
 
 interface PromotionFormData {
   title: string; description: string; offer: string; type: string
