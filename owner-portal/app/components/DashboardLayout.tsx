@@ -45,6 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/dashboard/disputes', label: 'Disputes', icon: AlertTriangle },
     { href: '/dashboard/system-health', label: 'System Health', icon: Activity },
+    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ]
 
   return (

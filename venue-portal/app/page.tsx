@@ -251,9 +251,21 @@ function HomeContent() {
         )}
 
         {!showForm && (
-          <p className="text-primary-400/25 text-xs text-center">
-            Currently live in IN · IL · KY · TN · MI · OH
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-primary-400/25 text-xs">
+              Currently live in IN · IL · KY · TN · MI · OH
+            </p>
+            <div className="flex items-center justify-center gap-3 text-primary-400/25 text-xs">
+              <a href="/terms" className="hover:text-primary-400/50 transition-colors underline underline-offset-2">Terms</a>
+              <span>·</span>
+              <a href="/privacy" className="hover:text-primary-400/50 transition-colors underline underline-offset-2">Privacy</a>
+              <span>·</span>
+              <a href="mailto:venues@shotonme.com" className="hover:text-primary-400/50 transition-colors underline underline-offset-2">Contact</a>
+            </div>
+            <p className="text-primary-400/20 text-[10px]">
+              &copy; 2026 Shot On Me LLC
+            </p>
+          </div>
         )}
       </div>
     </main>

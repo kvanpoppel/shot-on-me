@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiUrl } from '../utils/api'
 import axios from 'axios'
-import { LogOut, MapPin, Mail, Building2, Phone, ExternalLink, Crown, Check, Loader2, ArrowUpRight, Lock, AlertTriangle } from 'lucide-react'
+import { LogOut, MapPin, Mail, Building2, Phone, ExternalLink, Crown, Check, Loader2, ArrowUpRight, Lock, AlertTriangle, KeyRound, Trash2, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Plan {
   tier: string
@@ -52,6 +52,64 @@ export default function SettingsTab() {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [showPlans, setShowPlans] = useState(false)
+
+  // Change password state
+  const [showChangePw, setShowChangePw] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState('')
+
+  // Delete account state
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deletePw, setDeletePw] = useState('')
+  const [showDeletePw, setShowDeletePw] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  const handleChangePassword = async () => {
+    setPwError('')
+    setPwSuccess('')
+    if (newPw !== confirmPw) { setPwError('Passwords do not match'); return }
+    if (newPw.length < 6) { setPwError('New password must be at least 6 characters'); return }
+    setPwLoading(true)
+    try {
+      await axios.put(`${getApiUrl()}/users/me/change-password`, {
+        currentPassword: currentPw,
+        newPassword: newPw,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      setPwSuccess('Password updated successfully')
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
+      setTimeout(() => { setPwSuccess(''); setShowChangePw(false) }, 2000)
+    } catch (err: any) {
+      setPwError(err.response?.data?.message || err.response?.data?.error || 'Failed to change password')
+    } finally {
+      setPwLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleteError('')
+    if (!deletePw) { setDeleteError('Enter your password to confirm'); return }
+    setDeleteLoading(true)
+    try {
+      await axios.delete(`${getApiUrl()}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { password: deletePw },
+      })
+      logout()
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || err.response?.data?.error || 'Failed to delete account')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
 
   const currentTier = 'free' // Revig venues default — would come from venue data if available
   const currentIdx = TIER_ORDER.indexOf(currentTier)
@@ -200,6 +258,147 @@ export default function SettingsTab() {
             <ExternalLink className="w-4 h-4 text-white/25" />
           </a>
         ))}
+      </div>
+
+      {/* Change Password */}
+      <div className="mb-5">
+        <button
+          onClick={() => { setShowChangePw(!showChangePw); setPwError(''); setPwSuccess('') }}
+          className="w-full fv-card px-4 py-3.5 flex items-center gap-3"
+        >
+          <KeyRound className="w-4 h-4" style={{ color: ACCENT }} />
+          <span className="flex-1 text-left text-sm font-semibold text-white">Change Password</span>
+          {showChangePw ? <ChevronUp className="w-4 h-4 text-white/25" /> : <ChevronDown className="w-4 h-4 text-white/25" />}
+        </button>
+
+        {showChangePw && (
+          <div className="mt-2 rounded-xl p-4 flex flex-col gap-3" style={{ background: 'rgba(28,28,50,1)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            {pwError && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(255,95,87,0.08)', color: '#FF5F57' }}>
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                {pwError}
+              </div>
+            )}
+            {pwSuccess && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(200,241,53,0.08)', color: '#C8F135' }}>
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                {pwSuccess}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Current Password</label>
+              <div className="relative">
+                <input
+                  type={showCurrentPw ? 'text' : 'password'}
+                  value={currentPw}
+                  onChange={e => setCurrentPw(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+                <button type="button" onClick={() => setShowCurrentPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50">
+                  {showCurrentPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>New Password</label>
+              <div className="relative">
+                <input
+                  type={showNewPw ? 'text' : 'password'}
+                  value={newPw}
+                  onChange={e => setNewPw(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+                <button type="button" onClick={() => setShowNewPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50">
+                  {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPw}
+                onChange={e => setConfirmPw(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              />
+            </div>
+
+            <button
+              onClick={handleChangePassword}
+              disabled={pwLoading || !currentPw || !newPw || !confirmPw}
+              className="w-full py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-30 flex items-center justify-center gap-1.5"
+              style={{ background: ACCENT, color: '#0F0F1E' }}
+            >
+              {pwLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Update Password'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Account */}
+      <div className="mb-5">
+        <button
+          onClick={() => { setShowDeleteAccount(!showDeleteAccount); setDeleteError('') }}
+          className="w-full fv-card px-4 py-3.5 flex items-center gap-3"
+        >
+          <Trash2 className="w-4 h-4" style={{ color: '#FF5F57' }} />
+          <span className="flex-1 text-left text-sm font-semibold" style={{ color: '#FF5F57' }}>Delete Account</span>
+          {showDeleteAccount ? <ChevronUp className="w-4 h-4 text-white/25" /> : <ChevronDown className="w-4 h-4 text-white/25" />}
+        </button>
+
+        {showDeleteAccount && (
+          <div className="mt-2 rounded-xl p-4 flex flex-col gap-3" style={{ background: 'rgba(255,95,87,0.04)', border: '1px solid rgba(255,95,87,0.15)' }}>
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(255,95,87,0.08)', color: '#FF5F57' }}>
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold mb-0.5">This action cannot be undone.</p>
+                <p className="text-white/40">Your venue account, all data, and any pending payouts will be permanently deleted. Enter your password to confirm.</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(255,95,87,0.08)', color: '#FF5F57' }}>
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                {deleteError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showDeletePw ? 'text' : 'password'}
+                  value={deletePw}
+                  onChange={e => setDeletePw(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,95,87,0.15)' }}
+                />
+                <button type="button" onClick={() => setShowDeletePw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50">
+                  {showDeletePw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || !deletePw}
+              className="w-full py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-30 flex items-center justify-center gap-1.5"
+              style={{ background: '#FF5F57', color: '#fff' }}
+            >
+              {deleteLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Trash2 className="w-3 h-3" /> Permanently Delete Account</>}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sign out */}

@@ -316,12 +316,14 @@ export default function LandingPage({ onSignIn, onCreateAccount }: LandingPagePr
 
         <div className="mt-8 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            &copy; 2026 Revig · A Shot On Me platform &nbsp;·&nbsp;
+            &copy; 2026 Revig · Shot On Me LLC &nbsp;·&nbsp;
             <a href="/privacy" className="underline hover:text-white/50 transition-colors">Privacy</a>
             &nbsp;·&nbsp;
             <a href="/terms" className="underline hover:text-white/50 transition-colors">Terms</a>
             &nbsp;·&nbsp;
             <a href="/venue-signup" className="underline hover:text-white/50 transition-colors">List your venue</a>
+            &nbsp;·&nbsp;
+            <a href="mailto:support@shotonme.com" className="underline hover:text-white/50 transition-colors">Contact</a>
           </p>
         </div>
       </section>

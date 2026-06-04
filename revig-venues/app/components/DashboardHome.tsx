@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiUrl } from '../utils/api'
 import axios from 'axios'
-import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw, Sparkles, ThumbsUp, X, Loader2 } from 'lucide-react'
+import { Gift, TrendingUp, Clock, DollarSign, MapPin, RefreshCw, Sparkles, ThumbsUp, X, Loader2, CheckCircle2, Circle, Settings, Megaphone, Share2, Copy } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface Stats {
@@ -44,6 +44,34 @@ export default function DashboardHome() {
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
   const [dismissedAI, setDismissedAI] = useState<Set<number>>(new Set())
   const [approvingAI, setApprovingAI] = useState<number | null>(null)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  // Load onboarding dismissed state from localStorage
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem(`revig_onboarding_dismissed_${venue?.id}`)
+      if (dismissed === 'true') setOnboardingDismissed(true)
+    } catch {}
+  }, [venue?.id])
+
+  const dismissOnboarding = () => {
+    setOnboardingDismissed(true)
+    try {
+      localStorage.setItem(`revig_onboarding_dismissed_${venue?.id}`, 'true')
+    } catch {}
+  }
+
+  const copyVenueLink = () => {
+    const link = `https://revig.shotonme.com/venue/${venue?.id}`
+    navigator.clipboard.writeText(link).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    }).catch(() => {})
+  }
+
+  // Show onboarding when venue is new (no revenue, no active promos)
+  const showOnboarding = !onboardingDismissed && stats && stats.totalRevenue === 0 && stats.activePromos === 0
 
   const fetchAll = useCallback(async (silent = false) => {
     if (!token || !venue?.id) return
@@ -117,6 +145,87 @@ export default function DashboardHome() {
           {stats && stats.totalRedemptions > 0 && <> · {stats.totalRedemptions} redemptions</>}
         </p>
       </div>
+
+      {/* ═══ ONBOARDING CHECKLIST ═══ */}
+      {showOnboarding && (
+        <div className="mb-5 rounded-xl p-4 relative" style={{ background: 'rgba(200,241,53,0.04)', border: '1px solid rgba(200,241,53,0.12)' }}>
+          <button
+            onClick={dismissOnboarding}
+            className="absolute top-3 right-3 p-1 rounded-lg text-white/20 hover:text-white/40 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'rgba(200,241,53,0.6)' }}>
+            Getting Started
+          </p>
+
+          <div className="flex flex-col gap-2.5">
+            {/* Step 1: Complete profile */}
+            <div className="flex items-start gap-3">
+              <Circle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgba(200,241,53,0.4)' }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white">Complete your profile</p>
+                <p className="text-[11px] text-white/35 mt-0.5">Add your venue details in Settings</p>
+              </div>
+              <a
+                href="#settings"
+                onClick={(e) => {
+                  e.preventDefault()
+                  // Navigate to settings tab — dispatch event the parent shell listens for
+                  window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'settings' }))
+                }}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0"
+                style={{ background: 'rgba(200,241,53,0.1)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.2)' }}
+              >
+                <Settings className="w-3 h-3 inline mr-1" />
+                Settings
+              </a>
+            </div>
+
+            {/* Step 2: Create first deal */}
+            <div className="flex items-start gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
+              <Circle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgba(200,241,53,0.4)' }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white">Create your first deal</p>
+                <p className="text-[11px] text-white/35 mt-0.5">Set up a promotion to attract customers</p>
+              </div>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'promos' }))}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0"
+                style={{ background: 'rgba(200,241,53,0.1)', color: '#C8F135', border: '1px solid rgba(200,241,53,0.2)' }}
+              >
+                <Megaphone className="w-3 h-3 inline mr-1" />
+                Deals
+              </button>
+            </div>
+
+            {/* Step 3: Share venue page */}
+            <div className="flex items-start gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
+              <Circle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgba(200,241,53,0.4)' }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white">Share your venue page</p>
+                <p className="text-[11px] text-white/35 mt-0.5">Copy your link and share with customers</p>
+              </div>
+              <button
+                onClick={copyVenueLink}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0 transition-all"
+                style={{
+                  background: linkCopied ? 'rgba(200,241,53,0.2)' : 'rgba(200,241,53,0.1)',
+                  color: '#C8F135',
+                  border: '1px solid rgba(200,241,53,0.2)',
+                }}
+              >
+                {linkCopied ? (
+                  <><CheckCircle2 className="w-3 h-3 inline mr-1" /> Copied!</>
+                ) : (
+                  <><Copy className="w-3 h-3 inline mr-1" /> Copy Link</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ 2. WHAT THE AI DID ═══ */}
       {autoLog.length > 0 && (

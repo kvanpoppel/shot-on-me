@@ -14,13 +14,13 @@ import { getApiUrl } from '../../utils/api'
 import { useToast } from '../../components/ToastContainer'
 import {
   Settings, CreditCard, MapPin, Bell, Clock, Target, Zap,
-  QrCode, Download, Sparkles, Crown, Users
+  QrCode, Download, Sparkles, Crown, Users, Lock, Trash2
 } from 'lucide-react'
 
 function SettingsPageContent() {
-  const { user, loading, token } = useAuth()
+  const { user, loading, token, logout } = useAuth()
   const { isOwner, venueSlug, loading: venueLoading } = useVenue()
-  const { showError } = useToast()
+  const { showError, showSuccess } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -37,6 +37,17 @@ function SettingsPageContent() {
   })
   const [savingPrefs, setSavingPrefs] = useState(false)
   const [preferencesMessage, setPreferencesMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Account: Change Password
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Account: Delete Account
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) router.push('/')
@@ -90,6 +101,60 @@ function SettingsPageContent() {
       setPreferencesMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save' })
     } finally {
       setSavingPrefs(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setPasswordMessage(null)
+    if (!newPassword || !currentPassword) {
+      setPasswordMessage({ type: 'error', text: 'Please fill in all fields.' })
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage({ type: 'error', text: 'New passwords do not match.' })
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordMessage({ type: 'error', text: 'New password must be at least 8 characters.' })
+      return
+    }
+    setChangingPassword(true)
+    try {
+      await axios.put(
+        `${getApiUrl()}/users/me/change-password`,
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setPasswordMessage({ type: 'success', text: 'Password changed successfully.' })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+    } catch (error: any) {
+      setPasswordMessage({ type: 'error', text: error.response?.data?.error || 'Failed to change password.' })
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      showError('Please enter your password to confirm deletion.')
+      return
+    }
+    if (!window.confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) return
+    setDeletingAccount(true)
+    try {
+      await axios.delete(`${getApiUrl()}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { password: deletePassword }
+      })
+      showSuccess('Account deleted.')
+      logout()
+      router.push('/')
+    } catch (error: any) {
+      showError(error.response?.data?.error || 'Failed to delete account.')
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -358,6 +423,101 @@ function SettingsPageContent() {
                   {preferencesMessage.text}
                 </div>
               )}
+            </div>
+          </CollapsibleSection>
+
+          {/* Account */}
+          <CollapsibleSection
+            title="Account"
+            subtitle="Password, account deletion, and legal"
+            defaultOpen={false}
+            icon={<Lock className="w-4 h-4" />}
+          >
+            <div className="pt-2 space-y-6">
+
+              {/* Change Password */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-primary-400 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5" /> Change Password
+                </p>
+                <input
+                  type="password"
+                  placeholder="Current password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-400 text-sm placeholder:text-primary-400/30 focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
+                />
+                <input
+                  type="password"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-400 text-sm placeholder:text-primary-400/30 focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-400 text-sm placeholder:text-primary-400/30 focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
+                />
+                <button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword}
+                  className="w-full bg-primary-500 text-black px-4 py-2.5 rounded-lg font-semibold hover:bg-primary-400 disabled:opacity-50 text-sm transition-all shadow-lg"
+                >
+                  {changingPassword ? 'Changing...' : 'Change Password'}
+                </button>
+                {passwordMessage && (
+                  <div className={`rounded-lg border px-3 py-2 text-xs ${
+                    passwordMessage.type === 'success'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                      : 'border-red-500/30 bg-red-500/10 text-red-300'
+                  }`}>
+                    {passwordMessage.text}
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px bg-primary-500/10" />
+
+              {/* Delete Account */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-red-400 flex items-center gap-2">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Account
+                </p>
+                <p className="text-[11px] text-primary-400/50 leading-relaxed">
+                  This will permanently delete your account, all venue data, promotions, and staff access. This action cannot be undone.
+                </p>
+                <input
+                  type="password"
+                  placeholder="Enter your password to confirm"
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-red-500/20 rounded-lg text-primary-400 text-sm placeholder:text-primary-400/30 focus:ring-1 focus:ring-red-500/50 focus:border-red-500/30"
+                />
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="w-full bg-red-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-red-500 disabled:opacity-50 text-sm transition-all"
+                >
+                  {deletingAccount ? 'Deleting...' : 'Delete My Account'}
+                </button>
+              </div>
+
+              <div className="h-px bg-primary-500/10" />
+
+              {/* Legal Links */}
+              <div className="flex items-center justify-center gap-4">
+                <a href="/terms" className="text-xs text-primary-400/50 hover:text-primary-400 transition-colors underline underline-offset-2">
+                  Terms of Service
+                </a>
+                <span className="text-primary-400/20">·</span>
+                <a href="/privacy" className="text-xs text-primary-400/50 hover:text-primary-400 transition-colors underline underline-offset-2">
+                  Privacy Policy
+                </a>
+              </div>
+
             </div>
           </CollapsibleSection>
 

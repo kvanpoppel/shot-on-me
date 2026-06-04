@@ -44,6 +44,18 @@ export default function Home() {
           <div className="bg-black border-2 border-primary-500 rounded-lg shadow-xl p-8">
             <LoginForm />
           </div>
+          <footer className="mt-8 text-center space-y-2">
+            <div className="flex items-center justify-center gap-3">
+              <a href="/terms" className="text-xs text-primary-400/40 hover:text-primary-400 transition-colors underline underline-offset-2">
+                Terms of Service
+              </a>
+              <span className="text-primary-400/20">·</span>
+              <a href="/privacy" className="text-xs text-primary-400/40 hover:text-primary-400 transition-colors underline underline-offset-2">
+                Privacy Policy
+              </a>
+            </div>
+            <p className="text-xs text-primary-400/30">&copy; 2026 Shot On Me LLC</p>
+          </footer>
         </div>
       </div>
     </main>

@@ -103,6 +103,15 @@ export default function LoginScreen() {
             Apply to join
           </a>
         </p>
+
+        <p className="text-center text-xs text-white/20 mt-4">
+          <a href="/terms" className="underline hover:text-white/40 transition-colors">Terms</a>
+          {' · '}
+          <a href="/privacy" className="underline hover:text-white/40 transition-colors">Privacy</a>
+        </p>
+        <p className="text-center text-xs text-white/20 mt-1">
+          &copy; 2026 Shot On Me LLC
+        </p>
       </div>
     </div>
   )
