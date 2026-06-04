@@ -213,7 +213,7 @@ export default function SettingsTab() {
       </button>
 
       <p className="text-center text-xs text-white/20 mt-6">
-        Revig for Venues · Shot On Me, Inc.
+        Revig for Venues · Shot On Me LLC
       </p>
     </div>
   )

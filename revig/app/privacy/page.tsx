@@ -10,14 +10,14 @@ export default function PrivacyPage() {
         </Link>
         <div>
           <h1 className="font-black text-white text-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>Privacy Policy</h1>
-          <p className="text-xs text-white/40">Last updated April 9, 2026</p>
+          <p className="text-xs text-white/40">Last updated June 4, 2026</p>
         </div>
       </div>
 
       <div className="px-5 py-6 max-w-2xl mx-auto prose prose-invert prose-sm">
         <div className="revig-card p-5 mb-4">
           <p className="text-white/70 text-sm leading-relaxed">
-            Revig is a product of Shot On Me. Your privacy matters to us. This policy explains what data we collect, why, and how we protect it.
+            Revig is a product of Shot On Me LLC. Your privacy matters to us. This policy explains what data we collect, why, and how we protect it.
           </p>
         </div>
 

@@ -323,17 +323,27 @@ export default function LoginScreen() {
         </div>
 
         {/* ── Footer ── */}
-        <p className="text-center text-xs text-white/18 pb-10 leading-relaxed">
-          Available nationwide at any tap &amp; pay venue
-          {venuePortalLoginUrl && (
-            <>
-              {' · '}
-              <a href={venuePortalLoginUrl} className="hover:text-white/38 underline transition-colors">
-                Venue Portal
-              </a>
-            </>
-          )}
-        </p>
+        <div className="text-center text-xs text-white/18 pb-10 leading-relaxed space-y-2">
+          <p>
+            Available in IN · IL · KY · TN · MI · OH
+            {venuePortalLoginUrl && (
+              <>
+                {' · '}
+                <a href={venuePortalLoginUrl} className="hover:text-white/38 underline transition-colors">
+                  Venue Portal
+                </a>
+              </>
+            )}
+          </p>
+          <p>
+            <a href="/terms" className="hover:text-white/38 underline transition-colors">Terms</a>
+            {' · '}
+            <a href="/privacy" className="hover:text-white/38 underline transition-colors">Privacy</a>
+            {' · '}
+            <a href="mailto:support@shotonme.com" className="hover:text-white/38 underline transition-colors">Contact</a>
+          </p>
+          <p className="text-white/12">&copy; {new Date().getFullYear()} Shot On Me LLC</p>
+        </div>
       </div>
 
       {/* ── Auth Bottom Sheet ── */}

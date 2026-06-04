@@ -4,7 +4,7 @@ export default function PrivacyPage() {
       <div className="max-w-3xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-primary-500">Privacy Policy</h1>
-          <p className="text-sm text-primary-400/80 mt-1">Last updated: March 24, 2026</p>
+          <p className="text-sm text-primary-400/80 mt-1">Last updated: June 4, 2026</p>
           <p className="text-sm mt-3">
             Shot On Me LLC ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy
             explains how we collect, use, share, and protect your personal information when you use the Shot On Me
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             <li>To personalize your experience, including promotions and venue recommendations</li>
             <li>To detect fraud, money laundering, and unauthorized account activity</li>
             <li>To comply with legal obligations, including AML and KYC requirements</li>
-            <li>To operate gamification features (points, badges, leaderboards)</li>
+            <li>To operate rewards and loyalty features</li>
             <li>To improve our platform through aggregated analytics</li>
             <li>To communicate service updates and promotional offers (you may opt out at any time)</li>
           </ul>

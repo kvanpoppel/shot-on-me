@@ -50,6 +50,16 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   const [showCreditCard, setShowCreditCard] = useState(false)
   const [showPermissions, setShowPermissions] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false)
   
@@ -409,6 +419,35 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       const msg = error.response?.data?.errorMessage || error.response?.data?.message || error.message
       setTestSmsStatus(`❌ ${msg}`)
     }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    if (newPassword !== confirmNewPassword) { setPasswordError('Passwords do not match'); return }
+    if (newPassword.length < 6) { setPasswordError('Password must be at least 6 characters'); return }
+    setChangingPassword(true)
+    try {
+      await axios.put(`${API_URL}/users/me/change-password`, { currentPassword, newPassword }, { headers: { Authorization: `Bearer ${token}` } })
+      showToast('Password updated!')
+      setShowChangePassword(false)
+      setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword('')
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'Failed to change password')
+    } finally { setChangingPassword(false) }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleteError('')
+    if (!deletePassword) { setDeleteError('Enter your password to confirm'); return }
+    setDeletingAccount(true)
+    try {
+      await axios.delete(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` }, data: { password: deletePassword } })
+      showToast('Account deleted.')
+      logout()
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete account')
+    } finally { setDeletingAccount(false) }
   }
 
   const handleAddCreditCardSecure = async (paymentMethodId: string) => {
@@ -777,6 +816,27 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             </div>
           </div>
 
+          {/* Account Security */}
+          <div className="mt-6 pt-6 border-t border-primary-500/10">
+            <h3 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">Account</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="w-full flex items-center space-x-3 px-4 py-2.5 text-left text-primary-400/80 hover:bg-primary-500/10 hover:text-primary-500 rounded-lg transition-all font-light"
+              >
+                <Lock className="w-5 h-5" />
+                <span>Change Password</span>
+              </button>
+              <button
+                onClick={() => setShowDeleteAccount(true)}
+                className="w-full flex items-center space-x-3 px-4 py-2.5 text-left text-red-400/70 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-all font-light"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
+
           {/* AI Personalization Toggle */}
           <div className="mt-6 pt-6 border-t border-primary-500/10">
             <h3 className="text-sm font-semibold text-primary-500 mb-3 tracking-tight">AI Personalization</h3>
@@ -1037,6 +1097,67 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                 </button>
               </div>
 
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowChangePassword(false) }}>
+          <div className="bg-black/95 border border-primary-500/20 rounded-lg p-6 max-w-md w-full backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-primary-500">Change Password</h3>
+              <button onClick={() => { setShowChangePassword(false); setPasswordError('') }} className="text-primary-400/70 hover:text-primary-500"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">Current Password</label>
+                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required
+                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" />
+              </div>
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">New Password</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" placeholder="Minimum 6 characters" />
+              </div>
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">Confirm New Password</label>
+                <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required minLength={6}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" />
+              </div>
+              {passwordError && <p className="text-red-400 text-sm">{passwordError}</p>}
+              <button type="submit" disabled={changingPassword}
+                className="w-full bg-primary-500 text-black py-2.5 rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50 transition-all">
+                {changingPassword ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteAccount && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteAccount(false) }}>
+          <div className="bg-black/95 border border-red-500/20 rounded-lg p-6 max-w-md w-full backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-red-400">Delete Account</h3>
+              <button onClick={() => { setShowDeleteAccount(false); setDeleteError('') }} className="text-primary-400/70 hover:text-primary-500"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-primary-400/70 text-sm mb-4">This will permanently delete your account, wallet balance, and all associated data. This cannot be undone.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-primary-500 text-sm font-medium mb-1">Confirm your password</label>
+                <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-red-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-red-500/50 font-light" placeholder="Enter your password" />
+              </div>
+              {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
+              <button onClick={handleDeleteAccount} disabled={deletingAccount}
+                className="w-full bg-red-500/20 border border-red-500/30 text-red-400 py-2.5 rounded-lg font-semibold hover:bg-red-500/30 disabled:opacity-50 transition-all">
+                {deletingAccount ? 'Deleting...' : 'Permanently Delete My Account'}
+              </button>
             </div>
           </div>
         </div>,

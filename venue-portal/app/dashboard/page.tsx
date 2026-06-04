@@ -56,7 +56,7 @@ const TYPE_EMOJI: Record<string, string> = {
 
 export default function Dashboard() {
   const { user, loading, token } = useAuth()
-  const { venueId, venueName, tier, followerCount, loading: venueLoading, refetch: refetchVenue } = useVenue()
+  const { venueId, venueName, venueSlug, tier, followerCount, loading: venueLoading, refetch: refetchVenue } = useVenue()
   const { socket } = useSocket()
   const { showError, showSuccess, showInfo } = useToast()
   const router = useRouter()
@@ -274,6 +274,19 @@ export default function Dashboard() {
   const atLimit = isPaid ? false : live.length >= 2
   const visibleAI = aiSuggestions.filter((_, i) => !dismissedAI.has(i))
 
+  // Onboarding: show checklist for brand-new venues
+  const isNewVenue = !loadingData && stats.totalRevenue === 0 && promotions.length === 0
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && venueId) {
+      setOnboardingDismissed(localStorage.getItem(`onboarding-dismissed-${venueId}`) === 'true')
+    }
+  }, [venueId])
+  const dismissOnboarding = () => {
+    setOnboardingDismissed(true)
+    if (venueId) localStorage.setItem(`onboarding-dismissed-${venueId}`, 'true')
+  }
+
   return (
     <DashboardLayout>
       <div className="pb-24 lg:pb-10 max-w-xl mx-auto space-y-5">
@@ -300,6 +313,69 @@ export default function Dashboard() {
             {stats.yesterdayRevenue > 0 && <> · <span className="text-primary-400/60">${stats.yesterdayRevenue} yesterday</span></>}
           </p>
         </div>
+
+        {/* ═══ ONBOARDING CHECKLIST (new venues only) ═══ */}
+        {isNewVenue && !onboardingDismissed && (
+          <div className="rounded-2xl border border-primary-500/20 bg-gradient-to-br from-primary-500/[0.06] to-black/60 p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold text-white">Welcome to Shot On Me!</p>
+                <p className="text-[11px] text-primary-400/50 mt-0.5">Get set up in under 2 minutes</p>
+              </div>
+              <button onClick={dismissOnboarding} className="text-primary-400/30 hover:text-primary-400/60 p-1">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2.5">
+              <button
+                onClick={() => router.push('/dashboard/settings')}
+                className="w-full rounded-xl border border-primary-500/15 bg-black/40 px-4 py-3 flex items-center gap-3 hover:border-primary-500/25 transition-all text-left"
+              >
+                <span className="w-6 h-6 rounded-full border-2 border-primary-500/30 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px]">1</span>
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white">Complete your profile</p>
+                  <p className="text-[10px] text-primary-400/40">Hours, description, cover photo</p>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-primary-400/30" />
+              </button>
+
+              <button
+                onClick={() => quickLaunch('happy-hour')}
+                className="w-full rounded-xl border border-primary-500/15 bg-black/40 px-4 py-3 flex items-center gap-3 hover:border-primary-500/25 transition-all text-left"
+              >
+                <span className="w-6 h-6 rounded-full border-2 border-primary-500/30 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px]">2</span>
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white">Create your first deal</p>
+                  <p className="text-[10px] text-primary-400/40">Happy hour, flash deal, or VIP night</p>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-primary-400/30" />
+              </button>
+
+              {venueSlug && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://venue.shotonme.com/v/${venueSlug}`)
+                    showSuccess('Venue link copied!')
+                  }}
+                  className="w-full rounded-xl border border-primary-500/15 bg-black/40 px-4 py-3 flex items-center gap-3 hover:border-primary-500/25 transition-all text-left"
+                >
+                  <span className="w-6 h-6 rounded-full border-2 border-primary-500/30 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px]">3</span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-white">Share your venue page</p>
+                    <p className="text-[10px] text-primary-400/40">Copy your public link to share on socials</p>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-primary-400/30" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ═══ 2. WHAT THE AI DID ═══ */}
         {(autoLog.length > 0 || (hasAI && visibleAI.length > 0)) && (

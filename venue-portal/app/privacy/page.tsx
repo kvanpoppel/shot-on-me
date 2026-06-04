@@ -4,13 +4,13 @@ export default function PrivacyPage() {
       <div className="max-w-3xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-primary-500">Venue Portal Privacy Policy</h1>
-          <p className="text-sm text-primary-400/60 mt-1">Last updated: April 12, 2026</p>
+          <p className="text-sm text-primary-400/60 mt-1">Last updated: June 4, 2026</p>
         </div>
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-primary-500">1. Who We Are</h2>
           <p className="text-sm leading-relaxed">
-            Shot On Me operates the Venue Portal at venues.shotonme.com. This Privacy Policy explains how we
+            Shot On Me LLC operates the Venue Portal at venues.shotonme.com. This Privacy Policy explains how we
             collect, use, and protect information related to venue operators, their staff, and venue-level data
             processed through the portal. For user-facing privacy practices on the Shot On Me consumer app,
             see our main Privacy Policy.

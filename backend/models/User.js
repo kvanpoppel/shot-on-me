@@ -427,7 +427,11 @@ const userSchema = new mongoose.Schema({
     stripeVerificationSessionId: { type: String },
     verifiedAt: { type: Date },
     failureReason: { type: String }
-  }
+  },
+
+  // Soft delete
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date }
 }, {
   timestamps: true
 });

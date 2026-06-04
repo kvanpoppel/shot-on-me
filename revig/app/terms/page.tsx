@@ -10,14 +10,14 @@ export default function TermsPage() {
         </Link>
         <div>
           <h1 className="font-black text-white text-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>Terms of Service</h1>
-          <p className="text-xs text-white/40">Last updated April 9, 2026</p>
+          <p className="text-xs text-white/40">Last updated June 4, 2026</p>
         </div>
       </div>
 
       <div className="px-5 py-6 max-w-2xl mx-auto">
         <div className="revig-card p-5 mb-4">
           <p className="text-white/70 text-sm leading-relaxed">
-            By using Revig, you agree to these terms. Revig is operated by Shot On Me, Inc. These terms govern your use of the Revig platform and services.
+            By using Revig, you agree to these terms. Revig is operated by Shot On Me LLC These terms govern your use of the Revig platform and services.
           </p>
         </div>
 
@@ -62,7 +62,7 @@ export default function TermsPage() {
           },
           {
             title: '7. Intellectual Property',
-            body: 'The Revig name, logo, and all content are owned by Shot On Me, Inc. You may not use our branding without written permission.',
+            body: 'The Revig name, logo, and all content are owned by Shot On Me LLC You may not use our branding without written permission.',
           },
           {
             title: '8. Termination',

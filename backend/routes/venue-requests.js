@@ -9,6 +9,7 @@ const VenueRequest = require('../models/VenueRequest');
 const { sendVenueRequestAdminEmail, sendVenueApprovalEmail, sendVenueDenialEmail } = require('../utils/emailService');
 const { sendSMS } = require('../utils/sms');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 if (process.env.CLOUDINARY_CLOUD_NAME) {
   cloudinary.config({
@@ -173,9 +174,15 @@ router.put('/:id/approve', auth, isAdmin, async (req, res) => {
     venueReq.reviewedBy = req.user.userId;
     await venueReq.save();
 
-    // Notify venue owner
-    const adminPhone = process.env.ADMIN_PHONE_NUMBER;
-    sendVenueApprovalEmail(venueReq.email, firstName, venueReq.venueName).catch(console.error);
+    // Generate a password-set token so the venue owner can set their password directly
+    const resetToken = jwt.sign(
+      { userId: ownerUser._id, type: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '72h' }
+    );
+
+    // Notify venue owner with set-password link
+    sendVenueApprovalEmail(venueReq.email, firstName, venueReq.venueName, resetToken).catch(console.error);
     sendSMS(venueReq.phone, `Shot On Me: Your venue ${venueReq.venueName} has been approved! Sign in at venue.shotonme.com to get started.`).catch(console.error);
 
     res.json({ message: 'Venue approved', venueId: venue._id, userId: ownerUser._id });

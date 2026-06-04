@@ -47,6 +47,7 @@ export default function QuickSendDrinkSheet({
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpError, setOtpError] = useState('')
   const [requestingOtp, setRequestingOtp] = useState(false)
+  const [sharePromptDismissed, setSharePromptDismissed] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [celebrationActive, setCelebrationActive] = useState(false)
@@ -462,14 +463,16 @@ export default function QuickSendDrinkSheet({
               ) : (
                 /* Sharing not enabled — soft prompt, then normal actions */
                 <>
-                  <div className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 mb-3">
-                    <p className="text-white/50 text-xs">Share on Instagram or Facebook?</p>
-                    <div className="flex gap-2">
-                      <button onClick={shareNow} className="text-primary-400 text-xs font-semibold hover:text-primary-300 transition-colors">Share</button>
-                      <span className="text-white/20 text-xs">·</span>
-                      <button onClick={() => {}} className="text-white/30 text-xs hover:text-white/50 transition-colors">Not now</button>
+                  {!sharePromptDismissed && (
+                    <div className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 mb-3">
+                      <p className="text-white/50 text-xs">Share on Instagram or Facebook?</p>
+                      <div className="flex gap-2">
+                        <button onClick={shareNow} className="text-primary-400 text-xs font-semibold hover:text-primary-300 transition-colors">Share</button>
+                        <span className="text-white/20 text-xs">·</span>
+                        <button onClick={() => setSharePromptDismissed(true)} className="text-white/30 text-xs hover:text-white/50 transition-colors">Not now</button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 bg-white/5 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-medium text-sm hover:bg-white/10 transition-all">Done</button>
                     <button onClick={() => { setStep('amount'); setSelectedAmount(null); setOtp(['','','','','','']) }}

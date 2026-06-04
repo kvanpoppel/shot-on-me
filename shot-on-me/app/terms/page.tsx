@@ -4,7 +4,7 @@ export default function TermsPage() {
       <div className="max-w-3xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-primary-500">Terms of Service</h1>
-          <p className="text-sm text-primary-400/80 mt-1">Last updated: March 24, 2026</p>
+          <p className="text-sm text-primary-400/80 mt-1">Last updated: June 4, 2026</p>
           <p className="text-sm mt-3">
             Please read these Terms of Service ("Terms") carefully before using the Shot On Me mobile application and
             related services ("Service") operated by Shot On Me LLC ("Company," "we," "us," or "our"). By creating an
