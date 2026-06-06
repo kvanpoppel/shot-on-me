@@ -55,6 +55,7 @@ export default function VenueSignupPage() {
         phone: form.phone,
         website: form.instagram ? `instagram.com/${form.instagram.replace('@', '')}` : '',
         description: form.description,
+        platform: 'revig',
       })
       setSubmitted(true)
     } catch (err: any) {

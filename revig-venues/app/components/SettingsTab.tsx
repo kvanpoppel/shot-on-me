@@ -1,10 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiUrl } from '../utils/api'
 import axios from 'axios'
-import { LogOut, MapPin, Mail, Building2, Phone, ExternalLink, Crown, Check, Loader2, ArrowUpRight, Lock, AlertTriangle, KeyRound, Trash2, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react'
+import { LogOut, MapPin, Mail, Building2, Phone, ExternalLink, Crown, Check, Loader2, ArrowUpRight, Lock, AlertTriangle, KeyRound, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Users, User, Key, Copy, X, QrCode, Download } from 'lucide-react'
+
+interface StaffMember {
+  _id: string
+  user: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
+  }
+  role: 'owner' | 'manager' | 'staff'
+  addedAt: string
+}
 
 interface Plan {
   tier: string
@@ -70,6 +82,121 @@ export default function SettingsTab() {
   const [showDeletePw, setShowDeletePw] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  // Staff management state
+  const [showStaff, setShowStaff] = useState(false)
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [staffCode, setStaffCode] = useState<string | null>(null)
+  const [staffLoading, setStaffLoading] = useState(false)
+  const [newStaffCode, setNewStaffCode] = useState('')
+  const [editingStaffCode, setEditingStaffCode] = useState(false)
+  const [savingStaffCode, setSavingStaffCode] = useState(false)
+  const [staffCopied, setStaffCopied] = useState(false)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  const [staffError, setStaffError] = useState('')
+
+  // QR code state
+  const [showQR, setShowQR] = useState(false)
+
+  const venueId = venue?.id || venue?._id
+  const venueSlug = venue?.slug
+
+  const fetchStaff = useCallback(async () => {
+    if (!venueId || !token) return
+    setStaffLoading(true)
+    setStaffError('')
+    try {
+      const res = await axios.get(`${getApiUrl()}/venues/${venueId}/staff`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setStaff(res.data.staff || [])
+      setStaffCode(res.data.staffCode || null)
+    } catch {
+      setStaffError('Failed to load staff')
+    } finally {
+      setStaffLoading(false)
+    }
+  }, [venueId, token])
+
+  useEffect(() => {
+    if (showStaff && venueId && token) fetchStaff()
+  }, [showStaff, venueId, token, fetchStaff])
+
+  const handleSetStaffCode = async () => {
+    if (!venueId || !token || !newStaffCode.trim()) return
+    setSavingStaffCode(true)
+    setStaffError('')
+    try {
+      const res = await axios.put(
+        `${getApiUrl()}/venues/${venueId}/staff-code`,
+        { code: newStaffCode.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setStaffCode(res.data.code)
+      setEditingStaffCode(false)
+      setNewStaffCode('')
+    } catch (err: any) {
+      setStaffError(err.response?.data?.error || 'Failed to set code')
+    } finally {
+      setSavingStaffCode(false)
+    }
+  }
+
+  const handleRemoveStaffCode = async () => {
+    if (!venueId || !token) return
+    try {
+      await axios.delete(`${getApiUrl()}/venues/${venueId}/staff-code`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setStaffCode(null)
+    } catch (err: any) {
+      setStaffError(err.response?.data?.error || 'Failed to remove code')
+    }
+  }
+
+  const handleCopyStaffCode = () => {
+    if (!staffCode) return
+    navigator.clipboard.writeText(staffCode)
+    setStaffCopied(true)
+    setTimeout(() => setStaffCopied(false), 2000)
+  }
+
+  const handleRemoveStaff = async (staffId: string) => {
+    if (!venueId || !token) return
+    try {
+      await axios.delete(`${getApiUrl()}/venues/${venueId}/staff/${staffId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setConfirmRemoveId(null)
+      fetchStaff()
+    } catch (err: any) {
+      setStaffError(err.response?.data?.error || 'Failed to remove staff')
+    }
+  }
+
+  const venuePublicUrl = venueSlug
+    ? `https://revig-venues.shotonme.com/v/${venueSlug}`
+    : venueId
+      ? `https://revig-venues.shotonme.com?venue=${venueId}`
+      : ''
+  const qrUrl = venuePublicUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(venuePublicUrl)}&color=C8F135&bgcolor=0F0F1E`
+    : ''
+
+  const handleQRDownload = async () => {
+    if (!qrUrl) return
+    try {
+      const res = await fetch(qrUrl)
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'revig-venue-qr.png'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch {
+      window.open(qrUrl, '_blank')
+    }
+  }
 
   const handleChangePassword = async () => {
     setPwError('')
@@ -397,6 +524,223 @@ export default function SettingsTab() {
             >
               {deleteLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Trash2 className="w-3 h-3" /> Permanently Delete Account</>}
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Staff & Team */}
+      <div className="mb-5">
+        <button
+          onClick={() => setShowStaff(!showStaff)}
+          className="w-full fv-card px-4 py-3.5 flex items-center gap-3"
+        >
+          <Users className="w-4 h-4" style={{ color: ACCENT }} />
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-white">Staff & Team</p>
+            <p className="text-xs text-white/35 mt-0.5">Manage team access</p>
+          </div>
+          {showStaff ? <ChevronUp className="w-4 h-4 text-white/25" /> : <ChevronDown className="w-4 h-4 text-white/25" />}
+        </button>
+
+        {showStaff && (
+          <div className="mt-2 rounded-xl p-4 flex flex-col gap-4" style={{ background: 'rgba(28,28,50,1)', border: '1px solid rgba(255,255,255,0.05)' }}>
+
+            {staffError && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(255,95,87,0.08)', color: '#FF5F57' }}>
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                {staffError}
+              </div>
+            )}
+
+            {/* Access Code */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Key className="w-4 h-4" style={{ color: ACCENT }} />
+                <p className="text-xs font-bold text-white">Staff Access Code</p>
+              </div>
+              <p className="text-[11px] text-white/35 mb-3">
+                Share this code with your staff. They log in with their Revig account and enter this code to join your venue.
+              </p>
+
+              {staffCode && !editingStaffCode ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(200,241,53,0.15)' }}>
+                    <span className="text-sm font-mono font-bold tracking-wider" style={{ color: ACCENT }}>{staffCode}</span>
+                  </div>
+                  <button
+                    onClick={handleCopyStaffCode}
+                    className="p-2.5 rounded-xl transition-colors"
+                    style={{ border: '1px solid rgba(200,241,53,0.15)', background: staffCopied ? 'rgba(200,241,53,0.1)' : 'transparent' }}
+                  >
+                    {staffCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" style={{ color: ACCENT }} />}
+                  </button>
+                  <button
+                    onClick={() => { setEditingStaffCode(true); setNewStaffCode(staffCode || '') }}
+                    className="px-2.5 py-2 text-[10px] font-bold rounded-xl transition-colors text-white/50 hover:text-white/70"
+                    style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    Change
+                  </button>
+                  <button
+                    onClick={handleRemoveStaffCode}
+                    className="px-2.5 py-2 text-[10px] font-bold rounded-xl transition-colors"
+                    style={{ color: '#FF5F57', border: '1px solid rgba(255,95,87,0.2)' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newStaffCode}
+                    onChange={e => setNewStaffCode(e.target.value)}
+                    placeholder="e.g. MYBAR-STAFF-2026"
+                    maxLength={32}
+                    className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 outline-none"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  />
+                  <button
+                    onClick={handleSetStaffCode}
+                    disabled={savingStaffCode || newStaffCode.trim().length < 4}
+                    className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-30"
+                    style={{ background: ACCENT, color: '#0F0F1E' }}
+                  >
+                    {savingStaffCode ? '...' : 'Save'}
+                  </button>
+                  {editingStaffCode && (
+                    <button
+                      onClick={() => { setEditingStaffCode(false); setNewStaffCode('') }}
+                      className="p-2 text-white/30 hover:text-white/50"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
+
+            {/* Staff List */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4" style={{ color: ACCENT }} />
+                <p className="text-xs font-bold text-white">Team ({staff.length})</p>
+              </div>
+
+              {staffLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-white/30" />
+                </div>
+              ) : staff.length === 0 ? (
+                <p className="text-[11px] text-white/30">No team members yet. Set an access code above and share it with your staff.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {staff.map(member => (
+                    <div
+                      key={member._id}
+                      className="flex items-center justify-between p-3 rounded-xl"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {member.role === 'owner' ? (
+                          <Crown className="w-4 h-4 flex-shrink-0" style={{ color: ACCENT }} />
+                        ) : (
+                          <User className="w-4 h-4 flex-shrink-0 text-white/30" />
+                        )}
+                        <div>
+                          <p className="text-xs font-semibold text-white">
+                            {member.user.firstName} {member.user.lastName}
+                          </p>
+                          <p className="text-[10px] text-white/35">{member.user.email}</p>
+                        </div>
+                        <span
+                          className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded"
+                          style={{ color: 'rgba(200,241,53,0.6)', background: 'rgba(200,241,53,0.08)' }}
+                        >
+                          {member.role}
+                        </span>
+                      </div>
+
+                      {member.role !== 'owner' && (
+                        <>
+                          {confirmRemoveId === member._id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleRemoveStaff(member._id)}
+                                className="px-2 py-1 text-[10px] rounded font-bold"
+                                style={{ background: '#FF5F57', color: '#fff' }}
+                              >
+                                Remove
+                              </button>
+                              <button
+                                onClick={() => setConfirmRemoveId(null)}
+                                className="px-2 py-1 text-[10px] rounded text-white/40"
+                                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmRemoveId(member._id)}
+                              className="p-1.5 rounded-lg text-white/20 hover:text-red-400 transition-colors"
+                              style={{ background: 'transparent' }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Table QR Code */}
+      <div className="mb-5">
+        <button
+          onClick={() => setShowQR(!showQR)}
+          className="w-full fv-card px-4 py-3.5 flex items-center gap-3"
+        >
+          <QrCode className="w-4 h-4" style={{ color: ACCENT }} />
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-white">Table QR Code</p>
+            <p className="text-xs text-white/35 mt-0.5">Guests scan to find your venue</p>
+          </div>
+          {showQR ? <ChevronUp className="w-4 h-4 text-white/25" /> : <ChevronDown className="w-4 h-4 text-white/25" />}
+        </button>
+
+        {showQR && (
+          <div className="mt-2 rounded-xl p-4 flex flex-col items-center gap-4" style={{ background: 'rgba(28,28,50,1)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <p className="text-[11px] text-white/35 text-center">
+              Place this QR code on your tables, menus, or bar top. Guests scan to connect with your venue on Revig.
+            </p>
+
+            {qrUrl ? (
+              <>
+                <div className="p-3 rounded-xl" style={{ background: '#0F0F1E', border: '1px solid rgba(200,241,53,0.2)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrUrl} alt="Venue QR Code" width={200} height={200} className="rounded-lg" />
+                </div>
+                <p className="text-[10px] text-white/20 break-all text-center px-2">{venuePublicUrl}</p>
+                <button
+                  onClick={handleQRDownload}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all"
+                  style={{ background: ACCENT, color: '#0F0F1E' }}
+                >
+                  <Download className="w-3.5 h-3.5" /> Download QR Code
+                </button>
+              </>
+            ) : (
+              <p className="text-[11px] text-white/30 text-center">Venue data not available. Please refresh the page.</p>
+            )}
           </div>
         )}
       </div>

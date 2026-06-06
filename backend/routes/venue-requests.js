@@ -36,14 +36,14 @@ const isAdmin = async (req, res, next) => {
 // POST /api/venue-requests — public, submit a venue signup request
 router.post('/', upload.single('photo'), async (req, res) => {
   try {
-    const { venueName, venueType, address, city, state, ownerName, email, phone, website, description } = req.body;
+    const { venueName, venueType, address, city, state, ownerName, email, phone, website, description, platform } = req.body;
 
-    if (!venueName || !venueType || !address || !city || !state || !ownerName || !email || !phone) {
+    if (!venueName || !venueType || !ownerName || !email || !phone) {
       return res.status(400).json({ message: 'Please fill in all required fields.' });
     }
 
     const ALLOWED_STATES = ['IN', 'IL', 'KY', 'TN', 'MI', 'OH'];
-    if (!ALLOWED_STATES.includes(state)) {
+    if (state && !ALLOWED_STATES.includes(state)) {
       return res.status(400).json({ message: 'We are not yet available in that state.' });
     }
 
@@ -73,7 +73,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const venueRequest = await VenueRequest.create({
       venueName, venueType, address, city, state, ownerName,
       email: email.toLowerCase(), phone, website: website || '',
-      description: description || '', photoUrl, photoPublicId
+      description: description || '', photoUrl, photoPublicId,
+      platform: platform === 'revig' ? 'revig' : 'som'
     });
 
     // Notify admin via email + SMS (fire and forget)
@@ -182,8 +183,11 @@ router.put('/:id/approve', auth, isAdmin, async (req, res) => {
     );
 
     // Notify venue owner with set-password link
-    sendVenueApprovalEmail(venueReq.email, firstName, venueReq.venueName, resetToken).catch(console.error);
-    sendSMS(venueReq.phone, `Shot On Me: Your venue ${venueReq.venueName} has been approved! Sign in at venue.shotonme.com to get started.`).catch(console.error);
+    const isRevig = venueReq.platform === 'revig';
+    const portalDomain = isRevig ? 'revig-venues.shotonme.com' : 'venue.shotonme.com';
+    const brandName = isRevig ? 'Revig' : 'Shot On Me';
+    sendVenueApprovalEmail(venueReq.email, firstName, venueReq.venueName, resetToken, portalDomain, brandName).catch(console.error);
+    sendSMS(venueReq.phone, `${brandName}: Your venue ${venueReq.venueName} has been approved! Sign in at ${portalDomain} to get started.`).catch(console.error);
 
     res.json({ message: 'Venue approved', venueId: venue._id, userId: ownerUser._id });
   } catch (error) {

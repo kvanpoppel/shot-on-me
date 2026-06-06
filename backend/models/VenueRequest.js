@@ -5,14 +5,20 @@ const venueRequestSchema = new mongoose.Schema({
   venueType: {
     type: String,
     required: true,
-    enum: ['Bar', 'Restaurant', 'Nightclub', 'Coffee Shop', 'Lounge']
+    enum: ['Bar', 'Restaurant', 'Nightclub', 'Coffee Shop', 'Lounge',
+           'Dirty Soda Shop', 'Boba Tea', 'Tea House', 'Smoothie Bar', 'Bakery', 'Cafe', 'Ice Cream']
+  },
+  platform: {
+    type: String,
+    enum: ['som', 'revig'],
+    default: 'som'
   },
   address: { type: String, required: true, trim: true },
   city: { type: String, required: true, trim: true },
   state: {
     type: String,
-    required: true,
-    enum: ['IN', 'IL', 'KY', 'TN', 'MI', 'OH']
+    enum: ['IN', 'IL', 'KY', 'TN', 'MI', 'OH', ''],
+    default: ''
   },
   ownerName: { type: String, required: true, trim: true },
   email: { type: String, required: true, trim: true, lowercase: true },

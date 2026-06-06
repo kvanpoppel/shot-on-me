@@ -267,34 +267,39 @@ async function sendVenueRequestAdminEmail(adminEmail, venueData) {
   }
 }
 
-async function sendVenueApprovalEmail(ownerEmail, ownerName, venueName, resetToken) {
+async function sendVenueApprovalEmail(ownerEmail, ownerName, venueName, resetToken, portalDomain, brandName) {
   if (!transporter) return { success: false, error: 'Email service not configured' };
+  const domain = portalDomain || 'venue.shotonme.com';
+  const brand = brandName || 'Shot On Me';
+  const isRevig = brand === 'Revig';
+  const accentColor = isRevig ? '#C8F135' : '#D4AF37';
+  const btnTextColor = isRevig ? '#0F0F1E' : '#000';
   const setPasswordUrl = resetToken
-    ? `https://venue.shotonme.com/set-password?token=${resetToken}`
-    : 'https://venue.shotonme.com';
+    ? `https://${domain}/set-password?token=${resetToken}`
+    : `https://${domain}`;
   const ctaText = resetToken ? 'Set Your Password & Get Started' : 'Sign In to Your Dashboard';
   const passwordNote = resetToken
     ? `<p style="color:#666;font-size:13px">Login email: <strong>${ownerEmail}</strong><br>This link expires in 72 hours.</p>`
     : `<p style="color:#666;font-size:13px">Login email: <strong>${ownerEmail}</strong><br>Use "Forgot Password" if you need to set your password.</p>`;
   const mailOptions = {
-    from: `"Shot On Me" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
+    from: `"${brand}" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
     to: ownerEmail,
-    subject: `🎉 ${venueName} has been approved on Shot On Me!`,
+    subject: `🎉 ${venueName} has been approved on ${brand}!`,
     html: `<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
       <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:24px;border-radius:10px;margin-bottom:20px">
-        <h1 style="color:#D4AF37;margin:0;font-size:24px">Shot On Me</h1>
+        <h1 style="color:${accentColor};margin:0;font-size:24px">${brand}</h1>
       </div>
       <div style="background:#f9f9f9;padding:24px;border-radius:10px;border:1px solid #e0e0e0">
         <h2 style="margin-top:0">Congratulations, ${ownerName}! 🎉</h2>
-        <p>Your venue <strong>${venueName}</strong> has been approved and is now live on Shot On Me.</p>
+        <p>Your venue <strong>${venueName}</strong> has been approved and is now live on ${brand}.</p>
         <p>Set your password below and you'll be ready to create your first deal in under 2 minutes.</p>
         <div style="text-align:center;margin:28px 0">
-          <a href="${setPasswordUrl}" style="display:inline-block;background:#D4AF37;color:#000;padding:14px 32px;border-radius:6px;font-weight:bold;text-decoration:none;font-size:16px">${ctaText}</a>
+          <a href="${setPasswordUrl}" style="display:inline-block;background:${accentColor};color:${btnTextColor};padding:14px 32px;border-radius:6px;font-weight:bold;text-decoration:none;font-size:16px">${ctaText}</a>
         </div>
         ${passwordNote}
       </div>
     </body>`,
-    text: `Congratulations! Your venue ${venueName} has been approved on Shot On Me. Set your password at ${setPasswordUrl} to get started.`
+    text: `Congratulations! Your venue ${venueName} has been approved on ${brand}. Set your password at ${setPasswordUrl} to get started.`
   };
   try {
     const info = await transporter.sendMail(mailOptions);
