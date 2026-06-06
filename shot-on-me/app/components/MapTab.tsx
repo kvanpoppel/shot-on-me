@@ -57,6 +57,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const venuesContainerRef = useRef<HTMLDivElement>(null)
   const [viewingVenueId, setViewingVenueId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'favorites' | 'for-you' | 'happy-hour' | 'specials' | 'weekend' | 'trending' | 'tonight' | 'wine'>('all')
+  const [sortMode, setSortMode] = useState<'smart' | 'nearest' | 'az'>('smart')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list') // Default to list view to show venues
   const [isMounted, setIsMounted] = useState(false)
@@ -458,6 +459,21 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   }, [userLocation, token, fetchVenues])
 
   const rankVenues = useCallback((source: any[]) => {
+    if (sortMode === 'az') {
+      return [...source].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+    }
+    if (sortMode === 'nearest' && userLocation) {
+      return [...source].sort((a: any, b: any) => {
+        const distA = a.location?.coordinates
+          ? calculateDistance(userLocation.lat, userLocation.lng, a.location.coordinates[1], a.location.coordinates[0])
+          : 9999
+        const distB = b.location?.coordinates
+          ? calculateDistance(userLocation.lat, userLocation.lng, b.location.coordinates[1], b.location.coordinates[0])
+          : 9999
+        return distA - distB
+      })
+    }
+    // Smart sort (default)
     return [...source].sort((a: any, b: any) => {
       const activeA = (a.promotions || []).filter((p: any) => p?.isActive).length
       const activeB = (b.promotions || []).filter((p: any) => p?.isActive).length
@@ -479,7 +495,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
       return scoreB - scoreA
     })
-  }, [trendingVenues])
+  }, [trendingVenues, sortMode, userLocation])
 
   const getVenueBadge = useCallback((venue: any) => {
     if (!venue) return null
@@ -704,7 +720,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       }
       return false
     }))
-  }, [venues, filter, searchQuery, googlePlace, trendingVenues, favoriteVenueIds, rankVenues, amenityFilters, recommendations])
+  }, [venues, filter, searchQuery, googlePlace, trendingVenues, favoriteVenueIds, rankVenues, amenityFilters, recommendations, sortMode])
 
   // Get category icon
   const getCategoryIcon = useCallback((category: string) => {
@@ -1330,170 +1346,94 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             />
           </div>
           
-          {/* Horizontal Scrollable Filter Tabs - Chase Offers Style */}
+          {/* Unified filters + vibes row */}
           <div className="mb-2">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory">
-              <button
-                onClick={() => setFilter('all')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                  filter === 'all'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilter('for-you')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'for-you'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Sparkles className={`w-3 h-3 ${filter === 'for-you' ? 'fill-black' : ''}`} />
-                For You
-              </button>
-              <button
-                onClick={() => setFilter('favorites')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'favorites'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Heart className={`w-3 h-3 ${filter === 'favorites' ? 'fill-black' : ''}`} />
-                Favorites
-              </button>
-              <button
-                onClick={() => setFilter('happy-hour')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'happy-hour'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Martini className="w-3 h-3" />
-                Happy Hour
-              </button>
-              <button
-                onClick={() => setFilter('specials')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'specials'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Tag className="w-3 h-3" />
-                Current Specials
-              </button>
-              <button
-                onClick={() => setFilter('weekend')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'weekend'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Calendar className="w-3 h-3" />
-                Weekend
-              </button>
-              <button
-                onClick={() => setFilter('trending')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'trending'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <TrendingUp className="w-3 h-3" />
-                Trending
-              </button>
-              <button
-                onClick={() => setFilter('tonight')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'tonight'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Moon className="w-3 h-3" />
-                Tonight
-              </button>
-              <button
-                onClick={() => setFilter('wine')}
-                className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  filter === 'wine'
-                    ? 'bg-primary-500 text-black shadow-lg'
-                    : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-                }`}
-              >
-                <Wine className="w-3 h-3" />
-                Wine
-              </button>
+            {/* Row 1: Category filters */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1.5 -mx-4 px-4 scroll-smooth">
+              {([
+                { id: 'all', label: 'All', icon: null },
+                { id: 'for-you', label: 'For You', icon: Sparkles },
+                { id: 'favorites', label: 'Favorites', icon: Heart },
+                { id: 'tonight', label: 'Tonight', icon: Moon },
+                { id: 'trending', label: 'Trending', icon: TrendingUp },
+                { id: 'happy-hour', label: 'Happy Hour', icon: Martini },
+                { id: 'specials', label: 'Specials', icon: Tag },
+              ] as const).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setFilter(id as any)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    filter === id
+                      ? 'bg-primary-500 text-black shadow-lg'
+                      : 'bg-black/60 border border-primary-500/20 text-primary-400/70 hover:border-primary-500/40'
+                  }`}
+                >
+                  {Icon && <Icon className="w-3 h-3" />}
+                  {label}
+                </button>
+              ))}
             </div>
-          </div>
-          
-          {/* Amenity filter dropdown */}
-          <div className="relative mt-1">
-            <button
-              onClick={() => setShowFilterDropdown(prev => !prev)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                amenityFilters.size > 0
-                  ? 'bg-primary-500/15 border border-primary-500/40 text-primary-400'
-                  : 'bg-black/60 border border-primary-500/20 text-primary-400/70'
-              }`}
-            >
-              <Settings className="w-3 h-3" />
-              Vibes {amenityFilters.size > 0 && `(${amenityFilters.size})`}
-              <ChevronDown className={`w-3 h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
-            </button>
 
-            {showFilterDropdown && (
-              <div className="filter-dropdown-container absolute top-full left-0 right-0 mt-1.5 z-30 rounded-xl border border-primary-500/20 bg-black/95 backdrop-blur-md shadow-xl p-3 max-w-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400/50">Filter by vibe</p>
-                  {amenityFilters.size > 0 && (
-                    <button
-                      onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} }}
-                      className="text-[10px] font-semibold text-red-400 hover:text-red-300"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {([
-                    { key: 'dogFriendly',    label: '🐕 Dogs OK' },
-                    { key: 'kidsFriendly',   label: '👶 Kids OK' },
-                    { key: 'hasFood',        label: '🍕 Food' },
-                    { key: 'byob',           label: '🥂 BYOB' },
-                    { key: 'trivia',         label: '🎯 Trivia' },
-                    { key: 'liveMusic',      label: '🎵 Live Music' },
-                    { key: 'outdoorSeating', label: '🌿 Outdoor' },
-                    { key: 'happyHour',      label: '🍺 Happy Hr' },
-                    { key: 'poolTables',     label: '🎱 Pool' },
-                    { key: 'danceFloor',     label: '🕺 Dancing' },
-                    { key: 'sportsTv',       label: '📺 Sports' },
-                    { key: 'karaoke',        label: '🎤 Karaoke' },
-                    { key: 'arcade',         label: '🎮 Arcade' },
-                  ] as const).map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => toggleAmenityFilter(key)}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${
-                        amenityFilters.has(key)
-                          ? 'bg-primary-500/20 border border-primary-500/50 text-primary-400'
-                          : 'bg-black/40 border border-primary-500/10 text-primary-400/50 hover:border-primary-500/30'
-                      }`}
-                    >
-                      <span>{label}</span>
-                      {amenityFilters.has(key) && <span className="ml-auto text-primary-500">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Row 2: Vibe toggles (multi-select) + sort */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 -mx-4 px-4 scroll-smooth">
+              {([
+                { key: 'happyHour',      label: '🍻' },
+                { key: 'liveMusic',      label: '🎸' },
+                { key: 'karaoke',        label: '🎤' },
+                { key: 'sportsTv',       label: '🏈' },
+                { key: 'danceFloor',     label: '🕺' },
+                { key: 'trivia',         label: '🧠' },
+                { key: 'poolTables',     label: '🎱' },
+                { key: 'outdoorSeating', label: '🌅' },
+                { key: 'hasFood',        label: '🍕' },
+                { key: 'dogFriendly',    label: '🐕' },
+                { key: 'kidsFriendly',   label: '👶' },
+                { key: 'arcade',         label: '🎮' },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => toggleAmenityFilter(key)}
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all ${
+                    amenityFilters.has(key)
+                      ? 'bg-primary-500/20 border border-primary-500/50 shadow-sm shadow-primary-500/10'
+                      : 'bg-black/40 border border-primary-500/10 opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+
+              {/* Divider */}
+              <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
+
+              {/* Sort toggle */}
+              {(['smart', 'nearest', 'az'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setSortMode(mode)}
+                  className={`flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap ${
+                    sortMode === mode
+                      ? 'bg-primary-500/20 border border-primary-500/40 text-primary-400'
+                      : 'bg-black/40 border border-primary-500/10 text-primary-400/40 hover:text-primary-400/70'
+                  }`}
+                >
+                  {mode === 'smart' ? '✨ Smart' : mode === 'nearest' ? '📍 Near' : '🔤 A-Z'}
+                </button>
+              ))}
+
+              {/* Clear vibes */}
+              {amenityFilters.size > 0 && (
+                <>
+                  <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
+                  <button
+                    onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} }}
+                    className="flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold text-red-400/70 bg-red-500/10 border border-red-500/20 hover:text-red-400"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* View Toggle - Compact */}
