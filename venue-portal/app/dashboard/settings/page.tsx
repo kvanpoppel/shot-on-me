@@ -114,8 +114,8 @@ function SettingsPageContent() {
       setPasswordMessage({ type: 'error', text: 'New passwords do not match.' })
       return
     }
-    if (newPassword.length < 8) {
-      setPasswordMessage({ type: 'error', text: 'New password must be at least 8 characters.' })
+    if (newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'New password must be at least 6 characters.' })
       return
     }
     setChangingPassword(true)
@@ -196,8 +196,8 @@ function SettingsPageContent() {
 
   const venueId = (user as any)?.venueId || (user as any)?._id
   const venuePublicUrl = venueSlug
-    ? `https://venue-portal.vercel.app/v/${venueSlug}`
-    : `https://www.shotonme.com?venue=${venueId}`
+    ? `https://venue.shotonme.com/v/${venueSlug}`
+    : `https://venue.shotonme.com?venue=${venueId}`
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(venuePublicUrl)}&size=300x300&color=B8945A&bgcolor=000000`
 
   const handleQRDownload = async () => {

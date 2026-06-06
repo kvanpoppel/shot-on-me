@@ -17,7 +17,7 @@ export default function TermsPage() {
       <div className="px-5 py-6 max-w-2xl mx-auto">
         <div className="revig-card p-5 mb-4">
           <p className="text-white/70 text-sm leading-relaxed">
-            By using Revig, you agree to these terms. Revig is operated by Shot On Me LLC These terms govern your use of the Revig platform and services.
+            By using Revig, you agree to these terms. Revig is operated by Shot On Me LLC. These terms govern your use of the Revig platform and services.
           </p>
         </div>
 

@@ -247,7 +247,7 @@ export default function LoginScreen() {
             </div>
             <div>
               <p className="text-white/85 font-bold text-sm leading-none">Discover Venues</p>
-              <p className="text-white/38 text-[11px] mt-0.5">Works at any tap &amp; pay venue</p>
+              <p className="text-white/38 text-[11px] mt-0.5">Works at any tap & pay venue</p>
             </div>
           </div>
 

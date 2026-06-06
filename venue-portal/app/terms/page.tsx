@@ -43,7 +43,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-primary-500">4. Subscription and Billing</h2>
           <p className="text-sm leading-relaxed">
-            The Venue Portal is offered on subscription tiers (Free, Growth, Performance) that determine
+            The Venue Portal is offered on subscription tiers (Starter, Pro, Business) that determine
             available features, analytics depth, and AI automation capabilities. Billing is processed monthly
             or annually depending on the plan selected. All charges are non-refundable except as set out in
             Section 5 below.

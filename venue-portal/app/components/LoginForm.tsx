@@ -392,10 +392,9 @@ export default function LoginForm({ initialMode, hideRegister = false }: LoginFo
                     onChange={(e) => setSubscriptionTier(e.target.value as SubscriptionTier)}
                     className={`${fieldClassName} px-3 py-2 text-sm`}
                   >
-                    <option value="free" className="bg-black text-primary-500">Starter - $0/mo</option>
-                    <option value="basic" className="bg-black text-primary-500">Growth - $79/mo</option>
-                    <option value="premium" className="bg-black text-primary-500">Performance - $199/mo</option>
-                    <option value="enterprise" className="bg-black text-primary-500">Enterprise - Custom</option>
+                    <option value="free" className="bg-black text-primary-500">Starter - Free</option>
+                    <option value="basic" className="bg-black text-primary-500">Pro - $29/mo</option>
+                    <option value="premium" className="bg-black text-primary-500">Business - $99/mo</option>
                   </select>
                   <p className="text-[11px] text-primary-400/70 mt-1">
                     You can change this later from your Profile or Settings page.
