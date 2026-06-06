@@ -402,7 +402,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-visible pt-16" suppressHydrationWarning>
 
-      {/* 1. Wallet Hero */}
+      {/* 1. Welcome + Quick Actions */}
       <div className="px-4 pt-2 mb-5">
         <div className="bg-gradient-to-br from-primary-500/10 via-black/60 to-black/80 border border-primary-500/25 rounded-2xl p-5 shadow-lg shadow-primary-500/10 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-36 h-36 rounded-full opacity-15 blur-3xl bg-primary-500" style={{ transform: 'translate(30%,-30%)' }} />
@@ -411,25 +411,23 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
               {(user as any)?.name?.split(' ')[0] || 'there'} <span className="text-primary-500">👋</span>
             </h2>
             <p className="text-primary-400/60 text-sm mt-1 mb-4 relative z-10">{walletBalance === 0 ? 'Ready to send your first shot?' : 'What are you buying tonight?'}</p>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
-              className="w-full bg-primary-500 text-black font-bold py-3 rounded-xl text-sm tracking-wide hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 relative z-10"
-            >
-              <Send className="w-4 h-4" />
-              Send a Shot
-            </button>
+            <div className="flex gap-2 relative z-10">
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSendMoney) onSendMoney(); else setActiveTab?.('wallet') }}
+                className="flex-1 bg-primary-500 text-black font-bold py-3 rounded-xl text-sm hover:bg-primary-400 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Send className="w-4 h-4" />
+                Send a Shot
+              </button>
+              <button
+                onClick={() => setShowFindFriends(true)}
+                className="flex-1 border border-primary-500/30 text-primary-500 font-bold py-3 rounded-xl text-sm hover:bg-primary-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Users className="w-4 h-4" />
+                Invite Friends
+              </button>
+            </div>
           </div>
-      </div>
-
-      {/* Invite Friends row */}
-      <div className="px-4 mb-5">
-        <button
-          onClick={() => setShowFindFriends(true)}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-primary-500/30 text-primary-500 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all active:scale-[0.98]"
-        >
-          <Users className="w-4 h-4" />
-          Invite Friends to Shot On Me
-        </button>
       </div>
 
       {/* 2. Friends Out Tonight — always visible */}

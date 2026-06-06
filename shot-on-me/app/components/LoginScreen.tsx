@@ -93,17 +93,26 @@ export default function LoginScreen() {
   const [publicVenues, setPublicVenues] = useState<any[]>([])
   const [venuePortalLoginUrl, setVenuePortalLoginUrl] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [shotsThisWeek, setShotsThisWeek] = useState<number | null>(null)
 
   useEffect(() => {
     setMounted(true)
     setVenuePortalLoginUrl(getVenuePortalLoginUrl())
     fetchPublicVenues()
+    fetchShotsCount()
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const ref = params.get('ref')
       if (ref) { setReferrerId(ref); window.history.replaceState({}, '', window.location.pathname) }
     }
   }, [])
+
+  const fetchShotsCount = async () => {
+    try {
+      const res = await axios.get(`${getApiUrl()}/payments/stats/public`)
+      setShotsThisWeek(res.data.shotsThisWeek || 0)
+    } catch { /* silent */ }
+  }
 
   const fetchPublicVenues = async () => {
     try {
@@ -182,21 +191,7 @@ export default function LoginScreen() {
         <div className="absolute bottom-1/3 -right-20 w-64 h-64 rounded-full bg-primary-500/5 blur-[80px]" />
       </div>
 
-      {/* ── Top-right auth buttons ── */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <button
-          onClick={() => openSheet(true)}
-          className="text-white/55 text-xs font-semibold hover:text-white transition-colors px-2 py-1.5"
-        >
-          Sign In
-        </button>
-        <button
-          onClick={() => openSheet(false)}
-          className="bg-primary-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-primary-400 active:scale-[0.97] transition-all shadow-md shadow-primary-500/25 flex items-center gap-1"
-        >
-          Join Free <ArrowRight className="w-3 h-3" />
-        </button>
-      </div>
+      {/* Auth buttons removed — hero CTAs handle sign-in/join */}
 
       <div className="relative z-10 max-w-lg mx-auto px-5">
 
@@ -231,12 +226,14 @@ export default function LoginScreen() {
           </div>
 
           {/* Social proof */}
-          <div className="flex items-center justify-center gap-1.5 text-sm">
-            <Users className="w-4 h-4 text-primary-500/60" />
-            <span className="text-white/35">
-              <span className="text-primary-400 font-semibold">2,400+</span> shots sent this week
-            </span>
-          </div>
+          {shotsThisWeek !== null && shotsThisWeek > 0 && (
+            <div className="flex items-center justify-center gap-1.5 text-sm">
+              <Users className="w-4 h-4 text-primary-500/60" />
+              <span className="text-white/35">
+                <span className="text-primary-400 font-semibold">{shotsThisWeek.toLocaleString()}</span> shots sent this week
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Discover Venues — directly under slogan ── */}

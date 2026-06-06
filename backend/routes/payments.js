@@ -2178,5 +2178,19 @@ router.post('/claim-pending', auth, async (req, res) => {
   }
 });
 
+// GET /api/payments/stats/public — public endpoint for landing page social proof
+router.get('/stats/public', async (req, res) => {
+  try {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const count = await Payment.countDocuments({
+      createdAt: { $gte: oneWeekAgo },
+      source: { $ne: 'revig' }
+    });
+    res.json({ shotsThisWeek: count });
+  } catch (error) {
+    res.json({ shotsThisWeek: 0 });
+  }
+});
+
 module.exports = router;
 module.exports.webhook = webhookHandler;
