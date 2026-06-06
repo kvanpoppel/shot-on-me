@@ -7,6 +7,7 @@ import axios from 'axios'
 import {
   ArrowUpRight, ArrowDownLeft, Plus, Zap, Sparkles, Clock,
   MapPin, QrCode, CreditCard, ChevronRight, X, Check, Loader,
+  AlertTriangle,
 } from 'lucide-react'
 import AddFundsModal from './AddFundsModal'
 import TapAndPayModal from './TapAndPayModal'
@@ -29,6 +30,7 @@ export default function WalletTab() {
   const [showRedeem, setShowRedeem] = useState(false)
   const [redeemMsg, setRedeemMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedTx, setSelectedTx] = useState<any>(null)
 
   const balance = user?.revigWallet?.balance ?? user?.wallet?.balance ?? 0
   const pending = user?.revigWallet?.pendingBalance ?? user?.wallet?.pendingBalance ?? 0
@@ -88,6 +90,123 @@ export default function WalletTab() {
     <div style={{ background: '#0F0F1E', minHeight: '100%' }}>
       <AddFundsModal isOpen={showAddFunds} onClose={() => setShowAddFunds(false)} onSuccess={() => { updateUser({}); fetchHistory() }} />
       <TapAndPayModal isOpen={showTapPay} onClose={() => setShowTapPay(false)} />
+
+      {/* Transaction detail bottom sheet */}
+      {selectedTx && (() => {
+        const txIsSent = selectedTx.sender?.id === userId || selectedTx.sender?._id === userId
+        const txOther = txIsSent ? selectedTx.recipient : selectedTx.sender
+        const txOtherName = `${txOther?.firstName || ''} ${txOther?.lastName || ''}`.trim() || 'Someone'
+        const txDate = selectedTx.createdAt ? new Date(selectedTx.createdAt) : null
+        const txId = selectedTx._id || ''
+        const txStatus = selectedTx.status || 'completed'
+        const isDisputable = txStatus === 'succeeded' || txStatus === 'completed'
+        const notRefunded = txStatus !== 'refunded'
+        const withinDispute = txDate ? (Date.now() - txDate.getTime()) < 60 * 24 * 60 * 60 * 1000 : false
+        const canDispute = isDisputable && notRefunded && withinDispute
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setSelectedTx(null)}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div
+              className="relative w-full max-w-lg rounded-t-3xl p-6 pb-8 animate-slide-up"
+              style={{ background: '#1A1A2E', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ background: 'rgba(255,255,255,0.15)' }} />
+
+              {/* Close */}
+              <button onClick={() => setSelectedTx(null)} className="absolute top-4 right-4 p-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <X className="w-4 h-4 text-white/40" />
+              </button>
+
+              {/* Amount */}
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                  style={{ background: txIsSent ? 'rgba(255,95,87,0.15)' : 'rgba(200,241,53,0.15)' }}
+                >
+                  {txIsSent
+                    ? <ArrowUpRight className="w-6 h-6" style={{ color: '#FF5F57' }} />
+                    : <ArrowDownLeft className="w-6 h-6" style={{ color: '#C8F135' }} />
+                  }
+                </div>
+                <p className="text-3xl font-black" style={{ color: txIsSent ? '#FF5F57' : '#C8F135' }}>
+                  {txIsSent ? '-' : '+'}${selectedTx.amount?.toFixed(2)}
+                </p>
+                <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  {txIsSent ? `Sent to ${txOtherName}` : `Received from ${txOtherName}`}
+                </p>
+              </div>
+
+              {/* Detail rows */}
+              <div className="flex flex-col gap-3 rounded-2xl p-4" style={{ background: '#252540' }}>
+                {/* Status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Status</span>
+                  <span className="text-xs font-semibold capitalize" style={{
+                    color: txStatus === 'completed' || txStatus === 'succeeded' ? '#C8F135'
+                      : txStatus === 'refunded' ? '#FF5F57'
+                      : '#00D4FF'
+                  }}>
+                    {txStatus}
+                  </span>
+                </div>
+
+                {/* Date & time */}
+                {txDate && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Date & Time</span>
+                    <span className="text-xs font-semibold text-white">
+                      {txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {txDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </div>
+                )}
+
+                {/* Venue */}
+                {selectedTx.venue?.name && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Venue</span>
+                    <span className="text-xs font-semibold text-white flex items-center gap-1">
+                      <MapPin className="w-3 h-3" style={{ color: '#00D4FF' }} /> {selectedTx.venue.name}
+                    </span>
+                  </div>
+                )}
+
+                {/* Message */}
+                {selectedTx.message && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }}>Message</span>
+                    <span className="text-xs font-semibold text-white text-right ml-4 truncate">&ldquo;{selectedTx.message}&rdquo;</span>
+                  </div>
+                )}
+
+                {/* Transaction ID */}
+                {txId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Transaction ID</span>
+                    <span className="text-xs font-mono text-white/50">...{txId.slice(-8)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dispute button */}
+              {canDispute && (
+                <button
+                  className="w-full mt-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                  style={{ background: 'rgba(255,95,87,0.1)', color: '#FF5F57', border: '1px solid rgba(255,95,87,0.2)' }}
+                  onClick={() => {
+                    window.open(`mailto:support@revig.app?subject=Dispute Transaction ${txId.slice(-8)}&body=I would like to dispute this transaction.%0A%0ATransaction ID: ${txId}%0AAmount: $${selectedTx.amount?.toFixed(2)}%0ADate: ${txDate?.toISOString()}`, '_blank')
+                  }}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Dispute this transaction
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="max-w-2xl mx-auto">
 
       {/* Balance hero */}
@@ -118,39 +237,86 @@ export default function WalletTab() {
         </div>
       </div>
 
+      {/* Wallet disclosure + KYC limits */}
+      <div className="px-4 pb-2">
+        <div className="flex items-start gap-2 text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          <span className="flex-shrink-0 mt-0.5">ℹ️</span>
+          <span>
+            Wallet funds are for in-app use only (sending Revigs, venue payments). Not a bank account, not FDIC insured.
+            {user?.kyc?.status !== 'verified' && ' Daily add limit: $200 · Max balance: $500.'}
+          </span>
+        </div>
+      </div>
+
       {/* Quick actions */}
       <div className="px-4 mb-4">
-        <div className="grid grid-cols-3 gap-3">
-          <button
-            onClick={() => setShowAddFunds(true)}
-            className="revig-card p-4 flex flex-col items-center gap-2 hover:border-lime-revig/30 transition-all"
-          >
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(200,241,53,0.15)' }}>
-              <Plus className="w-5 h-5" style={{ color: '#C8F135' }} />
-            </div>
-            <span className="text-xs font-bold text-white">Add Funds</span>
-          </button>
+        {balance === 0 ? (
+          /* Zero-balance: prominent Add Funds CTA */
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => setShowAddFunds(true)}
+              className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm transition-all"
+              style={{ background: '#C8F135', color: '#1A1A2E' }}
+            >
+              <Plus className="w-5 h-5" />
+              Add funds to start sending Revigs
+            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setShowTapPay(true)}
+                className="revig-card p-4 flex flex-col items-center gap-2 opacity-50 hover:opacity-80 transition-all"
+              >
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.15)' }}>
+                  <QrCode className="w-5 h-5" style={{ color: '#00D4FF' }} />
+                </div>
+                <span className="text-xs font-bold text-white">Tap & Pay</span>
+              </button>
 
-          <button
-            onClick={() => setShowTapPay(true)}
-            className="revig-card p-4 flex flex-col items-center gap-2 hover:border-cyan-revig/30 transition-all"
-          >
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.15)' }}>
-              <QrCode className="w-5 h-5" style={{ color: '#00D4FF' }} />
+              <button
+                onClick={() => setShowRedeem(!showRedeem)}
+                className="revig-card p-4 flex flex-col items-center gap-2 opacity-50 hover:opacity-80 transition-all"
+              >
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,95,87,0.15)' }}>
+                  <Zap className="w-5 h-5" style={{ color: '#FF5F57' }} />
+                </div>
+                <span className="text-xs font-bold text-white">Redeem</span>
+              </button>
             </div>
-            <span className="text-xs font-bold text-white">Tap & Pay</span>
-          </button>
+          </div>
+        ) : (
+          /* Normal balance: standard 3-column grid */
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setShowAddFunds(true)}
+              className="revig-card p-4 flex flex-col items-center gap-2 hover:border-lime-revig/30 transition-all"
+            >
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(200,241,53,0.15)' }}>
+                <Plus className="w-5 h-5" style={{ color: '#C8F135' }} />
+              </div>
+              <span className="text-xs font-bold text-white">Add Funds</span>
+            </button>
 
-          <button
-            onClick={() => setShowRedeem(!showRedeem)}
-            className="revig-card p-4 flex flex-col items-center gap-2 hover:border-coral-revig/30 transition-all"
-          >
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,95,87,0.15)' }}>
-              <Zap className="w-5 h-5" style={{ color: '#FF5F57' }} />
-            </div>
-            <span className="text-xs font-bold text-white">Redeem</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setShowTapPay(true)}
+              className="revig-card p-4 flex flex-col items-center gap-2 hover:border-cyan-revig/30 transition-all"
+            >
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.15)' }}>
+                <QrCode className="w-5 h-5" style={{ color: '#00D4FF' }} />
+              </div>
+              <span className="text-xs font-bold text-white">Tap & Pay</span>
+            </button>
+
+            <button
+              onClick={() => setShowRedeem(!showRedeem)}
+              className="revig-card p-4 flex flex-col items-center gap-2 hover:border-coral-revig/30 transition-all"
+            >
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,95,87,0.15)' }}>
+                <Zap className="w-5 h-5" style={{ color: '#FF5F57' }} />
+              </div>
+              <span className="text-xs font-bold text-white">Redeem</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Redeem code panel */}
@@ -239,7 +405,7 @@ export default function WalletTab() {
               const timeAgo = shot.createdAt ? formatDistanceToNow(new Date(shot.createdAt), { addSuffix: true }) : ''
 
               return (
-                <div key={shot._id || idx} className="revig-card p-4 flex items-center gap-3">
+                <div key={shot._id || idx} className="revig-card p-4 flex items-center gap-3 cursor-pointer hover:border-white/20 transition-all" onClick={() => setSelectedTx(shot)}>
                   <div
                     className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
                     style={{
