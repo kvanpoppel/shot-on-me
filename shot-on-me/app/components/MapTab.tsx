@@ -1250,219 +1250,166 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-4xl mx-auto pt-16">
-      {/* Header - Optimized Compact Design */}
-      {viewMode === 'map' ? (
-        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 p-2 sm:p-2.5">
-          {/* Top Row: Location, Temperature, Settings - Compact */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
-            {/* Location Bar - Compact */}
-            <div className="flex-1 min-w-0 bg-white rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg">
-              <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black flex-shrink-0" />
-              <span className="text-black font-bold text-xs sm:text-sm truncate">{currentCity}</span>
-            </div>
-            
-            {/* Temperature Display - Compact */}
-            <button
-              onClick={() => {
-                let weatherUrl = 'https://weather.com/weather/today/l/'
-                if (userLocation) {
-                  weatherUrl = `https://weather.com/weather/today/l/${userLocation.lat},${userLocation.lng}`
-                } else if (currentCity) {
-                  weatherUrl = `https://weather.com/weather/today/l/${encodeURIComponent(currentCity)}`
-                } else {
-                  weatherUrl = 'https://weather.com'
-                }
-                window.open(weatherUrl, '_blank', 'noopener,noreferrer')
-              }}
-              className="flex-shrink-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-lg sm:rounded-full px-2 sm:px-3 py-1.5 sm:py-1.5 flex items-center gap-1 sm:gap-1.5 shadow-md hover:from-orange-500/30 hover:to-red-500/30 hover:border-orange-500/50 active:scale-95 transition-all"
-              title="Open Weather.com"
-            >
-              <ThermometerSun className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400" />
-              {weatherLoading ? (
-                <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-400 animate-spin" />
-              ) : temperature !== null ? (
-                <span className="text-[10px] sm:text-xs font-bold text-orange-400">{temperature}°F</span>
-              ) : (
-                <span className="text-[10px] sm:text-xs font-bold text-orange-400/70">--°F</span>
-              )}
-            </button>
-            
-            {/* Settings Icon */}
-            <button
-              onClick={() => onOpenSettings?.()}
-              className="flex-shrink-0 p-1.5 sm:p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+      {/* Unified header — same controls for list & map */}
+      <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 px-4 py-2">
+        {/* Top row: title + context + view toggle */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-lg font-bold text-primary-500 tracking-tight">Venues</h1>
+            {currentCity && (
+              <span className="text-[10px] text-primary-400/40 truncate">{currentCity}</span>
+            )}
+            {temperature !== null && (
+              <span className="text-[10px] text-orange-400/60 flex-shrink-0">{temperature}°F</span>
+            )}
           </div>
-          
-          {/* Bottom Row: View Toggle - Compact */}
-          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold transition-all bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50 flex items-center gap-1 active:scale-95"
-            >
-              <List className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">List</span>
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold transition-all bg-primary-500 text-black shadow-lg flex items-center gap-1 active:scale-95"
-            >
-              <MapIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Map</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-black/95 backdrop-blur-md border-b border-primary-500/10 sticky top-16 z-20 px-4 py-2">
-          <div className="flex items-center justify-center relative mb-2">
-            <h1 className="text-xl font-bold text-primary-500 tracking-tight text-center">Venues</h1>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="absolute right-0 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all disabled:opacity-50"
-              title="Refresh venues"
+              className="p-1.5 text-primary-400/60 hover:text-primary-500 rounded-lg transition-all disabled:opacity-50"
             >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
-          </div>
-          
-          {/* Search Bar - Only for List View */}
-          <div className="relative mb-2">
-            <PlacesAutocomplete
-              value={searchQuery}
-              onChange={(value) => {
-                setSearchQuery(value)
-                if (!value) setGooglePlace(null)
-              }}
-              onPlaceSelect={(place) => {
-                setGooglePlace(place)
-                setSearchQuery(place.name || place.formatted_address || '')
-              }}
-              placeholder="Search venues by name, city, or address..."
-              className="w-full"
-            />
-          </div>
-          
-          {/* Unified filters + vibes row */}
-          <div className="mb-2">
-            {/* Row 1: Category filters */}
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1.5 -mx-4 px-4 scroll-smooth">
-              {([
-                { id: 'all', label: 'All', icon: null },
-                { id: 'for-you', label: 'For You', icon: Sparkles },
-                { id: 'favorites', label: 'Favorites', icon: Heart },
-                { id: 'tonight', label: 'Tonight', icon: Moon },
-                { id: 'trending', label: 'Trending', icon: TrendingUp },
-                { id: 'happy-hour', label: 'Happy Hour', icon: Martini },
-                { id: 'specials', label: 'Specials', icon: Tag },
-              ] as const).map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setFilter(id as any)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    filter === id
-                      ? 'bg-primary-500 text-black shadow-lg'
-                      : 'bg-black/60 border border-primary-500/20 text-primary-400/70 hover:border-primary-500/40'
-                  }`}
-                >
-                  {Icon && <Icon className="w-3 h-3" />}
-                  {label}
-                </button>
-              ))}
+            {/* View toggle */}
+            <div className="flex bg-black/60 border border-primary-500/15 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-2 py-1 text-[10px] font-semibold transition-all flex items-center gap-1 ${
+                  viewMode === 'list' ? 'bg-primary-500 text-black' : 'text-primary-400/60 hover:text-primary-400'
+                }`}
+              >
+                <List className="w-3 h-3" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`px-2 py-1 text-[10px] font-semibold transition-all flex items-center gap-1 ${
+                  viewMode === 'map' ? 'bg-primary-500 text-black' : 'text-primary-400/60 hover:text-primary-400'
+                }`}
+              >
+                <MapIcon className="w-3 h-3" />
+                Map
+              </button>
             </div>
-
-            {/* Row 2: Vibe toggles (multi-select) + sort */}
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 -mx-4 px-4 scroll-smooth">
-              {([
-                { key: 'happyHour',      label: '🍻' },
-                { key: 'liveMusic',      label: '🎸' },
-                { key: 'karaoke',        label: '🎤' },
-                { key: 'sportsTv',       label: '🏈' },
-                { key: 'danceFloor',     label: '🕺' },
-                { key: 'trivia',         label: '🧠' },
-                { key: 'poolTables',     label: '🎱' },
-                { key: 'outdoorSeating', label: '🌅' },
-                { key: 'hasFood',        label: '🍕' },
-                { key: 'dogFriendly',    label: '🐕' },
-                { key: 'kidsFriendly',   label: '👶' },
-                { key: 'arcade',         label: '🎮' },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => toggleAmenityFilter(key)}
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all ${
-                    amenityFilters.has(key)
-                      ? 'bg-primary-500/20 border border-primary-500/50 shadow-sm shadow-primary-500/10'
-                      : 'bg-black/40 border border-primary-500/10 opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-
-              {/* Divider */}
-              <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
-
-              {/* Sort toggle */}
-              {(['smart', 'nearest', 'az'] as const).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setSortMode(mode)}
-                  className={`flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap ${
-                    sortMode === mode
-                      ? 'bg-primary-500/20 border border-primary-500/40 text-primary-400'
-                      : 'bg-black/40 border border-primary-500/10 text-primary-400/40 hover:text-primary-400/70'
-                  }`}
-                >
-                  {mode === 'smart' ? '✨ Smart' : mode === 'nearest' ? '📍 Near' : '🔤 A-Z'}
-                </button>
-              ))}
-
-              {/* Clear vibes */}
-              {amenityFilters.size > 0 && (
-                <>
-                  <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
-                  <button
-                    onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} }}
-                    className="flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold text-red-400/70 bg-red-500/10 border border-red-500/20 hover:text-red-400"
-                  >
-                    Clear
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* View Toggle - Compact */}
-          <div className="flex items-center justify-end gap-1.5">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === 'list'
-                  ? 'bg-primary-500 text-black shadow-lg'
-                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-              }`}
-            >
-              <List className="w-3.5 h-3.5 inline mr-1" />
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                (viewMode as string) === 'map'
-                  ? 'bg-primary-500 text-black shadow-lg'
-                  : 'bg-black/60 border border-primary-500/30 text-primary-400 hover:text-primary-500 hover:border-primary-500/50'
-              }`}
-            >
-              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
-              Map
-            </button>
           </div>
         </div>
-      )}
+
+        {/* Search bar */}
+        <div className="relative mb-2">
+          <PlacesAutocomplete
+            value={searchQuery}
+            onChange={(value) => {
+              setSearchQuery(value)
+              if (!value) setGooglePlace(null)
+            }}
+            onPlaceSelect={(place) => {
+              setGooglePlace(place)
+              setSearchQuery(place.name || place.formatted_address || '')
+            }}
+            placeholder="Search venues..."
+            className="w-full"
+          />
+        </div>
+
+        {/* Row 1: Category filters */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1.5 -mx-4 px-4 scroll-smooth">
+          {([
+            { id: 'all', label: 'All', icon: null },
+            { id: 'for-you', label: 'For You', icon: Sparkles },
+            { id: 'favorites', label: 'Favorites', icon: Heart },
+            { id: 'tonight', label: 'Tonight', icon: Moon },
+            { id: 'trending', label: 'Trending', icon: TrendingUp },
+            { id: 'happy-hour', label: 'Happy Hour', icon: Martini },
+            { id: 'specials', label: 'Specials', icon: Tag },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setFilter(id as any)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                filter === id
+                  ? 'bg-primary-500 text-black shadow-lg'
+                  : 'bg-black/60 border border-primary-500/20 text-primary-400/70 hover:border-primary-500/40'
+              }`}
+            >
+              {Icon && <Icon className="w-3 h-3" />}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 2: Vibe toggles + sort */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 -mx-4 px-4 scroll-smooth">
+          {([
+            { key: 'happyHour',      label: '🍻' },
+            { key: 'liveMusic',      label: '🎸' },
+            { key: 'karaoke',        label: '🎤' },
+            { key: 'sportsTv',       label: '🏈' },
+            { key: 'danceFloor',     label: '🕺' },
+            { key: 'trivia',         label: '🧠' },
+            { key: 'poolTables',     label: '🎱' },
+            { key: 'outdoorSeating', label: '🌅' },
+            { key: 'hasFood',        label: '🍕' },
+            { key: 'dogFriendly',    label: '🐕' },
+            { key: 'kidsFriendly',   label: '👶' },
+            { key: 'arcade',         label: '🎮' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => toggleAmenityFilter(key)}
+              className={`flex-shrink-0 w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all ${
+                amenityFilters.has(key)
+                  ? 'bg-primary-500/20 border border-primary-500/50 shadow-sm shadow-primary-500/10'
+                  : 'bg-black/40 border border-primary-500/10 opacity-60 hover:opacity-100'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
+
+          {(['smart', 'nearest', 'az'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setSortMode(mode)}
+              className={`flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap ${
+                sortMode === mode
+                  ? 'bg-primary-500/20 border border-primary-500/40 text-primary-400'
+                  : 'bg-black/40 border border-primary-500/10 text-primary-400/40 hover:text-primary-400/70'
+              }`}
+            >
+              {mode === 'smart' ? '✨ Smart' : mode === 'nearest' ? '📍 Near' : '🔤 A-Z'}
+            </button>
+          ))}
+
+          {amenityFilters.size > 0 && (
+            <>
+              <div className="w-px h-5 bg-primary-500/15 flex-shrink-0 mx-1" />
+              <button
+                onClick={() => { setAmenityFilters(new Set()); try { localStorage.removeItem('som-amenity-filters') } catch {} }}
+                className="flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold text-red-400/70 bg-red-500/10 border border-red-500/20 hover:text-red-400"
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Active filter summary */}
+        {(filter !== 'all' || amenityFilters.size > 0) && (
+          <div className="flex items-center gap-1.5 pt-1.5 mt-1 border-t border-primary-500/5">
+            <span className="text-[9px] text-primary-400/30">Showing:</span>
+            {filter !== 'all' && (
+              <span className="text-[9px] bg-primary-500/10 text-primary-400/60 px-1.5 py-0.5 rounded">{filter === 'for-you' ? 'For You' : filter === 'happy-hour' ? 'Happy Hour' : filter.charAt(0).toUpperCase() + filter.slice(1)}</span>
+            )}
+            {amenityFilters.size > 0 && (
+              <span className="text-[9px] bg-primary-500/10 text-primary-400/60 px-1.5 py-0.5 rounded">{amenityFilters.size} vibe{amenityFilters.size > 1 ? 's' : ''}</span>
+            )}
+            <span className="text-[9px] text-primary-400/20">· {getFilteredVenues.length} venue{getFilteredVenues.length !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
 
       {/* Error Message */}
       {error && (
