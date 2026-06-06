@@ -80,6 +80,9 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
   const [otp, setOtp] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
 
+  // Transaction detail
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
+
   // Disputes
   const [disputePayment, setDisputePayment] = useState<any>(null)
   const [disputeReason, setDisputeReason] = useState('')
@@ -484,6 +487,12 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
       return
     }
 
+    const currentBalance = (user as any)?.wallet?.balance || 0
+    if (amountNum > currentBalance) {
+      setError(`Insufficient balance ($${currentBalance.toFixed(2)}). Add funds first.`)
+      return
+    }
+
     setOtpLoading(true)
     try {
       await axios.post(
@@ -832,6 +841,19 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         </div>
       </div>
 
+      {/* Wallet disclosure + KYC limits */}
+      <div className="px-4 pb-2">
+        <div className="flex items-start gap-2 text-[10px] text-primary-400/30 leading-relaxed">
+          <span className="flex-shrink-0 mt-0.5">ℹ️</span>
+          <span>
+            Wallet funds are for in-app use only (sending drinks, venue payments). Not a bank account, not FDIC insured.
+            {(user as any)?.kyc?.status !== 'verified' && (
+              <> Daily add limit: $200 · Max balance: $500. <button onClick={() => { /* KYC flow could go here */ }} className="text-primary-500/50 underline hover:text-primary-500/70">Verify identity</button> to increase.</>
+            )}
+          </span>
+        </div>
+      </div>
+
       {/* Points Row — compact, outside the card */}
       <div className="px-4 mb-3">
         <div className="bg-black/40 border border-primary-500/15 rounded-xl px-4 py-2.5">
@@ -911,22 +933,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
             <Plus className="w-5 h-5" />
             Add Funds to Send Shots
           </button>
-          <button
-            data-send-money-button
-            onClick={() => {
-              setShowSendForm(!showSendForm)
-              setShowRedeemForm(false)
-
-              if (!showSendForm) {
-                setSearchQuery('')
-                setSearchResults([])
-              }
-            }}
-            className="w-full mt-3 border border-primary-500/30 text-primary-500/60 py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 text-sm"
-          >
-            <Send className="w-4 h-4" />
-            Send Money
-          </button>
+          <p className="text-center text-primary-400/30 text-xs mt-2">Add funds to start sending drinks to friends</p>
         </div>
       )}
 
@@ -1360,6 +1367,7 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
               return (
                 <div
                   key={payment._id}
+                  onClick={() => setSelectedTransaction(payment)}
                   className="group bg-black/40 border border-primary-500/20 rounded-xl p-4 hover:bg-black/60 hover:border-primary-500/30 transition-all cursor-pointer"
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -1707,6 +1715,95 @@ export default function WalletTab({ autoOpenSendForm = false, onSendFormOpened, 
         recipientId={cardPaymentRecipient?.id}
         message={cardPaymentRecipient?.message}
       />
+
+      {/* Transaction Detail Sheet */}
+      {selectedTransaction && (() => {
+        const tx = selectedTransaction
+        const isSent = tx.senderId?._id === user?.id || tx.senderId === user?.id || tx.sender?._id === user?.id || tx.sender === user?.id
+        const otherUser = isSent ? (tx.recipient || tx.recipientId) : (tx.sender || tx.senderId)
+        const otherUserName = otherUser?.firstName ? `${otherUser.firstName} ${otherUser.lastName || ''}`.trim() : (otherUser?.phone || (isSent ? 'Recipient' : 'Sender'))
+        const canDispute = tx.status === 'succeeded' && !tx.refunded && (new Date().getTime() - new Date(tx.createdAt).getTime() < 60 * 24 * 60 * 60 * 1000)
+
+        return (
+          <div className="fixed inset-0 bg-black/80 z-[100] flex items-end sm:items-center justify-center" onClick={() => setSelectedTransaction(null)}>
+            <div className="bg-black border border-primary-500/20 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-primary-500/10">
+                <h3 className="text-base font-bold text-primary-500">Transaction Details</h3>
+                <button onClick={() => setSelectedTransaction(null)} className="text-primary-400/60 hover:text-primary-500 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* Amount hero */}
+                <div className="text-center py-3">
+                  <p className={`text-4xl font-bold ${isSent ? 'text-red-400' : 'text-green-400'}`}>
+                    {isSent ? '-' : '+'}${tx.amount?.toFixed(2)}
+                  </p>
+                  <p className="text-primary-400/50 text-sm mt-1">{isSent ? 'Sent to' : 'Received from'} {otherUserName}</p>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-3 bg-black/40 border border-primary-500/10 rounded-xl p-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-primary-400/50">Status</span>
+                    <span className={`font-semibold ${tx.status === 'succeeded' ? 'text-green-400' : tx.status === 'pending' ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {tx.refunded ? 'Refunded' : tx.status === 'succeeded' ? 'Completed' : tx.status?.charAt(0).toUpperCase() + tx.status?.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-primary-400/50">Date</span>
+                    <span className="text-white/80">{new Date(tx.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-primary-400/50">Time</span>
+                    <span className="text-white/80">{new Date(tx.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                  {tx.type && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-primary-400/50">Type</span>
+                      <span className="text-white/80">{tx.type === 'tap_and_pay' ? 'Tap & Pay' : tx.type === 'shot_sent' ? 'Shot' : tx.type}</span>
+                    </div>
+                  )}
+                  {tx.venue?.name && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-primary-400/50">Venue</span>
+                      <span className="text-white/80">{tx.venue.name}</span>
+                    </div>
+                  )}
+                  {tx.message && (
+                    <div className="pt-2 border-t border-primary-500/10">
+                      <p className="text-primary-400/50 text-xs mb-1">Message</p>
+                      <p className="text-white/70 text-sm italic">"{tx.message}"</p>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm pt-2 border-t border-primary-500/10">
+                    <span className="text-primary-400/50">Transaction ID</span>
+                    <span className="text-primary-400/30 text-xs font-mono">{tx._id?.slice(-8)}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {canDispute && (
+                  <button
+                    onClick={() => {
+                      setSelectedTransaction(null)
+                      setDisputePayment(tx)
+                      setDisputeReason('')
+                      setDisputeDescription('')
+                      setDisputeSuccess(false)
+                    }}
+                    className="w-full py-3 rounded-xl border border-red-500/30 text-red-400 text-sm font-semibold hover:bg-red-500/10 transition-all"
+                  >
+                    Dispute This Transaction
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Dispute Modal */}
       {disputePayment && (
