@@ -1765,33 +1765,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         </div>
       )}
 
-      {/* Trending Venues - Inline */}
-      {trendingVenues.length > 0 && (
-        <div className="p-4 border-b border-primary-500/10">
-          <div className="flex items-center space-x-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-primary-500">Trending Venues</h2>
-          </div>
-          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
-            {trendingVenues.map((venue) => (
-              <button
-                key={venue._id}
-                onClick={() => {
-                  setSelectedVenue(venue)
-                  setShowPostForm(true)
-                }}
-                className="flex items-center space-x-2 bg-black/50 border border-primary-500/20 rounded-lg px-3 py-2 flex-shrink-0 hover:border-primary-500/50 transition-colors"
-              >
-                <MapPin className="w-4 h-4 text-primary-500" />
-                <div className="text-left">
-                  <p className="text-xs font-semibold text-primary-500">{venue.name}</p>
-                  <p className="text-xs text-primary-400">{venue.category || 'Tap to view'}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Trending Venues section removed — use Trending filter tab instead */}
 
       {/* Round Mode Sheet */}
       <RoundModeSheet isOpen={showRoundMode} onClose={() => setShowRoundMode(false)} />
