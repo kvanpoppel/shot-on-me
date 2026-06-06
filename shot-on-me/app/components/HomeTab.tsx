@@ -52,6 +52,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   const [loading, setLoading] = useState(true)
   const [featuredVenues, setFeaturedVenues] = useState<any[]>([])
   const [showFindFriends, setShowFindFriends] = useState(false)
+  const [aiVibes, setAiVibes] = useState<{ key: string; emoji: string; label: string; score: number; friendsNow: number; reason: string | null }[]>([])
 
   // Use refs to track if we've already fetched to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
@@ -100,10 +101,27 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
     }
   }, [socket, user])
 
-  // Fetch featured venues on load
+  // Fetch featured venues + AI vibes on load
   useEffect(() => {
-    if (token) fetchFeaturedVenues()
+    if (token) {
+      fetchFeaturedVenues()
+      fetchAiVibes()
+    }
   }, [token])
+
+  const fetchAiVibes = async () => {
+    if (!token) return
+    try {
+      const res = await axios.get(`${API_URL}/venue-activity/vibes`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
+      })
+      setAiVibes(res.data.vibes || [])
+    } catch {
+      // Fallback: use default static vibes
+      setAiVibes([])
+    }
+  }
 
   const fetchFeaturedVenues = async () => {
     if (!token) return
@@ -577,30 +595,57 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         )}
       </div>
 
-      {/* 4. Vibes — quick category browse */}
+      {/* 4. Vibes — AI-personalized category browse */}
       <div className="px-4 mb-6">
-        <h2 className="text-xl font-bold text-primary-500 mb-3">Vibes</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-bold text-primary-500">Vibes</h2>
+          {aiVibes.some(v => v.reason) && (
+            <span className="text-[10px] text-primary-400/40 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-500/50 animate-pulse" />
+              Personalized for you
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-4 gap-2">
-          {([
-            { key: 'happyHour',      emoji: '🍻', label: 'Happy Hr' },
-            { key: 'trivia',         emoji: '🧠', label: 'Trivia' },
-            { key: 'liveMusic',      emoji: '🎸', label: 'Live Music' },
-            { key: 'karaoke',        emoji: '🎤', label: 'Karaoke' },
-            { key: 'sportsTv',       emoji: '🏈', label: 'Sports' },
-            { key: 'danceFloor',     emoji: '🕺', label: 'Dancing' },
-            { key: 'poolTables',     emoji: '🎱', label: 'Pool' },
-            { key: 'outdoorSeating', emoji: '🌅', label: 'Outdoor' },
-          ] as const).map(({ key, emoji, label }) => (
+          {(aiVibes.length > 0 ? aiVibes : [
+            { key: 'happyHour', emoji: '🍻', label: 'Happy Hr', score: 0, friendsNow: 0, reason: null },
+            { key: 'trivia', emoji: '🧠', label: 'Trivia', score: 0, friendsNow: 0, reason: null },
+            { key: 'liveMusic', emoji: '🎸', label: 'Live Music', score: 0, friendsNow: 0, reason: null },
+            { key: 'karaoke', emoji: '🎤', label: 'Karaoke', score: 0, friendsNow: 0, reason: null },
+            { key: 'sportsTv', emoji: '🏈', label: 'Sports', score: 0, friendsNow: 0, reason: null },
+            { key: 'danceFloor', emoji: '🕺', label: 'Dancing', score: 0, friendsNow: 0, reason: null },
+            { key: 'poolTables', emoji: '🎱', label: 'Pool', score: 0, friendsNow: 0, reason: null },
+            { key: 'outdoorSeating', emoji: '🌅', label: 'Outdoor', score: 0, friendsNow: 0, reason: null },
+          ]).map(({ key, emoji, label, friendsNow, reason }) => (
             <button
               key={key}
               onClick={() => {
                 try { localStorage.setItem('som-vibe-jump', key) } catch {}
                 setActiveTab?.('map')
               }}
-              className="bg-black/50 border border-primary-500/15 rounded-xl p-2.5 flex flex-col items-center gap-1.5 hover:border-primary-500/40 hover:bg-primary-500/5 transition-all active:scale-[0.96]"
+              className={`relative rounded-xl p-2.5 flex flex-col items-center gap-1.5 transition-all active:scale-[0.96] ${
+                friendsNow > 0
+                  ? 'bg-primary-500/10 border border-primary-500/30 shadow-sm shadow-primary-500/10'
+                  : reason
+                    ? 'bg-black/50 border border-primary-500/20'
+                    : 'bg-black/50 border border-primary-500/10'
+              } hover:border-primary-500/40 hover:bg-primary-500/8`}
             >
+              {friendsNow > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary-500 text-black text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-md">
+                  {friendsNow}
+                </span>
+              )}
               <span className="text-xl">{emoji}</span>
               <span className="text-[10px] font-semibold text-primary-400/70 text-center leading-tight">{label}</span>
+              {reason && !friendsNow && (
+                <span className="text-[7px] text-primary-500/50 text-center leading-tight truncate w-full">{reason}</span>
+              )}
+              {friendsNow > 0 && (
+                <span className="text-[7px] text-primary-500 text-center leading-tight font-semibold">
+                  {friendsNow === 1 ? '1 friend' : `${friendsNow} friends`}
+                </span>
+              )}
             </button>
           ))}
         </div>

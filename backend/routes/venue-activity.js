@@ -497,5 +497,156 @@ router.get('/venue-events/:venueId', auth, async (req, res) => {
   }
 });
 
+// ─── AI Vibes: personalized vibe ranking for home page ───
+// GET /api/venue-activity/vibes — returns vibes ranked by user behavior + friend activity
+const Payment = require('../models/Payment');
+
+const VIBE_KEYS = [
+  'happyHour', 'trivia', 'liveMusic', 'karaoke',
+  'sportsTv', 'danceFloor', 'poolTables', 'outdoorSeating'
+];
+
+const VIBE_META = {
+  happyHour:      { emoji: '🍻', label: 'Happy Hr' },
+  trivia:         { emoji: '🧠', label: 'Trivia' },
+  liveMusic:      { emoji: '🎸', label: 'Live Music' },
+  karaoke:        { emoji: '🎤', label: 'Karaoke' },
+  sportsTv:       { emoji: '🏈', label: 'Sports' },
+  danceFloor:     { emoji: '🕺', label: 'Dancing' },
+  poolTables:     { emoji: '🎱', label: 'Pool' },
+  outdoorSeating: { emoji: '🌅', label: 'Outdoor' },
+};
+
+router.get('/vibes', auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const scores = {};
+    VIBE_KEYS.forEach(k => { scores[k] = { score: 0, friendsNow: 0, reason: null } });
+
+    // 1. User explicit preferences (+5 per pref)
+    const user = await User.findById(userId).select('venuePreferences friends').lean();
+    const prefs = user?.venuePreferences || {};
+    VIBE_KEYS.forEach(k => {
+      if (prefs[k]) scores[k].score += 5;
+    });
+
+    // 2. Check-in history — which amenities has the user actually visited? (+2 per check-in, max 20)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentCheckIns = await CheckIn.find({
+      user: userId,
+      createdAt: { $gte: thirtyDaysAgo }
+    }).select('venue').lean();
+
+    if (recentCheckIns.length > 0) {
+      const checkedVenueIds = [...new Set(recentCheckIns.map(c => c.venue.toString()))];
+      const checkedVenues = await Venue.find({ _id: { $in: checkedVenueIds } }).select('amenities').lean();
+      checkedVenues.forEach(v => {
+        const am = v.amenities || {};
+        VIBE_KEYS.forEach(k => {
+          if (am[k]) scores[k].score += 2;
+        });
+      });
+    }
+
+    // 3. Payment history — where has the user spent money? (+3 per payment venue, max 15)
+    const recentPayments = await Payment.find({
+      senderId: userId,
+      venueId: { $exists: true, $ne: null },
+      status: 'succeeded',
+      source: { $ne: 'revig' },
+      createdAt: { $gte: thirtyDaysAgo }
+    }).select('venueId').lean();
+
+    if (recentPayments.length > 0) {
+      const paidVenueIds = [...new Set(recentPayments.map(p => p.venueId.toString()))];
+      const paidVenues = await Venue.find({ _id: { $in: paidVenueIds } }).select('amenities').lean();
+      paidVenues.forEach(v => {
+        const am = v.amenities || {};
+        VIBE_KEYS.forEach(k => {
+          if (am[k]) scores[k].score += 3;
+        });
+      });
+    }
+
+    // 4. Friends tonight — which vibes are friends at right now? (+8 per friend, show count)
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const friendIds = user?.friends || [];
+    if (friendIds.length > 0) {
+      const friendCheckIns = await CheckIn.find({
+        user: { $in: friendIds },
+        createdAt: { $gte: threeHoursAgo }
+      }).select('venue').lean();
+
+      const friendPayments = await Payment.find({
+        senderId: { $in: friendIds },
+        venueId: { $exists: true, $ne: null },
+        status: 'succeeded',
+        createdAt: { $gte: threeHoursAgo }
+      }).select('venueId').lean();
+
+      const friendVenueIds = [
+        ...new Set([
+          ...friendCheckIns.map(c => c.venue.toString()),
+          ...friendPayments.map(p => p.venueId.toString())
+        ])
+      ];
+
+      if (friendVenueIds.length > 0) {
+        const friendVenues = await Venue.find({ _id: { $in: friendVenueIds } }).select('amenities').lean();
+        friendVenues.forEach(v => {
+          const am = v.amenities || {};
+          VIBE_KEYS.forEach(k => {
+            if (am[k]) {
+              scores[k].score += 8;
+              scores[k].friendsNow += 1;
+            }
+          });
+        });
+      }
+    }
+
+    // 5. Trending tonight — which vibes have the most activity citywide? (+1 per active venue)
+    const activeVenues = await Venue.find({
+      isActive: true,
+      'promotions.isActive': true
+    }).select('amenities').lean();
+
+    activeVenues.forEach(v => {
+      const am = v.amenities || {};
+      VIBE_KEYS.forEach(k => {
+        if (am[k]) scores[k].score += 1;
+      });
+    });
+
+    // Build response — sorted by score, add reasons
+    const vibes = VIBE_KEYS.map(k => {
+      const s = scores[k];
+      let reason = null;
+      if (s.friendsNow > 0) {
+        reason = s.friendsNow === 1 ? '1 friend here now' : `${s.friendsNow} friends here now`;
+      } else if (s.score >= 10 && prefs[k]) {
+        reason = 'Your vibe';
+      } else if (s.score >= 8) {
+        reason = 'Based on your history';
+      }
+
+      return {
+        key: k,
+        ...VIBE_META[k],
+        score: s.score,
+        friendsNow: s.friendsNow,
+        reason,
+      };
+    }).sort((a, b) => b.score - a.score);
+
+    res.json({ vibes });
+  } catch (error) {
+    console.error('Error fetching vibes:', error);
+    // Fallback: return default order
+    const vibes = VIBE_KEYS.map(k => ({ key: k, ...VIBE_META[k], score: 0, friendsNow: 0, reason: null }));
+    res.json({ vibes });
+  }
+});
+
 module.exports = router;
 
