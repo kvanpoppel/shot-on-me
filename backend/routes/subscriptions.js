@@ -66,7 +66,7 @@ router.post('/checkout', auth, async (req, res) => {
       try {
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: venue.stripeCustomerId,
-          return_url: `${process.env.VENUE_PORTAL_URL || 'https://venue-portal.vercel.app'}/dashboard/settings?billing=done`,
+          return_url: `${process.env.VENUE_PORTAL_URL || 'https://venue.shotonme.com'}/dashboard/settings?billing=done`,
         });
         return res.json({ url: portalSession.url, type: 'portal' });
       } catch (portalErr) {
@@ -110,8 +110,8 @@ router.post('/checkout', auth, async (req, res) => {
         },
         proration_behavior: 'create_prorations',
       },
-      success_url: `${process.env.VENUE_PORTAL_URL || 'https://venue-portal.vercel.app'}/dashboard/settings?upgraded=${tier}`,
-      cancel_url: `${process.env.VENUE_PORTAL_URL || 'https://venue-portal.vercel.app'}/dashboard/settings?canceled=true`,
+      success_url: `${process.env.VENUE_PORTAL_URL || 'https://venue.shotonme.com'}/dashboard/settings?upgraded=${tier}`,
+      cancel_url: `${process.env.VENUE_PORTAL_URL || 'https://venue.shotonme.com'}/dashboard/settings?canceled=true`,
       allow_promotion_codes: true,
     });
 
@@ -137,7 +137,7 @@ router.post('/portal', auth, async (req, res) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: venue.stripeCustomerId,
-      return_url: `${process.env.VENUE_PORTAL_URL || 'https://venue-portal.vercel.app'}/dashboard/settings?billing=done`,
+      return_url: `${process.env.VENUE_PORTAL_URL || 'https://venue.shotonme.com'}/dashboard/settings?billing=done`,
     });
 
     res.json({ url: session.url });
