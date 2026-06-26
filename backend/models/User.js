@@ -313,6 +313,9 @@ const userSchema = new mongoose.Schema({
     privacyAcceptedAt: {
       type: Date
     },
+    ageVerifiedAt: {
+      type: Date
+    },
     acceptedVersion: {
       type: String,
       default: 'v1'

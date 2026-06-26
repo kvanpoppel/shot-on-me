@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
-import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle, Send, Sparkles, Users } from 'lucide-react'
+import { Eye, EyeOff, MapPin, X, ArrowRight, Building2, AlertCircle, Send, Sparkles, Users, ShieldCheck } from 'lucide-react'
 import ForgotPasswordModal from './ForgotPasswordModal'
 import WalletOnboarding from './WalletOnboarding'
 import { getVenuePortalLoginUrl, getApiUrl } from '../utils/api'
@@ -86,6 +86,9 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
+  const [showAgeGate, setShowAgeGate] = useState(false)
+  const [ageBlocked, setAgeBlocked] = useState(false)
   const [referrerId, setReferrerId] = useState('')
   const [legalModal, setLegalModal] = useState<null | 'terms' | 'privacy'>(null)
 
@@ -124,7 +127,22 @@ export default function LoginScreen() {
   const openSheet = (loginMode: boolean) => {
     setIsLogin(loginMode)
     setError('')
+    if (!loginMode && !ageConfirmed) {
+      setShowAgeGate(true)
+      setAgeBlocked(false)
+      return
+    }
     setSheetOpen(true)
+  }
+
+  const handleAgeYes = () => {
+    setAgeConfirmed(true)
+    setShowAgeGate(false)
+    setSheetOpen(true)
+  }
+
+  const handleAgeNo = () => {
+    setAgeBlocked(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,15 +153,13 @@ export default function LoginScreen() {
       try { localStorage.setItem('rememberMe', rememberMe.toString()) } catch {}
       if (isLogin) {
         await login(email, password, rememberMe)
-        setJustAuthenticated(true)
-        setShowPermissions(true)
       } else {
         if (!acceptedTerms || !acceptedPrivacy) {
           setError('Please accept Terms of Service and Privacy Policy.')
           setLoading(false)
           return
         }
-        await register({ email, password, phoneNumber, firstName, lastName, referrerId, acceptedTerms, acceptedPrivacy })
+        await register({ email, password, phoneNumber, firstName, lastName, referrerId, acceptedTerms, acceptedPrivacy, ageConfirmed })
         try { localStorage.setItem('rememberMe', rememberMe.toString()) } catch {}
         setJustAuthenticated(true)
         setShowPermissions(true)
@@ -342,6 +358,75 @@ export default function LoginScreen() {
           <p className="text-white/12">&copy; {new Date().getFullYear()} Shot On Me LLC</p>
         </div>
       </div>
+
+      {/* ── 21+ Age Gate ── */}
+      {mounted && showAgeGate && createPortal(
+        <div className="fixed inset-0 z-[90] flex flex-col justify-end">
+          <div
+            className="absolute inset-0 bg-black/72 backdrop-blur-sm"
+            onClick={() => setShowAgeGate(false)}
+          />
+          <div className="relative bg-zinc-950 border-t border-primary-500/25 rounded-t-3xl shadow-2xl">
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/15" />
+            </div>
+            <div className="px-5 pb-8 pt-2">
+              {!ageBlocked ? (
+                <>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck className="w-6 h-6 text-primary-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-white/88 font-bold text-lg leading-none">Age Verification</h2>
+                      <p className="text-white/38 text-xs mt-1">Required to create an account</p>
+                    </div>
+                  </div>
+                  <p className="text-white/60 text-sm mb-6 leading-relaxed">
+                    Are you 21 years of age or older?
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleAgeNo}
+                      className="flex-1 border border-white/15 text-white/60 py-3.5 rounded-xl font-semibold text-sm hover:bg-white/5 active:scale-[0.97] transition-all"
+                    >
+                      No
+                    </button>
+                    <button
+                      onClick={handleAgeYes}
+                      className="flex-[2] bg-primary-500 text-black py-3.5 rounded-xl font-bold text-sm hover:bg-primary-400 active:scale-[0.97] transition-all shadow-lg shadow-primary-500/20"
+                    >
+                      Yes, I'm 21 or older
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-white/88 font-bold text-lg leading-none">Age Requirement</h2>
+                    </div>
+                  </div>
+                  <p className="text-white/60 text-sm mb-6 leading-relaxed">
+                    You must be 21 years or older to use Shot On Me. If you believe this is an error, please contact{' '}
+                    <a href="mailto:support@shotonme.com" className="text-primary-400 hover:underline">support@shotonme.com</a>.
+                  </p>
+                  <button
+                    onClick={() => setShowAgeGate(false)}
+                    className="w-full border border-white/15 text-white/60 py-3.5 rounded-xl font-semibold text-sm hover:bg-white/5 active:scale-[0.97] transition-all"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ── Auth Bottom Sheet ── */}
       {mounted && sheetOpen && createPortal(

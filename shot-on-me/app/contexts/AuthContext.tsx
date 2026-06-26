@@ -44,6 +44,7 @@ interface RegisterData {
   referrerId?: string
   acceptedTerms: boolean
   acceptedPrivacy: boolean
+  ageConfirmed: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)

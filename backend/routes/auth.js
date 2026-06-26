@@ -226,7 +226,7 @@ router.post('/register', authLimiter, async (req, res) => {
       });
     }
 
-    const { email, password, name, firstName, lastName, phoneNumber, userType, acceptedTerms, acceptedPrivacy } = req.body;
+    const { email, password, name, firstName, lastName, phoneNumber, userType, acceptedTerms, acceptedPrivacy, ageConfirmed } = req.body;
 
     // Support both name (single field) and firstName/lastName (separate fields)
     const fullName = name || (firstName && lastName ? `${firstName} ${lastName}`.trim() : null);
@@ -246,6 +246,9 @@ router.post('/register', authLimiter, async (req, res) => {
     }
     if (acceptedTerms !== true || acceptedPrivacy !== true) {
       return res.status(400).json({ message: 'You must accept Terms of Service and Privacy Policy to create an account' });
+    }
+    if (ageConfirmed !== true) {
+      return res.status(400).json({ message: 'You must be 21 years or older to use Shot On Me' });
     }
 
     // Check email uniqueness
@@ -280,6 +283,7 @@ router.post('/register', authLimiter, async (req, res) => {
       agreements: {
         termsAcceptedAt: new Date(),
         privacyAcceptedAt: new Date(),
+        ageVerifiedAt: new Date(),
         acceptedVersion: 'v1'
       }
     });
