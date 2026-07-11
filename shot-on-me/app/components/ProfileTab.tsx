@@ -60,7 +60,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', username: '', bio: '' })
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', username: '', dateOfBirth: '', gender: '', relationshipStatus: '' })
   const [saving, setSaving] = useState(false)
   const [postsPage, setPostsPage] = useState(1)
   const [postsHasMore, setPostsHasMore] = useState(true)
@@ -100,8 +100,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       })
       if (updateUser) await updateUser({})
+      showToast('Photo updated!')
     } catch (err) {
       console.error('Photo upload failed', err)
+      showToast('Photo upload failed — try again')
     } finally {
       setUploadingPhoto(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
@@ -129,11 +131,14 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   }
 
   const openEdit = () => {
+    const dob = (user as any)?.dateOfBirth
     setEditForm({
       firstName: user?.firstName || (user as any)?.name?.split(' ')[0] || '',
       lastName: user?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
       username: user?.username || '',
-      bio: (user as any)?.bio || '',
+      dateOfBirth: dob ? new Date(dob).toISOString().split('T')[0] : '',
+      gender: (user as any)?.gender || '',
+      relationshipStatus: (user as any)?.relationshipStatus || '',
     })
     setEditing(true)
   }
@@ -296,7 +301,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
         {editing ? (
           <div className="space-y-3">
             <div className="flex items-center gap-4 mb-2">
-              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
+              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0" disabled={uploadingPhoto}>
                 <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
                   {user?.profilePicture ? (
                     <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
@@ -306,9 +311,15 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
                     </div>
                   )}
                 </div>
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
-                </div>
+                {uploadingPhoto ? (
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  </div>
+                ) : (
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
+                    <Camera className="w-3.5 h-3.5 text-black" />
+                  </div>
+                )}
               </button>
               <div className="flex-1 text-sm text-primary-400/50">Tap photo to change</div>
             </div>
@@ -317,7 +328,32 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
               <input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Last name" className="bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60" />
             </div>
             <input value={editForm.username} onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} placeholder="username" className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60" />
-            <textarea value={editForm.bio} onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))} placeholder="Bio (160 chars)" maxLength={160} rows={2} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 placeholder-primary-500/40 focus:outline-none focus:border-primary-500/60 resize-none" />
+            <div>
+              <label className="text-xs text-primary-400/50 mb-1 block">Date of Birth</label>
+              <input type="date" value={editForm.dateOfBirth} onChange={e => setEditForm(f => ({ ...f, dateOfBirth: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-primary-400/50 mb-1 block">Gender</label>
+                <select value={editForm.gender} onChange={e => setEditForm(f => ({ ...f, gender: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60 appearance-none">
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Non-binary">Non-binary</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary-400/50 mb-1 block">Status</label>
+                <select value={editForm.relationshipStatus} onChange={e => setEditForm(f => ({ ...f, relationshipStatus: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60 appearance-none">
+                  <option value="">Select</option>
+                  <option value="Single">Single</option>
+                  <option value="In a relationship">In a relationship</option>
+                  <option value="Married">Married</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={saving} className="flex-1 bg-primary-500 text-black font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save
@@ -331,7 +367,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
           <>
             {/* Avatar + name + actions */}
             <div className="flex items-center gap-4 mb-4">
-              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0 group" disabled={uploadingPhoto}>
+              <button onClick={() => photoInputRef.current?.click()} className="relative w-20 h-20 flex-shrink-0" disabled={uploadingPhoto}>
                 <div className="w-20 h-20 border-2 border-primary-500/30 rounded-full overflow-hidden">
                   {user?.profilePicture ? (
                     <img src={user.profilePicture} alt={user.firstName} className="w-full h-full object-cover" />
@@ -341,10 +377,11 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
                     </div>
                   )}
                 </div>
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  {uploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
-                </div>
-                {!user?.profilePicture && !uploadingPhoto && (
+                {uploadingPhoto ? (
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  </div>
+                ) : (
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center border-2 border-black">
                     <Camera className="w-3 h-3 text-black" />
                   </div>
@@ -353,7 +390,11 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-white">{user?.firstName} {user?.lastName}</h2>
                 {user?.username && <p className="text-sm text-primary-400/60">@{user.username}</p>}
-                {(user as any)?.bio && <p className="text-sm text-primary-400/50 mt-1 leading-snug line-clamp-2">{(user as any).bio}</p>}
+                {((user as any)?.gender || (user as any)?.relationshipStatus) && (
+                  <p className="text-sm text-primary-400/50 mt-1">
+                    {[(user as any)?.gender, (user as any)?.relationshipStatus].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
               <div className="flex flex-col gap-2 flex-shrink-0">
                 <button onClick={openEdit} className="p-2 rounded-xl border border-primary-500/20 text-primary-400 hover:text-primary-500 hover:border-primary-500/40 transition-all" title="Edit profile">

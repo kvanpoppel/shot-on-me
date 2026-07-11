@@ -54,6 +54,26 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  username: {
+    type: String,
+    default: '',
+    trim: true,
+    lowercase: true
+  },
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
+  gender: {
+    type: String,
+    enum: ['', 'Male', 'Female', 'Non-binary', 'Prefer not to say'],
+    default: ''
+  },
+  relationshipStatus: {
+    type: String,
+    enum: ['', 'Single', 'In a relationship', 'Married', 'Prefer not to say'],
+    default: ''
+  },
   phoneNumber: {
     type: String,
     trim: true
