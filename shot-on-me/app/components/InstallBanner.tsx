@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, X } from 'lucide-react'
+import { Share, X } from 'lucide-react'
 
 export default function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
@@ -53,11 +53,10 @@ export default function InstallBanner() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-primary-600 to-primary-500 px-4 py-3 flex items-center gap-3 shadow-lg">
-      <Download className="w-5 h-5 text-black flex-shrink-0" />
       <div className="flex-1 min-w-0">
         {isIOS ? (
           <p className="text-sm text-black font-medium">
-            Tap <span className="inline-block text-base leading-none">⎙</span> then <strong>&quot;Add to Home Screen&quot;</strong>
+            Install the app: tap <Share className="w-4 h-4 inline -mt-0.5" /> at the bottom, then <strong>&quot;Add to Home Screen&quot;</strong>
           </p>
         ) : (
           <p className="text-sm text-black font-medium">Get the app — faster, fullscreen, one tap</p>
