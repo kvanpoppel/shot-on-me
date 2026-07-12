@@ -60,7 +60,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const API_URL = useApiUrl()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', username: '', dateOfBirth: '', gender: '', relationshipStatus: '' })
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', username: '', dateOfBirth: '', showProfileDetails: true })
   const [saving, setSaving] = useState(false)
   const [postsPage, setPostsPage] = useState(1)
   const [postsHasMore, setPostsHasMore] = useState(true)
@@ -137,8 +137,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
       lastName: user?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
       username: user?.username || '',
       dateOfBirth: dob ? new Date(dob).toISOString().split('T')[0] : '',
-      gender: (user as any)?.gender || '',
-      relationshipStatus: (user as any)?.relationshipStatus || '',
+      showProfileDetails: (user as any)?.showProfileDetails !== false,
     })
     setEditing(true)
   }
@@ -332,28 +331,10 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
               <label className="text-xs text-primary-400/50 mb-1 block">Date of Birth</label>
               <input type="date" value={editForm.dateOfBirth} onChange={e => setEditForm(f => ({ ...f, dateOfBirth: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-primary-400/50 mb-1 block">Gender</label>
-                <select value={editForm.gender} onChange={e => setEditForm(f => ({ ...f, gender: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60 appearance-none">
-                  <option value="">Select</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Non-binary">Non-binary</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-primary-400/50 mb-1 block">Status</label>
-                <select value={editForm.relationshipStatus} onChange={e => setEditForm(f => ({ ...f, relationshipStatus: e.target.value }))} className="w-full bg-black/60 border border-primary-500/30 rounded-xl px-3 py-2.5 text-sm text-primary-300 focus:outline-none focus:border-primary-500/60 appearance-none">
-                  <option value="">Select</option>
-                  <option value="Single">Single</option>
-                  <option value="In a relationship">In a relationship</option>
-                  <option value="Married">Married</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </select>
-              </div>
-            </div>
+            <label className="flex items-center gap-3 px-1 cursor-pointer">
+              <input type="checkbox" checked={editForm.showProfileDetails} onChange={e => setEditForm(f => ({ ...f, showProfileDetails: e.target.checked }))} className="w-4 h-4 rounded border-primary-500/30 accent-primary-500" />
+              <span className="text-sm text-primary-400">Show DOB & vibes on my profile</span>
+            </label>
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={saving} className="flex-1 bg-primary-500 text-black font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-400 transition-all disabled:opacity-50">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save
@@ -390,9 +371,12 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-white">{user?.firstName} {user?.lastName}</h2>
                 {user?.username && <p className="text-sm text-primary-400/60">@{user.username}</p>}
-                {((user as any)?.gender || (user as any)?.relationshipStatus) && (
+                {(user as any)?.showProfileDetails !== false && (
                   <p className="text-sm text-primary-400/50 mt-1">
-                    {[(user as any)?.gender, (user as any)?.relationshipStatus].filter(Boolean).join(' · ')}
+                    {[
+                      (user as any)?.dateOfBirth ? new Date((user as any).dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
+                      ...activeVibes.slice(0, 3).map(v => VIBE_LABELS[v])
+                    ].filter(Boolean).join(' · ')}
                   </p>
                 )}
               </div>

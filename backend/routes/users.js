@@ -157,8 +157,8 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
         lastName: lastName,
         username: updatedUser.username || '',
         dateOfBirth: updatedUser.dateOfBirth || null,
-        gender: updatedUser.gender || '',
-        relationshipStatus: updatedUser.relationshipStatus || '',
+        showProfileDetails: updatedUser.showProfileDetails !== false,
+        venuePreferences: updatedUser.venuePreferences || {},
         phoneNumber: updatedUser.phoneNumber,
         userType: updatedUser.userType || 'user',
         wallet: updatedUser.wallet || { balance: 0, pendingBalance: 0 },
@@ -179,7 +179,7 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 // Update current user profile (firstName, lastName, etc.) - must come after /me/profile-picture
 router.put('/me', auth, async (req, res) => {
   try {
-    const { firstName, lastName, phoneNumber, username, dateOfBirth, gender, relationshipStatus, venuePreferences } = req.body;
+    const { firstName, lastName, phoneNumber, username, dateOfBirth, showProfileDetails, venuePreferences } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -219,14 +219,9 @@ router.put('/me', auth, async (req, res) => {
       updateData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
     }
 
-    // Update gender if provided
-    if (gender !== undefined) {
-      updateData.gender = gender;
-    }
-
-    // Update relationship status if provided
-    if (relationshipStatus !== undefined) {
-      updateData.relationshipStatus = relationshipStatus;
+    // Update show profile details toggle
+    if (showProfileDetails !== undefined) {
+      updateData.showProfileDetails = !!showProfileDetails;
     }
 
     // Update venue preferences if provided
@@ -262,8 +257,8 @@ router.put('/me', auth, async (req, res) => {
         lastName: responseLastName,
         username: updatedUser.username || '',
         dateOfBirth: updatedUser.dateOfBirth || null,
-        gender: updatedUser.gender || '',
-        relationshipStatus: updatedUser.relationshipStatus || '',
+        showProfileDetails: updatedUser.showProfileDetails !== false,
+        venuePreferences: updatedUser.venuePreferences || {},
         phoneNumber: updatedUser.phoneNumber,
         userType: updatedUser.userType || 'user',
         wallet: updatedUser.wallet || { balance: 0, pendingBalance: 0 },
@@ -483,8 +478,8 @@ router.get('/me', auth, async (req, res) => {
         lastName: lastName,
         username: user.username || '',
         dateOfBirth: user.dateOfBirth || null,
-        gender: user.gender || '',
-        relationshipStatus: user.relationshipStatus || '',
+        showProfileDetails: user.showProfileDetails !== false,
+        venuePreferences: user.venuePreferences || {},
         phoneNumber: user.phoneNumber,
         userType: user.userType || 'user',
         wallet: user.wallet || { balance: 0, pendingBalance: 0 },

@@ -64,15 +64,9 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  gender: {
-    type: String,
-    enum: ['', 'Male', 'Female', 'Non-binary', 'Prefer not to say'],
-    default: ''
-  },
-  relationshipStatus: {
-    type: String,
-    enum: ['', 'Single', 'In a relationship', 'Married', 'Prefer not to say'],
-    default: ''
+  showProfileDetails: {
+    type: Boolean,
+    default: true
   },
   phoneNumber: {
     type: String,

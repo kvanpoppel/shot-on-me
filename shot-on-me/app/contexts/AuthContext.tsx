@@ -14,8 +14,7 @@ interface User {
   name?: string // Computed from firstName + lastName, but may be provided by backend
   username?: string
   dateOfBirth?: string | null
-  gender?: string
-  relationshipStatus?: string
+  showProfileDetails?: boolean
   profilePicture?: string
   location?: {
     latitude?: number
