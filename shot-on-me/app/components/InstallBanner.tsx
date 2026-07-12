@@ -56,10 +56,10 @@ export default function InstallBanner() {
       <div className="flex-1 min-w-0">
         {isIOS ? (
           <p className="text-sm text-black font-medium">
-            Install the app: tap <Share className="w-4 h-4 inline -mt-0.5" /> at the bottom, then <strong>&quot;Add to Home Screen&quot;</strong>
+            Tap <Share className="w-4 h-4 inline -mt-0.5" /> then <strong>Add to Home Screen</strong>
           </p>
         ) : (
-          <p className="text-sm text-black font-medium">Get the app — faster, fullscreen, one tap</p>
+          <p className="text-sm text-black font-medium">Install Shot On Me</p>
         )}
       </div>
       {!isIOS && (
