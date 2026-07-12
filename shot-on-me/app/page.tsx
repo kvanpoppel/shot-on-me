@@ -27,6 +27,7 @@ import WhatsHappeningTab from './components/WhatsHappeningTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import VenueProfilePage from './components/VenueProfilePage'
 import { Tab } from '@/app/types'
+import InstallBanner from './components/InstallBanner'
 
 function Home() {
   const { user, token, loading } = useAuth()
@@ -180,11 +181,17 @@ function Home() {
 
   // Show login screen if no user
   if (!user) {
-    return <LoginScreen />
+    return (
+      <>
+        <InstallBanner />
+        <LoginScreen />
+      </>
+    )
   }
 
   return (
     <ErrorBoundary>
+      <InstallBanner />
       {user && isMounted && <PermissionsManager />}
       <Dashboard
         activeTab={activeTab}

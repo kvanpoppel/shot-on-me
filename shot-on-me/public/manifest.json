@@ -1,6 +1,6 @@
 {
   "name": "Shot On Me",
-  "short_name": "Shot On Me",
+  "short_name": "SOM",
   "description": "Send money to friends for use at venues. Discover friends nearby and share your moments.",
   "start_url": "/",
   "scope": "/",
