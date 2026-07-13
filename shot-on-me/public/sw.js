@@ -1,4 +1,5 @@
-// Minimal service worker — enables PWA install, no caching
+// Minimal service worker — only exists to enable PWA install
+// Does NOT cache anything, does NOT intercept fetches
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -6,4 +7,3 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim())
   )
 })
-self.addEventListener('fetch', () => {})

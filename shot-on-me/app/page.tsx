@@ -68,9 +68,18 @@ function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    // Register service worker for PWA install support
+    // Clear stale caches
+    if ('caches' in window) {
+      caches.keys().then(names => names.forEach(name => caches.delete(name)))
+    }
+    // Register minimal service worker for PWA install support
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        // Unregister any old/broken service workers first
+        regs.forEach(r => r.unregister())
+        // Then register the minimal one
+        navigator.serviceWorker.register('/sw.js').catch(() => {})
+      })
     }
 
     setIsMounted(true)
@@ -181,12 +190,7 @@ function Home() {
 
   // Show login screen if no user
   if (!user) {
-    return (
-      <>
-        <InstallBanner />
-        <LoginScreen />
-      </>
-    )
+    return <LoginScreen />
   }
 
   return (
