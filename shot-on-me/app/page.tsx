@@ -27,7 +27,6 @@ import WhatsHappeningTab from './components/WhatsHappeningTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import VenueProfilePage from './components/VenueProfilePage'
 import { Tab } from '@/app/types'
-import InstallBanner from './components/InstallBanner'
 
 function Home() {
   const { user, token, loading } = useAuth()
@@ -68,20 +67,15 @@ function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    // Clear stale caches
+    // Clear caches but DON'T reload (prevents infinite loop)
     if ('caches' in window) {
       caches.keys().then(names => names.forEach(name => caches.delete(name)))
     }
-    // Register minimal service worker for PWA install support
+    // Register minimal service worker for PWA install, then unregister any extras
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        // Unregister any old/broken service workers first
-        regs.forEach(r => r.unregister())
-        // Then register the minimal one
-        navigator.serviceWorker.register('/sw.js').catch(() => {})
-      })
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
-
+    
     setIsMounted(true)
   }, [])
 
@@ -195,7 +189,6 @@ function Home() {
 
   return (
     <ErrorBoundary>
-      <InstallBanner />
       {user && isMounted && <PermissionsManager />}
       <Dashboard
         activeTab={activeTab}
