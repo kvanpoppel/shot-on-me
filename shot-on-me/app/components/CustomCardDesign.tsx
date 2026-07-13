@@ -125,8 +125,8 @@ export default function CustomCardDesign({ onDesignUploaded }: CustomCardDesignP
               className="w-full h-full object-cover"
             />
             {/* Simulated "Shot On Me" branding overlay */}
-            <div className="absolute bottom-2 right-2 bg-primary-500/90 text-black px-2 py-1 rounded text-xs font-bold">
-              Shot On Me
+            <div className="absolute bottom-2 right-2 px-2 py-1 rounded text-xs">
+              <span className="brand-wordmark font-bold">Shot On Me</span>
             </div>
           </div>
           <p className="text-primary-400/60 text-xs mt-2 text-center">

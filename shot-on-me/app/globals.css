@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Great+Vibes&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -65,6 +65,42 @@ input[type="radio"] {
   font-weight: 600;
   color: #B8945A !important;
   letter-spacing: 0.5px;
+}
+
+/* Official brand wordmark — Great Vibes + metallic gold gradient */
+.brand-wordmark {
+  position: relative;
+  font-family: 'Great Vibes', cursive;
+  font-weight: 400;
+  background: linear-gradient(135deg, #FFF3CC 0%, #E4BE6E 30%, #C79A44 60%, #F3DFA0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #E4BE6E;
+  text-shadow: none;
+  letter-spacing: 0.5px;
+}
+.brand-wordmark-wrap {
+  position: relative;
+  display: inline-block;
+}
+.brand-wordmark-wrap::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-family: 'Great Vibes', cursive;
+  font-weight: 400;
+  font-size: inherit;
+  letter-spacing: 0.5px;
+  color: #171310;
+  opacity: 0.3;
+  z-index: 0;
+  -webkit-text-fill-color: #171310;
+}
+.brand-wordmark-wrap .brand-wordmark {
+  position: relative;
+  z-index: 1;
 }
 
 /* Force all gold/primary colors to use soft, mature gold */

@@ -59,7 +59,7 @@ export default function InstallBanner() {
             Tap <Share className="w-4 h-4 inline -mt-0.5" /> then <strong>Add to Home Screen</strong>
           </p>
         ) : (
-          <p className="text-sm text-black font-medium">Install Shot On Me</p>
+          <p className="text-sm text-black font-medium">Install <span className="brand-wordmark">Shot On Me</span></p>
         )}
       </div>
       {!isIOS && (

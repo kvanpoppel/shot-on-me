@@ -160,8 +160,8 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
             <div className="w-20 h-20 bg-gradient-to-br from-primary-500/30 to-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-primary-500/40">
               <Wallet className="w-10 h-10 text-primary-500" />
             </div>
-            <h2 className="text-3xl font-bold text-primary-500 tracking-tight mb-2">
-              Welcome to Shot On Me!
+            <h2 className="text-3xl font-bold tracking-tight mb-2">
+              Welcome to <span className="brand-wordmark-wrap" data-text="Shot On Me!"><span className="brand-wordmark">Shot On Me!</span></span>
             </h2>
             <p className="text-primary-400/80 text-sm font-light">
               Let's set up your tap-and-pay card to get started

@@ -216,8 +216,8 @@ export default function LoginScreen() {
           <p className="text-[11px] uppercase tracking-[0.22em] text-primary-500/55 font-semibold mb-4">
             The Nightlife Social App
           </p>
-          <h1 className="text-7xl logo-script text-primary-500 leading-none mb-4 logo-glow">
-            Shot On Me
+          <h1 className="text-7xl leading-none mb-4">
+            <span className="brand-wordmark-wrap" data-text="Shot On Me"><span className="brand-wordmark">Shot On Me</span></span>
           </h1>
           <div className="h-px w-20 bg-gradient-to-r from-transparent via-primary-500/50 to-transparent mx-auto mb-4" />
           <p className="text-xl font-bold text-white/82 leading-snug mb-6">
