@@ -431,9 +431,8 @@ router.post('/register', authLimiter, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Registration error:', error);
-    res.status(500).json({ 
-      message: 'Server error during registration',
-      error: undefined 
+    res.status(500).json({
+      message: error.message || 'Server error during registration'
     });
   }
 });
