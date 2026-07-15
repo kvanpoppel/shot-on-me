@@ -67,7 +67,7 @@ export default function LoginForm({ initialMode, hideRegister = false }: LoginFo
   }
 
   const validatePassword = (password: string): boolean => {
-    return password.length >= 6
+    return password.length >= 8
   }
 
   const resolveVenuePortalUrl = (portalUrl?: string, slug?: string): string | null => {
@@ -93,7 +93,7 @@ export default function LoginForm({ initialMode, hideRegister = false }: LoginFo
     if (!password) {
       errors.password = 'Password is required'
     } else if (!validatePassword(password)) {
-      errors.password = 'Password must be at least 6 characters'
+      errors.password = 'Password must be at least 8 characters'
     }
 
     if (Object.keys(errors).length > 0) {
@@ -454,7 +454,7 @@ export default function LoginForm({ initialMode, hideRegister = false }: LoginFo
             }}
             onBlur={() => {
               if (password && !validatePassword(password)) {
-                setFieldErrors({ ...fieldErrors, password: 'Password must be at least 6 characters' })
+                setFieldErrors({ ...fieldErrors, password: 'Password must be at least 8 characters' })
               }
             }}
             required

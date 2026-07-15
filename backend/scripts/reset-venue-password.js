@@ -16,8 +16,8 @@ async function resetPassword() {
       process.exit(1);
     }
 
-    if (newPassword.length < 6) {
-      console.log('❌ Password must be at least 6 characters long');
+    if (newPassword.length < 8) {
+      console.log('❌ Password must be at least 8 characters long');
       process.exit(1);
     }
 

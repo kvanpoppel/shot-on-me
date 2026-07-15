@@ -31,8 +31,8 @@ export default function SetPasswordPage() {
       return
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
@@ -85,10 +85,10 @@ export default function SetPasswordPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     disabled={!token}
                     className="w-full px-4 py-3 bg-black border border-primary-500/30 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
-                    placeholder="Minimum 6 characters"
+                    placeholder="Minimum 8 characters"
                   />
                 </div>
 
@@ -101,7 +101,7 @@ export default function SetPasswordPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     disabled={!token}
                     className="w-full px-4 py-3 bg-black border border-primary-500/30 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
                     placeholder="Confirm your password"

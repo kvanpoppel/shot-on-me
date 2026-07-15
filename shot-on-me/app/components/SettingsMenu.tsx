@@ -425,7 +425,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     e.preventDefault()
     setPasswordError('')
     if (newPassword !== confirmNewPassword) { setPasswordError('Passwords do not match'); return }
-    if (newPassword.length < 6) { setPasswordError('Password must be at least 6 characters'); return }
+    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
     setChangingPassword(true)
     try {
       await axios.put(`${API_URL}/users/me/change-password`, { currentPassword, newPassword }, { headers: { Authorization: `Bearer ${token}` } })
@@ -1119,12 +1119,12 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
               </div>
               <div>
                 <label className="block text-primary-500 text-sm font-medium mb-1">New Password</label>
-                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6}
-                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" placeholder="Minimum 6 characters" />
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" placeholder="Minimum 8 characters" />
               </div>
               <div>
                 <label className="block text-primary-500 text-sm font-medium mb-1">Confirm New Password</label>
-                <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required minLength={6}
+                <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required minLength={8}
                   className="w-full px-4 py-2.5 bg-black/40 border border-primary-500/20 rounded-lg text-primary-500 placeholder-primary-500/40 focus:ring-1 focus:ring-primary-500/50 font-light" />
               </div>
               {passwordError && <p className="text-red-400 text-sm">{passwordError}</p>}

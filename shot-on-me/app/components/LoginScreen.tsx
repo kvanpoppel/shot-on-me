@@ -526,7 +526,7 @@ export default function LoginScreen() {
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      minLength={6}
+                      minLength={8}
                       autoComplete={isLogin ? 'current-password' : 'new-password'}
                       className="login-form-input w-full px-3 py-3 pr-11 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-primary-500/60 focus:bg-white/8 text-sm transition-all"
                     />

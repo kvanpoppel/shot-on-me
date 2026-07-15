@@ -202,7 +202,7 @@ export default function SettingsTab() {
     setPwError('')
     setPwSuccess('')
     if (newPw !== confirmPw) { setPwError('Passwords do not match'); return }
-    if (newPw.length < 6) { setPwError('New password must be at least 6 characters'); return }
+    if (newPw.length < 8) { setPwError('New password must be at least 8 characters'); return }
     setPwLoading(true)
     try {
       await axios.put(`${getApiUrl()}/users/me/change-password`, {

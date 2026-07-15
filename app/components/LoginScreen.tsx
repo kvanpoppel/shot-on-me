@@ -158,7 +158,7 @@ export default function LoginScreen() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-3 bg-black border border-primary-500 rounded-lg text-primary-500 placeholder-primary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>

@@ -34,8 +34,8 @@ function SetPasswordForm() {
       return
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
@@ -101,9 +101,9 @@ function SetPasswordForm() {
                       type={showPw ? 'text' : 'password'}
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
+                      placeholder="Minimum 8 characters"
                       required
-                      minLength={6}
+                      minLength={8}
                       disabled={!token}
                       autoComplete="new-password"
                       className="fv-input pr-12"
@@ -129,7 +129,7 @@ function SetPasswordForm() {
                       onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Confirm your password"
                       required
-                      minLength={6}
+                      minLength={8}
                       disabled={!token}
                       autoComplete="new-password"
                       className="fv-input pr-12"
