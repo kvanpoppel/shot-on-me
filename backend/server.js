@@ -151,13 +151,20 @@ const connectDB = async () => {
     console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
     console.log(`🌐 Host: ${mongoose.connection.host}`);
 
-    // Fix: rebuild phoneNumber index as sparse (was created non-sparse, blocking null duplicates)
+    // Fix: drop stale unique indexes that block signups (were created before schema changed)
     try {
       const User = require('./models/User');
-      await User.collection.dropIndex('phoneNumber_1');
-      console.log('🔧 Dropped old phoneNumber index, Mongoose will recreate as sparse');
+      const staleIndexes = ['phoneNumber_1', 'username_1'];
+      for (const idx of staleIndexes) {
+        try {
+          await User.collection.dropIndex(idx);
+          console.log(`🔧 Dropped stale index: ${idx}`);
+        } catch (e) { /* index may not exist — safe to ignore */ }
+      }
+      await User.syncIndexes();
+      console.log('🔧 User indexes synced with schema');
     } catch (e) {
-      // Index may not exist or already be correct — safe to ignore
+      console.error('⚠️ Index sync error (non-fatal):', e.message);
     }
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
