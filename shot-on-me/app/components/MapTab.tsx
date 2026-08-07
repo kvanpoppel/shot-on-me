@@ -473,25 +473,35 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         return distA - distB
       })
     }
-    // Smart sort (default)
+    // Smart sort (default) — blends relevance with proximity
     return [...source].sort((a: any, b: any) => {
       const activeA = (a.promotions || []).filter((p: any) => p?.isActive).length
       const activeB = (b.promotions || []).filter((p: any) => p?.isActive).length
       const trendingA = trendingVenues.some((tv: any) => tv._id?.toString() === a._id?.toString()) ? 1 : 0
       const trendingB = trendingVenues.some((tv: any) => tv._id?.toString() === b._id?.toString()) ? 1 : 0
 
+      // Proximity bonus: closer venues score higher (max 30 pts within 1 mile, 0 at 25+ miles)
+      const distA = userLocation && a.location?.latitude && a.location?.longitude
+        ? calculateDistance(userLocation.lat, userLocation.lng, a.location.latitude, a.location.longitude) : 25
+      const distB = userLocation && b.location?.latitude && b.location?.longitude
+        ? calculateDistance(userLocation.lat, userLocation.lng, b.location.latitude, b.location.longitude) : 25
+      const proximityA = Math.max(0, 30 - (distA * 1.2))
+      const proximityB = Math.max(0, 30 - (distB * 1.2))
+
       const scoreA =
         (a.isFeatured ? 60 : 0) +
         (getTierWeight(a.subscriptionTier) * 20) +
         (activeA * 10) +
         Math.min(a.followerCount || 0, 100) +
-        (trendingA * 15)
+        (trendingA * 15) +
+        proximityA
       const scoreB =
         (b.isFeatured ? 60 : 0) +
         (getTierWeight(b.subscriptionTier) * 20) +
         (activeB * 10) +
         Math.min(b.followerCount || 0, 100) +
-        (trendingB * 15)
+        (trendingB * 15) +
+        proximityB
 
       return scoreB - scoreA
     })

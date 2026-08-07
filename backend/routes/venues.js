@@ -108,6 +108,10 @@ router.get('/slug/:slug/public', async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const { city, limit = 50, platform } = req.query;
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radiusMiles = parseFloat(req.query.radius) || 25;
+
     const filter = { isActive: true };
     if (city && city !== 'All') {
       filter['address.city'] = { $regex: new RegExp(`^${city}$`, 'i') };
@@ -118,9 +122,19 @@ router.get('/public', async (req, res) => {
     } else if (platform === 'som') {
       filter.platform = { $in: ['som', 'both', null] }; // null = legacy, treated as SOM
     }
+
+    // If user location provided and no city filter, use geo query
+    if (!isNaN(lat) && !isNaN(lng) && (!city || city === 'All')) {
+      filter.location = {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [lng, lat] },
+          $maxDistance: radiusMiles * 1609.34
+        }
+      };
+    }
+
     const venues = await Venue.find(filter)
-      .select('name category platform address.city address.state coverPhoto branding.logoUrl description')
-      .sort({ isFeatured: -1, createdAt: -1 })
+      .select('name category platform address.city address.state coverPhoto branding.logoUrl description location')
       .limit(parseInt(limit))
       .lean();
     res.json({ venues });
@@ -180,13 +194,54 @@ router.get('/', auth, async (req, res) => {
       } else if (platformParam === 'som') {
         platformFilter = { $or: [{ platform: { $in: ['som', 'both'] } }, { platform: { $exists: false } }] };
       }
-      const userQuery = { isActive: true, ...platformFilter };
-      totalCount = await Venue.countDocuments(userQuery);
-      venues = await Venue.find(userQuery)
-        .skip(skipNum)
-        .limit(limitNum)
-        .lean();
-      console.log(`[Venues API] Regular user query returned ${venues.length} active venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
+
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      const radiusMiles = parseFloat(req.query.radius) || 25;
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        // Geo query: return venues sorted by distance using 2dsphere index
+        const radiusMeters = radiusMiles * 1609.34;
+        const geoQuery = {
+          isActive: true,
+          ...platformFilter,
+          location: {
+            $near: {
+              $geometry: { type: 'Point', coordinates: [lng, lat] },
+              $maxDistance: radiusMeters
+            }
+          }
+        };
+        // $near doesn't support countDocuments, so fetch all and paginate in memory
+        const allNearby = await Venue.find(geoQuery).lean();
+        totalCount = allNearby.length;
+        venues = allNearby.slice(skipNum, skipNum + limitNum);
+
+        // Calculate distance for each venue
+        const toRad = (deg) => deg * Math.PI / 180;
+        venues = venues.map(v => {
+          if (v.location?.coordinates) {
+            const [vLng, vLat] = v.location.coordinates;
+            const dLat = toRad(vLat - lat);
+            const dLng = toRad(vLng - lng);
+            const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat)) * Math.cos(toRad(vLat)) * Math.sin(dLng / 2) ** 2;
+            const miles = 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return { ...v, distance: Math.round(miles * 10) / 10 };
+          }
+          return v;
+        });
+        console.log(`[Venues API] Geo query (${lat},${lng} r=${radiusMiles}mi) returned ${venues.length} venue(s) (total nearby: ${totalCount})`);
+      } else {
+        // No location — return all active venues
+        const userQuery = { isActive: true, ...platformFilter };
+        totalCount = await Venue.countDocuments(userQuery);
+        venues = await Venue.find(userQuery)
+          .skip(skipNum)
+          .limit(limitNum)
+          .lean();
+        console.log(`[Venues API] Regular user query returned ${venues.length} active venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
+      }
     }
 
     // Transform venues to match frontend expectations

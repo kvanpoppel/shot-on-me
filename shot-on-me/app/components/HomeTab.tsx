@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Users,
   Send,
+  MapPin,
 } from 'lucide-react'
 
 import { useApiUrl } from '../utils/api'
@@ -36,7 +37,7 @@ interface QuickDeal {
     type: string
     endTime: string
   }
-  distance?: string
+  distance?: number | string
 }
 
 export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onViewVenue }: HomeTabProps) {
@@ -58,12 +59,23 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   const hasFetchedRef = useRef(false)
   const isFetchingRef = useRef(false)
   const userIdRef = useRef<string | null>(null)
+  const userLocationRef = useRef<{ lat: number; lng: number } | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
   // Ensure component is mounted before accessing browser APIs
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Grab user location for proximity-aware venue fetching
+  useEffect(() => {
+    if (!isMounted || !('geolocation' in navigator)) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { userLocationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude } },
+      () => {},
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    )
+  }, [isMounted])
 
   // Scroll to top when HomeTab mounts
   useEffect(() => {
@@ -151,6 +163,13 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
 
     try {
       // Fetch critical data first (user and venues)
+      const venueParams: any = {}
+      const loc = userLocationRef.current
+      if (loc) {
+        venueParams.lat = loc.lat
+        venueParams.lng = loc.lng
+        venueParams.radius = 25
+      }
       const [userResponse, venuesResponse] = await Promise.allSettled([
         axios.get(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -158,6 +177,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
         }),
         axios.get(`${API_URL}/venues`, {
           headers: { Authorization: `Bearer ${token}` },
+          params: venueParams,
           timeout: 6000
         })
       ])
@@ -545,6 +565,12 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
                             <Clock className="w-3 h-3" />
                             <span>{getTimeRemaining(soonest.promotion.endTime)}</span>
                           </div>
+                          {soonest.distance != null && (
+                            <div className="flex items-center gap-0.5 text-xs text-primary-400/60">
+                              <MapPin className="w-3 h-3" />
+                              <span>{soonest.distance} mi</span>
+                            </div>
+                          )}
                           {deals.length > 1 && (
                             <span className="text-[10px] font-semibold text-primary-500 bg-primary-500/15 border border-primary-500/25 px-1.5 py-0.5 rounded-full">{deals.length} deals</span>
                           )}
