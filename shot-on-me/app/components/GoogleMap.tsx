@@ -18,8 +18,11 @@ interface GoogleMapComponentProps {
   zoom?: number
   markers?: MarkerData[]
   onMapClick?: (e: google.maps.MapMouseEvent) => void
+  onDragStart?: () => void
+  onIdle?: (center: { lat: number; lng: number }) => void
   mapContainerStyle?: React.CSSProperties
   mapContainerClassName?: string
+  interactive?: boolean
 }
 
 const defaultMapContainerStyle: React.CSSProperties = {
@@ -137,23 +140,26 @@ export default function GoogleMapComponent({
   zoom = 13,
   markers = [],
   onMapClick,
+  onDragStart,
+  onIdle,
   mapContainerStyle = defaultMapContainerStyle,
-  mapContainerClassName = ''
+  mapContainerClassName = '',
+  interactive = true
 }: GoogleMapComponentProps) {
   const { isLoaded, loadError } = useGoogleMaps()
   const mapRef = useRef<google.maps.Map | null>(null)
 
   const mapOptions = useMemo<google.maps.MapOptions>(
     () => ({
-      disableDefaultUI: false,
-      clickableIcons: true,
-      scrollwheel: true,
-      zoomControl: true,
+      disableDefaultUI: !interactive,
+      clickableIcons: interactive,
+      scrollwheel: interactive,
+      zoomControl: interactive,
       mapTypeControl: false,
-      scaleControl: true,
+      scaleControl: interactive,
       streetViewControl: false,
       rotateControl: false,
-      fullscreenControl: true,
+      fullscreenControl: interactive,
       styles: mapStyles,
       backgroundColor: '#000000',
       // Enhanced control styling
@@ -161,17 +167,30 @@ export default function GoogleMapComponent({
         position: google.maps.ControlPosition.RIGHT_BOTTOM
       },
       // Improve map rendering
-      gestureHandling: 'greedy',
+      gestureHandling: interactive ? 'greedy' : 'none',
       minZoom: 3,
       maxZoom: 20,
       restriction: undefined
     }),
-    []
+    [interactive]
   )
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map
   }, [])
+
+  const handleIdle = useCallback(() => {
+    if (mapRef.current && onIdle) {
+      const c = mapRef.current.getCenter()
+      if (c) {
+        onIdle({ lat: c.lat(), lng: c.lng() })
+      }
+    }
+  }, [onIdle])
+
+  const handleDragStart = useCallback(() => {
+    if (onDragStart) onDragStart()
+  }, [onDragStart])
 
   // Listen for center-map events
   useEffect(() => {
@@ -219,6 +238,7 @@ export default function GoogleMapComponent({
   }
 
   return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
     <GoogleMap
       mapContainerStyle={mapContainerStyle}
       mapContainerClassName={mapContainerClassName}
@@ -227,6 +247,8 @@ export default function GoogleMapComponent({
       options={mapOptions}
       onClick={onMapClick}
       onLoad={onMapLoad}
+      onIdle={handleIdle}
+      onDragStart={handleDragStart}
     >
       {markers.map((marker) => {
         // Convert icon format if needed
@@ -280,6 +302,10 @@ export default function GoogleMapComponent({
         )
       })}
     </GoogleMap>
+    {!interactive && (
+      <div style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+    )}
+    </div>
   )
 }
 

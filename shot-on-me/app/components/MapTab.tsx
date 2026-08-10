@@ -98,6 +98,11 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [legendMinimized, setLegendMinimized] = useState(false)
   const [showActiveVenues, setShowActiveVenues] = useState(true)
   const [showRegularVenues, setShowRegularVenues] = useState(true)
+  const [selectedMarkerVenue, setSelectedMarkerVenue] = useState<any>(null)
+  const [selectedMarkerPosition, setSelectedMarkerPosition] = useState<{ lat: number; lng: number } | null>(null)
+  const mapCenterRef = useRef<{ lat: number; lng: number } | null>(null)
+  const [searchedCenter, setSearchedCenter] = useState<{ lat: number; lng: number } | null>(null)
+  const [showSearchThisArea, setShowSearchThisArea] = useState(false)
   const [circularFriendAvatars, setCircularFriendAvatars] = useState<Map<string, string>>(new Map())
   const [savedPlaceIds, setSavedPlaceIds] = useState<Set<string>>(new Set())
   const [justSavedPlaceId, setJustSavedPlaceId] = useState<string | null>(null)
@@ -1125,7 +1130,9 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       })
     }
 
-    return getFilteredVenues
+    const markers: any[] = []
+
+    getFilteredVenues
       .filter((venue) => {
         if (!venue.location?.latitude || !venue.location?.longitude) return false
         const hasActive = isActivePromotion(venue)
@@ -1133,39 +1140,80 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         if (!hasActive && !showRegularVenues) return false
         return true
       })
-      .map((venue) => {
+      .forEach((venue) => {
         const hasActive = isActivePromotion(venue)
+        const position = {
+          lat: venue.location.latitude,
+          lng: venue.location.longitude
+        }
+
+        // Feature 6: Count friends at this venue
+        const friendsAtVenue = friends.filter(f => {
+          if (!f.location?.latitude || !f.location?.longitude) return false
+          return calculateDistance(venue.location.latitude, venue.location.longitude, f.location.latitude, f.location.longitude) < 0.05
+        }).length
+
+        // Feature 5: Pulse ring marker for active venues
+        if (hasActive) {
+          markers.push({
+            id: `${venue._id}-pulse`,
+            position,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 16,
+              fillColor: '#D4AF37',
+              fillOpacity: 0.2,
+              strokeColor: '#D4AF37',
+              strokeWeight: 1,
+              strokeOpacity: 0.4
+            }
+          })
+        }
+
+        // Feature 6: Adjust label based on friends
+        let labelText = hasActive ? '🔥' : venue.name?.[0]?.toUpperCase() || 'V'
+        if (friendsAtVenue > 0) {
+          labelText = hasActive ? `🔥${friendsAtVenue}` : `${friendsAtVenue}👥`
+        }
+
+        const baseScale = hasActive ? 10 : 8
+        const markerScale = friendsAtVenue > 0 ? baseScale + 2 : baseScale
+
         const markerIcon = {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: hasActive ? 10 : 8,
+          scale: markerScale,
           fillColor: hasActive ? '#D4AF37' : '#B8945A',
           fillOpacity: 1,
           strokeColor: '#000000',
           strokeWeight: 2
         }
-        return {
+
+        markers.push({
           id: venue._id,
-          position: {
-            lat: venue.location.latitude,
-            lng: venue.location.longitude
-          },
+          position,
           title: venue.name || 'Venue',
           label: hasActive ? {
-            text: '🔥',
+            text: labelText,
             color: '#000000',
             fontWeight: 'bold',
-            fontSize: '16px'
+            fontSize: friendsAtVenue > 0 ? '14px' : '16px'
           } : {
-            text: venue.name?.[0]?.toUpperCase() || 'V',
+            text: labelText,
             color: '#000000',
             fontWeight: 'bold',
             fontSize: '12px'
           },
           icon: markerIcon,
-          onClick: () => setViewingVenueId(venue._id)
-        }
+          // Feature 1: Show info popup instead of immediately opening VenueProfilePage
+          onClick: () => {
+            setSelectedMarkerVenue(venue)
+            setSelectedMarkerPosition(position)
+          }
+        })
       })
-  }, [getFilteredVenues, showActiveVenues, showRegularVenues, mapsLoaded])
+
+    return markers
+  }, [getFilteredVenues, showActiveVenues, showRegularVenues, mapsLoaded, friends])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1391,7 +1439,108 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
                 zoom={userLocation || venueMarkers.length > 0 ? 13 : 11}
               markers={[...venueMarkers, ...(showFriends ? friendMarkers : [])]}
               mapContainerStyle={{ width: '100%', height: '100%' }}
+              onMapClick={() => setSelectedMarkerVenue(null)}
+              onDragStart={() => {
+                setSelectedMarkerVenue(null)
+              }}
+              onIdle={(center) => {
+                mapCenterRef.current = center
+                const referenceCenter = searchedCenter || userLocation
+                if (referenceCenter) {
+                  const dist = calculateDistance(center.lat, center.lng, referenceCenter.lat, referenceCenter.lng)
+                  setShowSearchThisArea(dist > 2)
+                }
+              }}
             />
+
+              {/* Feature 10: Search This Area Button */}
+              {showSearchThisArea && (
+                <button
+                  onClick={() => {
+                    if (mapCenterRef.current) {
+                      const newCenter = mapCenterRef.current
+                      userLocationRef.current = newCenter
+                      setSearchedCenter(newCenter)
+                      setShowSearchThisArea(false)
+                      fetchVenues(1, true)
+                    }
+                  }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-black/95 backdrop-blur-xl border border-primary-500/50 rounded-full px-4 py-2 shadow-2xl flex items-center gap-2 hover:bg-black hover:border-primary-500/70 active:scale-95 transition-all"
+                >
+                  <Search className="w-4 h-4 text-primary-500" />
+                  <span className="text-sm font-semibold text-primary-500">Search this area</span>
+                </button>
+              )}
+
+              {/* Feature 1: Marker Info Popup */}
+              {selectedMarkerVenue && selectedMarkerPosition && (
+                <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                  <div
+                    className="pointer-events-auto bg-black/95 backdrop-blur-xl border border-primary-500/40 rounded-2xl shadow-2xl shadow-primary-500/20 p-4 max-w-[280px] w-[280px] relative"
+                    style={{ marginBottom: '40px' }}
+                  >
+                    {/* Arrow pointing down */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-black/95 border-r border-b border-primary-500/40 transform rotate-45" />
+
+                    {/* Close button */}
+                    <button
+                      onClick={() => setSelectedMarkerVenue(null)}
+                      className="absolute top-2 right-2 p-1 hover:bg-primary-500/20 rounded-full transition-all"
+                    >
+                      <X className="w-3.5 h-3.5 text-primary-400/60" />
+                    </button>
+
+                    {/* Venue name */}
+                    <h3 className="text-sm font-bold text-white pr-6 mb-1.5 line-clamp-1">
+                      {selectedMarkerVenue.name || 'Venue'}
+                    </h3>
+
+                    {/* Rating + Distance row */}
+                    <div className="flex items-center gap-3 mb-2">
+                      {selectedMarkerVenue.rating && typeof selectedMarkerVenue.rating === 'number' && (
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={`w-3 h-3 ${i < Math.round(selectedMarkerVenue.rating) ? 'text-yellow-500 fill-yellow-500' : 'text-primary-500/20'}`} />
+                          ))}
+                          <span className="text-[10px] text-primary-400 ml-0.5">{selectedMarkerVenue.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {userLocation && selectedMarkerVenue.location?.latitude && selectedMarkerVenue.location?.longitude && (
+                        <span className="text-[10px] text-primary-400/60">
+                          {(() => {
+                            const d = calculateDistance(userLocation.lat, userLocation.lng, selectedMarkerVenue.location.latitude, selectedMarkerVenue.location.longitude)
+                            return d < 0.1 ? `${Math.round(d * 5280)}ft` : `${d.toFixed(1)}mi`
+                          })()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Active deal */}
+                    {(() => {
+                      const activePromos = (selectedMarkerVenue.promotions || []).filter((p: any) => p?.isActive)
+                      if (activePromos.length > 0) {
+                        return (
+                          <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg px-2.5 py-1.5 mb-3">
+                            <p className="text-[11px] text-primary-500 font-semibold line-clamp-1">{activePromos[0].title}</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+
+                    {/* View Details button */}
+                    <button
+                      onClick={() => {
+                        setViewingVenueId(selectedMarkerVenue._id)
+                        setSelectedMarkerVenue(null)
+                      }}
+                      className="w-full bg-primary-500 text-black py-2 rounded-lg font-semibold text-sm hover:bg-primary-400 active:scale-95 transition-all"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Compact Map Legend - Interactive with Minimize/Expand */}
               {showLegend && (venueMarkers.length > 0 || friends.length > 0) && (
                 <div className="absolute top-4 right-4 bg-black/95 backdrop-blur-xl border border-primary-500/40 rounded-xl shadow-2xl z-10 max-w-[140px] sm:max-w-[150px]">

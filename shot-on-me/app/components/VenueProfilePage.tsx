@@ -30,6 +30,8 @@ import {
 import BackButton from './BackButton'
 import CheckInSuccessModal from './CheckInSuccessModal'
 import VenueReferralInvite from './VenueReferralInvite'
+import GoogleMapComponent from './GoogleMap'
+import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
 interface VenueProfilePageProps {
   venueId: string
@@ -39,6 +41,7 @@ interface VenueProfilePageProps {
 export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageProps) {
   const { token, user } = useAuth()
   const API_URL = useApiUrl()
+  const { isLoaded: mapsLoaded } = useGoogleMaps()
   const [venue, setVenue] = useState<any>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -433,6 +436,37 @@ export default function VenueProfilePage({ venueId, onClose }: VenueProfilePageP
                   {venue.address.state || ''} {venue.address.zipCode || ''}
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Mini Map Preview */}
+        {mapsLoaded && venue?.location?.latitude && venue?.location?.longitude && (
+          <div
+            className="rounded-xl overflow-hidden border border-primary-500/20 cursor-pointer hover:border-primary-500/40 transition-all"
+            onClick={() => {
+              if (venue.location?.latitude && venue.location?.longitude) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`
+                window.open(url, '_blank')
+              }
+            }}
+          >
+            <div style={{ height: '150px', width: '100%' }}>
+              <GoogleMapComponent
+                center={{ lat: venue.location.latitude, lng: venue.location.longitude }}
+                zoom={15}
+                interactive={false}
+                markers={[{
+                  id: `venue-${venue._id}`,
+                  position: { lat: venue.location.latitude, lng: venue.location.longitude },
+                  title: venue.name || 'Venue'
+                }]}
+                mapContainerStyle={{ width: '100%', height: '100%' }}
+              />
+            </div>
+            <div className="bg-black/60 px-3 py-1.5 flex items-center justify-center gap-1.5">
+              <Navigation className="w-3 h-3 text-primary-500" />
+              <span className="text-[10px] text-primary-400 font-medium">Tap for directions</span>
             </div>
           </div>
         )}
