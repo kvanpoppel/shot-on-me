@@ -166,23 +166,70 @@ router.get('/', auth, async (req, res) => {
       ]
     }).populate('owner', 'email firstName lastName').lean();
 
-    if (req.user.userType === 'venue' || staffVenues.length > 0) {
-      // For venue owners/staff, return venues they own OR are staff of, plus test venues
-      const testVenueNames = ["Kate's Pub", "Paige's Pub"];
-      const testVenues = await Venue.find({
-        isActive: true,
-        name: { $in: testVenueNames }
-      }).lean();
+    // Parse location params once — used by both owner and regular user paths
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radiusMiles = parseFloat(req.query.radius) || 25;
+    const hasLocation = !isNaN(lat) && !isNaN(lng);
 
-      // Combine and deduplicate by _id
-      const venueMap = new Map();
-      [...staffVenues, ...testVenues].forEach(venue => {
-        venueMap.set(venue._id.toString(), venue);
+    // Helper: calculate distance in miles using Haversine
+    const addDistance = (venueList) => {
+      if (!hasLocation) return venueList;
+      const toRad = (deg) => deg * Math.PI / 180;
+      return venueList.map(v => {
+        if (v.location?.coordinates) {
+          const [vLng, vLat] = v.location.coordinates;
+          const dLat = toRad(vLat - lat);
+          const dLng = toRad(vLng - lng);
+          const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat)) * Math.cos(toRad(vLat)) * Math.sin(dLng / 2) ** 2;
+          const miles = 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return { ...v, distance: Math.round(miles * 10) / 10 };
+        }
+        return v;
       });
-      const allVenues = Array.from(venueMap.values());
+    };
 
-      totalCount = allVenues.length;
-      venues = allVenues.slice(skipNum, skipNum + limitNum);
+    if (req.user.userType === 'venue' || staffVenues.length > 0) {
+      // For venue owners/staff, return ALL active venues (so they can discover too)
+      // but also include their own venues even if inactive
+      const platformParam = req.query.platform;
+      let platformFilter = {};
+      if (platformParam === 'revig') {
+        platformFilter = { platform: { $in: ['revig', 'both'] } };
+      } else if (platformParam === 'som') {
+        platformFilter = { $or: [{ platform: { $in: ['som', 'both'] } }, { platform: { $exists: false } }] };
+      }
+
+      if (hasLocation) {
+        // Geo query for all active venues sorted by distance
+        const radiusMeters = radiusMiles * 1609.34;
+        const geoQuery = {
+          isActive: true,
+          ...platformFilter,
+          location: {
+            $near: {
+              $geometry: { type: 'Point', coordinates: [lng, lat] },
+              $maxDistance: radiusMeters
+            }
+          }
+        };
+        const allNearby = await Venue.find(geoQuery).lean();
+        // Also include owned/staff venues that might be outside radius or inactive
+        const ownedIds = new Set(staffVenues.map(v => v._id.toString()));
+        const missingOwned = staffVenues.filter(v => !allNearby.some(n => n._id.toString() === v._id.toString()));
+        const combined = [...allNearby, ...missingOwned];
+        totalCount = combined.length;
+        venues = addDistance(combined.slice(skipNum, skipNum + limitNum));
+      } else {
+        // No location — return all active + owned venues
+        const allActive = await Venue.find({ isActive: true, ...platformFilter }).lean();
+        const ownedIds = new Set(staffVenues.map(v => v._id.toString()));
+        const missingOwned = staffVenues.filter(v => !allActive.some(a => a._id.toString() === v._id.toString()));
+        const combined = [...allActive, ...missingOwned];
+        totalCount = combined.length;
+        venues = combined.slice(skipNum, skipNum + limitNum);
+      }
 
       console.log(`[Venues API] Venue owner/staff query returned ${venues.length} venue(s) (total: ${totalCount}, skip: ${skipNum}, limit: ${limitNum})`);
     } else {
@@ -195,11 +242,7 @@ router.get('/', auth, async (req, res) => {
         platformFilter = { $or: [{ platform: { $in: ['som', 'both'] } }, { platform: { $exists: false } }] };
       }
 
-      const lat = parseFloat(req.query.lat);
-      const lng = parseFloat(req.query.lng);
-      const radiusMiles = parseFloat(req.query.radius) || 25;
-
-      if (!isNaN(lat) && !isNaN(lng)) {
+      if (hasLocation) {
         // Geo query: return venues sorted by distance using 2dsphere index
         const radiusMeters = radiusMiles * 1609.34;
         const geoQuery = {
@@ -212,25 +255,9 @@ router.get('/', auth, async (req, res) => {
             }
           }
         };
-        // $near doesn't support countDocuments, so fetch all and paginate in memory
         const allNearby = await Venue.find(geoQuery).lean();
         totalCount = allNearby.length;
-        venues = allNearby.slice(skipNum, skipNum + limitNum);
-
-        // Calculate distance for each venue
-        const toRad = (deg) => deg * Math.PI / 180;
-        venues = venues.map(v => {
-          if (v.location?.coordinates) {
-            const [vLng, vLat] = v.location.coordinates;
-            const dLat = toRad(vLat - lat);
-            const dLng = toRad(vLng - lng);
-            const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(toRad(lat)) * Math.cos(toRad(vLat)) * Math.sin(dLng / 2) ** 2;
-            const miles = 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return { ...v, distance: Math.round(miles * 10) / 10 };
-          }
-          return v;
-        });
+        venues = addDistance(allNearby.slice(skipNum, skipNum + limitNum));
         console.log(`[Venues API] Geo query (${lat},${lng} r=${radiusMiles}mi) returned ${venues.length} venue(s) (total nearby: ${totalCount})`);
       } else {
         // No location — return all active venues
