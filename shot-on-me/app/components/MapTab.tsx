@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import axios from 'axios'
-import { MapPin, Clock, Tag, Star, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, ThermometerSun, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink, Sparkles } from 'lucide-react'
+import { MapPin, Clock, Tag, Star, Navigation, Martini, Users, Search, X, List, Map as MapIcon, ChevronDown, ChevronUp, TrendingUp, Moon, Loader2, AlertCircle, RefreshCw, Settings, User, Heart, Calendar, Phone, Coffee, UtensilsCrossed, Music, Flame, Award, Activity, Wine, ExternalLink, Sparkles } from 'lucide-react'
 import GoogleMapComponent from './GoogleMap'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import VenueProfilePage from './VenueProfilePage'
@@ -94,8 +94,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null)
   const [showSendSheet, setShowSendSheet] = useState(false)
   const [currentCity, setCurrentCity] = useState<string>('')
-  const [temperature, setTemperature] = useState<number | null>(null)
-  const [weatherLoading, setWeatherLoading] = useState(false)
   const [showLegend, setShowLegend] = useState(true)
   const [legendMinimized, setLegendMinimized] = useState(false)
   const [showActiveVenues, setShowActiveVenues] = useState(true)
@@ -229,55 +227,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
     }
   }, [token, API_URL])
 
-  // Fetch real weather data using OpenWeatherMap API (free tier)
-  const fetchWeatherData = useCallback(async (lat: number, lng: number) => {
-    setWeatherLoading(true)
-    try {
-      // Using OpenWeatherMap API (free tier - requires API key)
-      // For production, add NEXT_PUBLIC_OPENWEATHER_API_KEY to .env.local
-      // For now, we'll use a fallback approach
-      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
-      
-      if (apiKey && apiKey !== 'demo') {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=imperial&appid=${apiKey}`
-        )
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (data.main?.temp) {
-            setTemperature(Math.round(data.main.temp))
-            setWeatherLoading(false)
-            return
-          }
-        }
-      }
-      
-      // Fallback: Use a simple estimation based on location and time of year
-      const month = new Date().getMonth()
-      const isSummer = month >= 5 && month <= 8
-      const isWinter = month >= 11 || month <= 2
-      let estimatedTemp = 65
-      
-      if (isSummer) {
-        estimatedTemp = 75 + Math.floor(Math.random() * 15) // 75-90°F
-      } else if (isWinter) {
-        estimatedTemp = 35 + Math.floor(Math.random() * 15) // 35-50°F
-      } else {
-        estimatedTemp = 55 + Math.floor(Math.random() * 15) // 55-70°F
-      }
-      
-      setTemperature(estimatedTemp)
-    } catch (error) {
-      // Fallback temperature
-      const month = new Date().getMonth()
-      const isSummer = month >= 5 && month <= 8
-      const estimatedTemp = isSummer ? 75 + Math.floor(Math.random() * 15) : 45 + Math.floor(Math.random() * 20)
-      setTemperature(estimatedTemp)
-    } finally {
-      setWeatherLoading(false)
-    }
-  }, [])
 
   const reverseGeocodeCity = useCallback((lat: number, lng: number) => {
     if (!mapsLoaded || typeof google === 'undefined' || !google.maps) return
@@ -303,8 +252,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
 
   const getCurrentLocation = useCallback(async () => {
     if (!('geolocation' in navigator)) {
-      // Geolocation not available - use default location
-      fetchWeatherData(39.7684, -86.1581)
       return
     }
 
@@ -319,9 +266,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       }
     }
 
-    // If denied, inform user but don't block - fetch weather for default location
     if (permissionStatus === 'denied') {
-      fetchWeatherData(39.7684, -86.1581) // Default to Indianapolis
       return
     }
 
@@ -334,9 +279,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
           setUserLocation(loc)
           userLocationRef.current = loc
           reverseGeocodeCity(latitude, longitude)
-          fetchWeatherData(latitude, longitude)
         },
-        () => { fetchWeatherData(39.7684, -86.1581) },
+        () => {},
         { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
       )
 
@@ -353,11 +297,10 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
         { enableHighAccuracy: true, maximumAge: 30000 }
       )
       locationWatchRef.current = watchId
-    } catch (error) {
-      // Geolocation failed - use default location silently
-      fetchWeatherData(39.7684, -86.1581)
+    } catch {
+      // Geolocation failed silently
     }
-  }, [mapsLoaded, fetchWeatherData])
+  }, [mapsLoaded, reverseGeocodeCity])
 
   const fetchVenues = useCallback(async (pageNum: number = 1, reset: boolean = true) => {
     if (!token || !API_URL) {
@@ -1068,11 +1011,8 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
       fetchFriends()
       fetchFavoriteVenues()
       getCurrentLocation()
-    } else if (!token) {
-      // Still fetch weather even if not logged in
-      fetchWeatherData(39.7684, -86.1581) // Default to Indianapolis
     }
-  }, [token, API_URL, fetchVenues, fetchTrendingVenues, fetchFriends, fetchFavoriteVenues, getCurrentLocation, fetchWeatherData])
+  }, [token, API_URL, fetchVenues, fetchTrendingVenues, fetchFriends, fetchFavoriteVenues, getCurrentLocation])
 
   // Reset pagination when filter changes
   useEffect(() => {
@@ -1268,9 +1208,6 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
             <h1 className="text-lg font-bold text-primary-500 tracking-tight">Venues</h1>
             {currentCity && (
               <span className="text-[10px] text-primary-400/40 truncate">{currentCity}</span>
-            )}
-            {temperature !== null && (
-              <span className="text-[10px] text-orange-400/60 flex-shrink-0">{temperature}°F</span>
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
