@@ -208,10 +208,15 @@ export default function GoogleMapComponent({
     }
   }, [mapRef.current])
 
-  // Update map center when center prop changes
+  // Update map center when center coordinates actually change
+  const prevCenterRef = useRef<{ lat: number; lng: number } | null>(null)
   useEffect(() => {
     if (mapRef.current && center) {
-      mapRef.current.setCenter(center)
+      const prev = prevCenterRef.current
+      if (!prev || Math.abs(prev.lat - center.lat) > 0.0001 || Math.abs(prev.lng - center.lng) > 0.0001) {
+        prevCenterRef.current = center
+        mapRef.current.setCenter(center)
+      }
     }
   }, [center])
 
