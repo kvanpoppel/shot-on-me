@@ -64,8 +64,8 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationClic
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(data.notification.content || 'New notification', {
           body: data.message || '',
-          icon: '/icon-192x192.png',
-          badge: '/icon-192x192.png',
+          icon: '/app-icons/icon-192.png',
+          badge: '/app-icons/icon-192.png',
           tag: data.notification._id,
           requireInteraction: false
         })

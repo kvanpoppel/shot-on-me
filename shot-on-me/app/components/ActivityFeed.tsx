@@ -85,8 +85,8 @@ export default function ActivityFeed({ isOpen, onClose, onViewPost, onViewProfil
         const notif = data.notification
         new Notification('Shot On Me', {
           body: notif.content || data.message || 'You have a new notification',
-          icon: '/icon-192x192.png',
-          badge: '/icon-192x192.png',
+          icon: '/app-icons/icon-192.png',
+          badge: '/app-icons/icon-192.png',
           tag: notif._id || 'notification',
           requireInteraction: false
         })

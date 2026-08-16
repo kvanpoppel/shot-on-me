@@ -1,4 +1,4 @@
-// PWA COMPLETELY DISABLED to prevent service worker cache issues causing hydration errors
+// PWA enabled with network-first service worker (no stale-cache hydration issues)
 
 const { withSentryConfig } = require('@sentry/nextjs')
 

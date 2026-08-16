@@ -66,16 +66,12 @@ function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
-    // Clear caches but DON'T reload (prevents infinite loop)
-    if ('caches' in window) {
-      caches.keys().then(names => names.forEach(name => caches.delete(name)))
-    }
-    // Register minimal service worker for PWA install, then unregister any extras
+
+    // Register service worker for PWA install support
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
-    
+
     setIsMounted(true)
   }, [])
 

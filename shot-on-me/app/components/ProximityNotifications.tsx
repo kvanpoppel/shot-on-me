@@ -76,7 +76,7 @@ export default function ProximityNotifications() {
             })()
             new Notification(`🎉 Special at ${closest.venue.name}!`, {
               body: `${promo.title} - ${distanceStr} away`,
-              icon: '/icon-192x192.png',
+              icon: '/app-icons/icon-192.png',
               tag: `venue-${closest.venue._id}`,
               requireInteraction: false
             })
@@ -91,7 +91,7 @@ export default function ProximityNotifications() {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(`👋 ${data.friend.firstName} is nearby!`, {
             body: `${data.friend.firstName} ${data.friend.lastName} is ${data.friend.distance} miles away`,
-            icon: data.friend.profilePicture || '/icon-192x192.png',
+            icon: data.friend.profilePicture || '/app-icons/icon-192.png',
             tag: `friend-${data.friend._id}`,
             requireInteraction: false
           })
@@ -105,7 +105,7 @@ export default function ProximityNotifications() {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(`🎉 ${data.promotion.title} at ${data.venue.name}!`, {
             body: `${data.venue.name} - ${data.distance} miles away`,
-            icon: '/icon-192x192.png',
+            icon: '/app-icons/icon-192.png',
             tag: `promo-${data.venue._id}`,
             requireInteraction: false
           })
@@ -188,7 +188,7 @@ export default function ProximityNotifications() {
                           ? `${Math.round(closest.distance * 5280)}ft` 
                           : `${closest.distance.toFixed(1)}mi`
                         : closest.distance.replace(' km', 'mi').replace('km', 'mi')} away`,
-                      icon: '/icon-192x192.png',
+                      icon: '/app-icons/icon-192.png',
                       tag: `venue-${closest.venue._id}`
                     })
                   }

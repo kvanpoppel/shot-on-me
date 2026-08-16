@@ -18,11 +18,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/app-icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/app-icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/app-icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/app-icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icon-180x180.png', sizes: '180x180', type: 'image/png' },
+      { url: '/app-icons/apple-touch-icon-180.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 }
@@ -40,20 +42,18 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
-        <meta name="theme-color" content="#B8945A" />
+        <meta name="theme-color" content="#0C0B10" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Shot On Me" />
-        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta httpEquiv="Pragma" content="no-cache" />
-        <meta httpEquiv="Expires" content="0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Great+Vibes&family=Inter:wght@300;400;500;600;700;800&display=swap" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/app-icons/apple-touch-icon-180.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/app-icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/app-icons/favicon-16.png" />
       </head>
       <body className="font-sans" suppressHydrationWarning>
         <AppWrapper>

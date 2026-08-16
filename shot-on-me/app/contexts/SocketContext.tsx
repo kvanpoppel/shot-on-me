@@ -208,8 +208,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             try {
               new Notification(data.title || 'Shot On Me', {
                 body: data.message || data.text || data.content,
-                icon: '/icon-192x192.png',
-                badge: '/icon-192x192.png',
+                icon: '/app-icons/icon-192.png',
+                badge: '/app-icons/icon-192.png',
                 tag: data.id || data.notification?._id || 'notification',
                 requireInteraction: false,
                 silent: false
@@ -233,8 +233,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
               const notif = data.notification
               new Notification('Shot On Me', {
                 body: notif.content || data.message || 'You have a new notification',
-                icon: '/icon-192x192.png',
-                badge: '/icon-192x192.png',
+                icon: '/app-icons/icon-192.png',
+                badge: '/app-icons/icon-192.png',
                 tag: notif._id || 'notification',
                 requireInteraction: false,
                 silent: false
