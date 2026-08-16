@@ -27,7 +27,8 @@ html {
   height: auto;
   min-height: 100%;
   overscroll-behavior: none;
-  touch-action: manipulation;
+  touch-action: pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -43,6 +44,18 @@ body {
   margin: 0;
   overscroll-behavior: none;
   padding: 0;
+  touch-action: pan-y;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Block all zoom gestures globally — iOS ignores user-scalable=no */
+* {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+}
+/* Re-enable horizontal scroll on carousels/scrollable containers */
+.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"] {
+  touch-action: pan-x pan-y;
 }
 
 /* Prevent iOS Safari auto-zoom on input focus (requires >= 16px) */
