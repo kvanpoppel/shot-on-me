@@ -403,8 +403,8 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
   const enabledCount = Object.values(permissions).filter(Boolean).length
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-4 sm:p-6 max-w-md w-full backdrop-blur-md my-auto max-h-[95vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -423,7 +423,7 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
         </div>
 
         {/* Permissions List with Toggles */}
-        <div className="space-y-4 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2">
+        <div className="space-y-3 sm:space-y-4 overflow-y-auto pr-1">
           {permissionConfig.map((config) => {
             const Icon = config.icon
             const isEnabled = permissions[config.key]
@@ -440,14 +440,14 @@ export default function EnhancedPermissions({ onComplete, showOnMount = true }: 
                     : 'border-primary-500/20'
                 }`}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3">
                   {/* Icon */}
-                  <div className={`w-12 h-12 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 border-2 rounded-full flex items-center justify-center flex-shrink-0 ${
                     isEnabled
                       ? 'border-primary-500/50 bg-primary-500/20'
                       : 'border-primary-500/20 bg-primary-500/10'
                   }`}>
-                    <Icon className={`w-6 h-6 ${isEnabled ? 'text-primary-500' : 'text-primary-500/60'}`} />
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${isEnabled ? 'text-primary-500' : 'text-primary-500/60'}`} />
                   </div>
 
                   {/* Content */}

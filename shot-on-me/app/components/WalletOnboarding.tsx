@@ -153,14 +153,14 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-6 max-w-2xl w-full backdrop-blur-md my-auto">
+      <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="bg-black border-2 border-primary-500/30 rounded-2xl p-4 sm:p-6 max-w-md w-full backdrop-blur-md my-auto max-h-[95vh] overflow-y-auto">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary-500/30 to-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-primary-500/40">
-              <Wallet className="w-10 h-10 text-primary-500" />
+            <div className="w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500/30 to-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 border-2 border-primary-500/40">
+              <Wallet className="w-7 h-7 sm:w-10 sm:h-10 text-primary-500" />
             </div>
-            <h2 className="text-3xl font-bold tracking-tight mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
               Welcome to <span className="brand-wordmark-wrap" data-text="Shot On Me!"><span className="brand-wordmark">Shot On Me!</span></span>
             </h2>
             <p className="text-primary-400/80 text-sm font-light">
@@ -190,9 +190,9 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
           {/* Step 1: Create Card */}
           {step === 'card' && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
                     <CreditCard className="w-6 h-6 text-primary-500" />
                   </div>
                   <div className="flex-1">
@@ -264,9 +264,9 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
           {/* Step 2: Add Funds */}
           {step === 'funds' && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
                     <Wallet className="w-6 h-6 text-primary-500" />
                   </div>
                   <div className="flex-1">
@@ -305,9 +305,9 @@ export default function WalletOnboarding({ onComplete, showOnMount = true }: Wal
           {/* Step 3: Permissions */}
           {step === 'permissions' && !showPermissions && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
+              <div className="bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/20 rounded-xl p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-500/30">
                     <Shield className="w-6 h-6 text-primary-500" />
                   </div>
                   <div className="flex-1">

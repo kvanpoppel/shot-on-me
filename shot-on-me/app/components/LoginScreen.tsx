@@ -463,7 +463,7 @@ export default function LoginScreen() {
             </div>
 
             {/* Form */}
-            <div className="overflow-y-auto overscroll-contain px-5 pb-6 max-h-[340px]">
+            <div className="overflow-y-auto overscroll-contain px-5 pb-6 max-h-[50vh]">
               <form onSubmit={handleSubmit} className="space-y-3">
                 {!isLogin && (
                   <>
