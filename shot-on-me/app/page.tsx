@@ -8,25 +8,27 @@ import { useApiUrl } from './utils/api'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
 import BottomNav from './components/BottomNav'
-import FeedTab from './components/FeedTab'
-import WalletTab from './components/WalletTab'
-import MapTab from './components/MapTab'
-import ProfileTab from './components/ProfileTab'
-import HomeTab from './components/HomeTab'
-import MessagesTab from './components/MessagesTab'
 import { usePushNotifications } from './hooks/usePushNotifications'
-import GroupChatsTab from './components/GroupChatsTab'
-import FriendProfile from './components/FriendProfile'
-import ProximityNotifications from './components/ProximityNotifications'
-import PermissionsManager from './components/PermissionsManager'
-import TonightTab from './components/TonightTab'
-import RewardsScreen from './components/RewardsScreen'
-import ReferralScreen from './components/ReferralScreen'
-import MyVenuesTab from './components/MyVenuesTab'
-import WhatsHappeningTab from './components/WhatsHappeningTab'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import VenueProfilePage from './components/VenueProfilePage'
 import { Tab } from '@/app/types'
+
+// Lazy-load tab components — only downloaded when needed
+const HomeTab = dynamic(() => import('./components/HomeTab'))
+const FeedTab = dynamic(() => import('./components/FeedTab'))
+const WalletTab = dynamic(() => import('./components/WalletTab'))
+const MapTab = dynamic(() => import('./components/MapTab'))
+const ProfileTab = dynamic(() => import('./components/ProfileTab'))
+const MessagesTab = dynamic(() => import('./components/MessagesTab'))
+const GroupChatsTab = dynamic(() => import('./components/GroupChatsTab'))
+const TonightTab = dynamic(() => import('./components/TonightTab'))
+const RewardsScreen = dynamic(() => import('./components/RewardsScreen'))
+const ReferralScreen = dynamic(() => import('./components/ReferralScreen'))
+const MyVenuesTab = dynamic(() => import('./components/MyVenuesTab'))
+const WhatsHappeningTab = dynamic(() => import('./components/WhatsHappeningTab'))
+const FriendProfile = dynamic(() => import('./components/FriendProfile'))
+const VenueProfilePage = dynamic(() => import('./components/VenueProfilePage'))
+const ProximityNotifications = dynamic(() => import('./components/ProximityNotifications'))
+const PermissionsManager = dynamic(() => import('./components/PermissionsManager'))
 
 function Home() {
   const { user, token, loading } = useAuth()
@@ -58,10 +60,7 @@ function Home() {
 
   useEffect(() => {
     if (!token) return
-    console.log('[page] token ready, fetching saved venues')
-    axios.get(`${API_URL}/saved-venues`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => { console.log('[page] got', res.data?.venues?.length, 'saved venues'); setSavedGoogleVenues(res.data?.venues || []) })
-      .catch(e => console.error('[page] saved venues fetch error:', e))
+    refreshSavedVenues()
   }, [token])
 
   useEffect(() => {
