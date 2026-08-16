@@ -26,6 +26,8 @@ html {
   overflow-y: auto !important;
   height: auto;
   min-height: 100%;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 body {
@@ -39,6 +41,7 @@ body {
   height: auto;
   min-height: 100%;
   margin: 0;
+  overscroll-behavior: none;
   padding: 0;
 }
 
