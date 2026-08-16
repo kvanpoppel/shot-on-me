@@ -45,6 +45,19 @@ body {
   padding: 0;
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (requires >= 16px) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+select,
+textarea {
+  font-size: 16px !important;
+}
+
 /* Ensure all form elements use the soft gold */
 input[type="checkbox"],
 input[type="radio"] {
@@ -71,6 +84,7 @@ input[type="radio"] {
 }
 
 /* Official brand wordmark — Great Vibes + metallic gold gradient */
+/* Hide until Great Vibes loads to prevent fallback font flash */
 .brand-wordmark {
   position: relative;
   font-family: 'Great Vibes', cursive;
@@ -82,10 +96,16 @@ input[type="radio"] {
   color: #E4BE6E;
   text-shadow: none;
   letter-spacing: 0.5px;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out 0.3s forwards;
 }
 .brand-wordmark-wrap {
   position: relative;
   display: inline-block;
+  padding-bottom: 0.15em;
+}
+@keyframes shadowFadeIn {
+  to { opacity: 0.3; }
 }
 .brand-wordmark-wrap::before {
   content: attr(data-text);
@@ -97,9 +117,10 @@ input[type="radio"] {
   font-size: inherit;
   letter-spacing: 0.5px;
   color: #171310;
-  opacity: 0.3;
+  opacity: 0;
   z-index: 0;
   -webkit-text-fill-color: #171310;
+  animation: shadowFadeIn 0.3s ease-out 0.3s forwards;
 }
 .brand-wordmark-wrap .brand-wordmark {
   position: relative;
