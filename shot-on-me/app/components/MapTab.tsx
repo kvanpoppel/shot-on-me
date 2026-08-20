@@ -1476,7 +1476,7 @@ export default function MapTab({ setActiveTab, onViewProfile, activeTab, onOpenS
               {selectedMarkerVenue && selectedMarkerPosition && (
                 <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
                   <div
-                    className="pointer-events-auto bg-black/95 backdrop-blur-xl border border-primary-500/40 rounded-2xl shadow-2xl shadow-primary-500/20 p-4 max-w-[280px] w-[280px] relative"
+                    className="pointer-events-auto bg-black/95 backdrop-blur-xl border border-primary-500/40 rounded-2xl shadow-2xl shadow-primary-500/20 p-4 max-w-[calc(100vw-2rem)] w-[280px] relative"
                     style={{ marginBottom: '40px' }}
                   >
                     {/* Arrow pointing down */}

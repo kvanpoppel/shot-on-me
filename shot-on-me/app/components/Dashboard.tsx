@@ -294,7 +294,7 @@ export default function Dashboard({ activeTab, setActiveTab, viewingProfile, set
 
               {showProfileDropdown && (
                 <div
-                  className="absolute left-0 top-full mt-2 w-52 bg-zinc-950 border border-primary-500/20 rounded-2xl shadow-xl shadow-black/60 z-[60] overflow-hidden"
+                  className="absolute left-0 top-full mt-2 w-52 max-w-[calc(100vw-2rem)] bg-zinc-950 border border-primary-500/20 rounded-2xl shadow-xl shadow-black/60 z-[60] overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Compact header */}

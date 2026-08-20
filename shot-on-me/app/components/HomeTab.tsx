@@ -438,7 +438,7 @@ export default function HomeTab({ setActiveTab, onViewProfile, onSendMoney, onVi
   }
 
   return (
-    <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-visible pt-16" suppressHydrationWarning>
+    <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto overflow-x-hidden pt-16" suppressHydrationWarning>
 
       {/* 1. Welcome + Quick Actions */}
       <div className="px-4 pt-2 mb-5">

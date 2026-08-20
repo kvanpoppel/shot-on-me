@@ -1207,7 +1207,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       // Show success feedback
       const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
       toast.textContent = 'Post deleted successfully'
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
@@ -1238,7 +1238,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       // Show success feedback
       const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
       toast.textContent = 'Report submitted. Thank you for helping keep our community safe.'
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 4000)
@@ -1260,7 +1260,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
         headers: { Authorization: `Bearer ${token}` }
       })
       const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
       toast.textContent = 'Post updated'
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
@@ -1299,7 +1299,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       // Show success feedback
       const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
       toast.textContent = 'Comment deleted successfully'
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 3000)
@@ -1330,7 +1330,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       // Show success feedback
       const toast = document.createElement('div')
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
       toast.textContent = 'Report submitted. Thank you for helping keep our community safe.'
       document.body.appendChild(toast)
       setTimeout(() => toast.remove(), 4000)
@@ -1377,7 +1377,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           await navigator.clipboard.writeText(shareUrl)
           // Show success feedback
           const toast = document.createElement('div')
-          toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+          toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
           toast.textContent = 'Link copied to clipboard!'
           document.body.appendChild(toast)
           setTimeout(() => {
@@ -1394,7 +1394,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
           try {
             document.execCommand('copy')
             const toast = document.createElement('div')
-            toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+            toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
             toast.textContent = 'Link copied to clipboard!'
             document.body.appendChild(toast)
             setTimeout(() => {
@@ -1458,7 +1458,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
 
       if (result.success) {
         const toast = document.createElement('div')
-        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-6 py-3 rounded-lg shadow-lg font-semibold'
+        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-primary-500 text-black px-4 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-[90vw] text-center'
         toast.textContent = 'Opening SMS app to send invitation...'
         document.body.appendChild(toast)
         setTimeout(() => {
@@ -1568,7 +1568,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
       <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
         {/* Stories skeleton */}
         <div className="p-4 border-b border-primary-500/10">
-          <div className="flex gap-3 overflow-x-auto">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="flex-shrink-0">
                 <div className="w-16 h-16 rounded-full bg-primary-500/10 animate-pulse" />
@@ -2447,8 +2447,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 {/* Cleaner UI: reaction breakdown shown in picker only */}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-primary-500/20">
-                  <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5 pt-2.5 border-t border-primary-500/20">
+                  <div className="flex items-center gap-1 flex-wrap min-w-0">
                     {/* Cleaner reaction action */}
                     <div
                       className="relative min-w-0"
@@ -2467,15 +2467,15 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                           e.stopPropagation()
                           setActivePostReactionPicker(activePostReactionPicker === post._id ? null : post._id)
                         }}
-                        className={`inline-flex items-center justify-start gap-1.5 px-2.5 py-1.5 rounded-full transition-all ${
+                        className={`inline-flex items-center justify-start gap-1 px-2 py-1.5 rounded-full transition-all ${
                           post.userReactions?.includes('❤️') || post.userReaction === '❤️'
                             ? 'bg-primary-500/20 text-primary-500 border border-primary-500/40'
                             : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 border border-transparent'
                         }`}
                         title="React"
                       >
-                        <ThumbsUp className="w-4 h-4" />
-                        <span className="text-xs font-semibold">Like</span>
+                        <ThumbsUp className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-xs font-semibold hidden sm:inline">Like</span>
                         {totalPostReactions > 0 && (
                           <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full leading-none">
                             {totalPostReactions}
@@ -2485,7 +2485,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                         )
                       })()}
                       {activePostReactionPicker === post._id && (
-                        <div className="absolute bottom-full left-0 mb-2 bg-black/95 border border-primary-500/30 rounded-full px-2 py-1.5 flex items-center gap-1.5 z-50 shadow-lg">
+                        <div className="absolute bottom-full left-0 mb-2 bg-black/95 border border-primary-500/30 rounded-full px-2 py-1.5 flex items-center gap-1 z-50 shadow-lg max-w-[calc(100vw-2rem)]">
                           {['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🎉'].map((emoji) => (
                             <button
                               key={emoji}
@@ -2506,10 +2506,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     </div>
                     <button
                       onClick={() => setSelectedPostId(selectedPostId === post._id ? null : post._id)}
-                      className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                      className="inline-flex items-center justify-start gap-1 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      <span className="text-xs font-semibold">Comment</span>
+                      <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs font-semibold hidden sm:inline">Comment</span>
                       {post.comments.length > 0 && (
                         <span className="text-[11px] font-semibold bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-full leading-none">
                           {post.comments.length}
@@ -2518,10 +2518,10 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                     </button>
                     <button
                       onClick={() => handleShare(post._id)}
-                      className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                      className="inline-flex items-center justify-start gap-1 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                     >
-                      <Share2 className="w-4 h-4" />
-                      <span className="text-xs font-semibold">Share</span>
+                      <Share2 className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs font-semibold hidden sm:inline">Share</span>
                     </button>
                     {!isVenuePost && isFriend && authorId && authorId !== user?.id && authorId !== (user as any)?._id && (
                       <button
@@ -2531,14 +2531,14 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                           firstName: post.author?.firstName || '',
                           avatar: post.author?.profilePicture,
                         })}
-                        className="inline-flex items-center justify-start gap-1.5 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors border border-primary-500/20"
+                        className="inline-flex items-center justify-start gap-1 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors border border-primary-500/20"
                       >
-                        <span className="text-base leading-none">🍺</span>
-                        <span className="text-xs font-semibold">Send Drink</span>
+                        <span className="text-sm leading-none flex-shrink-0">🍺</span>
+                        <span className="text-xs font-semibold whitespace-nowrap">Send Drink</span>
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     {post.reactionCounts && Object.keys(post.reactionCounts).length > 0 && (
                       <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary-500/5 border border-primary-500/15">
                         {Object.keys(post.reactionCounts).slice(0, 2).map((emoji) => (

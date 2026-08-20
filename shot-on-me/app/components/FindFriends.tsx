@@ -296,7 +296,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
         <div className="flex mt-4 border-b border-primary-500/10 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('suggestions')}
-            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 min-w-0 py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'suggestions'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
@@ -308,7 +308,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
           </button>
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 min-w-0 py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'friends'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
@@ -329,7 +329,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
                 setContactsLoading(false)
               }
             }}
-            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 min-w-0 py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'contacts'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'
@@ -340,7 +340,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
           </button>
           <button
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 min-w-[100px] py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 min-w-0 py-2.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === 'invite'
                 ? 'text-primary-500 border-b-2 border-primary-500'
                 : 'text-primary-400/70 hover:text-primary-500'

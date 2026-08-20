@@ -680,7 +680,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         }} 
       />
       <div 
-        className="fixed left-0 top-0 bottom-0 w-80 bg-black/95 backdrop-blur-md border-r border-primary-500/10 z-[56] overflow-y-auto"
+        className="fixed left-0 top-0 bottom-0 w-80 max-w-[90vw] bg-black/95 backdrop-blur-md border-r border-primary-500/10 z-[56] overflow-y-auto"
         onClick={(e) => {
           // Stop propagation so clicks inside menu don't close it
           e.stopPropagation()
