@@ -9,6 +9,7 @@ import { Search, UserPlus, Users, X, MapPin, CheckCircle2, Sparkles, Phone, Arro
 import { useApiUrl } from '../utils/api'
 import InviteFriendsModal from './InviteFriendsModal'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
+import SpinnerS from './SpinnerS'
 
 interface FindFriendsProps {
   isOpen: boolean
@@ -358,7 +359,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
           <div>
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-3"></div>
+                <SpinnerS className="mx-auto mb-3" />
                 <p className="text-primary-400/70 text-sm font-light">Searching...</p>
               </div>
             ) : searchResults.length === 0 && searchQuery ? (
@@ -655,7 +656,7 @@ export default function FindFriends({ isOpen, onClose, onViewProfile }: FindFrie
             </div>
             {contactsLoading ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+                <SpinnerS />
               </div>
             ) : nativeContacts.length === 0 ? (
               <div className="text-center py-10">

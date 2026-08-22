@@ -382,3 +382,98 @@ input, textarea, select {
     inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
 
+/* ── SpinnerS — 3D coin spin ─────────────────────────────────────── */
+.coin-perspective {
+  perspective: 800px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coin-spin {
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  animation: coin-rotate 2.6s linear infinite,
+             coin-glow   2.6s ease-in-out infinite;
+}
+
+@keyframes coin-rotate {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+
+/* Glow peaks when face-on (0°/180°), dims when edge-on (90°/270°) */
+@keyframes coin-glow {
+  0%, 50%, 100% { box-shadow: 0 0 20px rgba(228,190,110,0.45), 0 0 44px rgba(228,190,110,0.15); }
+  25%, 75%      { box-shadow: 0 0  8px rgba(228,190,110,0.18), 0 0 16px rgba(228,190,110,0.05); }
+}
+
+/* ── Entrance — coin tumbles in from nothing, settles into spin ── */
+.coin-entrance {
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  animation: coin-entrance-in 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             coin-rotate 2.6s linear 1.2s infinite,
+             coin-glow   2.6s ease-in-out 1.2s infinite;
+}
+
+@keyframes coin-entrance-in {
+  0%   { transform: scale(0) rotateY(0deg) rotateX(80deg); opacity: 0; }
+  45%  { transform: scale(1.15) rotateY(360deg) rotateX(0deg); opacity: 1; }
+  70%  { transform: scale(0.93) rotateY(540deg); }
+  100% { transform: scale(1) rotateY(720deg); }
+}
+
+/* ── Toss — coin flips up into the air, hovers, keeps spinning ── */
+.coin-toss {
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  animation: coin-toss-up 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
+             coin-glow    2.6s ease-in-out infinite;
+}
+
+@keyframes coin-toss-up {
+  0%   { transform: translateY(0)     rotateX(0deg)    scale(1);   }
+  35%  { transform: translateY(-90px) rotateX(720deg)  scale(1.25); }
+  60%  { transform: translateY(-50px) rotateX(1260deg) scale(1.15); }
+  80%  { transform: translateY(6px)   rotateX(1620deg) scale(1);   }
+  90%  { transform: translateY(-3px)  rotateX(1720deg) scale(1);   }
+  100% { transform: translateY(0)     rotateX(1800deg) scale(1);   }
+}
+
+/* ── Land — coin drops in from above, bounces, gold burst ── */
+.coin-land {
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  animation: coin-land-drop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             coin-burst     0.6s ease-out 0.85s forwards;
+}
+
+@keyframes coin-land-drop {
+  0%   { transform: translateY(-80px) scale(0.4) rotateY(0deg); opacity: 0; }
+  55%  { transform: translateY(6px)   scale(1.08) rotateY(540deg); opacity: 1; }
+  75%  { transform: translateY(-4px)  scale(0.97) rotateY(660deg); }
+  100% { transform: translateY(0)     scale(1)    rotateY(720deg); }
+}
+
+@keyframes coin-burst {
+  0%   { box-shadow: 0 0 20px rgba(228,190,110,0.4); }
+  40%  { box-shadow: 0 0 50px rgba(228,190,110,0.85), 0 0 100px rgba(228,190,110,0.35), 0 0 150px rgba(228,190,110,0.1); }
+  100% { box-shadow: 0 0 20px rgba(228,190,110,0.4); }
+}
+
+/* Static gentle pulse for prefers-reduced-motion */
+@keyframes coin-glow-static {
+  0%, 100% { box-shadow: 0 0 14px rgba(228,190,110,0.30); }
+  50%      { box-shadow: 0 0 26px rgba(228,190,110,0.50), 0 0 52px rgba(228,190,110,0.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-spin,
+  .coin-entrance,
+  .coin-toss,
+  .coin-land {
+    animation: coin-glow-static 3s ease-in-out infinite;
+  }
+}
+

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Users, Check, ChevronRight, Loader2 } from 'lucide-react'
+import SpinnerS from './SpinnerS'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { useApiUrl } from '../utils/api'
@@ -313,7 +314,7 @@ export default function RoundModeSheet({ isOpen, onClose }: RoundModeSheetProps)
 
           {step === 'success' && (
             <div className="text-center py-6 space-y-4">
-              <div className="text-6xl animate-bounce">🥂</div>
+              <SpinnerS size={64} animation="toss" className="mx-auto" />
               <div>
                 <p className="text-white font-bold text-xl mb-1">Round sent!</p>
                 <p className="text-primary-400/70 text-sm">

@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
-import { X, Send, ChevronRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, Send, ChevronRight, Loader2, AlertCircle } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
+import SpinnerS from './SpinnerS'
 
 interface QuickSendDrinkSheetProps {
   recipientId: string
@@ -412,7 +413,7 @@ export default function QuickSendDrinkSheet({
                 disabled={otp.join('').length !== 6 || sending}
                 className="w-full bg-primary-500 text-black py-3.5 rounded-xl font-bold text-base active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
               >
-                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" />Confirm ${finalAmount?.toFixed(2)}</>}
+                {sending ? <SpinnerS size={20} animation="toss" /> : <><Send className="w-4 h-4" />Confirm ${finalAmount?.toFixed(2)}</>}
               </button>
               <button onClick={() => setStep('amount')} className="w-full text-primary-400/60 text-sm py-2 hover:text-primary-400 transition-colors">← Back</button>
               <button onClick={handleRequestOtp} disabled={requestingOtp} className="w-full text-primary-500/60 text-xs py-1.5 hover:text-primary-500 transition-colors">
@@ -434,8 +435,8 @@ export default function QuickSendDrinkSheet({
                   ))}
                 </div>
               )}
-              <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary-500/15 border-2 border-primary-500/40 mx-auto mb-4">
-                <CheckCircle2 className="w-10 h-10 text-primary-500" />
+              <div className="mx-auto mb-4">
+                <SpinnerS size={64} animation="land" />
               </div>
               <p className="text-2xl font-bold text-white mb-1">{successLabel} {activeDrink?.emoji || '🥂'}</p>
               <p className="text-primary-400/80 text-sm mb-1">

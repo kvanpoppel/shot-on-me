@@ -22,6 +22,7 @@ import {
 import BackButton from './BackButton'
 import QuickSendDrinkSheet from './QuickSendDrinkSheet'
 import { useApiUrl } from '../utils/api'
+import SpinnerS from './SpinnerS'
 
 interface FriendProfileProps {
   userId: string
@@ -162,7 +163,7 @@ export default function FriendProfile({ userId, onClose, onSendShot }: FriendPro
       <div className="fixed inset-0 bg-black z-[70] flex flex-col">
         <div className="p-4"><BackButton onClick={onClose} label="Back" /></div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+          <SpinnerS />
         </div>
       </div>
     )

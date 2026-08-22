@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useRef, useEffect } from 'react'
 import { GoogleMap, Marker } from '@react-google-maps/api'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
+import SpinnerS from './SpinnerS'
 
 interface MarkerData {
   id: string
@@ -234,10 +235,7 @@ export default function GoogleMapComponent({
   if (!isLoaded) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black/50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-primary-400">Loading map...</p>
-        </div>
+        <SpinnerS />
       </div>
     )
   }

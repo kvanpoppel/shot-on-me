@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import { Trophy, Lock, CheckCircle, Sparkles } from 'lucide-react'
+import SpinnerS from './SpinnerS'
 
 interface Badge {
   _id: string
@@ -73,7 +74,7 @@ export default function BadgesScreen() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <SpinnerS />
       </div>
     )
   }

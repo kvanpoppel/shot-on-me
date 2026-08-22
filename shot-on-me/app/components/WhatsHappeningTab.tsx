@@ -6,6 +6,7 @@ import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import { Users, MapPin, TrendingUp, Clock, ArrowLeft, Star, Zap, Calendar } from 'lucide-react'
 import { Tab } from '@/app/types'
+import SpinnerS from './SpinnerS'
 
 interface FriendCheckIn {
   user: {
@@ -134,7 +135,7 @@ export default function WhatsHappeningTab({ setActiveTab, onViewProfile }: Whats
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+          <SpinnerS />
         </div>
       ) : (
         <div className="p-4 space-y-6">

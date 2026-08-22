@@ -5,9 +5,10 @@ import dynamic from 'next/dynamic'
 import axios from 'axios'
 import { useAuth } from './contexts/AuthContext'
 import { useApiUrl } from './utils/api'
-import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
 import BottomNav from './components/BottomNav'
+const LoginScreen = dynamic(() => import('./components/LoginScreen'))
+import SpinnerS from './components/SpinnerS'
 import { usePushNotifications } from './hooks/usePushNotifications'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Tab } from '@/app/types'
@@ -156,11 +157,8 @@ function Home() {
   // This is the nuclear option to prevent ALL hydration mismatches
   if (typeof window === 'undefined') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-primary-400 text-sm">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0C0B10' }}>
+        <SpinnerS size="splash" />
       </div>
     )
   }
@@ -168,11 +166,8 @@ function Home() {
   // Wait for mount AND loading to complete
   if (!isMounted || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-primary-400 text-sm">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0C0B10' }}>
+        <SpinnerS size="splash" animation="entrance" />
       </div>
     )
   }

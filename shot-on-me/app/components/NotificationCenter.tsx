@@ -7,6 +7,7 @@ import axios from 'axios'
 import { Bell, X, Check, Trash2, Heart, MessageCircle, UserPlus, CreditCard, MapPin, Sparkles, Eye } from 'lucide-react'
 import BackButton from './BackButton'
 import { useApiUrl } from '../utils/api'
+import SpinnerS from './SpinnerS'
 
 interface Notification {
   _id: string
@@ -228,7 +229,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationClic
         <div className="p-2">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+              <SpinnerS />
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">

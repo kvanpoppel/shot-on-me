@@ -6,6 +6,7 @@ import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import { getInviteLink, getInviteMessage, shareInvite } from '../utils/invite'
 import { Share2, Users, Sparkles } from 'lucide-react'
+import SpinnerS from './SpinnerS'
 
 interface Referral {
   id: string
@@ -89,7 +90,7 @@ export default function ReferralScreen() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <SpinnerS />
       </div>
     )
   }

@@ -6,6 +6,7 @@ import axios from 'axios'
 import { Plus, Camera } from 'lucide-react'
 import { useApiUrl } from '../utils/api'
 import StatusIndicator from './StatusIndicator'
+import SpinnerS from './SpinnerS'
 
 interface Story {
   _id: string
@@ -109,7 +110,7 @@ export default function StoriesCarousel({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+        <SpinnerS />
       </div>
     )
   }

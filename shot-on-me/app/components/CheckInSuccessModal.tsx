@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { 
-  Sparkles, 
-  Flame, 
-  Trophy, 
+import {
+  Sparkles,
+  Flame,
+  Trophy,
   Star,
   X,
-  CheckCircle2,
   TrendingUp
 } from 'lucide-react'
+import SpinnerS from './SpinnerS'
 
 interface CheckInSuccessModalProps {
   isOpen: boolean
@@ -116,16 +116,9 @@ export default function CheckInSuccessModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Success Icon */}
+        {/* Success Icon — branded coin drop */}
         <div className="flex justify-center mb-6">
-          <div className="relative">
-            <div className="w-20 h-20 bg-primary-500/20 rounded-full flex items-center justify-center border-2 border-primary-500 animate-pulse">
-              <CheckCircle2 className="w-12 h-12 text-primary-500" />
-            </div>
-            <div className="absolute -top-2 -right-2">
-              <Sparkles className="w-8 h-8 text-primary-500 animate-bounce" />
-            </div>
-          </div>
+          <SpinnerS size={64} animation="land" />
         </div>
 
         {/* Title */}

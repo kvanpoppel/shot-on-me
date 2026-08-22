@@ -6,6 +6,7 @@ import axios from 'axios'
 import { useApiUrl } from '../utils/api'
 import { MapPin, Users, Calendar, Sparkles, TrendingUp, Clock } from 'lucide-react'
 import UserAvatarButton from './UserAvatarButton'
+import SpinnerS from './SpinnerS'
 
 interface FriendOut {
   user: {
@@ -117,7 +118,7 @@ export default function TonightTab({ onViewProfile, onSendDrink }: { onViewProfi
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <SpinnerS />
       </div>
     )
   }

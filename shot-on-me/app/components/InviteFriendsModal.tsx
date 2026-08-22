@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { X, Share2, Copy, Mail, MessageSquare, Link as LinkIcon, CheckCircle, AlertCircle, Facebook, MessageCircle } from 'lucide-react'
 import { getInviteLink, shareInvite, getInviteMessage, supportsNativeShare, openNativeShare, getAppShareTargets, getBestInviteMethod, type AppShareTarget } from '../utils/invite'
+import SpinnerS from './SpinnerS'
 
 interface InviteFriendsModalProps {
   isOpen: boolean
@@ -155,7 +156,7 @@ export default function InviteFriendsModal({ isOpen, onClose, initialPhoneNumber
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+            <SpinnerS />
           </div>
         ) : (
           <>
