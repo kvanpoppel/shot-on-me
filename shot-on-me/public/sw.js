@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'som-v1'
+const CACHE_VERSION = 'som-v2'
 const PRECACHE_URLS = ['/app-icons/icon-192.png', '/app-icons/icon-512.png']
 
 // Install — precache critical assets

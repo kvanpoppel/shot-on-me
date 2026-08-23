@@ -91,8 +91,8 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) { alert('DEBUG: No file selected'); return }
-    if (!token) { alert('DEBUG: No auth token — not logged in'); return }
+    if (!file) return
+    if (!token) { showToast('Not logged in — please refresh', 'error'); return }
     setUploadingPhoto(true)
     showToast('Uploading…')
     try {
@@ -147,7 +147,6 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
       showToast('Photo updated!', 'success')
     } catch (err: any) {
       console.error('Photo upload failed:', err)
-      alert(`Upload failed: ${err.message}`)
       showToast(`Upload failed: ${err.message}`, 'error', 8000)
     } finally {
       setUploadingPhoto(false)
