@@ -47,28 +47,38 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
 
     // Check if file was uploaded via multer (multipart/form-data)
     if (req.file) {
-      console.log('📤 Uploading profile picture file to Cloudinary...');
-      
-      const uploadResult = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          {
-            resource_type: 'image',
-            folder: 'shot-on-me/profiles',
-            transformation: [
-              { width: 400, height: 400, crop: 'fill', gravity: 'face' }
-            ]
-          },
-          (error, result) => {
-            if (error) {
-              console.error('❌ Cloudinary upload error:', error);
-              reject(error);
-            } else {
-              console.log('✅ Profile picture uploaded to Cloudinary');
-              resolve(result);
-            }
-          }
-        ).end(req.file.buffer);
+      console.log('📤 Uploading profile picture file to Cloudinary...', {
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        originalname: req.file.originalname
       });
+
+      let uploadResult;
+      try {
+        uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            {
+              resource_type: 'image',
+              folder: 'shot-on-me/profiles',
+              transformation: [
+                { width: 400, height: 400, crop: 'fill', gravity: 'face' }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                console.error('❌ Cloudinary upload error:', error);
+                reject(error);
+              } else {
+                console.log('✅ Profile picture uploaded to Cloudinary');
+                resolve(result);
+              }
+            }
+          ).end(req.file.buffer);
+        });
+      } catch (cloudErr) {
+        console.error('❌ Cloudinary stream error:', cloudErr);
+        return res.status(500).json({ message: `Cloudinary upload failed: ${cloudErr.message}` });
+      }
 
       profilePictureUrl = uploadResult.secure_url;
     } 
@@ -169,9 +179,8 @@ router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (
     });
   } catch (error) {
     console.error('❌ Error updating profile picture:', error);
-    res.status(500).json({ 
-      message: 'Failed to update profile picture',
-      error: undefined 
+    res.status(500).json({
+      message: `Failed to update profile picture: ${error.message || 'unknown error'}`
     });
   }
 });
