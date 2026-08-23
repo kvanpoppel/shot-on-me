@@ -115,8 +115,13 @@ input[type="radio"] {
 .brand-wordmark-wrap {
   position: relative;
   display: inline-block;
-  padding-bottom: 0.5em;
+  /* Margin (not padding) so the ::before containing-block stays flush with
+     the text — padding would shift the content area away from the abs-pos
+     shadow anchor.  Values protect the S flourish (left), e swash (right),
+     ascenders (top) and descenders (bottom) at all responsive sizes. */
+  margin: 0.08em 0.15em 0.25em 0.1em;
   overflow: visible;
+  white-space: nowrap;
 }
 @keyframes shadowFadeIn {
   to { opacity: 0.3; }
@@ -129,11 +134,14 @@ input[type="radio"] {
   font-family: 'Great Vibes', cursive;
   font-weight: 400;
   font-size: inherit;
+  line-height: inherit;
   letter-spacing: 0.5px;
+  white-space: nowrap;
   color: #171310;
+  -webkit-text-fill-color: #171310;
   opacity: 0;
   z-index: 0;
-  -webkit-text-fill-color: #171310;
+  pointer-events: none;
   animation: shadowFadeIn 0.4s ease-out 0.5s forwards;
 }
 .brand-wordmark-wrap .brand-wordmark {
