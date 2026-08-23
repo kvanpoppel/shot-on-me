@@ -330,14 +330,32 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
       const file = e.target.files[0]
       if (!file) return
       if (!token) { showToast('Not logged in — please refresh', 'error'); return }
-      if (file.size > 10 * 1024 * 1024) {
-        showToast('File size must be less than 10MB', 'error')
-        return
-      }
-      showToast('Uploading photo…')
+      showToast('Resizing & uploading…')
       try {
+        // Resize client-side for fast mobile uploads
+        const resized = await new Promise<Blob>((resolve, reject) => {
+          const img = new Image()
+          const url = URL.createObjectURL(file)
+          img.onload = () => {
+            URL.revokeObjectURL(url)
+            let w = img.width, h = img.height
+            const max = 800
+            if (w > max || h > max) {
+              const r = Math.min(max / w, max / h)
+              w = Math.round(w * r)
+              h = Math.round(h * r)
+            }
+            const c = document.createElement('canvas')
+            c.width = w; c.height = h
+            c.getContext('2d')!.drawImage(img, 0, 0, w, h)
+            c.toBlob(b => b ? resolve(b) : reject(new Error('Canvas failed')), 'image/jpeg', 0.85)
+          }
+          img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')) }
+          img.src = url
+        })
+
         const formData = new FormData()
-        formData.append('profilePicture', file)
+        formData.append('profilePicture', resized, 'photo.jpg')
         const response = await fetch(
           `${API_URL}/users/me/profile-picture`,
           {
