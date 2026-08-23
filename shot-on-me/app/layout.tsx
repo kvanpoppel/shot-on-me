@@ -49,7 +49,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Shot On Me" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preload" href="https://fonts.gstatic.com/s/greatvibes/v19/RWmMoKWR9v4ksMfaWd_JN-XCg6UKDXlq.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        {/* Preconnect above handles early connection; the Google Fonts stylesheet loads the actual font file */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Great+Vibes&family=Inter:wght@300;400;500;600;700;800&display=swap" />
         <link rel="preload" href="/app-icons/icon-192.png" as="image" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
