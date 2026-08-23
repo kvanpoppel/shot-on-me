@@ -50,6 +50,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Great+Vibes&family=Inter:wght@300;400;500;600;700;800&display=swap" />
+        <link rel="preload" href="/app-icons/icon-192.png" as="image" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="180x180" href="/app-icons/apple-touch-icon-180.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/app-icons/favicon-32.png" />
