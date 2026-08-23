@@ -26,32 +26,6 @@ const upload = multer({
   }
 });
 
-// Temporary diagnostic — remove after debugging
-router.post('/upload-test', upload.single('profilePicture'), async (req, res) => {
-  try {
-    const hasFile = !!req.file;
-    const fileInfo = req.file ? { size: req.file.size, mimetype: req.file.mimetype, name: req.file.originalname } : null;
-    const bodyKeys = Object.keys(req.body || {});
-    const cloudinaryOk = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
-
-    if (!hasFile) {
-      return res.json({ hasFile, fileInfo, bodyKeys, cloudinaryOk, message: 'No file received by multer' });
-    }
-
-    // Try Cloudinary upload
-    const uploadResult = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        { resource_type: 'image', folder: 'shot-on-me/test' },
-        (error, result) => error ? reject(error) : resolve(result)
-      ).end(req.file.buffer);
-    });
-
-    res.json({ hasFile, fileInfo, cloudinaryOk, cloudinaryUrl: uploadResult.secure_url, message: 'Upload succeeded' });
-  } catch (err) {
-    res.status(500).json({ message: err.message, stack: err.stack?.split('\n').slice(0, 3) });
-  }
-});
-
 // Update profile picture (MUST come before /me to avoid route conflicts)
 // Note: upload.single() only processes multipart/form-data. For JSON base64, we handle it in the body.
 router.put('/me/profile-picture', auth, upload.single('profilePicture'), async (req, res) => {
