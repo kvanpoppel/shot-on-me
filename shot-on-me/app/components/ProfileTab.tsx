@@ -98,7 +98,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
       const formData = new FormData()
       formData.append('profilePicture', file)
       await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        headers: { Authorization: `Bearer ${token}` }
       })
       if (updateUser) await updateUser({})
       showToast('Photo updated!')
