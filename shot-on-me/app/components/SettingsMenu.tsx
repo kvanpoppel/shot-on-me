@@ -329,39 +329,34 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     input.onchange = async (e: any) => {
       const file = e.target.files[0]
       if (!file) return
+      if (!token) { showToast('Not logged in — please refresh', 'error'); return }
       if (file.size > 10 * 1024 * 1024) {
         showToast('File size must be less than 10MB', 'error')
         return
       }
       showToast('Uploading photo…')
       try {
-        let uploadFile: File = file
-        try {
-          const { prepareImageForUpload } = await import('../utils/imageResize')
-          uploadFile = await prepareImageForUpload(file)
-        } catch {
-          // Image processing failed — upload original file as-is
-        }
         const formData = new FormData()
-        formData.append('profilePicture', uploadFile)
-        const response = await axios.put(
+        formData.append('profilePicture', file)
+        const response = await fetch(
           `${API_URL}/users/me/profile-picture`,
-          formData,
           {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 60000
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
           }
         )
-        if (response.data.user) {
-          await updateUser(response.data.user)
-        } else if (response.data.profilePicture) {
-          await updateUser({ profilePicture: response.data.profilePicture })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.message || `Server error ${response.status}`)
+        if (data.user) {
+          await updateUser(data.user)
+        } else if (data.profilePicture) {
+          await updateUser({ profilePicture: data.profilePicture })
         }
         showToast('Profile picture updated!', 'success')
       } catch (error: any) {
-        console.error('Photo upload failed', error)
-        const msg = error.response?.data?.message || error.message || 'Failed to update profile picture'
-        showToast(`Upload failed: ${msg}`, 'error', 6000)
+        console.error('Photo upload failed:', error)
+        showToast(`Upload failed: ${error.message}`, 'error', 8000)
       }
     }
     input.click()
