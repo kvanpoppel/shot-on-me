@@ -41,8 +41,8 @@ async function setupTestUsers() {
       console.log(`✅ Created user: ${email1}`);
     }
 
-    // User 2: shotonme@yahoo.com (localhost:3000 - Venue Portal)
-    const email2 = 'shotonme@yahoo.com';
+    // User 2: kate@shotonme.com (localhost:3000 - Venue Portal)
+    const email2 = 'kate@shotonme.com';
     const password2 = 'Password123!';
     
     let user2 = await User.findOne({ email: email2.toLowerCase() });

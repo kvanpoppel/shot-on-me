@@ -12,7 +12,7 @@ Your Stripe and VAPID keys have been added to `backend/.env`.
 ### VAPID (Web Push Notifications):
 - ✅ **VAPID_PUBLIC_KEY** - Added
 - ✅ **VAPID_PRIVATE_KEY** - Added
-- ✅ **VAPID_CONTACT** - Added (mailto:shotonme@yahoo.com)
+- ✅ **VAPID_CONTACT** - Added (mailto:kate@shotonme.com)
 
 ## 🚀 Next Steps:
 

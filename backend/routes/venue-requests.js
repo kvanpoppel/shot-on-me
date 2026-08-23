@@ -78,7 +78,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     });
 
     // Notify admin via email + SMS (fire and forget)
-    const adminEmail = process.env.ADMIN_EMAIL || 'shotonme@yahoo.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'kate@shotonme.com';
     const adminPhone = process.env.ADMIN_PHONE_NUMBER;
     sendVenueRequestAdminEmail(adminEmail, venueRequest).catch(console.error);
     if (adminPhone) {
@@ -214,7 +214,7 @@ router.put('/:id/deny', auth, isAdmin, async (req, res) => {
     const firstName = nameParts[0] || venueReq.ownerName;
 
     sendVenueDenialEmail(venueReq.email, firstName, venueReq.venueName, note).catch(console.error);
-    sendSMS(venueReq.phone, `Shot On Me: Unfortunately we were unable to approve your venue ${venueReq.venueName} at this time. Questions? Email shotonme@yahoo.com.`).catch(console.error);
+    sendSMS(venueReq.phone, `Shot On Me: Unfortunately we were unable to approve your venue ${venueReq.venueName} at this time. Questions? Email kate@shotonme.com.`).catch(console.error);
 
     res.json({ message: 'Venue request denied' });
   } catch (error) {

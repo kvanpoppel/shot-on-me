@@ -10,7 +10,7 @@ async function setupOwner() {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shotonme')
     console.log('✅ Connected to MongoDB')
 
-    const email = 'shotonme@yahoo.com'
+    const email = 'kate@shotonme.com'
     const password = 'Stellabell11'
 
     // Hash the password

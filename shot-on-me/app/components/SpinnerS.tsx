@@ -1,7 +1,7 @@
 'use client'
 
 interface SpinnerSProps {
-  /** 'splash' = 80px, 'inline' = 36px, or pass a custom number */
+  /** 'splash' = 120px, 'inline' = 48px, or pass a custom number */
   size?: 'splash' | 'inline' | number
   /** Animation style */
   animation?: 'spin' | 'entrance' | 'toss' | 'land'
@@ -9,7 +9,7 @@ interface SpinnerSProps {
 }
 
 export default function SpinnerS({ size = 'inline', animation = 'spin', className = '' }: SpinnerSProps) {
-  const px = size === 'splash' ? 80 : size === 'inline' ? 36 : size
+  const px = size === 'splash' ? 120 : size === 'inline' ? 48 : size
 
   const animClass = {
     spin: 'coin-spin',

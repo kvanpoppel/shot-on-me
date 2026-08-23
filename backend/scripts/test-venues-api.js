@@ -10,13 +10,13 @@ async function testVenuesAPI() {
     console.log('✅ Connected to MongoDB\n');
 
     // Get a test user (or create one)
-    let testUser = await User.findOne({ email: 'shotonme@yahoo.com' });
+    let testUser = await User.findOne({ email: 'kate@shotonme.com' });
     if (!testUser) {
       console.log('Creating test user...');
       const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash('Paswword123!', 10);
       testUser = new User({
-        email: 'shotonme@yahoo.com',
+        email: 'kate@shotonme.com',
         password: hashedPassword,
         name: 'Test User',
         firstName: 'Test',

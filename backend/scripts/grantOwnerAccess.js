@@ -1,7 +1,7 @@
 const { MongoClient } = require('mongodb');
 
 const URI = 'mongodb+srv://katevanpoppel_db_user:xDxYEYHpCZLnoYJ2@cluster0.uoylpxu.mongodb.net/shotonme';
-const EMAIL = 'shotonme@yahoo.com';
+const EMAIL = 'kate@shotonme.com';
 
 async function run() {
   const client = new MongoClient(URI);

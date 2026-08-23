@@ -97,7 +97,6 @@ input[type="radio"] {
 }
 
 /* Official brand wordmark — Great Vibes + metallic gold gradient */
-/* Single element, no shadow/duplicate layers */
 .brand-wordmark {
   font-family: var(--font-great-vibes), 'Great Vibes', cursive;
   font-weight: 400;
@@ -109,7 +108,8 @@ input[type="radio"] {
   text-shadow: none;
   letter-spacing: 0.5px;
   display: inline-block;
-  padding: 0.08em 0.15em 0.25em 0.1em;
+  line-height: 1.5;
+  padding: 0.25em 0.15em 0.25em 0.1em;
   overflow: visible;
   white-space: nowrap;
 }

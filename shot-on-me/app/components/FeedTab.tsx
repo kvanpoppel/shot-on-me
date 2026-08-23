@@ -2447,8 +2447,8 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                 {/* Cleaner UI: reaction breakdown shown in picker only */}
 
                 {/* Actions */}
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5 pt-2.5 border-t border-primary-500/20">
-                  <div className="flex items-center gap-1 flex-wrap min-w-0">
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5 pt-2.5 border-t border-primary-500/20 max-w-full overflow-hidden">
+                  <div className="flex items-center gap-1 flex-wrap min-w-0 max-w-full">
                     {/* Cleaner reaction action */}
                     <div
                       className="relative min-w-0"
@@ -2534,7 +2534,7 @@ export default function FeedTab({ onViewProfile, autoOpenPostForm = false, onPos
                         className="inline-flex items-center justify-start gap-1 px-2 py-1.5 rounded-full text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors border border-primary-500/20"
                       >
                         <span className="text-sm leading-none flex-shrink-0">🍺</span>
-                        <span className="text-xs font-semibold whitespace-nowrap">Send Drink</span>
+                        <span className="text-xs font-semibold">Drink</span>
                       </button>
                     )}
                   </div>

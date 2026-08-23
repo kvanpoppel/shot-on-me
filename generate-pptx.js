@@ -587,7 +587,7 @@ s15.addText('Revig', { x: 9.95, y: 2.75, w: 3.2, h: 0.6, fontSize: 20, bold: tru
 s15.addText('revig.shotonme.com', { x: 9.95, y: 3.4, w: 3.2, h: 0.35, fontSize: 13, color: FZ_LIME, fontFace: 'Inter' })
 s15.addShape(pptx.ShapeType.rect, { x: 9.95, y: 4.0, w: 3.0, h: 0.025, fill: { color: GOLD3 } })
 s15.addText('Kate Van Poppel\nFounder', { x: 9.95, y: 4.2, w: 3.2, h: 0.9, fontSize: 15, bold: true, color: WHITE, fontFace: 'Inter' })
-s15.addText('shotonme@yahoo.com', { x: 9.95, y: 5.2, w: 3.2, h: 0.35, fontSize: 12, color: GOLD3, fontFace: 'Inter' })
+s15.addText('kate@shotonme.com', { x: 9.95, y: 5.2, w: 3.2, h: 0.35, fontSize: 12, color: GOLD3, fontFace: 'Inter' })
 
 // ── Save ─────────────────────────────────────
 pptx.writeFile({ fileName: 'C:/Users/kvanpoppel/Desktop/ShotOnMe_Presentation.pptx' })

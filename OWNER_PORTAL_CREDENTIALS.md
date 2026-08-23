@@ -10,7 +10,7 @@ The **Owner Portal** (localhost:3000) requires special owner/admin privileges. T
 
 Based on the test user setup script, you can use:
 
-**Email:** `shotonme@yahoo.com`  
+**Email:** `kate@shotonme.com`  
 **Password:** `Password123!`
 
 **⚠️ Note:** This user has `userType: 'venue'` which works for the **Venue Portal**, but the **Owner Portal** requires additional privileges.
@@ -107,7 +107,7 @@ const User = require('./models/User');
 
 **OR**
 
-- **Email:** `shotonme@yahoo.com` (if you set `OWNER_EMAIL=shotonme@yahoo.com` in `.env`)
+- **Email:** `kate@shotonme.com` (if you set `OWNER_EMAIL=kate@shotonme.com` in `.env`)
 - **Password:** `Password123!`
 
 ---

@@ -246,7 +246,7 @@ export default function LoginScreen() {
             <div className="flex items-center justify-center gap-1.5 text-sm">
               <Users className="w-4 h-4 text-primary-500/60" />
               <span className="text-white/35">
-                <span className="text-primary-400 font-semibold">{shotsThisWeek.toLocaleString()}</span> shots sent this week
+                <span className="text-primary-400 font-semibold">{shotsThisWeek.toLocaleString()}</span> {shotsThisWeek === 1 ? 'shot' : 'shots'} sent this week
               </span>
             </div>
           )}
@@ -338,7 +338,7 @@ export default function LoginScreen() {
         {/* ── Footer ── */}
         <div className="text-center text-xs text-white/18 pb-10 leading-relaxed space-y-2">
           <p>
-            Available in IN · IL · KY · TN · MI · OH
+            At participating venues
             {venuePortalLoginUrl && (
               <>
                 {' · '}

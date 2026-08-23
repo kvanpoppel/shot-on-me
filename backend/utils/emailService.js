@@ -325,10 +325,10 @@ async function sendVenueDenialEmail(ownerEmail, ownerName, venueName, note) {
         <p>Thank you for your interest in bringing <strong>${venueName}</strong> to Shot On Me.</p>
         <p>After reviewing your request, we're unable to approve your venue at this time.</p>
         ${note ? `<div style="background:#fff3cd;border:1px solid #ffc107;padding:14px;border-radius:6px;margin:16px 0"><p style="margin:0;font-size:14px;color:#856404"><strong>Note:</strong> ${note}</p></div>` : ''}
-        <p style="color:#666;font-size:13px">Questions? Email <a href="mailto:shotonme@yahoo.com">shotonme@yahoo.com</a></p>
+        <p style="color:#666;font-size:13px">Questions? Email <a href="mailto:kate@shotonme.com">kate@shotonme.com</a></p>
       </div>
     </body>`,
-    text: `Hi ${ownerName}, we were unable to approve your venue ${venueName} at this time.${note ? ` Note: ${note}` : ''} Questions? Email shotonme@yahoo.com.`
+    text: `Hi ${ownerName}, we were unable to approve your venue ${venueName} at this time.${note ? ` Note: ${note}` : ''} Questions? Email kate@shotonme.com.`
   };
   try {
     const info = await transporter.sendMail(mailOptions);
