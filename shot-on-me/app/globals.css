@@ -97,10 +97,9 @@ input[type="radio"] {
 }
 
 /* Official brand wordmark — Great Vibes + metallic gold gradient */
-/* Hide until Great Vibes loads to prevent fallback font flash */
+/* Single element, no shadow/duplicate layers */
 .brand-wordmark {
-  position: relative;
-  font-family: 'Great Vibes', cursive;
+  font-family: var(--font-great-vibes), 'Great Vibes', cursive;
   font-weight: 400;
   background: linear-gradient(135deg, #FFF3CC 0%, #E4BE6E 30%, #C79A44 60%, #F3DFA0 100%);
   -webkit-background-clip: text;
@@ -109,44 +108,10 @@ input[type="radio"] {
   color: #E4BE6E;
   text-shadow: none;
   letter-spacing: 0.5px;
-  opacity: 0;
-  animation: fadeIn 0.4s ease-out 0.5s forwards;
-}
-.brand-wordmark-wrap {
-  position: relative;
   display: inline-block;
-  /* Margin (not padding) so the ::before containing-block stays flush with
-     the text — padding would shift the content area away from the abs-pos
-     shadow anchor.  Values protect the S flourish (left), e swash (right),
-     ascenders (top) and descenders (bottom) at all responsive sizes. */
-  margin: 0.08em 0.15em 0.25em 0.1em;
+  padding: 0.08em 0.15em 0.25em 0.1em;
   overflow: visible;
   white-space: nowrap;
-}
-@keyframes shadowFadeIn {
-  to { opacity: 0.3; }
-}
-.brand-wordmark-wrap::before {
-  content: attr(data-text);
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  font-family: 'Great Vibes', cursive;
-  font-weight: 400;
-  font-size: inherit;
-  line-height: inherit;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  color: #171310;
-  -webkit-text-fill-color: #171310;
-  opacity: 0;
-  z-index: 0;
-  pointer-events: none;
-  animation: shadowFadeIn 0.4s ease-out 0.5s forwards;
-}
-.brand-wordmark-wrap .brand-wordmark {
-  position: relative;
-  z-index: 1;
 }
 
 /* Force all gold/primary colors to use soft, mature gold */

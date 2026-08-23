@@ -1,11 +1,18 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-// Removed Inter font import to prevent hydration mismatches - using CSS font instead
-import './globals.css'
+import { Great_Vibes } from 'next/font/google'
 import { headers } from 'next/headers'
+import './globals.css'
 import AppWrapper from './components/AppWrapper'
 import Providers from './components/Providers'
 import CookieConsent from './components/CookieConsent'
+
+const greatVibes = Great_Vibes({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-great-vibes',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Shot On Me - Send Money, Share Moments',
@@ -39,7 +46,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get('x-nonce') ?? undefined
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={greatVibes.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="theme-color" content="#0C0B10" />
@@ -49,8 +56,8 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Shot On Me" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Preconnect above handles early connection; the Google Fonts stylesheet loads the actual font file */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Great+Vibes&family=Inter:wght@300;400;500;600;700;800&display=swap" />
+        {/* Great Vibes loaded via next/font/google (self-hosted). Dancing Script + Inter still from CDN. */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" />
         <link rel="preload" href="/app-icons/icon-192.png" as="image" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="180x180" href="/app-icons/apple-touch-icon-180.png" />
