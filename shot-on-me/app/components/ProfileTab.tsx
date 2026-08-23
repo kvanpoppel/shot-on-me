@@ -91,42 +91,54 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    if (!token) { showToast('Not logged in — please refresh', 'error'); return }
+    if (!file) { alert('DEBUG: No file selected'); return }
+    if (!token) { alert('DEBUG: No auth token — not logged in'); return }
     setUploadingPhoto(true)
-    showToast('Resizing & uploading…')
+    showToast('Uploading…')
     try {
-      // Resize client-side to keep uploads small and fast on mobile
-      const resized = await new Promise<Blob>((resolve, reject) => {
-        const img = new Image()
-        const url = URL.createObjectURL(file)
-        img.onload = () => {
-          URL.revokeObjectURL(url)
-          let w = img.width, h = img.height
-          const max = 800
-          if (w > max || h > max) {
-            const r = Math.min(max / w, max / h)
-            w = Math.round(w * r)
-            h = Math.round(h * r)
+      // Try to resize, but upload raw file if resize fails (HEIC on some browsers)
+      let uploadBlob: Blob = file
+      let fileName = file.name || 'photo.jpg'
+      try {
+        const resized = await new Promise<Blob>((resolve, reject) => {
+          const img = new Image()
+          const url = URL.createObjectURL(file)
+          img.onload = () => {
+            URL.revokeObjectURL(url)
+            let w = img.width, h = img.height
+            const max = 800
+            if (w > max || h > max) {
+              const r = Math.min(max / w, max / h)
+              w = Math.round(w * r)
+              h = Math.round(h * r)
+            }
+            const c = document.createElement('canvas')
+            c.width = w; c.height = h
+            c.getContext('2d')!.drawImage(img, 0, 0, w, h)
+            c.toBlob(b => b ? resolve(b) : reject(new Error('Canvas failed')), 'image/jpeg', 0.85)
           }
-          const c = document.createElement('canvas')
-          c.width = w; c.height = h
-          c.getContext('2d')!.drawImage(img, 0, 0, w, h)
-          c.toBlob(b => b ? resolve(b) : reject(new Error('Canvas failed')), 'image/jpeg', 0.85)
-        }
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')) }
-        img.src = url
-      })
+          img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')) }
+          img.src = url
+        })
+        uploadBlob = resized
+        fileName = 'photo.jpg'
+      } catch {
+        // Resize failed (HEIC, cross-origin, etc) — upload original
+      }
 
       const formData = new FormData()
-      formData.append('profilePicture', resized, 'photo.jpg')
+      formData.append('profilePicture', uploadBlob, fileName)
       const response = await fetch(`${API_URL}/users/me/profile-picture`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       })
+      if (!response.ok) {
+        let msg = `Server error ${response.status}`
+        try { const d = await response.json(); msg = d.message || msg } catch {}
+        throw new Error(msg)
+      }
       const data = await response.json()
-      if (!response.ok) throw new Error(data.message || `Server error ${response.status}`)
       if (updateUser) {
         if (data.user) await updateUser(data.user)
         else if (data.profilePicture) await updateUser({ profilePicture: data.profilePicture })
@@ -135,6 +147,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
       showToast('Photo updated!', 'success')
     } catch (err: any) {
       console.error('Photo upload failed:', err)
+      alert(`Upload failed: ${err.message}`)
       showToast(`Upload failed: ${err.message}`, 'error', 8000)
     } finally {
       setUploadingPhoto(false)
@@ -325,7 +338,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
-      <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handlePhotoUpload} />
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
 
       {/* Profile Header */}
       <div className="px-4 pt-6 pb-4">
