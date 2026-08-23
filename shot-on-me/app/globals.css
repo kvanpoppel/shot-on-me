@@ -115,7 +115,7 @@ input[type="radio"] {
 .brand-wordmark-wrap {
   position: relative;
   display: inline-block;
-  padding-bottom: 0.35em;
+  padding-bottom: 0.5em;
   overflow: visible;
 }
 @keyframes shadowFadeIn {
