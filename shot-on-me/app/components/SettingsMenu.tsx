@@ -325,19 +325,25 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
   const handleProfilePicture = () => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = 'image/*'
+    input.accept = 'image/*,.heic,.heif'
     input.onchange = async (e: any) => {
       const file = e.target.files[0]
       if (!file) return
       if (file.size > 10 * 1024 * 1024) {
-        showToast('File size must be less than 10MB')
+        showToast('File size must be less than 10MB', 'error')
         return
       }
+      showToast('Uploading photo…')
       try {
-        const { prepareImageForUpload } = await import('../utils/imageResize')
-        const processed = await prepareImageForUpload(file)
+        let uploadFile: File = file
+        try {
+          const { prepareImageForUpload } = await import('../utils/imageResize')
+          uploadFile = await prepareImageForUpload(file)
+        } catch {
+          // Image processing failed — upload original file as-is
+        }
         const formData = new FormData()
-        formData.append('profilePicture', processed)
+        formData.append('profilePicture', uploadFile)
         const response = await axios.put(
           `${API_URL}/users/me/profile-picture`,
           formData,
@@ -351,10 +357,11 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
         } else if (response.data.profilePicture) {
           await updateUser({ profilePicture: response.data.profilePicture })
         }
-        showToast('Profile picture updated successfully!')
+        showToast('Profile picture updated!', 'success')
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile picture'
-        showToast(errorMessage)
+        console.error('Photo upload failed', error)
+        const msg = error.response?.data?.message || error.message || 'Failed to update profile picture'
+        showToast(`Upload failed: ${msg}`, 'error', 6000)
       }
     }
     input.click()

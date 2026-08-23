@@ -92,23 +92,34 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !token) return
-    if (file.size > 10 * 1024 * 1024) { showToast('Image must be under 10MB'); return }
+    if (file.size > 10 * 1024 * 1024) { showToast('Image must be under 10MB', 'error'); return }
     setUploadingPhoto(true)
+    showToast('Uploading photo…')
     try {
-      const { prepareImageForUpload } = await import('../utils/imageResize')
-      const processed = await prepareImageForUpload(file)
+      // Try to downscale client-side, but fall back to raw file if it fails
+      let uploadFile: File = file
+      try {
+        const { prepareImageForUpload } = await import('../utils/imageResize')
+        uploadFile = await prepareImageForUpload(file)
+      } catch {
+        // Image processing failed — upload original file as-is
+      }
       const formData = new FormData()
-      formData.append('profilePicture', processed)
-      await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
+      formData.append('profilePicture', uploadFile)
+      const res = await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 60000
       })
-      if (updateUser) await updateUser({})
-      showToast('Photo updated!')
+      if (updateUser) {
+        if (res.data.user) await updateUser(res.data.user)
+        else if (res.data.profilePicture) await updateUser({ profilePicture: res.data.profilePicture })
+        else await updateUser({})
+      }
+      showToast('Photo updated!', 'success')
     } catch (err: any) {
       console.error('Photo upload failed', err)
-      const msg = err.response?.data?.message || err.message || 'Upload failed'
-      showToast(`Photo upload failed: ${msg}`)
+      const msg = err.response?.data?.message || err.message || 'Unknown error'
+      showToast(`Upload failed: ${msg}`, 'error', 6000)
     } finally {
       setUploadingPhoto(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
