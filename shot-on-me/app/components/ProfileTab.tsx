@@ -95,16 +95,20 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
     if (file.size > 10 * 1024 * 1024) { showToast('Image must be under 10MB'); return }
     setUploadingPhoto(true)
     try {
+      const { prepareImageForUpload } = await import('../utils/imageResize')
+      const processed = await prepareImageForUpload(file)
       const formData = new FormData()
-      formData.append('profilePicture', file)
+      formData.append('profilePicture', processed)
       await axios.put(`${API_URL}/users/me/profile-picture`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 60000
       })
       if (updateUser) await updateUser({})
       showToast('Photo updated!')
-    } catch (err) {
+    } catch (err: any) {
       console.error('Photo upload failed', err)
-      showToast('Photo upload failed — try again')
+      const msg = err.response?.data?.message || err.message || 'Upload failed'
+      showToast(`Photo upload failed: ${msg}`)
     } finally {
       setUploadingPhoto(false)
       if (photoInputRef.current) photoInputRef.current.value = ''
@@ -294,7 +298,7 @@ export default function ProfileTab({ onViewProfile, setActiveTab, onOpenSettings
 
   return (
     <div className="min-h-screen pb-14 bg-black max-w-2xl mx-auto pt-16">
-      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+      <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handlePhotoUpload} />
 
       {/* Profile Header */}
       <div className="px-4 pt-6 pb-4">

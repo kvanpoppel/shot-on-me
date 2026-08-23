@@ -328,48 +328,33 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     input.accept = 'image/*'
     input.onchange = async (e: any) => {
       const file = e.target.files[0]
-      if (file) {
-        // Validate file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          showToast('File size must be less than 10MB')
-          return
-        }
-
-        try {
-          const reader = new FileReader()
-          reader.onloadend = async () => {
-            try {
-              const base64String = reader.result as string
-              const response = await axios.put(
-                `${API_URL}/users/me/profile-picture`,
-                { profilePicture: base64String },
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  timeout: 60000 // 60 second timeout for upload
-                }
-              )
-              
-              // Update user state with the complete user object from response
-              if (response.data.user) {
-                await updateUser(response.data.user)
-              } else if (response.data.profilePicture) {
-                // Fallback: just update profile picture if full user object not returned
-                await updateUser({ profilePicture: response.data.profilePicture })
-              }
-              
-              showToast('Profile picture updated successfully!')
-            } catch (error: any) {
-              const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update profile picture'
-              showToast(errorMessage)
-            }
+      if (!file) return
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('File size must be less than 10MB')
+        return
+      }
+      try {
+        const { prepareImageForUpload } = await import('../utils/imageResize')
+        const processed = await prepareImageForUpload(file)
+        const formData = new FormData()
+        formData.append('profilePicture', processed)
+        const response = await axios.put(
+          `${API_URL}/users/me/profile-picture`,
+          formData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000
           }
-          reader.readAsDataURL(file)
-        } catch (error: any) {
-          showToast(error.message || 'Failed to read file')
+        )
+        if (response.data.user) {
+          await updateUser(response.data.user)
+        } else if (response.data.profilePicture) {
+          await updateUser({ profilePicture: response.data.profilePicture })
         }
+        showToast('Profile picture updated successfully!')
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile picture'
+        showToast(errorMessage)
       }
     }
     input.click()
