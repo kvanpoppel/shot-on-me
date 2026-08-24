@@ -87,14 +87,14 @@ export default function BottomNav({ activeTab, setActiveTab, isSearchOpen = fals
                   }
                 }}
                 type="button"
-                className={`relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all cursor-pointer flex-shrink-0 min-w-[50px] ${
+                className={`relative flex flex-col items-center justify-center px-3 py-2 rounded-full transition-all cursor-pointer flex-shrink-0 min-w-[54px] ${
                   isActive
                     ? 'bg-primary-500 text-black' 
                     : 'text-primary-400 hover:text-primary-500 hover:bg-primary-500/10'
                 }`}
               >
-                <Icon className="w-4 h-4 mb-0.5" />
-                <span className="text-[9px] font-medium leading-tight">
+                <Icon className="w-5 h-5 mb-0.5" />
+                <span className="text-[10px] font-medium leading-tight">
                   {tab.label}
                 </span>
               </button>
