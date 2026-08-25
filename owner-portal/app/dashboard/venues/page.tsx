@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,7 +8,7 @@ import axios from 'axios'
 import { useApiUrl } from '../../utils/api'
 import { Building2, Search, Download, Loader, DollarSign, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
-export default function VenuesPage() {
+function VenuesPageContent() {
   const { token } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -237,3 +237,10 @@ export default function VenuesPage() {
   )
 }
 
+export default function VenuesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>}>
+      <VenuesPageContent />
+    </Suspense>
+  )
+}
