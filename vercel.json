@@ -1,7 +1,6 @@
 {
-  "buildCommand": "cd shot-on-me && npm run build",
-  "outputDirectory": "shot-on-me/.next",
-  "installCommand": "cd shot-on-me && npm install",
+  "buildCommand": "cd venue-portal && npm run build",
+  "outputDirectory": "venue-portal/.next",
+  "installCommand": "cd venue-portal && npm install",
   "framework": "nextjs"
 }
-
