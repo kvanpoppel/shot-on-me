@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardLayout from '../../components/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,7 +8,7 @@ import axios from 'axios'
 import { useApiUrl } from '../../utils/api'
 import { Search, Filter, Download, Loader, DollarSign } from 'lucide-react'
 
-export default function TransactionsPage() {
+function TransactionsPageContent() {
   const { token } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -284,3 +284,10 @@ export default function TransactionsPage() {
   )
 }
 
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>}>
+      <TransactionsPageContent />
+    </Suspense>
+  )
+}
