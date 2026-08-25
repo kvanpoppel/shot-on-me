@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.71.0",
     "axios": "^1.6.2",
     "date-fns": "^3.0.6",
     "lucide-react": "^0.303.0",
@@ -17,7 +18,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.10.3",
-    "@sentry/nextjs": "^8.0.0",
     "socket.io-client": "^4.5.4"
   },
   "devDependencies": {
