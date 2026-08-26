@@ -9,7 +9,11 @@ import { useApiUrl } from '../../utils/api'
 import { BarChart3, TrendingUp, Loader } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
+<<<<<<< HEAD
 export default function AnalyticsContent() {
+=======
+export default function AnalyticsPage() {
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
   const { token } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -89,12 +93,21 @@ export default function AnalyticsContent() {
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#0ea5e920" />
+<<<<<<< HEAD
               <XAxis
                 dataKey="date"
                 stroke="#0ea5e960"
                 style={{ fontSize: '12px' }}
               />
               <YAxis
+=======
+              <XAxis 
+                dataKey="date" 
+                stroke="#0ea5e960"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis 
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
                 stroke="#0ea5e960"
                 style={{ fontSize: '12px' }}
                 tickFormatter={(value) => `$${value.toLocaleString()}`}
@@ -108,6 +121,7 @@ export default function AnalyticsContent() {
                 }}
                 formatter={(value: number) => `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
+<<<<<<< HEAD
               <Legend
                 wrapperStyle={{ color: '#0ea5e9' }}
               />
@@ -120,6 +134,20 @@ export default function AnalyticsContent() {
               <Bar
                 dataKey="commissions"
                 fill="#10b981"
+=======
+              <Legend 
+                wrapperStyle={{ color: '#0ea5e9' }}
+              />
+              <Bar 
+                dataKey="revenue" 
+                fill="#0ea5e9" 
+                name="Revenue"
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar 
+                dataKey="commissions" 
+                fill="#10b981" 
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
                 name="Commissions"
                 radius={[4, 4, 0, 0]}
               />
@@ -141,12 +169,21 @@ export default function AnalyticsContent() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#0ea5e920" />
+<<<<<<< HEAD
               <XAxis
                 dataKey="date"
                 stroke="#0ea5e960"
                 style={{ fontSize: '12px' }}
               />
               <YAxis
+=======
+              <XAxis 
+                dataKey="date" 
+                stroke="#0ea5e960"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis 
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
                 stroke="#0ea5e960"
                 style={{ fontSize: '12px' }}
               />
@@ -158,9 +195,15 @@ export default function AnalyticsContent() {
                   color: '#0ea5e9'
                 }}
               />
+<<<<<<< HEAD
               <Bar
                 dataKey="transactions"
                 fill="#8b5cf6"
+=======
+              <Bar 
+                dataKey="transactions" 
+                fill="#8b5cf6" 
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
                 name="Transactions"
                 radius={[4, 4, 0, 0]}
               />
@@ -171,3 +214,7 @@ export default function AnalyticsContent() {
     </DashboardLayout>
   )
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> f02a463a (Wrap useSearchParams in Suspense for all dashboard pages)
