@@ -28,6 +28,9 @@ export interface User {
     bio?: string
     profilePicture?: string
   }
+  kyc?: {
+    status: string
+  }
 }
 
 export interface Venue {
