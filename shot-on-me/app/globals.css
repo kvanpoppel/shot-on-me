@@ -49,7 +49,7 @@ body {
 }
 
 /* Block all zoom gestures globally — iOS ignores user-scalable=no */
-* {
+html, body {
   touch-action: pan-y;
   -webkit-touch-callout: none;
 }
