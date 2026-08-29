@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://res.cloudinary.com https://*.googleapis.com https://*.gstatic.com",
-    "connect-src 'self' blob: https://*.googleapis.com https://shot-on-me.onrender.com wss://shot-on-me.onrender.com https://api.stripe.com https://*.sentry.io",
+    "connect-src 'self' blob: https://*.googleapis.com https://res.cloudinary.com https://shot-on-me.onrender.com wss://shot-on-me.onrender.com https://api.stripe.com https://*.sentry.io",
     "worker-src 'self' blob:",
     "frame-src https://js.stripe.com https://hooks.stripe.com",
     "object-src 'none'",
