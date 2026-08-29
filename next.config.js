@@ -13,7 +13,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com",
-      "connect-src 'self' https://maps.googleapis.com",
+      "connect-src 'self' https://maps.googleapis.com https://res.cloudinary.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
