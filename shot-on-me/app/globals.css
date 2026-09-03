@@ -450,4 +450,16 @@ input, textarea, select {
     animation: coin-glow-static 3s ease-in-out infinite;
   }
 }
-
+/* ── Force landing page to scroll on desktop ── */
+html { overflow-y: scroll !important; }
+body > div.min-h-screen {
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+}
+body > div.min-h-screen > .relative.z-10 {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  padding-bottom: 5rem;
+}
